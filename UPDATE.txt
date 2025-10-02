@@ -1,0 +1,65 @@
+This update documents what changed to make a minimal libp2p + Boxo Bitswap provider/retriever work reliably, why it previously hung, and how the final wiring behaves.
+
+Goal
+Build the simplest possible block transfer between two processes:
+- Provider: bring up a libp2p host, wire Boxo Bitswap + BlockService, add a single in-memory block, print its CID and listen addrs.
+- Retriever: bring up a libp2p host, connect to the provider using the printed multiaddr and peer ID, and fetch the provider’s block via Bitswap using the printed CID.
+
+Root cause of the hang
+The retriever connected to the provider but Bitswap didn’t immediately direct the “want” to that peer. 
+In this setup I intentionally avoided running a DHT or other discovery, so Bitswap had no provider information for the CID. 
+Without a discovery hint, the want can sit until discovery finds a provider (which we hadn’t enabled), so the request effectively times out.
+In future/final versions of this, that discovery process can utilize ACAN and/or UVR from sng40 to work sans DHT
+
+Key fixes
+1) libp2p host wiring (internal/net/host.go)
+- QUIC transport: use the libp2p QUIC transport package directly and reference it explicitly: libp2p.Transport(libp2pquic.NewTransport).
+- YAMUX: use yamux.DefaultTransport with libp2p.Muxer.
+- The host constructor continues to accept listen address strings from callers; we did not hard-code listen addrs in the host itself.
+
+2) Boxo Bitswap wiring (internal/storage/store.go)
+- Bitswap network: use bsnet.NewFromIpfsHost(host) for the network layer over our libp2p host.
+- Content discovery: by default, use a no-op router (routinghelpers.Null{}). This prevents Bitswap from trying to use DHT/IPNI in this minimal proof of concept.
+- Expose a router-aware constructor, NewStackWithRouter(ctx, host, router), that allows callers to provide their own routing.ContentRouting implementation when they do have a known provider.
+- Removed references to non-existent/irrelevant Bitswap options so everything compiles cleanly against the versions in go.mod.
+- Retained a very simple in-memory datastore/blockstore stack for the demo.
+
+3) Retriever-side provider hint (cmd/retriever/main.go)
+- Implemented a tiny staticContentRouter that satisfies routing.ContentRouting but simply returns the provider peer we already intend to fetch from:
+  - Provide/ProvideMany: no-ops.
+  - FindProvidersAsync / FindProviders: immediately return the known provider AddrInfo.
+  - Ready: true.
+- Reordered initialization: build the Bitswap stack (NewStackWithRouter) before dialing the provider. This ensures the Bitswap network observes the subsequent connection event, and the want is directed to that peer immediately.
+- After the connection is established, the retriever requests the block from BlockService (which uses Bitswap under the hood) and prints the result.
+
+4) Provider cleanup (cmd/provider/main.go)
+- Fixed module import paths (no local/absolute imports).
+- Bring up the host, wire Bitswap + BlockService via NewStack, add a single demo block, print the CID and the host’s addrs.
+- Both TCP and QUIC-v1 addresses are printed; any dialable address is acceptable for the retriever. Use the exact address printed by the provider for your network (e.g., a 10.x address on the same LAN or 127.0.0.1 for loopback testing).
+
+Why this works now
+- Bitswap now has an explicit provider hint for the CID (via the static router) and also sees the connection to that specific peer (because we initialize before dialing). As soon as the retriever asks for the CID, the want goes straight to the provider, and the provider responds from its in-memory blockstore.
+- No DHT, no IPNI, and no additional services are required for this minimal P2P transfer.
+
+How to run
+1) Start the provider.
+   - It prints PeerID, CID, and addresses. Copy:
+     - one printed TCP address (e.g., /ip4/10.0.0.74/tcp/34895),
+     - the PeerID string,
+     - and the CID string it prints.
+2) Start the retriever with exactly those three values.
+   - The retriever connects, initializes Bitswap with a static router pointing at that provider, and then fetches the block. It prints the payload.
+
+Notes and caveats
+- Use the exact CID printed by the provider (don’t alter versions or re-encode it).
+- Choose an address that’s actually reachable from the retriever process. If both are on the same machine, loopback is fine; otherwise, use the LAN address the provider printed.
+- This wiring intentionally avoids the DHT and any broader discovery; it is meant to be deterministic and minimal.
+
+Potential next steps
+- Translate this into a unified protocol/node system wherein each node running this protocol can act symmetrically as both provider and retriever
+- wire in to sng40 so that ACAN and/or UVR membership can act as a discovery layer. it is possible or probable that this will require bootstrap nodes to exist
+  - this is mostly a functionality choice -- any node COULD be a bootstrap if the person running the protocol just pastes in the proper peerID, but it would be smoothest if a few always on nodes are designated as bootstraps from within the protocol itself
+  - with ACAN, we could have peership with those nodes engender discovery of more and broader membership in the node network and the ring, meaning that future disconnection from the bootstrap nodes will not be a SPoF or even a noteworthy problem
+
+Summary
+The hang was caused by lack of provider discovery and initialization order. We resolved it by: (1) adding a minimal static content router that always returns the known provider, and (2) initializing Bitswap before dialing so it observes the upcoming connection event. With those changes, the retriever’s want is immediately sent to the provider and the transfer completes.

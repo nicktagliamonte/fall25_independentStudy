@@ -7,10 +7,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"net/http"
 	"time"
 
-	myhost "github.com/nicktagliamonte/fall25_independantStudy/internal/net"
-	mystore "github.com/nicktagliamonte/fall25_independantStudy/internal/storage"
+	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
+	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
 
 func main() {
@@ -45,6 +46,25 @@ func main() {
 		fmt.Println("Addr: ", a.String())
 	}
 	fmt.Printf("CID (multihash hex): %s\n", hex.EncodeToString(c.Hash()))
+
+	// Also expose a trivial HTTP debug endpoint to fetch by CID for sanity
+	http.HandleFunc("/cid/", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		cidStr := r.URL.Path[len("/cid/"):]
+		if cidStr == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("missing cid"))
+			return
+		}
+		data, err := mystore.GetBlock(ctx, stack.BlockSvc, c)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		_, _ = w.Write(data)
+	})
+	go func() { _ = http.ListenAndServe("127.0.0.1:0", nil) }()
 
 	// Keep running
 	select {}
