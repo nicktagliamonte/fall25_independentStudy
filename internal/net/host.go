@@ -20,7 +20,10 @@ func NewHost(ctx context.Context, listenAddrs []string) (host.Host, error) {
 	if err != nil {
 		return nil, err
 	}
+	return NewHostWithPriv(ctx, listenAddrs, priv)
+}
 
+func NewHostWithPriv(ctx context.Context, listenAddrs []string, priv crypto.PrivKey) (host.Host, error) {
 	opts := []libp2p.Option{
 		libp2p.Identity(priv),
 
@@ -40,6 +43,11 @@ func NewHost(ctx context.Context, listenAddrs []string) (host.Host, error) {
 	for _, a := range listenAddrs {
 		opts = append(opts, libp2p.ListenAddrStrings(a))
 	}
+	// NAT service on by default; client relay enabled
+	opts = append(opts,
+		libp2p.EnableNATService(),
+		libp2p.EnableRelay(),
+	)
 
 	return libp2p.New(opts...)
 }

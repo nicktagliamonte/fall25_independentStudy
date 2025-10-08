@@ -1,0 +1,2 @@
+3. test on two machines (i.e. mine and like...chameleon)
+4. start the sng40<>go conversion

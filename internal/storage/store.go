@@ -74,6 +74,14 @@ func NewStackWithRouter(ctx context.Context, h host.Host, router routing.Content
 	}, nil
 }
 
+// NewStackFromBlockstore builds a stack from a provided blockstore and datastore.
+func NewStackFromBlockstore(ctx context.Context, h host.Host, bs bstore.Blockstore, d ds.Batching, router routing.ContentRouting) (*Stack, error) {
+	network := bsnet.NewFromIpfsHost(h)
+	engine := bitswap.New(ctx, network, router, bs)
+	bsvc := bserv.New(bs, engine)
+	return &Stack{Datastore: d, Blockstore: bs, Bitswap: engine, BlockSvc: &bsvc}, nil
+}
+
 func PutRawBlock(ctx context.Context, bsvc *bserv.BlockService, data []byte) (cid.Cid, error) {
 	blk := blocks.NewBlock(data) // <- compute a proper CID
 	if err := (*bsvc).AddBlock(ctx, blk); err != nil {
