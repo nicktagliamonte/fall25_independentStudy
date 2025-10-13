@@ -1,1 +1,9 @@
-
+add directory transfer
+test locally
+    just make sure everything still works (daemon and non- and also file and data)
+test on two machines (i.e. mine and like...chameleon)
+    - spin both with background daemons; record peerids and addrs; swap
+    - run put/get across both directions; capture logs + timings
+    - include negative tests (verack timeout, bad agent/services)
+start the sng40<>go conversion
+    pay attention to the "hostfile" which exists in there...somewhere

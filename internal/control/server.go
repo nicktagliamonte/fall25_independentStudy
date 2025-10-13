@@ -12,14 +12,17 @@ import (
 
 	"encoding/base64"
 
+	"strconv"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
+	mynet "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
 
-// no persistent server struct is required for this simple control plane
+// no persistent server struct is required
 
 type PutRequest struct {
 	Data string `json:"data"`
@@ -49,13 +52,19 @@ type GetResponse struct {
 }
 
 // Start launches the control server and returns the bound address and a shutdown func.
-func Start(ctx context.Context, h host.Host, stack *mystore.Stack) (string, func(context.Context) error, error) {
+func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics) (string, func(context.Context) error, error) {
 	mux := http.NewServeMux()
 	router := NewDynamicRouter()
 
 	// Health endpoint
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
+	})
+
+	// Metrics endpoint (JSON)
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
 	})
 
 	// Put endpoint
@@ -79,6 +88,42 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack) (string, func
 		resp := PutResponse{CID: c.String(), MultihashHex: fmt.Sprintf("%x", c.Hash())}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
+	})
+
+	// Peers endpoint
+	mux.HandleFunc("/peers", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		limit := 20
+		if s := r.URL.Query().Get("limit"); s != "" {
+			if n, err := strconv.Atoi(s); err == nil && n > 0 && n <= 200 {
+				limit = n
+			}
+		}
+		infos, meta := peers.GetDialCandidates(limit, 0, nil)
+		// shape response
+		type peerOut struct {
+			Peer   string   `json:"peer"`
+			Addrs  []string `json:"addrs"`
+			Score  float64  `json:"score"`
+			Seen   int64    `json:"last_seen_unix"`
+			Tried  int64    `json:"last_tried_unix"`
+			Succ   int64    `json:"last_succ_unix"`
+			Fails  int      `json:"failure_count"`
+			Source string   `json:"source"`
+		}
+		out := make([]peerOut, 0, len(infos))
+		for i, info := range infos {
+			po := peerOut{Peer: info.ID.String(), Score: meta[i].Score, Seen: meta[i].LastSeenUnix, Tried: meta[i].LastTriedUnix, Succ: meta[i].LastSuccUnix, Fails: meta[i].FailureCount, Source: meta[i].Source}
+			for _, a := range info.Addrs {
+				po.Addrs = append(po.Addrs, a.String())
+			}
+			out = append(out, po)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(out)
 	})
 
 	// Connect endpoint

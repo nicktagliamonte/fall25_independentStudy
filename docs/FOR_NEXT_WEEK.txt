@@ -1,2 +1,7 @@
-3. test on two machines (i.e. mine and like...chameleon)
-4. start the sng40<>go conversion
+peer discovery (do what bitcoin does...? including binary check?)
+    dynamic, self-healing bootstrap list? where it subs in neightbor nodes if heartbeat to a bootstrap node fails?
+    peerlist exchange!
+verack
+test on two machines (i.e. mine and like...chameleon)
+start the sng40<>go conversion
+    pay attention to the "hostfile" which exists in there...somewhere

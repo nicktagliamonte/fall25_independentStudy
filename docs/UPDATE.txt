@@ -1,82 +1,92 @@
-1. how does libp2p VERACK?
-  - it sort of doesn't! in libp2p connections go through an "upgrade" to negotiate mutually supported protocols, but libp2p itself is low-level enough that sharing broad connection methods and security versions suffices:
-    - the upgrade transforms a raw transport connection (TCP or QUIC, etc) into a fully featured libp2p connection that supports 
-      - crypto ID verification
-      - encryption
-      - multiplexed streams
-      - negotiated app protocols
-  - the libp2p process is to
-    1. dial transport (tcp/quic/etc)
-      - gives you a raw net.Conn or quic.Connection
-    2. negotiate security (noise or TLS)
-      - if the two peers share no sec protocol, the upgrade fails and the connection is closed
-      - else, the upgrader wraps that connection with a security transport
-      - this is where the handshake that provides each side's PeerID is done (verifies their public keys)
-    3. stream muxer is negotiated (yamux/mplex)
-      - if there's no common muxer, again upgrade fails and connection is closed
-    4. connection is finalized
-      - the upgrader now wraps all the above in a libp2p.Conn that emits conn events to the network stack
-    5. per-stream protocol is negotiated via multistream select
-      - after the connection is successful, a protocol runs to exchange agent strings, supported protocols, public listen addrs, etc
-      - peers use this to discover if their higher-level protocols (bitswap, gossipsub) are compatible
+1. version/verack handshake (simple)
+  - goal: approximate bitcoin's verack prior to data transfer
+  - process:
+    1) we open a control stream between two peers
+      - which we know we can do because libp2p's connectivity step already has to have passed, for us to be at this step
+    2) peer A (initiator) sends “version” (random nonce, services bitfield, agent string, start_height, timestamp)
+      - Definition of all terms:
+        1. Random Nonce: 64-bit random token to detect self-connections/replays
+          - what: unique per-connection token
+          - how: crypto/rand seed; store locally for the session
+          - why: catch self-dial and naive replay/reflection
+            - Note: this is not crypto or proof, and basically only exists to verify "not me/not noise"
+        2. Services bitfield: capabilities toggles (e.g., can serve blocks, accepts wants, relay ok)
+          - what: bitmask of features supported/enabled
+          - how: assemble from config/flags at startup
+          - why: fast capability gating without a DHT
+        3. agent string: human-readable software id + semver (e.g., sng40/0.1.0)
+        4. start height: local state indicator (e.g., highest known sequence, 0 for N/A)
+          - what: monotonic progress marker
+            - See Dr. Milano's paper
+          - how: from local index/state (default 0)
+          - why: peers can reason about relative progress without heavy sync
+        5. timestamp: unix seconds when message created (helps with staleness)
+    3) peer B responds with same version
+    4) if match, we continue
+  - what we validate:
+    - agent: must be at least a minimum version (e.g. sng40/x.y.z)
+      - this should really come from the broader system that this gets implemented in and not be strictly a feature of this protocol alone
+    - services: the other peer’s services must be allowed (bitmask is currently the only one, but we'll see how it grows and will have to update this)
+    - timeout: if verack isn’t done quickly, we drop the connection
+  - why this exists:
+    - fail fast on incompatible or misconfigured peers
+    - get a cheap capability signal (services) without pulling in a DHT
+    - keep policy simple: single handshake per connection, not per block
+    - why multi-field “version” vs just "1.0.0": we need capabilities + freshness + anti-self/replay, not only a code rev
+  - when it triggers:
+    - once per new libp2p stream for the handshake protocol (at connect), before any bitswap traffic
+  - what it’s not:
+    - it’s not encryption or identity; libp2p already does that
+    - it’s not content integrity; Bitswap/CIDs give us that at the data layer
 
-1.5. how is this handled in code that uses libp2p?
-  - use multiple options set in Host with a list of sec transports and muxers to increase fw/bw compatability
-  - version your protocol IDs and support a small matrix
+2. peer discovery and peerlist exchange
+  - goal: learn viable peers quickly without a DHT or central registry
+  - process:
+    1) bootstrap seeds
+      - sources: CLI --seed (repeatable), --seed-file (newline-delimited), env SNG40_SEEDS=comma,list
+        - this is sort of a workaround because we don't actually have a set of always on nodes at static addresses. so i shifted this to come from a file
+      - we normalize and dedupe; only keep valid multiaddrs with /p2p/<peerID>
+      - seeds are inserted into a persistent PeerStore for dialing
+    2) version handshake carries discovery signals
+      - initiator sets want_peerlist=true and includes its listen addrs
+        - this defaults to true but can be user-set to false
+      - responder returns a small sampled list of known-good peers (bounded)
+        - bdd to compliment the earlier monotonic stack height in the verack
+          - again see the work of dr milano for ref
+        - format: multiaddr with /p2p/<peerID>; receiver validates and dedupes
+      - both sides still exchange/verack as before; discovery is an optional add-on
+    3) learned peers are upserted into the PeerStore
+      - each record tracks addrs, source (seed/handshake/gossip), last seen/success, failures
+      - scoring prefers: service match, recent success, recent activity; penalizes failures
+    4) periodic gossip
+      - on a timer, we ask already-connected peers for another small sample (same handshake path)
+      - this lets the node “fill in” the network view over time, not just at first connect
+    5) operator visibility
+      - control-plane GET /peers returns current top dial candidates with basic metadata
+      - useful for debugging, manual seeding, and observing convergence
+  - safety and limits:
+    - caps: small response size per handshake; soft cap on total known peers; per-IP dial limit
+    - backoff: exponential on failures; stale entries pruned after a configurable window
+    - dedupe: skip self, drop invalid addrs, avoid echo via local seen state
+    - policy-driven: min outbound target maintained; timeouts guard handshake/dials
+  - when it triggers:
+    - at connect (handshake with want_peerlist)
+    - on a periodic gossip timer with currently connected peers
+  - what it’s not:
+    - not a guarantee of reachability (we still dial/test)
+    - not a global directory or long-term registry; it’s a rolling, local view
+    - not a security boundary; identity/crypto remain in libp2p
 
-1.75. how is it handled in boxo?
-  - by the libp2p runtime!
-    - the initiator proposes, for example, bitswap 1.2.0
-    - the responder accepts or rejects
-    - if rejected, the initiator will retry with older versions
-  - but in practice, bitswap is backwards compatible
-    - nodes register handlers for multiple protocol IDs by default
-    - when a remote peer connects, libp2p's protocol negotiation picks the highest mutually supported one
-    - the wire format across the vers is kept stable (minor ver updates introduce optional fields only, as policy)
-  - if NO mutually supported ver exists:
-    - stream negotiation fails (throws ErrNoMatchingProtocol)
-    - bitswap's peer manager marks the peer as unusable for exchange purposes
-    - the connection itself stays open (on the libp2p level) bcause other protocols can or will still work (i.e. Ping, etc)
-    - custom event handling COULD be written to close the conn if this sort of ver incompatability is encountered
-
-1.99. cited sources:
-  - bitswap/network/bsnet/ipfs_impl.go
-  - bitswap/message/pb/message.proto
-  - bitswap/network/interface.go
-  - go-libp2p/p2p/protocol/multistream
-
-2. meld the two bins into a single, symmetric protocol
-  - one binary: `cmd/node` with run/put/connect/get
-    - symmetrical roles; any node can serve wants and fetch
-  - flags: --listen repeatable; sane tcp+quic defaults
-    - tcp always on; quic best-effort (envs may block udp)
-  - run: prints peer id + addrs; can background with --background and optional --log
-    - control file path configurable via --control
-  - control plane: local http daemon (127.0.0.1) with /put, /connect, /get; writes /tmp/fall25_node/daemon.json
-    - self-dial guard: /connect and /get short-circuit when peer==self
-  - non-daemon path still supported with --no-daemon for simple two-terminal tests
-    - helpful for debugging and perf sanity
-  - get uses a dynamic router (or static peer) not a dht; strictly null router policy
-    - provider is injected per request; no global discovery
-  - put/get support --file and --out for large payloads; daemon encodes data as base64
-    - out path writes atomically (single write), no streaming yet
-  - http debug: optional --http-debug to expose /cid/<cid> for quick reads
-    - only for local dev; not for production use
-  - helpers: common banner, dial timeout helpers; cleaner output
-  - docs: exact no-daemon commands added for copy/paste flows
-
-2.5. testing
-  - terminal a: put --serve, copy peerid+addr+cid; terminal b: get with those fields
-  - daemon mode: run --background, then put/get in separate terminals; prompt returns immediately
-    - client timeouts increased to cover dial+fetch
-  - verified cross direction a↔b; file output writes to Desktop/out.txt as expected
-    - manual spot-check on contents match
-
-2.99. hardening pass (late stage)
-  - nat/relay: enabled nat service + relay client for better reachability; left server roles for later
-    - next: add relay hints, autonat metrics
-  - content routing: explicitly null router; no dht ever; supports explicit peer hints and local daemon routing
-    - future: acan integration for provider lists
-  - persistence: --key to persist libp2p key; --store to persist blockstore (leveldb)
-    - keys stored as pem; blocks via leveldb-backed blockstore
-  - anti-pattern note: dhts are out of scope; “ipfs minus dht” is the rule
+3. directory transfer (manifest-based)
+  - goal: move whole folders without introducing a new DAG format yet
+  - process:
+    - putdir walks a directory, stores each file as a raw block via Bitswap, then writes a small JSON manifest block
+      - manifest contains path, size, and the file block CID; its own CID is the “directory CID”
+    - getdir fetches the manifest by CID, then fetches each file block and reconstructs the tree on disk
+  - how to use:
+    - producer: putdir --dir ./myfolder  -> prints DIR CID
+    - consumer: getdir --cid <DIR_CID> --out ./outfolder
+  - scope and limits (for now):
+    - optimized for small/medium trees; no per-file chunking/dedup beyond raw blocks
+    - preserves bytes and layout; does not preserve permissions/timestamps; skips symlinks
+    - this is a pragmatic bridge; future work can swap in IPLD/UnixFS or CAR without changing the UX
