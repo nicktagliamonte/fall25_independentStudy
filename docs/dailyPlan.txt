@@ -1,4 +1,3 @@
-add directory transfer
 test locally
     just make sure everything still works (daemon and non- and also file and data)
 test on two machines (i.e. mine and like...chameleon)

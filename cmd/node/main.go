@@ -57,6 +57,7 @@ func importDirectory(ctx context.Context, stack *mystore.Stack, dirPath string) 
 		Path string `json:"path"`
 		Size int64  `json:"size"`
 		CID  string `json:"cid"`
+		Type string `json:"type"` // "file" or "dir"
 	}
 	var manifest []entry
 	var total int64
@@ -66,6 +67,11 @@ func importDirectory(ctx context.Context, stack *mystore.Stack, dirPath string) 
 			return err
 		}
 		if info.Mode().IsDir() {
+			rel, _ := filepath.Rel(dirPath, p)
+			if rel != "." {
+				// record directory to preserve empty dirs
+				manifest = append(manifest, entry{Path: rel, Size: 0, CID: "", Type: "dir"})
+			}
 			return nil
 		}
 		f, err := os.Open(p)
@@ -82,7 +88,7 @@ func importDirectory(ctx context.Context, stack *mystore.Stack, dirPath string) 
 			return err
 		}
 		rel, _ := filepath.Rel(dirPath, p)
-		manifest = append(manifest, entry{Path: rel, Size: int64(len(b)), CID: c.String()})
+		manifest = append(manifest, entry{Path: rel, Size: int64(len(b)), CID: c.String(), Type: "file"})
 		total += int64(len(b))
 		files++
 		return nil
@@ -105,6 +111,7 @@ func exportDirectory(ctx context.Context, stack *mystore.Stack, root cid.Cid, ou
 		Path string `json:"path"`
 		Size int64  `json:"size"`
 		CID  string `json:"cid"`
+		Type string `json:"type"`
 	}
 	b, err := mystore.GetBlock(ctx, stack.BlockSvc, root)
 	if err != nil {
@@ -119,6 +126,13 @@ func exportDirectory(ctx context.Context, stack *mystore.Stack, root cid.Cid, ou
 	}
 	var total int64
 	for _, e := range manifest {
+		dst := filepath.Join(outDir, e.Path)
+		if e.Type == "dir" {
+			if err := os.MkdirAll(dst, 0755); err != nil {
+				return 0, 0, err
+			}
+			continue
+		}
 		c, err := cid.Decode(e.CID)
 		if err != nil {
 			return 0, 0, err
@@ -127,7 +141,6 @@ func exportDirectory(ctx context.Context, stack *mystore.Stack, root cid.Cid, ou
 		if err != nil {
 			return 0, 0, err
 		}
-		dst := filepath.Join(outDir, e.Path)
 		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 			return 0, 0, err
 		}
@@ -162,7 +175,7 @@ func dialWithTimeout(ctx context.Context, h host.Host, info peer.AddrInfo, d tim
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "usage: %s <run|put|connect|get|putdir|getdir> [flags]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s <run|put|connect|get> [flags]\n", os.Args[0])
 		os.Exit(2)
 	}
 
@@ -603,44 +616,7 @@ func main() {
 			select {}
 		}
 
-	case "putdir":
-		fs := flag.NewFlagSet("putdir", flag.ExitOnError)
-		var listenAddrs stringSlice
-		var dirPath string
-		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
-		fs.StringVar(&dirPath, "dir", "", "directory to import and transfer")
-		_ = fs.Parse(os.Args[2:])
-		if len(listenAddrs) == 0 {
-			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic-v1",
-			}
-		}
-		if dirPath == "" {
-			log.Fatal("putdir: --dir is required")
-		}
-
-		ctx := context.Background()
-		h, err := myhost.NewHost(ctx, listenAddrs)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer h.Close()
-
-		stack, err := mystore.NewStack(ctx, h)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer stack.Bitswap.Close()
-
-		root, count, bytesTotal, err := importDirectory(ctx, stack, dirPath)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Println("DIR CID:", root.String())
-		fmt.Printf("Files: %d  Bytes: %d\n", count, bytesTotal)
-		printBanner(h.ID().String(), hostAddrsStrings(h))
-
+		// case "putdir": removed
 	case "connect":
 		fs := flag.NewFlagSet("connect", flag.ExitOnError)
 		var listenAddrs stringSlice
@@ -865,51 +841,11 @@ func main() {
 			fmt.Printf("Fetched %d bytes\n", len(b))
 		}
 
-	case "getdir":
-		fs := flag.NewFlagSet("getdir", flag.ExitOnError)
-		var listenAddrs stringSlice
-		var cidStr string
-		var outDir string
-		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
-		fs.StringVar(&cidStr, "cid", "", "manifest CID to fetch")
-		fs.StringVar(&outDir, "out", "", "directory to write exported files into")
-		_ = fs.Parse(os.Args[2:])
-		if len(listenAddrs) == 0 {
-			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic-v1",
-			}
-		}
-		if cidStr == "" || outDir == "" {
-			log.Fatal("getdir: --cid and --out are required")
-		}
-
-		ctx := context.Background()
-		h, err := myhost.NewHost(ctx, listenAddrs)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer h.Close()
-
-		stack, err := mystore.NewStack(ctx, h)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer stack.Bitswap.Close()
-
-		c, err := cid.Decode(cidStr)
-		if err != nil {
-			log.Fatal(err)
-		}
-		files, bytesTotal, err := exportDirectory(ctx, stack, c, outDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("Wrote %d files -> %s  Bytes: %d\n", files, outDir, bytesTotal)
+		// case "getdir": removed
 
 	default:
 		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n", subcmd)
-		fmt.Fprintf(os.Stderr, "usage: %s <run|put|connect|get|putdir|getdir> [flags]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s <run|put|connect|get> [flags]\n", os.Args[0])
 		os.Exit(2)
 	}
 }

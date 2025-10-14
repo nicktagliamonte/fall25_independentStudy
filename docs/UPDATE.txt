@@ -77,16 +77,6 @@
     - not a global directory or long-term registry; it’s a rolling, local view
     - not a security boundary; identity/crypto remain in libp2p
 
-3. directory transfer (manifest-based)
-  - goal: move whole folders without introducing a new DAG format yet
-  - process:
-    - putdir walks a directory, stores each file as a raw block via Bitswap, then writes a small JSON manifest block
-      - manifest contains path, size, and the file block CID; its own CID is the “directory CID”
-    - getdir fetches the manifest by CID, then fetches each file block and reconstructs the tree on disk
-  - how to use:
-    - producer: putdir --dir ./myfolder  -> prints DIR CID
-    - consumer: getdir --cid <DIR_CID> --out ./outfolder
-  - scope and limits (for now):
-    - optimized for small/medium trees; no per-file chunking/dedup beyond raw blocks
-    - preserves bytes and layout; does not preserve permissions/timestamps; skips symlinks
-    - this is a pragmatic bridge; future work can swap in IPLD/UnixFS or CAR without changing the UX
+3. directory transfer 
+  - I spent 2 or 3 days trying to get this to work and was devoting more time to it than was necessary
+  - Tar + put adequately and reliably covers the directory usecase
