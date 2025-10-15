@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -47,6 +48,63 @@ func printBanner(hID string, addrs []string) {
 	fmt.Println("PeerID:", hID)
 	for _, a := range addrs {
 		fmt.Println("Addr:", a)
+	}
+}
+
+// bestPublicIPv4 returns the first non-loopback, non-private IPv4 found on the machine.
+func bestPublicIPv4() string {
+	ifaces, _ := net.Interfaces()
+	for _, iface := range ifaces {
+		if (iface.Flags&net.FlagUp) == 0 || (iface.Flags&net.FlagLoopback) != 0 {
+			continue
+		}
+		addrs, _ := iface.Addrs()
+		for _, a := range addrs {
+			var ip net.IP
+			switch v := a.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			ip = ip.To4()
+			if ip == nil {
+				continue // not IPv4
+			}
+			// skip RFC1918 and link-local
+			if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+				continue
+			}
+			return ip.String()
+		}
+	}
+	return ""
+}
+
+// printDerivedPublicAddrs emits derived public addrs by replacing the /ip4 component
+// in the host addrs with the detected public IPv4. This does not change what the
+// node listens on; it only prints human-usable remote addresses.
+func printDerivedPublicAddrs(addrs []string) {
+	pub := bestPublicIPv4()
+	if pub == "" {
+		return
+	}
+	for _, a := range addrs {
+		if strings.Contains(a, "/ip4/") {
+			parts := strings.SplitN(a, "/ip4/", 2)
+			if len(parts) == 2 {
+				remainder := parts[1]
+				if i := strings.IndexByte(remainder, '/'); i >= 0 {
+					remainder = remainder[i:]
+				} else {
+					remainder = ""
+				}
+				fmt.Println("Public Addr:", "/ip4/"+pub+remainder)
+			}
+		}
 	}
 }
 
@@ -197,6 +255,7 @@ func main() {
 		var maxFailures int
 		var maxKnown int
 		var perIPDialLimit int
+		var publicIP string
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.BoolVar(&background, "background", false, "run the node in the background and return immediately")
 		fs.StringVar(&logPath, "log", "", "when backgrounding, write logs to this file (appended)")
@@ -211,6 +270,7 @@ func main() {
 		fs.IntVar(&maxFailures, "max-fail", 8, "evict peers after this many consecutive failures")
 		fs.IntVar(&maxKnown, "max-known", 5000, "soft cap on tracked peers in PeerStore")
 		fs.IntVar(&perIPDialLimit, "per-ip-dial-limit", 3, "maximum outbound dials per unique IP")
+		fs.StringVar(&publicIP, "public-ip", os.Getenv("PUBLIC_IP"), "optional public IPv4 to print usable remote addrs")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
@@ -501,7 +561,9 @@ func main() {
 			_ = f.Close()
 		}
 
-		printBanner(h.ID().String(), hostAddrsStrings(h))
+		addrs := hostAddrsStrings(h)
+		printBanner(h.ID().String(), addrs)
+		printDerivedPublicAddrs(addrs)
 
 		select {}
 
@@ -514,6 +576,7 @@ func main() {
 		var controlPath string
 		var noDaemon bool
 		var httpDebug string
+		var publicIP string
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.StringVar(&data, "data", "", "inline data to store as a block")
 		fs.StringVar(&filePath, "file", "", "path to file to store as a block")
@@ -521,6 +584,7 @@ func main() {
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
 		fs.BoolVar(&noDaemon, "no-daemon", false, "do not use a running daemon; perform inline")
 		fs.StringVar(&httpDebug, "http-debug", "", "optional host:port to serve /cid/<cid> debug handler")
+		fs.StringVar(&publicIP, "public-ip", os.Getenv("PUBLIC_IP"), "optional public IPv4 to print usable remote addrs")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
@@ -610,7 +674,9 @@ func main() {
 		fmt.Println("CID:", c.String())
 		fmt.Printf("CID (multihash hex): %s\n", hex.EncodeToString(c.Hash()))
 
-		printBanner(h.ID().String(), hostAddrsStrings(h))
+		addrs2 := hostAddrsStrings(h)
+		printBanner(h.ID().String(), addrs2)
+		printDerivedPublicAddrs(addrs2)
 
 		if serve {
 			select {}

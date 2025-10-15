@@ -1,7 +1,13 @@
-peer discovery (do what bitcoin does...? including binary check?)
-    dynamic, self-healing bootstrap list? where it subs in neightbor nodes if heartbeat to a bootstrap node fails?
-    peerlist exchange!
-verack
-test on two machines (i.e. mine and like...chameleon)
+redo readme
+small program to auto-test peer discovery
+    need to determine WHAT exactly we're testing i.e. what success conditions look like
+    and furthermore, WHERE. mesh network timings? probably yeah. two regions? why not put wireguard on MY machine?
+send the update, and the results, if it's sufficiently pre-thurs. 
+    in particular want to seed in dr milano refs
 start the sng40<>go conversion
     pay attention to the "hostfile" which exists in there...somewhere
+
+where are we at with the paper. we want to keep this version for posterity and reference
+but we don't want to send it with shi
+we need to tone it down, cut it in length by like half, model it off what tangrui sent
+    also read and interpret what tangrui sent
