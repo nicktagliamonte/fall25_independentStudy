@@ -273,7 +273,7 @@ func main() {
 	case "run":
 		fs := flag.NewFlagSet("run", flag.ExitOnError)
 		var listenAddrs stringSlice
-		var background bool
+		var daemon bool
 		var logPath string
 		var controlPath string
 		var keyPath string
@@ -287,7 +287,7 @@ func main() {
 		var maxKnown int
 		var perIPDialLimit int
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
-		fs.BoolVar(&background, "background", false, "run the node in the background and return immediately")
+		fs.BoolVar(&daemon, "daemon", false, "run the node in the background and return immediately")
 		fs.StringVar(&logPath, "log", "", "when backgrounding, write logs to this file (appended)")
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to write control endpoint info")
 		fs.StringVar(&keyPath, "key", "", "path to persistent private key (optional)")
@@ -303,12 +303,12 @@ func main() {
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic-v1",
+				"/ip4/0.0.0.0/tcp/2893",
+				"/ip4/0.0.0.0/udp/2894/quic-v1",
 			}
 		}
 
-		if background {
+		if daemon {
 			// Re-exec ourselves without the --background flag and detach
 			childArgs := []string{"run"}
 			for _, a := range listenAddrs {
@@ -323,8 +323,13 @@ func main() {
 				cmd.Stdout = f
 				cmd.Stderr = f
 			} else {
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
+				// Default background log file to avoid hijacking the current terminal
+				_ = os.MkdirAll("/tmp/fall25_node", 0755)
+				f, err := os.OpenFile("/tmp/fall25_node/daemon.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+				if err == nil {
+					cmd.Stdout = f
+					cmd.Stderr = f
+				}
 			}
 			cmd.Stdin = nil
 			if err := cmd.Start(); err != nil {
@@ -603,20 +608,20 @@ func main() {
 		var filePath string
 		var serve bool
 		var controlPath string
-		var noDaemon bool
+		var daemon bool
 		var httpDebug string
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.StringVar(&data, "data", "", "inline data to store as a block")
 		fs.StringVar(&filePath, "file", "", "path to file to store as a block")
 		fs.BoolVar(&serve, "serve", false, "keep node running to serve inbound wants")
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
-		fs.BoolVar(&noDaemon, "no-daemon", false, "do not use a running daemon; perform inline")
+		fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
 		fs.StringVar(&httpDebug, "http-debug", "", "optional host:port to serve /cid/<cid> debug handler")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic-v1",
+				"/ip4/0.0.0.0/tcp/2893",
+				"/ip4/0.0.0.0/udp/2894/quic-v1",
 			}
 		}
 
@@ -645,8 +650,8 @@ func main() {
 
 		ctx := context.Background()
 
-		// If a daemon control file exists and not disabled, use it
-		if !noDaemon {
+		// If --daemon, use running daemon at controlPath
+		if daemon {
 			if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
 				var info struct {
 					Addr string `json:"addr"`
@@ -676,11 +681,11 @@ func main() {
 					}
 					fmt.Println("CID:", out.CID)
 					fmt.Printf("CID (multihash hex): %s\n", out.MultihashHex)
-					// In daemon mode, serve flag is ignored; the daemon is already serving
 					return
 				}
 			}
 		}
+		// Inline mode
 		h, err := myhost.NewHost(ctx, listenAddrs)
 		if err != nil {
 			log.Fatal(err)
@@ -717,18 +722,18 @@ func main() {
 		var peerIDStr string
 		var timeoutStr string
 		var controlPath string
-		var noDaemon bool
+		var daemon bool
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.StringVar(&addr, "addr", "", "remote peer multiaddr")
 		fs.StringVar(&peerIDStr, "peer", "", "remote peer ID")
 		fs.StringVar(&timeoutStr, "timeout", "10s", "dial timeout (e.g., 10s)")
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
-		fs.BoolVar(&noDaemon, "no-daemon", false, "do not use a running daemon; perform inline")
+		fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic-v1",
+				"/ip4/0.0.0.0/tcp/2893",
+				"/ip4/0.0.0.0/udp/2894/quic-v1",
 			}
 		}
 		if addr == "" || peerIDStr == "" {
@@ -741,14 +746,13 @@ func main() {
 
 		ctx := context.Background()
 
-		// Prefer daemon if available
-		if !noDaemon {
+		// If --daemon, prefer daemon
+		if daemon {
 			if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
 				var info struct {
 					Addr string `json:"addr"`
 				}
 				if json.Unmarshal(b, &info) == nil && info.Addr != "" {
-					// Allow enough time for the daemon to dial and complete the operation
 					var reqBody = struct {
 						Addr    string `json:"addr"`
 						Peer    string `json:"peer"`
@@ -811,7 +815,7 @@ func main() {
 		var fromPeer string
 		var timeoutStr string
 		var controlPath string
-		var noDaemon bool
+		var daemon bool
 		var outFile string
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.StringVar(&cidStr, "cid", "", "content ID to fetch")
@@ -819,13 +823,13 @@ func main() {
 		fs.StringVar(&fromPeer, "from-peer", "", "provider peer ID")
 		fs.StringVar(&timeoutStr, "timeout", "20s", "fetch timeout (e.g., 20s)")
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
-		fs.BoolVar(&noDaemon, "no-daemon", false, "do not use a running daemon; perform inline")
+		fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
 		fs.StringVar(&outFile, "out", "", "write fetched bytes to this file (optional)")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip4/0.0.0.0/udp/0/quic-v1",
+				"/ip4/0.0.0.0/tcp/2893",
+				"/ip4/0.0.0.0/udp/2894/quic-v1",
 			}
 		}
 		if cidStr == "" || fromAddr == "" || fromPeer == "" {
@@ -838,14 +842,13 @@ func main() {
 
 		ctx := context.Background()
 
-		// Prefer daemon if available
-		if !noDaemon {
+		// If --daemon, prefer daemon
+		if daemon {
 			if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
 				var info struct {
 					Addr string `json:"addr"`
 				}
 				if json.Unmarshal(b, &info) == nil && info.Addr != "" {
-					// Allow enough time for the daemon to dial and fetch before sending headers
 					var reqBody = struct {
 						CID     string `json:"cid"`
 						Addr    string `json:"from_addr"`
