@@ -81,6 +81,10 @@ func bestPublicIPv4() string {
 			return ip.String()
 		}
 	}
+	// Fallback: query external service to learn public egress IP
+	if ip := fetchPublicIPv4(); ip != "" {
+		return ip
+	}
 	return ""
 }
 
@@ -106,6 +110,33 @@ func printDerivedPublicAddrs(addrs []string) {
 			}
 		}
 	}
+}
+
+// fetchPublicIPv4 contacts a simple web service to discover the public IPv4.
+// Uses short timeouts and falls back across providers.
+func fetchPublicIPv4() string {
+	client := &http.Client{Timeout: 1500 * time.Millisecond}
+	endpoints := []string{
+		"https://api.ipify.org",         // plain text IPv4
+		"https://checkip.amazonaws.com", // plain text IPv4
+	}
+	for _, url := range endpoints {
+		resp, err := client.Get(url)
+		if err != nil {
+			continue
+		}
+		b, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		s := strings.TrimSpace(string(b))
+		ip := net.ParseIP(s)
+		if ip != nil {
+			ip4 := ip.To4()
+			if ip4 != nil && !ip4.IsPrivate() && !ip4.IsLoopback() {
+				return ip4.String()
+			}
+		}
+	}
+	return ""
 }
 
 // importDirectory walks dirPath and stores each file as a block; creates a JSON manifest and stores it as the root block.
@@ -255,7 +286,6 @@ func main() {
 		var maxFailures int
 		var maxKnown int
 		var perIPDialLimit int
-		var publicIP string
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.BoolVar(&background, "background", false, "run the node in the background and return immediately")
 		fs.StringVar(&logPath, "log", "", "when backgrounding, write logs to this file (appended)")
@@ -270,7 +300,6 @@ func main() {
 		fs.IntVar(&maxFailures, "max-fail", 8, "evict peers after this many consecutive failures")
 		fs.IntVar(&maxKnown, "max-known", 5000, "soft cap on tracked peers in PeerStore")
 		fs.IntVar(&perIPDialLimit, "per-ip-dial-limit", 3, "maximum outbound dials per unique IP")
-		fs.StringVar(&publicIP, "public-ip", os.Getenv("PUBLIC_IP"), "optional public IPv4 to print usable remote addrs")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
@@ -576,7 +605,6 @@ func main() {
 		var controlPath string
 		var noDaemon bool
 		var httpDebug string
-		var publicIP string
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.StringVar(&data, "data", "", "inline data to store as a block")
 		fs.StringVar(&filePath, "file", "", "path to file to store as a block")
@@ -584,7 +612,6 @@ func main() {
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
 		fs.BoolVar(&noDaemon, "no-daemon", false, "do not use a running daemon; perform inline")
 		fs.StringVar(&httpDebug, "http-debug", "", "optional host:port to serve /cid/<cid> debug handler")
-		fs.StringVar(&publicIP, "public-ip", os.Getenv("PUBLIC_IP"), "optional public IPv4 to print usable remote addrs")
 		_ = fs.Parse(os.Args[2:])
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
