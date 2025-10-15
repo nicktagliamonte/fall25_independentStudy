@@ -17,9 +17,10 @@
         3. agent string: human-readable software id + semver (e.g., sng40/0.1.0)
         4. start height: local state indicator (e.g., highest known sequence, 0 for N/A)
           - what: monotonic progress marker
-            - See Dr. Milano's paper
+            - See Dr. Mae Milano on monotone convergence (avoid coordination for safety)
           - how: from local index/state (default 0)
           - why: peers can reason about relative progress without heavy sync
+            - CALM (Hellerstein/Alvaro): monotone programs converge without coordination
         5. timestamp: unix seconds when message created (helps with staleness)
     3) peer B responds with same version
     4) if match, we continue
@@ -33,6 +34,7 @@
     - get a cheap capability signal (services) without pulling in a DHT
     - keep policy simple: single handshake per connection, not per block
     - why multi-field “version” vs just "1.0.0": we need capabilities + freshness + anti-self/replay, not only a code rev
+    - monotone state growth → convergence without coordination (Milano; CALM): less waiting, fewer locks
   - when it triggers:
     - once per new libp2p stream for the handshake protocol (at connect), before any bitswap traffic
   - what it’s not:
@@ -52,7 +54,7 @@
         - this defaults to true but can be user-set to false
       - responder returns a small sampled list of known-good peers (bounded)
         - bdd to compliment the earlier monotonic stack height in the verack
-          - again see the work of dr milano for ref
+          - Milano; Hellerstein/Alvaro (CALM); C. Power (algebraic systems, 2025): share monotone facts for convergence
         - format: multiaddr with /p2p/<peerID>; receiver validates and dedupes
       - both sides still exchange/verack as before; discovery is an optional add-on
     3) learned peers are upserted into the PeerStore
@@ -69,6 +71,8 @@
     - backoff: exponential on failures; stale entries pruned after a configurable window
     - dedupe: skip self, drop invalid addrs, avoid echo via local seen state
     - policy-driven: min outbound target maintained; timeouts guard handshake/dials
+    - facts are set-unions (monotone); eventual consistency via repeated joins (Hellerstein/Alvaro CALM)
+    - PeerStore behaves like a join-semilattice; merges are associative, commutative, idempotent (C. Power, 2025)
   - when it triggers:
     - at connect (handshake with want_peerlist)
     - on a periodic gossip timer with currently connected peers
