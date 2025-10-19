@@ -1,0 +1,146 @@
+Security and State Monotonicity Plan (verack credential + verifiable head)
+
+Goals
+- Only nodes with our application credential pass verack; on failure, the peer connection is closed.
+- Provide a monotone, verifiable progress signal (head CID + height) for convergence/sync; details fetched post-verack.
+
+Scope
+1) Admission control at the application layer (credential in verack)
+2) Append-only event log for G-set with verifiable head (IPLD blocks), advertised in verack
+3) Post-verack suffix sync and validation
+4) Tests, metrics, and operational knobs
+
+-------------------------------------------------------------------------------
+1) Application credential in verack (admission)
+
+Design
+- Credential: HMAC-SHA256 over a challenge built from both sides' nonces and peer IDs.
+- Scheme: "hmac-sha256-v1" with a shared secret loaded from config.
+- Replay-resistance: nonces are per-connection; proofs bind both nonces and peer IDs.
+
+Protocol flow (extends existing version/verack):
+- Fields to add:
+  - VersionMsg.AuthScheme: string (e.g., "hmac-sha256-v1" or "")
+  - VersionMsg.AuthProof:  string (base64-encoded proof; empty when not applicable)
+
+1) Initiator → Responder: Version(iNonce, AuthScheme="hmac-sha256-v1", AuthProof="")
+2) Responder validates fields, then → Initiator: Version(rNonce, AuthProof=HMAC(secret, encode(iNonce||rNonce||ResponderPeerID)))
+3) Initiator validates responder's AuthProof; then → Responder: VerAck(AuthProof=HMAC(secret, encode(iNonce||rNonce||InitiatorPeerID)))
+4) Responder validates initiator's AuthProof; then → Initiator: VerAck()
+
+Validation rules
+- If AuthScheme is required by policy and missing/unknown → fail.
+- HMAC computed with shared secret; inputs are little-endian nonce bytes and peer ID bytes in canonical order.
+- Any error → close the peer (gate already does this on handshake failure).
+
+Implementation tasks
+- Config
+  - Add secret loader (env SNG40_VERACK_SECRET or file path) and plumb into node startup.
+  - Extend HandshakePolicy: RequireCredential bool, AuthScheme string.
+- Message and wire logic
+  - Extend VersionMsg and VerAckMsg with fields above.
+  - Implement HMAC helpers and canonical encoding of inputs.
+  - Update initiator/responder paths per flow; ensure deadlines remain enforced.
+  - On failure: return error; gate closes connection.
+- Tests
+  - Positive: matching secrets succeed (both directions).
+  - Negative: wrong secret; missing proof; wrong scheme; replayed proofs with new nonces.
+- Ops/metrics
+  - Counters for credential pass/fail; optional log at debug level with peer ID.
+
+-------------------------------------------------------------------------------
+2) Append-only event log with verifiable head for G-set
+
+Design
+- Event log: append-only chain of IPLD/CBOR blocks; each block references prev head CID.
+- Event kinds (initial): { peer_added } with payload: peerID string.
+- State: G-set of verified peers; applying events is a set union (monotone).
+- Head advertisement: head CID + height included in VersionMsg; NEVER send full sets in verack.
+
+Block format (CBOR map)
+{
+  "type": "peer_added",
+  "ts":   <unix seconds>,
+  "peer": <string peer ID>,
+  "prev": <CID string of previous head>,
+}
+
+Persistence
+- Datastore keys: /gset/head (CID string), /gset/height (int64)
+- Blocks: written to existing Blockstore via BlockService (boxo)
+
+API (package internal/storage or internal/net/state)
+- AppendPeerAdded(ctx, peerID) -> (newHead cid.Cid, newHeight int64, err)
+- GetHead(ctx) -> (cid.Cid, int64, err)
+- ApplyEventsFrom(ctx, head cid.Cid, limit int) -> (applied int, err) // verifies prev links
+- Serialize/Deserialize event block helpers
+
+Handshake integration
+- Extend VersionMsg with: StateHeadCID string, StateHeight int64
+- Responder includes its current head+height; initiator includes its current head+height
+- Handshake only validates shape (CID parses, height >= 0). No equality checks.
+
+-------------------------------------------------------------------------------
+3) Post-verack suffix sync
+
+Triggering
+- After a successful verack, if remote StateHeight > local height, attempt to sync.
+
+Process
+- Request the remote head CID (already advertised); fetch blocks backward via BlockService/Bitswap until:
+  - Local head is encountered (common ancestor), or
+  - Depth/byte/time budget reached.
+- For each fetched block:
+  - Validate CBOR structure and prev link matches the next pointer.
+  - Apply event to local G-set (set add of peer ID) and update head/height.
+- Idempotency: duplicate events on the same peer ID are harmless (set add).
+
+Policy/limits
+- Max suffix depth per sync attempt (e.g., 512 entries).
+- Max block size (sanity bound).
+- Timeouts and retries with backoff.
+
+Tests
+- Divergent chains with common ancestor: converge to union.
+- Lying head: advertised CID that doesn’t link back → detect and down-rank.
+- Empty vs non-empty: new node catches up.
+
+-------------------------------------------------------------------------------
+4) Wiring and gating
+
+- On handshake success: AppendPeerAdded(remotePeerID) if not already present; this grows height.
+- VersionMsg now carries AuthScheme/AuthProof and StateHeadCID/StateHeight.
+- Gate remains: drop on handshake failure; reset non-handshake streams until verified.
+
+-------------------------------------------------------------------------------
+5) Operational knobs and security notes
+
+- Credential management: secret from file/env; rotation requires rolling update.
+- Admission strength: this is app-layer; combine with libp2p conn gater and/or pnet if hard isolation is required.
+- Privacy: head CID reveals state size indirectly; acceptable for now. Optionally disable advertisement via policy.
+- Metrics: handshake credential pass/fail, sync attempts, events applied, chain validation errors.
+
+-------------------------------------------------------------------------------
+6) Milestones and estimates (rough)
+
+M1: Verack credential (HMAC) + tests .................................. 1–2 days
+  - Message schema, helpers, initiator/responder, error paths, tests
+
+M2: Event log core (append, persist, apply, head/height) + tests ........ 2–3 days
+  - CBOR encoding, block writing via BlockService, datastore head management
+
+M3: Handshake advertisement of head/height .............................. 0.5 day
+  - VersionMsg changes, shape validation
+
+M4: Suffix sync via Bitswap + validation + limits ........................ 1–2 days
+  - Backward fetch, link checks, apply, budgets, error handling
+
+M5: Integration + metrics + polish ...................................... 0.5–1 day
+
+Total initial implementation ............................................ ~5–8 days
+
+Stretch
+- Additional event kinds (content additions), compaction/snapshots, incremental proofs
+- Optional: switch from ad-hoc CBOR to ipld-prime typed schemas for stronger guarantees
+
+

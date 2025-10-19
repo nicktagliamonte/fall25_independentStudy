@@ -1,9 +1,12 @@
-redo readme
+monotone conv work! 
+    the "sequence" (from the verack) is currently always 0
+    it can be made to grow by including block height/top index (assuming we add a chain log)
+    or snapshot/epoch version
+    or the version of a locally-built content index
 small program to auto-test peer discovery
     need to determine WHAT exactly we're testing i.e. what success conditions look like
-    and furthermore, WHERE. mesh network timings? probably yeah. two regions? why not put wireguard on MY machine?
-send the update, and the results, if it's sufficiently pre-thurs. 
-    in particular want to seed in dr milano refs
+    and furthermore, WHERE. mesh network timings? probably yeah. two regions? why not put 
+        wireguard on MY machine?
 start the sng40<>go conversion
     pay attention to the "hostfile" which exists in there...somewhere
 

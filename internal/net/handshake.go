@@ -73,7 +73,13 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 		return nil, err
 	}
 	defer s.Close()
-	return initiator(s, local, policy)
+	learned, err := initiator(s, local, policy)
+	if err != nil {
+		return nil, err
+	}
+	// Mark the peer as verified for downstream gating/policy.
+	h.ConnManager().TagPeer(p, handshakeOkTag, 1)
+	return learned, nil
 }
 
 func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, error) {

@@ -1,0 +1,93 @@
+1. version/verack handshake (simple)
+  - goal: approximate bitcoin's verack prior to data transfer
+  - process:
+    1) we open a control stream between two peers
+      - which we know we can do because libp2p's connectivity step already has to have passed, for us to be at this step
+    2) peer A (initiator) sends “version” (random nonce, services bitfield, agent string, start_height, timestamp)
+      - Definition of all terms:
+        1. Random Nonce: 64-bit random token to detect self-connections/replays
+          - what: unique per-connection token
+          - how: crypto/rand seed; store locally for the session
+          - why: catch self-dial and naive replay/reflection
+            - Note: this is not crypto or proof, and basically only exists to verify "not me/not noise"
+        2. Services bitfield: capabilities toggles (e.g., can serve blocks, accepts wants, relay ok)
+          - what: bitmask of features supported/enabled
+          - how: assemble from config/flags at startup
+          - why: fast capability gating without a DHT
+        3. agent string: human-readable software id + semver (e.g., sng40/0.1.0)
+        4. start height: local state indicator (e.g., highest known sequence, 0 for N/A)
+          - what: monotonic progress marker
+            - See Dr. Mae Milano on monotone convergence (avoid coordination for safety)
+          - how: from local index/state (default 0)
+          - why: peers can reason about relative progress without heavy sync
+            - CALM (Hellerstein/Alvaro): monotone programs converge without coordination
+        5. timestamp: unix seconds when message created (helps with staleness)
+    3) peer B responds with same version
+    4) if match, we continue
+  - what we validate:
+    - agent: must be at least a minimum version (e.g. sng40/x.y.z)
+      - this should really come from the broader system that this gets implemented in and not be strictly a feature of this protocol alone
+    - services: the other peer’s services must be allowed (bitmask is currently the only one, but we'll see how it grows and will have to update this)
+    - timeout: if verack isn’t done quickly, we drop the connection
+  - why this exists:
+    - fail fast on incompatible or misconfigured peers
+    - get a cheap capability signal (services) without pulling in a DHT
+    - keep policy simple: single handshake per connection, not per block
+    - why multi-field “version” vs just "1.0.0": we need capabilities + freshness + anti-self/replay, not only a code rev
+    - monotone state growth → convergence without coordination (Milano; CALM): less waiting, fewer locks
+  - when it triggers:
+    - on new connection via a network notifiee; if verack fails, the peer connection is closed
+    - also on explicit handshake stream opens; redundant but safe
+    - Bitswap and any non-handshake streams are gated until verification
+  - enforcement:
+    - a connection/stream gate resets non-handshake streams from unverified peers
+    - control-plane GET runs handshake immediately after Connect and before any Bitswap
+  - failure semantics:
+    - failed handshake closes the libp2p connection (not just the stream)
+  - what it’s not:
+    - it’s not encryption or identity; libp2p already does that
+    - it’s not content integrity; Bitswap/CIDs give us that at the data layer
+
+2. peer discovery and peerlist exchange
+  - goal: learn viable peers quickly without a DHT or central registry
+  - process:
+    1) bootstrap seeds
+      - sources: CLI --seed (repeatable), --seed-file (newline-delimited), env SNG40_SEEDS=comma,list
+        - this is sort of a workaround because we don't actually have a set of always on nodes at static addresses. so i shifted this to come from a file
+      - we normalize and dedupe; only keep valid multiaddrs with /p2p/<peerID>
+      - seeds are inserted into a persistent PeerStore for dialing
+    2) version handshake carries discovery signals
+      - initiator sets want_peerlist=true and includes its listen addrs
+        - this defaults to true but can be user-set to false
+      - responder returns a small sampled list of known-good peers (bounded)
+        - bdd to compliment the earlier monotonic stack height in the verack
+          - Milano; Hellerstein/Alvaro (CALM); C. Power (algebraic systems, 2025): share monotone facts for convergence
+        - format: multiaddr with /p2p/<peerID>; receiver validates and dedupes
+      - both sides still exchange/verack as before; discovery is an optional add-on
+    3) learned peers are inserted into the PeerStore
+      - each record tracks addrs, source (seed/handshake/gossip), last seen/success, failures
+      - scoring prefers: service match, recent success, recent activity; penalizes failures
+    4) periodic gossip
+      - on a timer, we ask already-connected peers for another small sample (same handshake path)
+      - this lets the node “fill in” the network view over time, not just at first connect
+    5) operator visibility
+      - control-plane GET /peers returns current top dial candidates with basic metadata
+      - useful for debugging, manual seeding, and observing convergence
+  - safety and limits:
+    - caps: small response size per handshake; soft cap on total known peers; per-IP dial limit
+    - backoff: exponential on failures; stale entries pruned after a configurable window
+    - dedupe: skip self, drop invalid addrs, avoid echo via local seen state
+    - policy-driven: min outbound target maintained; timeouts guard handshake/dials
+    - facts are set-unions (monotone); eventual consistency via repeated joins (Hellerstein/Alvaro CALM)
+    - PeerStore behaves like a join-semilattice; merges are associative, commutative, idempotent (C. Power, 2025)
+  - when it triggers:
+    - at connect (handshake with want_peerlist)
+    - on a periodic gossip timer with currently connected peers
+  - what it’s not:
+    - not a guarantee of reachability (we still dial/test)
+    - not a global directory or long-term registry; it’s a rolling, local view
+    - not a security boundary; identity/crypto remain in libp2p
+
+3. directory transfer 
+  - I spent 2 or 3 days trying to get this to work and was devoting more time to it than was necessary
+  - Tar + put adequately and reliably covers the directory usecase

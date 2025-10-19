@@ -240,6 +240,14 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		// Verify peer before initiating any Bitswap traffic.
+		if _, err := mynet.PerformHandshake(r.Context(), h, pid, mynet.HandshakePolicy{Timeout: d, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}, mynet.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}); err != nil {
+			// Drop the connection if handshake fails.
+			h.Network().ClosePeer(pid)
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
 		ctxFetch, cancel2 := context.WithTimeout(r.Context(), d)
 		defer cancel2()
 		b, err := mystore.GetBlock(ctxFetch, st.BlockSvc, c)

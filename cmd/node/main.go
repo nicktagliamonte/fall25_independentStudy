@@ -360,6 +360,10 @@ func main() {
 		}
 		defer h.Close()
 
+		// Install handshake responder and gate for inbound connections immediately.
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
+
 		// Optional persistent store
 		var stack *mystore.Stack
 		if storePath != "" {
@@ -691,6 +695,14 @@ func main() {
 			log.Fatal(err)
 		}
 		defer h.Close()
+
+		// Install handshake hooks for inline mode.
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
+
+		// Install handshake hooks for inline put mode as well.
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
 
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
