@@ -82,6 +82,28 @@ func RegisterHandshakeWithPeers(h host.Host, local HandshakeLocal, policy Handsh
 	})
 }
 
+// HandshakeResult reports the responder's advertised state and any peers learned.
+type HandshakeResult struct {
+	Learned           []peer.AddrInfo
+	RemoteStateHead   string
+	RemoteStateHeight int64
+}
+
+// PerformHandshakeWithState dials the peer and returns learned peers and remote state summary.
+func PerformHandshakeWithState(ctx context.Context, h host.Host, p peer.ID, policy HandshakePolicy, local HandshakeLocal) (*HandshakeResult, error) {
+	s, err := h.NewStream(ctx, p, HandshakeProtocolID)
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+	learned, remote, err := initiatorWithState(s, local, policy)
+	if err != nil {
+		return nil, err
+	}
+	h.ConnManager().TagPeer(p, handshakeOkTag, 1)
+	return &HandshakeResult{Learned: learned, RemoteStateHead: remote.StateHeadCID, RemoteStateHeight: remote.StateHeight}, nil
+}
+
 // PerformHandshake dials the peer and runs the initiator side. Returns any peers learned.
 func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy HandshakePolicy, local HandshakeLocal) ([]peer.AddrInfo, error) {
 	s, err := h.NewStream(ctx, p, HandshakeProtocolID)
@@ -89,7 +111,7 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 		return nil, err
 	}
 	defer s.Close()
-	learned, err := initiator(s, local, policy)
+	learned, _, err := initiatorWithState(s, local, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +120,14 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 	return learned, nil
 }
 
+// initiator is preserved for callers that don't need remote state.
 func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, error) {
+	learned, _, err := initiatorWithState(s, local, policy)
+	return learned, err
+}
+
+// initiatorWithState returns learned peers and the responder's VersionMsg for state summary.
+func initiatorWithState(s network.Stream, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, VersionMsg, error) {
 	deadline := time.Now().Add(policyTimeout(policy))
 	_ = s.SetDeadline(deadline)
 	enc := json.NewEncoder(s)
@@ -122,24 +151,24 @@ func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) (
 		my.AuthProof = policy.Token
 	}
 	if err := enc.Encode(&my); err != nil {
-		return nil, err
+		return nil, VersionMsg{}, err
 	}
 
 	// 2) recv remote version and validate
 	var remote VersionMsg
 	if err := dec.Decode(&remote); err != nil {
-		return nil, err
+		return nil, VersionMsg{}, err
 	}
 	if err := validateVersion(remote, policy); err != nil {
-		return nil, err
+		return nil, VersionMsg{}, err
 	}
 	// If credentials required, verify responder's token against CA pubkey.
 	if policy.RequireCredential {
 		if remote.AuthScheme != policy.AuthScheme || remote.AuthProof == "" {
-			return nil, errors.New("missing or wrong auth proof/scheme")
+			return nil, VersionMsg{}, errors.New("missing or wrong auth proof/scheme")
 		}
 		if ok := verifyTokenAny(policy.CAPubKeys, s.Conn().RemotePeer(), remote.AuthProof); !ok {
-			return nil, errors.New("bad auth token from responder")
+			return nil, VersionMsg{}, errors.New("bad auth token from responder")
 		}
 	}
 
@@ -147,17 +176,17 @@ func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) (
 
 	// 3) send verack (no payload needed for token model)
 	if err := enc.Encode(&VerAckMsg{}); err != nil {
-		return nil, err
+		return nil, VersionMsg{}, err
 	}
 
 	// 4) require verack from remote (no payload expected)
 	var ack VerAckMsg
 	if err := dec.Decode(&ack); err != nil {
-		return nil, err
+		return nil, VersionMsg{}, err
 	}
 	// Responder's final ack carries no check; our token was in our initial Version.
 
-	return learned, nil
+	return learned, remote, nil
 }
 
 func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) error {

@@ -1,34 +1,7 @@
 Security and State Monotonicity Plan (verack credential + verifiable head)
 
 Scope
-3) Post-verack suffix sync and validation
 4) Tests, metrics, and operational knobs
-
--------------------------------------------------------------------------------
-3) Post-verack suffix sync
-
-Triggering
-- After a successful verack, if remote StateHeight > local height, attempt to sync.
-
-Process
-- Request the remote head CID (already advertised); fetch blocks backward via BlockService/Bitswap until:
-  - Local head is encountered (common ancestor), or
-  - Depth/byte/time budget reached.
-- For each fetched block:
-  - Validate CBOR structure and prev link matches the next pointer.
-  - Apply event to local G-set (set add of peer ID) and update head/height.
-- Idempotency: duplicate events on the same peer ID are harmless (set add).
-
-Policy/limits
-- Max suffix depth per sync attempt (e.g., 512 entries).
-- Max block size (sanity bound).
-- Timeouts and retries with backoff.
-
-Tests
-- Divergent chains with common ancestor: converge to union.
-- Lying head: advertised CID that doesn’t link back → detect and down-rank.
-- Empty vs non-empty: new node catches up.
-
 -------------------------------------------------------------------------------
 4) Wiring and gating
 
@@ -47,12 +20,7 @@ Tests
 -------------------------------------------------------------------------------
 6) Milestones and estimates (rough)
 
-M4: Suffix sync via Bitswap + validation + limits ........................ 1–2 days
-  - Backward fetch, link checks, apply, budgets, error handling
-
 M5: Integration + metrics + polish ...................................... 0.5–1 day
-
-Total initial implementation ............................................ ~1.5–3 days
 
 Stretch
 - Additional event kinds (content additions), compaction/snapshots, incremental proofs

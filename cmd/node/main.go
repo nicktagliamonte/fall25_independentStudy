@@ -139,108 +139,6 @@ func fetchPublicIPv4() string {
 	return ""
 }
 
-// importDirectory walks dirPath and stores each file as a block; creates a JSON manifest and stores it as the root block.
-// Returns manifest CID, number of files, and total bytes across files.
-func importDirectory(ctx context.Context, stack *mystore.Stack, dirPath string) (cid.Cid, int, int64, error) {
-	type entry struct {
-		Path string `json:"path"`
-		Size int64  `json:"size"`
-		CID  string `json:"cid"`
-		Type string `json:"type"` // "file" or "dir"
-	}
-	var manifest []entry
-	var total int64
-	var files int
-	err := filepath.Walk(dirPath, func(p string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.Mode().IsDir() {
-			rel, _ := filepath.Rel(dirPath, p)
-			if rel != "." {
-				// record directory to preserve empty dirs
-				manifest = append(manifest, entry{Path: rel, Size: 0, CID: "", Type: "dir"})
-			}
-			return nil
-		}
-		f, err := os.Open(p)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		b, err := io.ReadAll(f)
-		if err != nil {
-			return err
-		}
-		c, err := mystore.PutRawBlock(ctx, stack.BlockSvc, b)
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(dirPath, p)
-		manifest = append(manifest, entry{Path: rel, Size: int64(len(b)), CID: c.String(), Type: "file"})
-		total += int64(len(b))
-		files++
-		return nil
-	})
-	if err != nil {
-		return cid.Cid{}, 0, 0, err
-	}
-	// write manifest block
-	buf, _ := json.Marshal(manifest)
-	mc, err := mystore.PutRawBlock(ctx, stack.BlockSvc, buf)
-	if err != nil {
-		return cid.Cid{}, 0, 0, err
-	}
-	return mc, files, total, nil
-}
-
-// exportDirectory fetches the manifest block, then fetches each file block and writes to outDir.
-func exportDirectory(ctx context.Context, stack *mystore.Stack, root cid.Cid, outDir string) (int, int64, error) {
-	type entry struct {
-		Path string `json:"path"`
-		Size int64  `json:"size"`
-		CID  string `json:"cid"`
-		Type string `json:"type"`
-	}
-	b, err := mystore.GetBlock(ctx, stack.BlockSvc, root)
-	if err != nil {
-		return 0, 0, err
-	}
-	var manifest []entry
-	if err := json.Unmarshal(b, &manifest); err != nil {
-		return 0, 0, err
-	}
-	if err := os.MkdirAll(outDir, 0755); err != nil {
-		return 0, 0, err
-	}
-	var total int64
-	for _, e := range manifest {
-		dst := filepath.Join(outDir, e.Path)
-		if e.Type == "dir" {
-			if err := os.MkdirAll(dst, 0755); err != nil {
-				return 0, 0, err
-			}
-			continue
-		}
-		c, err := cid.Decode(e.CID)
-		if err != nil {
-			return 0, 0, err
-		}
-		data, err := mystore.GetBlock(ctx, stack.BlockSvc, c)
-		if err != nil {
-			return 0, 0, err
-		}
-		if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
-			return 0, 0, err
-		}
-		if err := os.WriteFile(dst, data, 0644); err != nil {
-			return 0, 0, err
-		}
-		total += int64(len(data))
-	}
-	return len(manifest), total, nil
-}
-
 func hostAddrsStrings(h host.Host) []string {
 	addrs := make([]string, 0, len(h.Addrs()))
 	for _, a := range h.Addrs() {
@@ -503,16 +401,23 @@ func main() {
 					_ = peerStore.RecordDialSuccess(pid)
 					metrics.IncDialsSucceeded()
 					// post-connect, attempt handshake (non-fatal), with want peerlist
-					if learned, err := myhost.PerformHandshake(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: dialTimeout}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: dialTimeout}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 						// advance state head for this peer (best effort)
 						if _, _, err := mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); err == nil {
 							// no-op on error
 						}
-						for _, info2 := range learned {
+						for _, info2 := range res.Learned {
 							if info2.ID == h.ID() {
 								continue
 							}
 							_ = peerStore.Upsert(info2.ID, info2.Addrs, 0, "handshake")
+						}
+						// If remote height is ahead, attempt suffix sync with budget
+						if res.RemoteStateHeight > height {
+							remoteHead, err := cid.Decode(res.RemoteStateHead)
+							if err == nil {
+								_, _, _, _ = mystore.SyncSuffix(context.Background(), stack.Datastore, stack.BlockSvc, remoteHead, res.RemoteStateHeight, mystore.SyncOptions{MaxDepth: 512, MaxBlockBytes: 1 << 20, Timeout: 5 * time.Second})
+							}
 						}
 					}
 					// if we've satisfied outbound, break
@@ -540,16 +445,22 @@ func main() {
 						if pid == h.ID() {
 							continue
 						}
-						if learned, err := myhost.PerformHandshake(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: 5 * time.Second}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+						if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: 5 * time.Second}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 							if _, _, err := mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); err == nil {
 							}
-							for _, info := range learned {
+							for _, info := range res.Learned {
 								if info.ID == h.ID() {
 									continue
 								}
 								_ = peerStore.Upsert(info.ID, info.Addrs, 0, "gossip")
 							}
-							metrics.AddGossipLearned(len(learned))
+							metrics.AddGossipLearned(len(res.Learned))
+							// Try suffix sync if remote is ahead
+							if res.RemoteStateHeight > height {
+								if remoteHead, err := cid.Decode(res.RemoteStateHead); err == nil {
+									_, _, _, _ = mystore.SyncSuffix(context.Background(), stack.Datastore, stack.BlockSvc, remoteHead, res.RemoteStateHeight, mystore.SyncOptions{MaxDepth: 512, MaxBlockBytes: 1 << 20, Timeout: 5 * time.Second})
+								}
+							}
 						}
 					}
 				}
@@ -876,11 +787,18 @@ func main() {
 		// initiator-side handshake to validate remote
 		policy := myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: dur}
 		local := myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
-		if _, err := myhost.PerformHandshake(ctx, h, pid, policy, local); err != nil {
+		res, err := myhost.PerformHandshakeWithState(ctx, h, pid, policy, local)
+		if err != nil {
 			log.Fatal(err)
 		}
 		// advance local state for the explicitly connected peer
 		if _, _, _ = mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
+		}
+		// If remote advertised higher height, try a short suffix sync
+		if res.RemoteStateHeight > height {
+			if remoteHead, err := cid.Decode(res.RemoteStateHead); err == nil {
+				_, _, _, _ = mystore.SyncSuffix(context.Background(), stack.Datastore, stack.BlockSvc, remoteHead, res.RemoteStateHeight, mystore.SyncOptions{MaxDepth: 512, MaxBlockBytes: 1 << 20, Timeout: dur})
+			}
 		}
 
 		fmt.Println("Connected to:", pid)

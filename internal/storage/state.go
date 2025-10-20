@@ -101,6 +101,24 @@ func GetHead(ctx context.Context, d ds.Batching) (cid.Cid, int64, error) {
 	return head, height, nil
 }
 
+// SetHead stores the provided head CID and height as the current local state.
+func SetHead(ctx context.Context, d ds.Batching, head cid.Cid, height int64) error {
+	if d == nil {
+		return errors.New("nil datastore")
+	}
+	if head.Defined() {
+		if err := d.Put(ctx, ds.NewKey(stateHeadKey), []byte(head.String())); err != nil {
+			return err
+		}
+	} else {
+		// Clear head
+		if err := d.Delete(ctx, ds.NewKey(stateHeadKey)); err != nil && err != ds.ErrNotFound {
+			return err
+		}
+	}
+	return d.Put(ctx, ds.NewKey(stateHeightKey), []byte(fmtInt64(height)))
+}
+
 // ApplyEventsFrom walks backward from head up to limit, verifying prev links.
 // Returns the number of events verified/applied.
 func ApplyEventsFrom(ctx context.Context, bsvc *bserv.BlockService, start cid.Cid, limit int) (int, error) {
@@ -160,4 +178,111 @@ func getMapString(n datamodel.Node, key string) string {
 		}
 	}
 	return ""
+}
+
+// SyncOptions constrains a suffix sync attempt.
+type SyncOptions struct {
+	MaxDepth      int
+	MaxBlockBytes int64
+	Timeout       time.Duration
+}
+
+// SyncSuffix validates and applies a suffix from remoteHead down to the local head (common ancestor).
+// It walks back up to MaxDepth within Timeout and per-block MaxBlockBytes limits. Returns number of
+// applied entries and the new head/height.
+func SyncSuffix(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, remoteHead cid.Cid, remoteHeight int64, opts SyncOptions) (int, cid.Cid, int64, error) {
+	if bsvc == nil {
+		return 0, cid.Cid{}, 0, errors.New("nil blockservice")
+	}
+	if d == nil {
+		return 0, cid.Cid{}, 0, errors.New("nil datastore")
+	}
+	if !remoteHead.Defined() {
+		return 0, cid.Cid{}, 0, errors.New("undefined remote head")
+	}
+	localHead, localHeight, _ := GetHead(ctx, d)
+	if remoteHeight <= localHeight {
+		return 0, localHead, localHeight, nil
+	}
+
+	// Budgeted walk from remote head backward until local head is found or limits hit.
+	deadline := time.Time{}
+	if opts.Timeout > 0 {
+		deadline = time.Now().Add(opts.Timeout)
+	}
+	maxDepth := opts.MaxDepth
+	if maxDepth <= 0 {
+		maxDepth = 512
+	}
+	cur := remoteHead
+	type step struct {
+		cid  cid.Cid
+		peer string
+		prev cid.Cid
+		size int
+	}
+	var chain []step
+	foundAncestor := !localHead.Defined() // if no local head, accept any chain head
+
+	for depth := 0; depth < maxDepth && cur.Defined(); depth++ {
+		if !deadline.IsZero() && time.Now().After(deadline) {
+			break
+		}
+		blk, err := (*bsvc).GetBlock(ctx, cur)
+		if err != nil {
+			return 0, localHead, localHeight, err
+		}
+		raw := blk.RawData()
+		if opts.MaxBlockBytes > 0 && int64(len(raw)) > opts.MaxBlockBytes {
+			return 0, localHead, localHeight, errors.New("remote block exceeds size limit")
+		}
+		// Decode and extract fields
+		nb := basicnode.Prototype__Any{}.NewBuilder()
+		if err := dagcbor.Decode(nb, bytes.NewReader(raw)); err != nil {
+			return 0, localHead, localHeight, err
+		}
+		n := nb.Build()
+		typ := getMapString(n, "type")
+		peerID := getMapString(n, "peer")
+		if typ != "peer_added" || peerID == "" {
+			return 0, localHead, localHeight, errors.New("invalid event in remote chain")
+		}
+		prevStr := getMapString(n, "prev")
+		var prev cid.Cid
+		if prevStr != "" {
+			pc, err := cid.Decode(prevStr)
+			if err != nil {
+				return 0, localHead, localHeight, err
+			}
+			prev = pc
+		}
+		// Stop if we reached our local head; do not include it in the suffix to apply.
+		if cur.Defined() && localHead.Defined() && cur.Equals(localHead) {
+			foundAncestor = true
+			break
+		}
+		chain = append(chain, step{cid: cur, peer: peerID, prev: prev, size: len(raw)})
+		if !prev.Defined() {
+			break
+		}
+		cur = prev
+	}
+
+	if !foundAncestor {
+		return 0, localHead, localHeight, errors.New("no common ancestor within sync limits")
+	}
+
+	// Apply suffix from oldest to newest by advancing head/height monotonically.
+	applied := 0
+	for i := len(chain) - 1; i >= 0; i-- {
+		st := chain[i]
+		// Advance head and height; events are embodied in the chain; no need to rewrite blocks.
+		localHeight++
+		if err := SetHead(ctx, d, st.cid, localHeight); err != nil {
+			return applied, localHead, localHeight, err
+		}
+		localHead = st.cid
+		applied++
+	}
+	return applied, localHead, localHeight, nil
 }

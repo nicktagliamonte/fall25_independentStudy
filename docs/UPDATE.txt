@@ -42,3 +42,9 @@
     - no rollbacks means simpler error handling and fewer weird edge cases under partial failure
     - it’s cheap to compare/schedule: higher height likely has more to teach me; i can fetch a suffix and be done
     - also plays nicely with background gossip: repeated unions are idempotent, so “try again later” is safe
+  - where it happens in code:
+    - `stack` creation wires up `Datastore` and `BlockSvc`, the substrate for the G‑set
+    - handshake registration is done after `stack` exists so head/height are advertised
+    - on success, adds are recorded via `AppendPeerAdded(ctx, stack.Datastore, stack.BlockSvc, <peer>)`
+    - runs in: `run` (dialer + gossip timers), `connect` (explicit connect), `get` (inline fetch with static router)
+    - ensuring `stack` exists before these paths makes G‑set additions consistent from process start
