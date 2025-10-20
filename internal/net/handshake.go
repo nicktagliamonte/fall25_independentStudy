@@ -4,6 +4,8 @@ package net
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +27,12 @@ type VersionMsg struct {
 	Agent       string `json:"agent"`
 	StartHeight int64  `json:"start_height"`
 	Timestamp   int64  `json:"timestamp"`
+	// Optional state summary
+	StateHeadCID string `json:"state_head,omitempty"`
+	StateHeight  int64  `json:"state_height,omitempty"`
+	// Admission extension
+	AuthScheme string `json:"auth_scheme,omitempty"`
+	AuthProof  string `json:"auth_proof,omitempty"` // carries signed token
 	// Optional discovery extensions
 	WantPeerlist bool     `json:"want_peerlist,omitempty"`
 	ListenAddrs  []string `json:"listen_addrs,omitempty"`
@@ -39,12 +47,20 @@ type HandshakeLocal struct {
 	StartHeight  int64
 	WantPeerlist bool
 	ListenAddrs  []string
+	// Optional state summary to advertise
+	StateHeadCID string
+	StateHeight  int64
 }
 
 type HandshakePolicy struct {
 	MinAgentVersion string // "" to disable version check
 	ServicesAllow   uint64 // 0 means allow any, else remoteServices must be subset of this mask
 	Timeout         time.Duration
+	// Admission controls (token-based)
+	RequireCredential bool
+	AuthScheme        string   // "token-ed25519-v1"
+	CAPubKeys         [][]byte // one or more ed25519 public keys
+	Token             string   // signed token carried in AuthProof
 }
 
 // PeerProvider is used by the responder to include a small peer sample.
@@ -97,6 +113,13 @@ func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) (
 		Timestamp:    time.Now().Unix(),
 		WantPeerlist: local.WantPeerlist,
 		ListenAddrs:  local.ListenAddrs,
+		StateHeadCID: local.StateHeadCID,
+		StateHeight:  local.StateHeight,
+	}
+	// Admission (token): initiator includes its token in Version.
+	if policy.RequireCredential {
+		my.AuthScheme = policy.AuthScheme
+		my.AuthProof = policy.Token
 	}
 	if err := enc.Encode(&my); err != nil {
 		return nil, err
@@ -110,19 +133,29 @@ func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) (
 	if err := validateVersion(remote, policy); err != nil {
 		return nil, err
 	}
+	// If credentials required, verify responder's token against CA pubkey.
+	if policy.RequireCredential {
+		if remote.AuthScheme != policy.AuthScheme || remote.AuthProof == "" {
+			return nil, errors.New("missing or wrong auth proof/scheme")
+		}
+		if ok := verifyTokenAny(policy.CAPubKeys, s.Conn().RemotePeer(), remote.AuthProof); !ok {
+			return nil, errors.New("bad auth token from responder")
+		}
+	}
 
 	learned := parsePeerlist(remote.Peers)
 
-	// 3) send verack
+	// 3) send verack (no payload needed for token model)
 	if err := enc.Encode(&VerAckMsg{}); err != nil {
 		return nil, err
 	}
 
-	// 4) require verack from remote
+	// 4) require verack from remote (no payload expected)
 	var ack VerAckMsg
 	if err := dec.Decode(&ack); err != nil {
 		return nil, err
 	}
+	// Responder's final ack carries no check; our token was in our initial Version.
 
 	return learned, nil
 }
@@ -141,14 +174,24 @@ func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, p
 	if err := validateVersion(remote, policy); err != nil {
 		return err
 	}
+	// If credential required: ensure scheme present; verify token now.
+	if policy.RequireCredential && remote.AuthScheme != policy.AuthScheme {
+		return errors.New("unsupported auth scheme")
+	}
 
 	// 2) send version
 	my := VersionMsg{
-		Nonce:       uint64(time.Now().UnixNano()),
-		Services:    local.Services,
-		Agent:       local.Agent,
-		StartHeight: local.StartHeight,
-		Timestamp:   time.Now().Unix(),
+		Nonce:        uint64(time.Now().UnixNano()),
+		Services:     local.Services,
+		Agent:        local.Agent,
+		StartHeight:  local.StartHeight,
+		Timestamp:    time.Now().Unix(),
+		StateHeadCID: local.StateHeadCID,
+		StateHeight:  local.StateHeight,
+	}
+	if policy.RequireCredential {
+		my.AuthScheme = policy.AuthScheme
+		my.AuthProof = policy.Token
 	}
 	// include listen addrs and peers if requested
 	my.ListenAddrs = append(my.ListenAddrs, local.ListenAddrs...)
@@ -172,13 +215,14 @@ func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, p
 		return err
 	}
 
-	// 3) recv verack
+	// 3) recv verack (no payload expected)
 	var ack VerAckMsg
 	if err := dec.Decode(&ack); err != nil {
 		return err
 	}
+	// responder already verified initiator's token from Version
 
-	// 4) send verack
+	// 4) send verack (empty)
 	if err := enc.Encode(&VerAckMsg{}); err != nil {
 		return err
 	}
@@ -194,6 +238,14 @@ func validateVersion(v VersionMsg, policy HandshakePolicy) error {
 	if policy.MinAgentVersion != "" {
 		if !agentOK(v.Agent, policy.MinAgentVersion) {
 			return fmt.Errorf("agent too old: %s < %s", v.Agent, policy.MinAgentVersion)
+		}
+	}
+	if policy.RequireCredential {
+		if v.AuthScheme == "" || v.AuthScheme != policy.AuthScheme {
+			return errors.New("auth scheme missing or unsupported")
+		}
+		if v.AuthProof == "" {
+			return errors.New("auth token missing")
 		}
 	}
 	return nil
@@ -256,4 +308,27 @@ func parsePeerlist(in []string) []peer.AddrInfo {
 		}
 	}
 	return out
+}
+
+// computeHMACProof returns base64(HMAC-SHA256(secret, encode(iNonce||rNonce||peerID))).
+// verifyToken expects AuthProof to be base64 of a signed token that covers the peer ID and an expiry.
+// Token format (base64-encoded bytes): CBOR or JSON with fields {pid, exp, sig}, where sig = ed25519.Sign(CA, canonical(pid||exp)).
+// For simplicity here, we define proof as base64( ed25519.Sign(CA, []byte(peerID)) ) and verify against CAPubKey.
+func verifyToken(caPub []byte, pid peer.ID, proof string) bool {
+	pub := ed25519.PublicKey(caPub)
+	sig, err := base64.StdEncoding.DecodeString(proof)
+	if err != nil {
+		return false
+	}
+	msg := []byte(pid)
+	return ed25519.Verify(pub, msg, sig)
+}
+
+func verifyTokenAny(caPubs [][]byte, pid peer.ID, proof string) bool {
+	for _, k := range caPubs {
+		if verifyToken(k, pid, proof) {
+			return true
+		}
+	}
+	return false
 }

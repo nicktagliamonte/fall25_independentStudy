@@ -360,9 +360,7 @@ func main() {
 		}
 		defer h.Close()
 
-		// Install handshake responder and gate for inbound connections immediately.
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
+		// Install handshake responder and gate for inbound connections will happen after stack initialization (needs state head)
 
 		// Optional persistent store
 		var stack *mystore.Stack
@@ -385,6 +383,15 @@ func main() {
 			}
 		}
 		defer stack.Bitswap.Close()
+
+		// Now that stack is initialized, install handshake responder and gate with state head/height
+		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		headStr := ""
+		if head.Defined() {
+			headStr = head.String()
+		}
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
 
 		// Initialize PeerStore from the same datastore used by the stack
 		peerStore, err := myhost.NewPeerStore(stack.Datastore)
@@ -497,6 +504,10 @@ func main() {
 					metrics.IncDialsSucceeded()
 					// post-connect, attempt handshake (non-fatal), with want peerlist
 					if learned, err := myhost.PerformHandshake(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: dialTimeout}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+						// advance state head for this peer (best effort)
+						if _, _, err := mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); err == nil {
+							// no-op on error
+						}
 						for _, info2 := range learned {
 							if info2.ID == h.ID() {
 								continue
@@ -530,6 +541,8 @@ func main() {
 							continue
 						}
 						if learned, err := myhost.PerformHandshake(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: 5 * time.Second}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+							if _, _, err := mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); err == nil {
+							}
 							for _, info := range learned {
 								if info.ID == h.ID() {
 									continue
@@ -697,18 +710,39 @@ func main() {
 		defer h.Close()
 
 		// Install handshake hooks for inline mode.
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
-
-		// Install handshake hooks for inline put mode as well.
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
+		require := os.Getenv("SNG40_REQUIRE_TOKEN") == "true"
+		var caPubs [][]byte
+		if pubs := os.Getenv("SNG40_CA_PUBS"); pubs != "" {
+			for _, s := range strings.Split(pubs, ",") {
+				b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+				if err == nil && len(b) == 32 {
+					caPubs = append(caPubs, b)
+				}
+			}
+		}
+		token := os.Getenv("SNG40_TOKEN")
+		policyBase := myhost.HandshakePolicy{Timeout: 10 * time.Second, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
+		if require || (len(caPubs) > 0 && token != "") {
+			policyBase.RequireCredential = true
+			policyBase.AuthScheme = "token-ed25519-v1"
+			policyBase.CAPubKeys = caPubs
+			policyBase.Token = token
+		}
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase)
 
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer stack.Bitswap.Close()
+
+		// Now register handshake with current state head/height (after stack is ready)
+		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		headStr := ""
+		if head.Defined() {
+			headStr = head.String()
+		}
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
 
 		c, err := mystore.PutRawBlock(ctx, stack.BlockSvc, payload)
 		if err != nil {
@@ -791,6 +825,38 @@ func main() {
 		}
 		defer h.Close()
 
+		// Install handshake hooks for inline connect mode.
+		require := os.Getenv("SNG40_REQUIRE_TOKEN") == "true"
+		var caPubs [][]byte
+		if pubs := os.Getenv("SNG40_CA_PUBS"); pubs != "" {
+			for _, s := range strings.Split(pubs, ",") {
+				b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+				if err == nil && len(b) == 32 {
+					caPubs = append(caPubs, b)
+				}
+			}
+		}
+		token := os.Getenv("SNG40_TOKEN")
+		base := myhost.HandshakePolicy{Timeout: dur, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
+		if require || (len(caPubs) > 0 && token != "") {
+			base.RequireCredential = true
+			base.AuthScheme = "token-ed25519-v1"
+			base.CAPubKeys = caPubs
+			base.Token = token
+		}
+		stack, err := mystore.NewStack(ctx, h)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer stack.Bitswap.Close()
+		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		headStr := ""
+		if head.Defined() {
+			headStr = head.String()
+		}
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, base)
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base)
+
 		maddr, err := multiaddr.NewMultiaddr(addr)
 		if err != nil {
 			log.Fatal(err)
@@ -812,6 +878,9 @@ func main() {
 		local := myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
 		if _, err := myhost.PerformHandshake(ctx, h, pid, policy, local); err != nil {
 			log.Fatal(err)
+		}
+		// advance local state for the explicitly connected peer
+		if _, _, _ = mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 		}
 
 		fmt.Println("Connected to:", pid)
@@ -906,6 +975,27 @@ func main() {
 		}
 		defer h.Close()
 
+		// Install handshake hooks for inline get mode.
+		require := os.Getenv("SNG40_REQUIRE_TOKEN") == "true"
+		var caPubs [][]byte
+		if pubs := os.Getenv("SNG40_CA_PUBS"); pubs != "" {
+			for _, s := range strings.Split(pubs, ",") {
+				b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+				if err == nil && len(b) == 32 {
+					caPubs = append(caPubs, b)
+				}
+			}
+		}
+		token := os.Getenv("SNG40_TOKEN")
+		base := myhost.HandshakePolicy{Timeout: dur, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
+		if require || (len(caPubs) > 0 && token != "") {
+			base.RequireCredential = true
+			base.AuthScheme = "token-ed25519-v1"
+			base.CAPubKeys = caPubs
+			base.Token = token
+		}
+		// stack is created below; handshake registration with state must occur after
+
 		maddr, err := multiaddr.NewMultiaddr(fromAddr)
 		if err != nil {
 			log.Fatal(err)
@@ -922,6 +1012,15 @@ func main() {
 			log.Fatal(err)
 		}
 		defer stack.Bitswap.Close()
+
+		// Now that stack exists, register handshake with current state and install gate
+		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		headStr := ""
+		if head.Defined() {
+			headStr = head.String()
+		}
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, base)
+		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base)
 
 		// Use the minimum of default dial (10s) and fetch timeout to avoid exceeding fetch budget
 		dialDur := minDuration(dur, 10*time.Second)

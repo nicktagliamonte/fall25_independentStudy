@@ -14,6 +14,8 @@ import (
 
 	"strconv"
 
+	"os"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -240,14 +242,36 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		// Verify peer before initiating any Bitswap traffic.
-		if _, err := mynet.PerformHandshake(r.Context(), h, pid, mynet.HandshakePolicy{Timeout: d, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}, mynet.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}); err != nil {
+		// Verify peer before initiating any Bitswap traffic (token-based admission).
+		caB64 := os.Getenv("SNG40_CA_PUB")
+		token := os.Getenv("SNG40_TOKEN")
+		if caB64 == "" || token == "" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("missing token env: set SNG40_CA_PUB and SNG40_TOKEN"))
+			return
+		}
+		caPub, err := base64.StdEncoding.DecodeString(caB64)
+		if err != nil || len(caPub) != 32 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("invalid SNG40_CA_PUB"))
+			return
+		}
+		pol := mynet.HandshakePolicy{Timeout: d, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), RequireCredential: true, AuthScheme: "token-ed25519-v1", CAPubKeys: [][]byte{caPub}, Token: token}
+		// include our current state head/height in handshake
+		hcid, hgt, _ := mystore.GetHead(r.Context(), stack.Datastore)
+		local := mynet.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
+		if hcid.Defined() {
+			local.StateHeadCID = hcid.String()
+		}
+		local.StateHeight = hgt
+		if _, err := mynet.PerformHandshake(r.Context(), h, pid, pol, local); err != nil {
 			// Drop the connection if handshake fails.
 			h.Network().ClosePeer(pid)
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		_, _, _ = mystore.AppendPeerAdded(r.Context(), stack.Datastore, stack.BlockSvc, pid.String())
 		ctxFetch, cancel2 := context.WithTimeout(r.Context(), d)
 		defer cancel2()
 		b, err := mystore.GetBlock(ctxFetch, st.BlockSvc, c)
