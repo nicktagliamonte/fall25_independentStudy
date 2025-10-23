@@ -48,3 +48,37 @@
     - on success, adds are recorded via `AppendPeerAdded(ctx, stack.Datastore, stack.BlockSvc, <peer>)`
     - runs in: `run` (dialer + gossip timers), `connect` (explicit connect), `get` (inline fetch with static router)
     - ensuring `stack` exists before these paths makes G‑set additions consistent from process start
+
+3. typed IPLD schemas for events
+  - what changed:
+    - replaced ad-hoc DAG-CBOR map building/parsing with typed IPLD (bindnode) for `peer_added` events
+    - `AppendPeerAdded`, `SyncSuffix`, and `AppendPeerAddedIfNew` now use typed encode/decode helpers
+  - terms and definitions:
+    - IPLD: InterPlanetary Linked Data — a data model for content-addressed graphs; lets us define structured, self-describing data that many tools can read.
+    - CBOR: Concise Binary Object Representation — a compact binary format similar to JSON; “DAG‑CBOR” is the deterministic CBOR profile IPLD uses so the same data encodes to the same bytes.
+    - CID: Content Identifier — a hash-based ID of the exact bytes; identical bytes → identical CID.
+  - why this is beneficial (plain terms):
+    - fewer mistakes: the typed structure acts like a form that catches missing or wrong fields early.
+    - easier to change safely: we can add new fields later without breaking old data or readers.
+    - consistent IDs: deterministic encoding means the same content always produces the same CID.
+    - better tooling and interoperability: standard IPLD tools can inspect and validate our data.
+  - theory/support:
+    - schema-first reduces accidental complexity (see “Out of the Tar Pit”, 2006)
+    - data encoding and evolution best practices (Kleppmann, Designing Data-Intensive Applications, Ch. 4)
+    - IPLD Schemas: typed data across content addressed systems (see `https://ipld.io/specs/schemas/`)
+  - enforcement in code:
+    - `internal/storage/typed.go`: `PeerAddedGo`, encode/decode helpers, `computeCBORCID`
+    - `internal/storage/state.go`: write/read paths now use typed helpers instead of manual maps
+  - migration/compat:
+    - preserved field names/shape; existing blocks remain valid; future events can extend schema safely
+
+5. scrum-style update (concise)
+  The handshake and gating now run verack on connect, drop on failure, and gate non-handshake streams 
+  until verification. Admission is optional token-based authentication (CA-signed), configured via 
+  environment, remaining open by default otherwise. On handshake success we append a single `peer_added` 
+  event (idempotent) to grow height. Peer events switched to typed IPLD (bindnode) with deterministic DAG‑CBOR. 
+  Nodes advertise head CID/height and attempt a budgeted suffix sync when the remote height is higher. Handshake 
+  can return small peer samples and a periodic gossip loop refreshes known peers. Operationally, we enforce 
+  per‑IP dial limits, backoff, and prune stale/failing peers, with metrics available via the control server. 
+  Code touchpoints include `internal/net/handshake*.go`, `internal/storage/state.go`, `internal/storage/typed.go`, 
+  `cmd/node/main.go`, and `internal/control/server.go`.

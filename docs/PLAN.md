@@ -1,15 +1,5 @@
 # SNG‑40 Block Transfer Plan
 
-1. **Go vs CGO**
-   A Go rewrite beats CGO here because the hot path is networking + concurrency: staying pure-Go keeps libp2p/bitswap in their native ecosystem, avoids CGO’s build/toolchain pain (per-platform compilers, linking troubles, static builds), sidesteps threading/stack handoff overhead between Go↔C (which kills goroutine scheduling and complicates perf [I ran into a ton of this over the summer, it kind of killed that work]), and makes memory, profiling, and debugging uniform across the stack. Alternatives if a full rewrite is too much: (1) keep a narrow C/C++ compute core and expose a tiny, synchronous FFI while doing all I/O/libp2p in Go; (2) split at a process boundary (gRPC/IPC) so each side stays idiomatic with clean versioning and crash isolation; (3) use CGO only for leaf calls with strict data copies, not streaming paths
-
-2. **Libraries & Wiring**
-
-   * **libp2p** for P2P (transport, security, multiplexing).
-   * **boxo/bitswap** for block exchange + blockstore.
-     These get wired together into a small `BlockService` interface (Put/Get/Provide).
-     In the libraries and wiring layer, libp2p provides the transport substrate: we spin up a host with TCP/QUIC, wrap it in a secure channel (Noise or TLS) for authenticated, encrypted sessions, and then add a multiplexer like Yamux so multiple logical streams can share a single connection (or sng40 multiplexing, depending on how part (1) goes). On top of those streams is boxo/bitswap, which handles block exchange and coordinates wantlists/ledgers across peers. You back bitswap with a blockstore (in-mem or file-based), and expose it all through a slim BlockService API. That way the whole stack is layered: transports → security → mux → streams → bitswap → blockstore → SNG-40 integration.
-
 3. **Integrating SNG‑40**
    To integrate SNG-40’s proprietary discovery layer, ACAN, we treat it as the replacement for IPFS’s DHT/provider system. Instead of publishing and querying providers through a global DHT, Bitswap’s “who has this CID?” calls are wired into ACAN’s Tuple Space APIs. When a node stores a block, it issues an announce into ACAN; when another node needs that block, it queries ACAN to get a peer list, then opens libp2p streams to those peers and pulls data via Bitswap. This keeps discovery fully under SNG-40’s control while letting libp2p and boxo handle the transport and block exchange layers unchanged.
 
@@ -26,8 +16,6 @@
 
 5. **Timeline**
 
-   * Week 1 — M0 (Go vs CGO): Run spike tests comparing CGO vs pure Go; finalize decision note; set up repo + libp2p host scaffold.
-   * Week 2 — M1 (Libraries & Wiring): Wire libp2p (TCP/QUIC + Noise/TLS + Yamux) with boxo/bitswap + blockstore; expose BlockService; demo single-CID transfer.
    * Week 3 — M2 (Integrate ACAN): Implement announce/query adapters; hook ACAN into Bitswap provider path; demo multi-node fetch without DHT.
    * Week 4 — M3 (Replication, N-Hop): Build tuple-space worker logic (exclusion list, counter decrement, re-put); validate with small replication tests.
    * Week 5 — M4 (Hardening & Perf): Add pin/GC, backpressure tuning, failure injection (loss/churn), metrics dashboards; deliver 10-node demo + runbook.

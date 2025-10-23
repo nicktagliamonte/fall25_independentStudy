@@ -16,7 +16,6 @@ import (
 	"github.com/ipld/go-ipld-prime/codec/dagcbor"
 	datamodel "github.com/ipld/go-ipld-prime/datamodel"
 	basicnode "github.com/ipld/go-ipld-prime/node/basicnode"
-	mh "github.com/multiformats/go-multihash"
 )
 
 const (
@@ -31,35 +30,19 @@ func AppendPeerAdded(ctx context.Context, d ds.Batching, bsvc *bserv.BlockServic
 	}
 	prev, height, _ := GetHead(ctx, d)
 
-	// Build DAG-CBOR map for the event {type, ts, peer, prev}
-	nb := basicnode.Prototype__Map{}.NewBuilder()
-	ma, _ := nb.BeginMap(4)
-	ma.AssembleKey().AssignString("type")
-	ma.AssembleValue().AssignString("peer_added")
-	ma.AssembleKey().AssignString("ts")
-	ma.AssembleValue().AssignInt(int64(time.Now().Unix()))
-	ma.AssembleKey().AssignString("peer")
-	ma.AssembleValue().AssignString(peerID)
+	// Build typed event
+	var prevStrPtr *string
 	if prev.Defined() {
-		ma.AssembleKey().AssignString("prev")
-		ma.AssembleValue().AssignString(prev.String())
+		s := prev.String()
+		prevStrPtr = &s
 	}
-	ma.Finish()
-	n := nb.Build()
-
-	var buf bytes.Buffer
-	if err := dagcbor.Encode(n, &buf); err != nil {
-		return cid.Cid{}, 0, err
-	}
-	data := buf.Bytes()
-
-	// Compute CID: dag-cbor + sha2-256
-	prefix := cid.Prefix{Version: 1, Codec: cid.DagCBOR, MhType: mh.SHA2_256, MhLength: -1}
-	c, err := prefix.Sum(data)
+	pa := &PeerAddedGo{Type: "peer_added", Ts: int64(time.Now().Unix()), Peer: peerID, Prev: prevStrPtr}
+	raw, c, err := encodePeerAddedToCBOR(pa)
 	if err != nil {
 		return cid.Cid{}, 0, err
 	}
-	blk, err := blocks.NewBlockWithCid(data, c)
+
+	blk, err := blocks.NewBlockWithCid(raw, c)
 	if err != nil {
 		return cid.Cid{}, 0, err
 	}
@@ -236,21 +219,17 @@ func SyncSuffix(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, re
 		if opts.MaxBlockBytes > 0 && int64(len(raw)) > opts.MaxBlockBytes {
 			return 0, localHead, localHeight, errors.New("remote block exceeds size limit")
 		}
-		// Decode and extract fields
-		nb := basicnode.Prototype__Any{}.NewBuilder()
-		if err := dagcbor.Decode(nb, bytes.NewReader(raw)); err != nil {
+		// Decode typed event
+		obj, err := decodePeerAddedFromCBOR(raw)
+		if err != nil {
 			return 0, localHead, localHeight, err
 		}
-		n := nb.Build()
-		typ := getMapString(n, "type")
-		peerID := getMapString(n, "peer")
-		if typ != "peer_added" || peerID == "" {
+		if obj == nil || obj.Type != "peer_added" || obj.Peer == "" {
 			return 0, localHead, localHeight, errors.New("invalid event in remote chain")
 		}
-		prevStr := getMapString(n, "prev")
 		var prev cid.Cid
-		if prevStr != "" {
-			pc, err := cid.Decode(prevStr)
+		if obj.Prev != nil && *obj.Prev != "" {
+			pc, err := cid.Decode(*obj.Prev)
 			if err != nil {
 				return 0, localHead, localHeight, err
 			}
@@ -261,7 +240,7 @@ func SyncSuffix(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, re
 			foundAncestor = true
 			break
 		}
-		chain = append(chain, step{cid: cur, peer: peerID, prev: prev, size: len(raw)})
+		chain = append(chain, step{cid: cur, peer: obj.Peer, prev: prev, size: len(raw)})
 		if !prev.Defined() {
 			break
 		}
@@ -285,4 +264,48 @@ func SyncSuffix(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, re
 		applied++
 	}
 	return applied, localHead, localHeight, nil
+}
+
+// AppendPeerAddedIfNew scans the local chain to see if peerID was already added.
+// If not found, it appends a new peer_added event and returns (cid, height, true, nil).
+// If found, it returns the current head/height with appended=false and no error.
+func AppendPeerAddedIfNew(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, peerID string) (cid.Cid, int64, bool, error) {
+	if d == nil {
+		return cid.Cid{}, 0, false, errors.New("nil datastore")
+	}
+	if bsvc == nil {
+		return cid.Cid{}, 0, false, errors.New("nil blockservice")
+	}
+	head, height, err := GetHead(ctx, d)
+	if err != nil {
+		return cid.Cid{}, 0, false, err
+	}
+	// Walk backward to check for existing entry for peerID.
+	cur := head
+	for cur.Defined() {
+		blk, err := (*bsvc).GetBlock(ctx, cur)
+		if err != nil {
+			break
+		}
+		obj, err := decodePeerAddedFromCBOR(blk.RawData())
+		if err != nil {
+			break
+		}
+		if obj != nil && obj.Type == "peer_added" && obj.Peer == peerID {
+			return head, height, false, nil
+		}
+		if obj == nil || obj.Prev == nil || *obj.Prev == "" {
+			break
+		}
+		if pc, err := cid.Decode(*obj.Prev); err == nil {
+			cur = pc
+		} else {
+			break
+		}
+	}
+	c, newHeight, err := AppendPeerAdded(ctx, d, bsvc, peerID)
+	if err != nil {
+		return cid.Cid{}, 0, false, err
+	}
+	return c, newHeight, true, nil
 }

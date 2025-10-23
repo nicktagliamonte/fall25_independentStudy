@@ -1,16 +1,6 @@
-monotone conv work! 
-    the "sequence" (from the verack) is currently always 0
-    it can be made to grow by including block height/top index (assuming we add a chain log)
-    or snapshot/epoch version
-    or the version of a locally-built content index
 small program to auto-test peer discovery
     need to determine WHAT exactly we're testing i.e. what success conditions look like
     and furthermore, WHERE. mesh network timings? probably yeah. two regions? why not put 
         wireguard on MY machine?
 start the sng40<>go conversion
     pay attention to the "hostfile" which exists in there...somewhere
-
-where are we at with the paper. we want to keep this version for posterity and reference
-but we don't want to send it with shi
-we need to tone it down, cut it in length by like half, model it off what tangrui sent
-    also read and interpret what tangrui sent

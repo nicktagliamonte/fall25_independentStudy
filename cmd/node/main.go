@@ -289,7 +289,9 @@ func main() {
 			headStr = head.String()
 		}
 		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second})
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second}, func(pid peer.ID) {
+			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		})
 
 		// Initialize PeerStore from the same datastore used by the stack
 		peerStore, err := myhost.NewPeerStore(stack.Datastore)
@@ -403,8 +405,8 @@ func main() {
 					// post-connect, attempt handshake (non-fatal), with want peerlist
 					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: dialTimeout}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 						// advance state head for this peer (best effort)
-						if _, _, err := mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); err == nil {
-							// no-op on error
+						if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
+							// no-op
 						}
 						for _, info2 := range res.Learned {
 							if info2.ID == h.ID() {
@@ -446,7 +448,7 @@ func main() {
 							continue
 						}
 						if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: 5 * time.Second}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
-							if _, _, err := mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); err == nil {
+							if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							}
 							for _, info := range res.Learned {
 								if info.ID == h.ID() {
@@ -639,7 +641,6 @@ func main() {
 			policyBase.CAPubKeys = caPubs
 			policyBase.Token = token
 		}
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase)
 
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
@@ -654,6 +655,9 @@ func main() {
 			headStr = head.String()
 		}
 		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
+			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		})
 
 		c, err := mystore.PutRawBlock(ctx, stack.BlockSvc, payload)
 		if err != nil {
@@ -766,7 +770,9 @@ func main() {
 			headStr = head.String()
 		}
 		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, base)
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base)
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base, func(pid peer.ID) {
+			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		})
 
 		maddr, err := multiaddr.NewMultiaddr(addr)
 		if err != nil {
@@ -792,7 +798,7 @@ func main() {
 			log.Fatal(err)
 		}
 		// advance local state for the explicitly connected peer
-		if _, _, _ = mystore.AppendPeerAdded(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
+		if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 		}
 		// If remote advertised higher height, try a short suffix sync
 		if res.RemoteStateHeight > height {
@@ -938,7 +944,9 @@ func main() {
 			headStr = head.String()
 		}
 		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, base)
-		_ = myhost.InstallHandshakeGate(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base)
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base, func(pid peer.ID) {
+			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		})
 
 		// Use the minimum of default dial (10s) and fetch timeout to avoid exceeding fetch budget
 		dialDur := minDuration(dur, 10*time.Second)

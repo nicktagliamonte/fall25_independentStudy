@@ -24,6 +24,8 @@ type HandshakeGate struct {
 
 	mu       sync.RWMutex
 	verified map[peer.ID]struct{}
+
+	onVerified func(peer.ID)
 }
 
 // InstallHandshakeGate registers the notifiee on the host and returns the gate instance.
@@ -37,6 +39,13 @@ func InstallHandshakeGate(h host.Host, local HandshakeLocal, policy HandshakePol
 
 	// Implement a custom notifiee to avoid relying on NotifyBundle field names.
 	h.Network().Notify(&handshakeNotifiee{gate: g})
+	return g
+}
+
+// InstallHandshakeGateWithCallback is like InstallHandshakeGate, but invokes cb on handshake success.
+func InstallHandshakeGateWithCallback(h host.Host, local HandshakeLocal, policy HandshakePolicy, cb func(peer.ID)) *HandshakeGate {
+	g := InstallHandshakeGate(h, local, policy)
+	g.onVerified = cb
 	return g
 }
 
@@ -82,6 +91,9 @@ func (g *HandshakeGate) markVerified(pid peer.ID) {
 	g.mu.Unlock()
 	// Tag the peer in the connection manager as a lightweight hint for metrics/policy
 	g.h.ConnManager().TagPeer(pid, handshakeOkTag, 1)
+	if g.onVerified != nil {
+		g.onVerified(pid)
+	}
 }
 
 func (g *HandshakeGate) isVerified(pid peer.ID) bool {

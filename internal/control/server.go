@@ -271,7 +271,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		_, _, _ = mystore.AppendPeerAdded(r.Context(), stack.Datastore, stack.BlockSvc, pid.String())
+		_, _, _, _ = mystore.AppendPeerAddedIfNew(r.Context(), stack.Datastore, stack.BlockSvc, pid.String())
 		ctxFetch, cancel2 := context.WithTimeout(r.Context(), d)
 		defer cancel2()
 		b, err := mystore.GetBlock(ctxFetch, st.BlockSvc, c)
