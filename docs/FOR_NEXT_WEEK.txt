@@ -1,6 +1,28 @@
+new program
+    i REALLY think they think the software this paper is about does all of this shit and can be used now for nars, but we have significant engineering problems
+    we need to (a) get the new version up to snuff wrt N-hop and
+    (b) either cgo or go convert sng40, presumably that will be with garrett
+    it will be best if this new program does all the things we allege of the old program, but for that we NEED sng40. there's no other option.
+start the sng40<>go conversion
+    pay attention to the "hostfile" which exists in there...somewhere
+start the N-hop replication
+    we know in general how this looks. it's actually pretty simple
+    enforce minimum 7 copies of the file
+    enforce consensus to GetFile
+    explain that files cannot be simply changed in this system -- any change to a file is treated as a new object, one which breaks consensus with existing objects and ergo requires a new CID
+do the anti-heartbeat/health check thing
+    [] introduce statistical feature to check liveness and replication consistency
+        [] a worker traversing the ring and enforcing checks at all nodes
+            statistical flavoring comes in the form of an increased likelyhood of a check over time given increased ring size i.e. given enough time, as ring size grows, if we initiate a traversal every 30 seconds after the completion of the last traversal we will still eventually hit all nodes
+            advantage: guaranteed to check all and to enforce the 7-copy minimum -- this is cross-ring checks which go beyond individual nodes. we can push a file to a node actively (rather than replication request style) in the event that it's not found. we can designate a node which loses a
+                file as bad. we can discover dead nodes and attempt to repair them.
+            disadvantage: it's a goroutine which comes with significant overhead, it is very nontrivial to implement
+            [] process: 
+                [] send a worker around the ring. at each node, worker tells node to check what it has against its manifest of what it SHOULD have. 
+                    [] if all accounted for, worker proceeds to next node
+                    [] if a live node has a file not found, we can push a copy to that node (or a nearby node) and possibly designate that node as bad
+                    [] if a node is dead, then at the end of traversal all of its files will have a total count \leq 6. when we encounter this, we issue replication requests so that data is not lost and N \geq 7 is enforced
 small program to auto-test peer discovery
     need to determine WHAT exactly we're testing i.e. what success conditions look like
     and furthermore, WHERE. mesh network timings? probably yeah. two regions? why not put 
         wireguard on MY machine?
-start the sng40<>go conversion
-    pay attention to the "hostfile" which exists in there...somewhere

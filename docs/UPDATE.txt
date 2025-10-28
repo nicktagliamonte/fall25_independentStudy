@@ -1,84 +1,13 @@
-1. Security Plan (verifiable head/crypto safety) plan and motivation
-  - the issue:
-    - any software using libp2p can complete a base transport/security handshake if it knows our multiaddr
-    - without extra policy, that means unknown code can momentarily connect and try to open streams
-  - what i changed now:
-    - verack runs immediately on connection; non-handshake streams are blocked until verification
-    - if verack fails, we close the peer (the whole connection), not just the stream
-  - what i changed (admission mode):
-    - tokens: per-node token signed by a CA; carried in verack version; verified at connection time
-    - optional by default: if no token envs set, node runs open (public), like IPFS at the app layer
-    - private when configured: set SNG40_CA_PUBS and SNG40_TOKEN (or SNG40_REQUIRE_TOKEN=true) to require admission
-    - state summary (still planned): advertise a verifiable head (head CID + height) for a simple G-set log; for progress/sync, not admission
-    - after verack: optionally fetch suffix from head to converge state (time permitting)
-  - why this approach:
-    - keeps security/auth at the app boundary we control; reduces junk traffic; simple to operate (RELATIVELY)...
-    - the verifiable head gives a monotone progress signal we can reason about and use to schedule sync
-      - which i should maybe quit trying to shoehorn into this system.
-  - what it’s not:
-    - not a replacement for libp2p crypto; not a public‑internet firewall
-    - we may still see a base connection from unknown software, but it’s dropped immediately on failed verack
-  - reference:
-    - implementation plan lives in docs/sec_todo.txt (credential flow, log format, sync, tests)
-  - benefits of this decision:
-    - mirrors IPFS’s open-by-default model while enabling ad hoc private nets via user-supplied CA keys
-    - simple ops: no PSK distribution; just a CA pubkey and per-node tokens
-    - lets third parties bring their own trust root to form independent private clusters
-
-2. g-set inclusion and monotonicity
-  - what is it:
-    - a G‑set is a grow‑only set: you can add elements, you never remove them
-    - in this system, the elements can be simple facts like “peer X passed verack here” (or later, events in an append‑only log)
-  - what it does for me:
-    - gives a clean, single‑direction notion of “progress”: once something is learned, it stays learned
-    - i can summarize progress with a small number (|G|) or a head pointer (CID) instead of shipping the whole set
-  - how we keep it monotone:
-    - only ever perform set‑add; no deletes, no rewrites
-    - persist the adds; on restart, reload them; the count/height never goes backwards
-    - when two nodes sync, they union their facts (set union) — still only growth
-    - if/when we use an append‑only log, each block links to the previous head; that structure enforces “no rollback”
-  - why i want monotonicity:
-    - monotone state is easy to reason about (CALM): convergence without coordination and fewer locky/fragile protocols
-    - no rollbacks means simpler error handling and fewer weird edge cases under partial failure
-    - it’s cheap to compare/schedule: higher height likely has more to teach me; i can fetch a suffix and be done
-    - also plays nicely with background gossip: repeated unions are idempotent, so “try again later” is safe
-  - where it happens in code:
-    - `stack` creation wires up `Datastore` and `BlockSvc`, the substrate for the G‑set
-    - handshake registration is done after `stack` exists so head/height are advertised
-    - on success, adds are recorded via `AppendPeerAdded(ctx, stack.Datastore, stack.BlockSvc, <peer>)`
-    - runs in: `run` (dialer + gossip timers), `connect` (explicit connect), `get` (inline fetch with static router)
-    - ensuring `stack` exists before these paths makes G‑set additions consistent from process start
-
-3. typed IPLD schemas for events
-  - what changed:
-    - replaced ad-hoc DAG-CBOR map building/parsing with typed IPLD (bindnode) for `peer_added` events
-    - `AppendPeerAdded`, `SyncSuffix`, and `AppendPeerAddedIfNew` now use typed encode/decode helpers
-  - terms and definitions:
-    - IPLD: InterPlanetary Linked Data — a data model for content-addressed graphs; lets us define structured, self-describing data that many tools can read.
-    - CBOR: Concise Binary Object Representation — a compact binary format similar to JSON; “DAG‑CBOR” is the deterministic CBOR profile IPLD uses so the same data encodes to the same bytes.
-    - CID: Content Identifier — a hash-based ID of the exact bytes; identical bytes → identical CID.
-  - why this is beneficial (plain terms):
-    - fewer mistakes: the typed structure acts like a form that catches missing or wrong fields early.
-    - easier to change safely: we can add new fields later without breaking old data or readers.
-    - consistent IDs: deterministic encoding means the same content always produces the same CID.
-    - better tooling and interoperability: standard IPLD tools can inspect and validate our data.
-  - theory/support:
-    - schema-first reduces accidental complexity (see “Out of the Tar Pit”, 2006)
-    - data encoding and evolution best practices (Kleppmann, Designing Data-Intensive Applications, Ch. 4)
-    - IPLD Schemas: typed data across content addressed systems (see `https://ipld.io/specs/schemas/`)
-  - enforcement in code:
-    - `internal/storage/typed.go`: `PeerAddedGo`, encode/decode helpers, `computeCBORCID`
-    - `internal/storage/state.go`: write/read paths now use typed helpers instead of manual maps
-  - migration/compat:
-    - preserved field names/shape; existing blocks remain valid; future events can extend schema safely
-
-5. scrum-style update (concise)
-  The handshake and gating now run verack on connect, drop on failure, and gate non-handshake streams 
-  until verification. Admission is optional token-based authentication (CA-signed), configured via 
-  environment, remaining open by default otherwise. On handshake success we append a single `peer_added` 
-  event (idempotent) to grow height. Peer events switched to typed IPLD (bindnode) with deterministic DAG‑CBOR. 
-  Nodes advertise head CID/height and attempt a budgeted suffix sync when the remote height is higher. Handshake 
-  can return small peer samples and a periodic gossip loop refreshes known peers. Operationally, we enforce 
-  per‑IP dial limits, backoff, and prune stale/failing peers, with metrics available via the control server. 
-  Code touchpoints include `internal/net/handshake*.go`, `internal/storage/state.go`, `internal/storage/typed.go`, 
-  `cmd/node/main.go`, and `internal/control/server.go`.
+1. enforced 7 copies (note: on old system!!!)
+  - both legacy and uvr flows clamp n >= 7 (including dynamic n)
+  - imported/forwarded requests start from the clamped value and decrement per hop
+2. added read-time consensus
+  - when getting a cid, we gather copies from peers (libp2p if available, shared fallback otherwise)
+  - compute content-hash per copy and pick the majority
+  - if local differs from majority, repair the local copy to match
+  - if fewer than 7 agreeing copies exist, trigger replication until we have 7
+3. updated the paper to reflect these changes
+  - documented the 7-replica minimum and majority content-hash
+  - explained bft for content integrity via majority on reads
+  - clarified immutability: modified content => new cid => fresh replication
+4. verified builds and tests are grean
