@@ -11,3 +11,15 @@
   - explained bft for content integrity via majority on reads
   - clarified immutability: modified content => new cid => fresh replication
 4. verified builds and tests are grean
+5. prepping sng40 tie-in:
+  - cloned sng40
+  - branched
+  - created new dir "go"
+  - ran go mod init github.com/nicktagliamonte/tuple-integration
+  - ran go env -w GOPRIVATE=github.com/nicktagliamonte
+  - ran go get github.com/nicktagliamonte/fall25_independentStudy
+  - split the contents of package main into a thin cli wrapper and the contents of pkg/ so that it can be imported
+  - created a minimal main.go in sng40 and imported pkg/
+  - ran go mod tidy and verified it was working
+  - ran go build ../bin/p2p_integration
+  - added a top level makefile target 
