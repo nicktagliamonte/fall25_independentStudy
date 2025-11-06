@@ -1,0 +1,40 @@
+1. enforced 7 copies (note: on old system!!!)
+  - both legacy and uvr flows clamp n >= 7 (including dynamic n)
+  - imported/forwarded requests start from the clamped value and decrement per hop
+2. added read-time consensus
+  - when getting a cid, we gather copies from peers (libp2p if available, shared fallback otherwise)
+  - compute content-hash per copy and pick the majority
+  - if local differs from majority, repair the local copy to match
+  - if fewer than 7 agreeing copies exist, trigger replication until we have 7
+3. updated the paper to reflect these changes
+  - documented the 7-replica minimum and majority content-hash
+  - explained bft for content integrity via majority on reads
+  - clarified immutability: modified content => new cid => fresh replication
+4. introduced statistical liveness + consistency checks via ring traversal
+  - one worker loops the ring, asks each node for its inventory, and verifies this againt the node's manifest
+  - traversal interval scales w/ ln(|ring|) so over time every node gets checked eventually while keeping overlead low
+    - i.e. the worker is a goroutine which has been costly to this system in the past, but we only deal with a single goroutine at a time for a given ring
+  - understood first principal here is that perfect failure detection is impossible; we still get eventual coverage under weak fairness
+  - on gaps (manifest =/= inventory) we can push a file directly OR retrigger replication to keep n \geq 7
+  - leader gating: only the lexicographically-smallest ring node starts a worker; the worker re-checks leadership each cycle and exits if leadership changes
+  - planned robustness: add a lease tuple (with TTL) renewed by the worker; if the lease expires, another node can acquire the lease and start a new worker (i.e. eventual but not perfect detection)
+5. verified builds and tests are grean
+6. prepping sng40 tie-in:
+  - cloned sng40
+  - branched
+  - created new dir "go"
+  - ran go mod init github.com/nicktagliamonte/tuple-integration
+  - ran go env -w GOPRIVATE=github.com/nicktagliamonte
+  - ran go get github.com/nicktagliamonte/fall25_independentStudy
+  - split the contents of package main into a thin cli wrapper and the contents of pkg/ so that it can be imported
+  - created a minimal main.go in sng40 and imported pkg/
+  - ran go mod tidy and verified it was working
+  - ran go build ../bin/p2p_integration
+TODO: 
+  1. makefile target (important question! there is not a toplevel makefile that I can see. how is the project built and run in a normal workflow?)
+  2. identify surface for cgo entry points (tsh_put/get/init/etc)
+  3. build cgo scaffolding (headers and go wrappers for the above)
+  4. integrate p2p base layer (legwork done, just make main.go functional)
+  5. implement N-hop stub (def API and logging structure)
+  6. replace or wrap tuple space comm layer (i.e. route tuple updates over libp2p instead of native sockets. this is by far the most critical and hardest step, no contest)
+  7. build out N-hop stub, 7 node min, statistical liveness guarantee
