@@ -309,3 +309,53 @@ func AppendPeerAddedIfNew(ctx context.Context, d ds.Batching, bsvc *bserv.BlockS
 	}
 	return c, newHeight, true, nil
 }
+
+// PeerAddedEntry represents a decoded peer_added event along with its CID.
+type PeerAddedEntry struct {
+	CID   cid.Cid
+	Event *PeerAddedGo
+}
+
+// ListRecentFromHead returns up to limit most recent peer_added entries walking backward from current head.
+// If no head is present or limit <= 0, returns an empty slice.
+func ListRecentFromHead(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, limit int) ([]PeerAddedEntry, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	if d == nil || bsvc == nil {
+		return nil, errors.New("nil datastore or blockservice")
+	}
+	head, _, err := GetHead(ctx, d)
+	if err != nil {
+		return nil, err
+	}
+	if !head.Defined() {
+		return nil, nil
+	}
+	out := make([]PeerAddedEntry, 0, limit)
+	cur := head
+	for cur.Defined() && len(out) < limit {
+		blk, err := (*bsvc).GetBlock(ctx, cur)
+		if err != nil {
+			break
+		}
+		obj, err := decodePeerAddedFromCBOR(blk.RawData())
+		if err != nil {
+			break
+		}
+		if obj == nil || obj.Type != "peer_added" {
+			// stop on unexpected data
+			break
+		}
+		out = append(out, PeerAddedEntry{CID: cur, Event: obj})
+		if obj.Prev == nil || *obj.Prev == "" {
+			break
+		}
+		if pc, err := cid.Decode(*obj.Prev); err == nil {
+			cur = pc
+		} else {
+			break
+		}
+	}
+	return out, nil
+}

@@ -69,6 +69,48 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
 	})
 
+	// Events endpoint (recent peer_added events; newest-first)
+	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		limit := 50
+		if s := r.URL.Query().Get("limit"); s != "" {
+			if n, err := strconv.Atoi(s); err == nil && n > 0 && n <= 1000 {
+				limit = n
+			}
+		}
+		entries, err := mystore.ListRecentFromHead(r.Context(), stack.Datastore, stack.BlockSvc, limit)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		type eventOut struct {
+			CID  string  `json:"cid"`
+			Type string  `json:"type"`
+			Ts   int64   `json:"ts"`
+			Peer string  `json:"peer"`
+			Prev *string `json:"prev,omitempty"`
+		}
+		out := make([]eventOut, 0, len(entries))
+		for _, e := range entries {
+			if e.Event == nil {
+				continue
+			}
+			out = append(out, eventOut{
+				CID:  e.CID.String(),
+				Type: e.Event.Type,
+				Ts:   e.Event.Ts,
+				Peer: e.Event.Peer,
+				Prev: e.Event.Prev,
+			})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(out)
+	})
+
 	// Put endpoint
 	mux.HandleFunc("/put", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

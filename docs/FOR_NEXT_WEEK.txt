@@ -1,36 +1,12 @@
-new program
-    i REALLY think they think the software this paper is about does all of this shit and can be used now for nars, but we have significant engineering problems
-    we need to (a) get the new version up to snuff wrt N-hop and
-    (b) either cgo or go convert sng40, presumably that will be with garrett
-    it will be best if this new program does all the things we allege of the old program, but for that we NEED sng40. there's no other option.
-start the sng40<>go conversion
-    pay attention to the "hostfile" which exists in there...somewhere
-    TODO: 
-  1. makefile target (important question! there is not a toplevel makefile that I can see. how is the project built and run in a normal workflow?)
-  2. identify surface for cgo entry points (tsh_put/get/init/etc)
-  3. build cgo scaffolding (headers and go wrappers for the above)
-  4. integrate p2p base layer (legwork done, just make main.go functional)
-  5. implement N-hop stub (def API and logging structure)
-  6. replace or wrap tuple space comm layer (i.e. route tuple updates over libp2p instead of native sockets. this is by far the most critical and hardest step, no contest)
-  7. build out N-hop stub, 7 node min, statistical liveness guarantee
-start the N-hop replication
-    we know in general how this looks. it's actually pretty simple
-    enforce minimum 7 copies of the file
-    enforce consensus to GetFile
-    explain that files cannot be simply changed in this system -- any change to a file is treated as a new object, one which breaks consensus with existing objects and ergo requires a new CID
-do the anti-heartbeat/health check thing
-    [] introduce statistical feature to check liveness and replication consistency
-        [] a worker traversing the ring and enforcing checks at all nodes
-            statistical flavoring comes in the form of an increased likelyhood of a check over time given increased ring size i.e. given enough time, as ring size grows, if we initiate a traversal every 30 seconds after the completion of the last traversal we will still eventually hit all nodes
-            advantage: guaranteed to check all and to enforce the 7-copy minimum -- this is cross-ring checks which go beyond individual nodes. we can push a file to a node actively (rather than replication request style) in the event that it's not found. we can designate a node which loses a
-                file as bad. we can discover dead nodes and attempt to repair them.
-            disadvantage: it's a goroutine which comes with significant overhead, it is very nontrivial to implement
-            [] process: 
-                [] send a worker around the ring. at each node, worker tells node to check what it has against its manifest of what it SHOULD have. 
-                    [] if all accounted for, worker proceeds to next node
-                    [] if a live node has a file not found, we can push a copy to that node (or a nearby node) and possibly designate that node as bad
-                    [] if a node is dead, then at the end of traversal all of its files will have a total count \leq 6. when we encounter this, we issue replication requests so that data is not lost and N \geq 7 is enforced
-small program to auto-test peer discovery
-    need to determine WHAT exactly we're testing i.e. what success conditions look like
-    and furthermore, WHERE. mesh network timings? probably yeah. two regions? why not put 
-        wireguard on MY machine?
+1. implement N-hop stub 
+    - make sure it exists as a library function or generally speaking that tsh can use it
+    - include logging structure
+2. replace or wrap the tuple space comm layer (i.e. route tuple updates over libp2p instead of native sockets)
+    - MAYBE
+    - looking at this, it feels poorly motivated
+    - i mean if the tsh works as-is and the file sharing layer is p2p then isn't that sufficient?
+3. build out N-hop stub, 7 node min, statistical liveness guarantee (i.e. all the paper changes from the 11_06 update should exist in this NEW repo now)
+
+
+as far as i can tell, that's it. we'll then have a paper, n-hop, p2p in sng, idk what would be left to do
+once things actually test well, and once we can figure out distributed testing, we're good
