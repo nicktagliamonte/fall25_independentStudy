@@ -233,7 +233,8 @@ func Run() error {
 			return nil
 		}
 
-		ctx := context.Background()
+		ctx, cancelMain := context.WithCancel(context.Background())
+		defer cancelMain()
 		// Optional persistent key
 		var h host.Host
 		if keyPath != "" {
@@ -505,7 +506,10 @@ func Run() error {
 		}
 
 		// Start control server and write daemon file
-		addr, _, err := ctrl.Start(ctx, h, stack, peerStore, metrics)
+		addr, _, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() {
+			// trigger graceful stop
+			cancelMain()
+		})
 		if err != nil {
 			return err
 		}
@@ -523,7 +527,8 @@ func Run() error {
 		printBanner(h.ID().String(), addrs)
 		printDerivedPublicAddrs(addrs)
 
-		select {}
+		<-ctx.Done()
+		return nil
 
 	case "put":
 		fs := flag.NewFlagSet("put", flag.ExitOnError)
@@ -653,7 +658,7 @@ func Run() error {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
 
-		c, err := mystore.PutRawBlock(ctx, stack.BlockSvc, payload)
+		c, err := mystore.PutRawBlockIndexed(ctx, stack.Datastore, stack.BlockSvc, payload)
 		if err != nil {
 			return err
 		}
@@ -956,7 +961,7 @@ func Run() error {
 
 		fetchCtx, cancel2 := context.WithTimeout(ctx, dur)
 		defer cancel2()
-		b, err := mystore.GetBlock(fetchCtx, stack.BlockSvc, c)
+		b, err := mystore.GetBlockIndexed(fetchCtx, stack.Datastore, stack.BlockSvc, c)
 		if err != nil {
 			return err
 		}
@@ -970,8 +975,210 @@ func Run() error {
 		}
 		return nil
 
+	case "shutdown":
+		fs := flag.NewFlagSet("shutdown", flag.ExitOnError)
+		var controlPath string
+		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
+		_ = fs.Parse(os.Args[2:])
+		b, err := os.ReadFile(controlPath)
+		if err != nil || len(b) == 0 {
+			return fmt.Errorf("cannot read control file: %v", err)
+		}
+		var info struct {
+			Addr string `json:"addr"`
+		}
+		if err := json.Unmarshal(b, &info); err != nil || info.Addr == "" {
+			return fmt.Errorf("invalid control file")
+		}
+		resp, err := http.Get("http://" + info.Addr + "/shutdown")
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("shutdown failed: %s", string(body))
+		}
+		fmt.Println("Shutdown signal sent.")
+		return nil
+
+	case "restore":
+		fs := flag.NewFlagSet("restore", flag.ExitOnError)
+		var manifest string
+		var concurrency int
+		var timeoutStr string
+		var controlPath string
+		fs.StringVar(&manifest, "manifest", "", "path to file with CIDs (one per line) or a single CID")
+		fs.IntVar(&concurrency, "concurrency", 4, "parallel fetches")
+		fs.StringVar(&timeoutStr, "timeout", "20s", "per-CID timeout (e.g., 20s)")
+		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
+		_ = fs.Parse(os.Args[2:])
+		if manifest == "" {
+			return fmt.Errorf("restore: --manifest is required")
+		}
+		// read manifest
+		var cids []string
+		if fi, err := os.Stat(manifest); err == nil && !fi.IsDir() {
+			b, err := os.ReadFile(manifest)
+			if err != nil {
+				return err
+			}
+			for _, line := range strings.Split(string(b), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				cids = append(cids, line)
+			}
+		} else {
+			cids = []string{manifest}
+		}
+		b, err := os.ReadFile(controlPath)
+		if err != nil || len(b) == 0 {
+			return fmt.Errorf("cannot read control file: %v", err)
+		}
+		var info struct {
+			Addr string `json:"addr"`
+		}
+		if err := json.Unmarshal(b, &info); err != nil || info.Addr == "" {
+			return fmt.Errorf("invalid control file")
+		}
+		// submit restore job
+		reqBody := struct {
+			CIDs        []string `json:"cids"`
+			Concurrency int      `json:"concurrency"`
+			Timeout     string   `json:"timeout"`
+			ByteBudget  int64    `json:"byte_budget"`
+		}{CIDs: cids, Concurrency: concurrency, Timeout: timeoutStr, ByteBudget: 0}
+		buf, _ := json.Marshal(&reqBody)
+		resp, err := http.Post("http://"+info.Addr+"/restore", "application/json", bytes.NewReader(buf))
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusAccepted {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("restore submit failed: %s", string(body))
+		}
+		var out struct {
+			Job string `json:"job"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			return err
+		}
+		fmt.Println("Restore job:", out.Job)
+		// poll status until done
+		client := &http.Client{Timeout: 5 * time.Second}
+		for {
+			time.Sleep(1 * time.Second)
+			u := "http://" + info.Addr + "/restore/status?id=" + out.Job
+			r2, err := client.Get(u)
+			if err != nil {
+				continue
+			}
+			var st struct {
+				OK     int   `json:"ok"`
+				Failed int   `json:"failed"`
+				Bytes  int64 `json:"bytes"`
+				Done   bool  `json:"done"`
+			}
+			if json.NewDecoder(r2.Body).Decode(&st) == nil {
+				fmt.Printf("status: ok=%d failed=%d bytes=%d done=%v\r", st.OK, st.Failed, st.Bytes, st.Done)
+				if st.Done {
+					fmt.Println()
+					_ = r2.Body.Close()
+					break
+				}
+			}
+			_ = r2.Body.Close()
+		}
+		return nil
+
+	case "snapshot":
+		fs := flag.NewFlagSet("snapshot", flag.ExitOnError)
+		var controlPath string
+		var limit int
+		var cursor string
+		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
+		fs.IntVar(&limit, "limit", 1000, "max CIDs to return")
+		fs.StringVar(&cursor, "cursor", "", "optional cursor for pagination (startAfter)")
+		_ = fs.Parse(os.Args[2:])
+		b, err := os.ReadFile(controlPath)
+		if err != nil || len(b) == 0 {
+			return fmt.Errorf("cannot read control file: %v", err)
+		}
+		var info struct {
+			Addr string `json:"addr"`
+		}
+		if err := json.Unmarshal(b, &info); err != nil || info.Addr == "" {
+			return fmt.Errorf("invalid control file")
+		}
+		url := fmt.Sprintf("http://%s/snapshot?limit=%d", info.Addr, limit)
+		if cursor != "" {
+			url += "&cursor=" + cursor
+		}
+		resp, err := http.Get(url)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("snapshot failed: %s", string(body))
+		}
+		_, err = io.Copy(os.Stdout, resp.Body)
+		return err
+
+	case "neighbors":
+		fs := flag.NewFlagSet("neighbors", flag.ExitOnError)
+		var controlPath string
+		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
+		_ = fs.Parse(os.Args[2:])
+		b, err := os.ReadFile(controlPath)
+		if err != nil || len(b) == 0 {
+			return fmt.Errorf("cannot read control file: %v", err)
+		}
+		var info struct {
+			Addr string `json:"addr"`
+		}
+		if err := json.Unmarshal(b, &info); err != nil || info.Addr == "" {
+			return fmt.Errorf("invalid control file")
+		}
+		resp, err := http.Get("http://" + info.Addr + "/neighbors")
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("neighbors failed: %s", string(body))
+		}
+		_, err = io.Copy(os.Stdout, resp.Body)
+		return err
+
+	case "keygen":
+		fs := flag.NewFlagSet("keygen", flag.ExitOnError)
+		var outPath string
+		fs.StringVar(&outPath, "out", "", "path to write libp2p private key (PEM)")
+		_ = fs.Parse(os.Args[2:])
+		if outPath == "" {
+			return fmt.Errorf("keygen: --out is required")
+		}
+		priv, err := myhost.LoadOrCreatePrivateKey(outPath)
+		if err != nil {
+			return err
+		}
+		pub := priv.GetPublic()
+		pid, err := peer.IDFromPublicKey(pub)
+		if err != nil {
+			return err
+		}
+		fmt.Println("Wrote key:", outPath)
+		fmt.Println("PeerID:", pid.String())
+		return nil
+
 	default:
-		return fmt.Errorf("unknown subcommand: %s\nusage: %s <run|put|connect|get> [flags]", subcmd, os.Args[0])
+		return fmt.Errorf("unknown subcommand: %s\nusage: %s <run|put|connect|get|shutdown|restore|snapshot|neighbors|keygen> [flags]", subcmd, os.Args[0])
 	}
 }
 

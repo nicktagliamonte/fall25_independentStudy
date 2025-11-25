@@ -41,6 +41,10 @@ type Service interface {
 	// Data-plane helpers for simple publish/fetch flows.
 	PutRaw(ctx context.Context, data []byte) (cid string, size int, err error)
 	GetRawFrom(ctx context.Context, providerAddr string, providerPeer string, cidStr string, timeout time.Duration) ([]byte, error)
+	// ListImmediatePeerIDs returns currently connected peer IDs (immediate neighbors).
+	ListImmediatePeerIDs(ctx context.Context) ([]string, error)
+	// RestoreFromManifest fetches the provided CIDs with bounded concurrency and budgets.
+	RestoreFromManifest(ctx context.Context, cids []string, concurrency int, timeout time.Duration, byteBudget int64) (RestoreStats, error)
 }
 
 // Status summarizes node state and counters.
@@ -56,4 +60,11 @@ type Status struct {
 		PeersPruned    int64
 		GossipLearned  int64
 	}
+}
+
+// RestoreStats summarizes a restore job outcome.
+type RestoreStats struct {
+	OK     int
+	Failed int
+	Bytes  int64
 }

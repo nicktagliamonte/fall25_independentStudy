@@ -1,11 +1,12 @@
-1. implement N-hop stub 
-    - make sure it exists as a library function or generally speaking that tsh can use it
-    - include logging structure
 2. replace or wrap the tuple space comm layer (i.e. route tuple updates over libp2p instead of native sockets)
-    - MAYBE
-    - looking at this, it feels poorly motivated
-    - i mean if the tsh works as-is and the file sharing layer is p2p then isn't that sufficient?
-3. build out N-hop stub, 7 node min, statistical liveness guarantee (i.e. all the paper changes from the 11_06 update should exist in this NEW repo now)
+    - The idea here is to make sng a wholly p2p version, not a program with native socket that does block exchange via p2p
+3. build out:
+    - N-hop stub
+    - 7 replica min
+    - hash-based consensus
+    - statistical liveness guarantee
+    - node repair
+    - (i.e. all the paper changes from the 11_06 update should exist in sng natively, once made to be a p2p version)
 
 
 as far as i can tell, that's it. we'll then have a paper, n-hop, p2p in sng, idk what would be left to do

@@ -87,7 +87,7 @@ func (s *service) Status(ctx context.Context) (Status, error) {
 }
 
 func (s *service) PutRaw(ctx context.Context, data []byte) (string, int, error) {
-	c, err := mystore.PutRawBlock(ctx, s.stack.BlockSvc, data)
+	c, err := mystore.PutRawBlockIndexed(ctx, s.stack.Datastore, s.stack.BlockSvc, data)
 	if err != nil {
 		return "", 0, err
 	}
@@ -109,7 +109,7 @@ func (s *service) GetRawFrom(ctx context.Context, providerAddr string, providerP
 		return nil, err
 	}
 	if pid == s.h.ID() {
-		return mystore.GetBlock(ctx, s.stack.BlockSvc, c)
+		return mystore.GetBlockIndexed(ctx, s.stack.Datastore, s.stack.BlockSvc, c)
 	}
 	// ephemeral stack with static router
 	router := &staticContentRouter{provider: info}
@@ -135,7 +135,102 @@ func (s *service) GetRawFrom(ctx context.Context, providerAddr string, providerP
 	}
 	fetchCtx, cancel2 := context.WithTimeout(ctx, d)
 	defer cancel2()
-	return mystore.GetBlock(fetchCtx, st.BlockSvc, c)
+	return mystore.GetBlockIndexed(fetchCtx, s.stack.Datastore, st.BlockSvc, c)
+}
+
+// ListImmediatePeerIDs returns currently connected peers (immediate neighbors).
+func (s *service) ListImmediatePeerIDs(ctx context.Context) ([]string, error) {
+	peers := s.h.Network().Peers()
+	out := make([]string, 0, len(peers))
+	for _, pid := range peers {
+		if pid == s.h.ID() {
+			continue
+		}
+		out = append(out, pid.String())
+	}
+	return out, nil
+}
+
+// RestoreFromManifest fetches CIDs with bounded concurrency, per-item timeout, and a total byte budget.
+func (s *service) RestoreFromManifest(ctx context.Context, cids []string, concurrency int, timeout time.Duration, byteBudget int64) (RestoreStats, error) {
+	if concurrency <= 0 {
+		concurrency = 4
+	}
+	s.metrics.IncRestoresStarted()
+	type task struct {
+		c string
+	}
+	var stats RestoreStats
+	var mu sync.Mutex
+	todo := make(chan task)
+	var wg sync.WaitGroup
+	// worker
+	worker := func() {
+		defer wg.Done()
+		for t := range todo {
+			// check global budget
+			mu.Lock()
+			if byteBudget > 0 && stats.Bytes >= byteBudget {
+				mu.Unlock()
+				return
+			}
+			mu.Unlock()
+			// parse cid
+			c, err := cid.Decode(t.c)
+			if err != nil {
+				mu.Lock()
+				stats.Failed++
+				mu.Unlock()
+				continue
+			}
+			// per-item timeout
+			d := timeout
+			if d <= 0 {
+				d = 20 * time.Second
+			}
+			ctx2, cancel := context.WithTimeout(ctx, d)
+			b, err := mystore.GetBlock(ctx2, s.stack.BlockSvc, c)
+			cancel()
+			mu.Lock()
+			if err != nil {
+				stats.Failed++
+				s.metrics.AddRestoresFailed(1)
+			} else {
+				stats.OK++
+				sz := int64(len(b))
+				stats.Bytes += sz
+				s.metrics.AddRestoresOK(1)
+				s.metrics.AddRestoreBytes(sz)
+			}
+			mu.Unlock()
+		}
+	}
+	// start workers
+	wg.Add(concurrency)
+	for i := 0; i < concurrency; i++ {
+		go worker()
+	}
+	// feed tasks
+	go func() {
+		defer close(todo)
+		for _, s := range cids {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			todo <- task{c: s}
+			// optional budget early check
+			mu.Lock()
+			if byteBudget > 0 && stats.Bytes >= byteBudget {
+				mu.Unlock()
+				return
+			}
+			mu.Unlock()
+		}
+	}()
+	wg.Wait()
+	return stats, ctx.Err()
 }
 
 // Start launches the node with the provided options and returns a Service.
@@ -427,7 +522,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	}
 
 	// Control server
-	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics)
+	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() { cancel() })
 	if err != nil {
 		_ = stack.Bitswap.Close()
 		_ = h.Close()
