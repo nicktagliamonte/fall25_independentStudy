@@ -1,13 +1,2 @@
-2. replace or wrap the tuple space comm layer (i.e. route tuple updates over libp2p instead of native sockets)
-    - The idea here is to make sng a wholly p2p version, not a program with native socket that does block exchange via p2p
-3. build out:
-    - N-hop stub
-    - 7 replica min
-    - hash-based consensus
-    - statistical liveness guarantee
-    - node repair
-    - (i.e. all the paper changes from the 11_06 update should exist in sng natively, once made to be a p2p version)
-
-
 as far as i can tell, that's it. we'll then have a paper, n-hop, p2p in sng, idk what would be left to do
 once things actually test well, and once we can figure out distributed testing, we're good

@@ -536,6 +536,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		// Persist fetched block into the daemon's local store for durability/indexing.
+		// Best-effort: ignore error to still serve the response body to the client.
+		_, _ = mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, b)
 		resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b)}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(&resp)
