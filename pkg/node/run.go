@@ -203,24 +203,49 @@ func Run() error {
 		}
 
 		if daemon {
-			// Re-exec ourselves without the --background flag and detach
+			// Re-exec ourselves and detach; propagate relevant flags
 			childArgs := []string{"run"}
 			for _, a := range listenAddrs {
 				childArgs = append(childArgs, "--listen", a)
 			}
+			if logPath != "" {
+				childArgs = append(childArgs, "--log", logPath)
+			}
+			if controlPath != "" {
+				childArgs = append(childArgs, "--control", controlPath)
+			}
+			if keyPath != "" {
+				childArgs = append(childArgs, "--key", keyPath)
+			}
+			if storePath != "" {
+				childArgs = append(childArgs, "--store", storePath)
+			}
+			// seeds via repeated --seed flags
+			for _, s := range seedAddrs {
+				childArgs = append(childArgs, "--seed", s)
+			}
+			if seedFile != "" {
+				childArgs = append(childArgs, "--seed-file", seedFile)
+			}
+			childArgs = append(childArgs, "--min-outbound", fmt.Sprintf("%d", minOutbound))
+			childArgs = append(childArgs, "--dial-timeout", dialTimeoutStr)
+			childArgs = append(childArgs, "--stale-age", staleAgeStr)
+			childArgs = append(childArgs, "--max-fail", fmt.Sprintf("%d", maxFailures))
+			childArgs = append(childArgs, "--max-known", fmt.Sprintf("%d", maxKnown))
+			childArgs = append(childArgs, "--per-ip-dial-limit", fmt.Sprintf("%d", perIPDialLimit))
+
 			cmd := exec.Command(os.Args[0], childArgs...)
+			// If a log path was provided, still attach child stdout/err to that file to catch early output.
 			if logPath != "" {
 				f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-				if err != nil {
-					return err
+				if err == nil {
+					cmd.Stdout = f
+					cmd.Stderr = f
 				}
-				cmd.Stdout = f
-				cmd.Stderr = f
 			} else {
 				// Default background log file to avoid hijacking the current terminal
 				_ = os.MkdirAll("/tmp/fall25_node", 0755)
-				f, err := os.OpenFile("/tmp/fall25_node/daemon.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-				if err == nil {
+				if f, err := os.OpenFile("/tmp/fall25_node/daemon.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
 					cmd.Stdout = f
 					cmd.Stderr = f
 				}
@@ -283,7 +308,6 @@ func Run() error {
 		if head.Defined() {
 			headStr = head.String()
 		}
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, myhost.HandshakePolicy{Timeout: 10 * time.Second})
 		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second}, func(pid peer.ID) {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
@@ -317,9 +341,39 @@ func Run() error {
 			}
 		}()
 
-		// Register handshake responder for inbound peers with permissive policy and peer sample
-		myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(h)}, myhost.HandshakePolicy{Timeout: 10 * time.Second}, func(max int) []peer.AddrInfo {
-			infos, _ := peerStore.GetDialCandidates(max, 0, nil)
+		// Register handshake responder for inbound peers with state summary AND peer sample
+		// This combines state head/height with peer discovery functionality
+		// Peer provider returns connected peers from network (not just peerstore) so new nodes learn about each other
+		myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, myhost.HandshakePolicy{Timeout: 10 * time.Second}, func(max int) []peer.AddrInfo {
+			// Return connected peers from network (these are the peers we actually know about)
+			connectedPeers := h.Network().Peers()
+			infos := make([]peer.AddrInfo, 0, max)
+			for _, pid := range connectedPeers {
+				if pid == h.ID() {
+					continue
+				}
+				if len(infos) >= max {
+					break
+				}
+				addrs := h.Peerstore().Addrs(pid)
+				if len(addrs) > 0 {
+					infos = append(infos, peer.AddrInfo{ID: pid, Addrs: addrs})
+				}
+			}
+			// If we don't have enough connected peers, supplement with peerstore candidates
+			if len(infos) < max {
+				cands, _ := peerStore.GetDialCandidates(max-len(infos), 0, nil)
+				// Filter out already included peers
+				seen := make(map[peer.ID]bool)
+				for _, info := range infos {
+					seen[info.ID] = true
+				}
+				for _, cand := range cands {
+					if !seen[cand.ID] && len(infos) < max {
+						infos = append(infos, cand)
+					}
+				}
+			}
 			return infos
 		})
 
@@ -403,11 +457,34 @@ func Run() error {
 						if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							// no-op
 						}
+						learnedToConnect := make([]peer.AddrInfo, 0)
 						for _, info2 := range res.Learned {
 							if info2.ID == h.ID() {
 								continue
 							}
 							_ = peerStore.Upsert(info2.ID, info2.Addrs, 0, "handshake")
+							// Collect a small subset for immediate connection (cap at 2 per handshake)
+							if len(learnedToConnect) < 2 {
+								// Check if already connected
+								if h.Network().Connectedness(info2.ID) != network.Connected {
+									learnedToConnect = append(learnedToConnect, info2)
+								}
+							}
+						}
+						// Connect to learned peers (bounded, non-blocking)
+						for _, info2 := range learnedToConnect {
+							_ = peerStore.RecordDialAttempt(info2.ID)
+							metrics.IncDialsAttempted()
+							ctxDial, cancel := context.WithTimeout(ctx, dialTimeout)
+							err := h.Connect(ctxDial, info2)
+							cancel()
+							if err != nil {
+								_ = peerStore.RecordDialFailure(info2.ID)
+								metrics.IncDialsFailed()
+							} else {
+								_ = peerStore.RecordDialSuccess(info2.ID)
+								metrics.IncDialsSucceeded()
+							}
 						}
 						// If remote height is ahead, attempt suffix sync with budget
 						if res.RemoteStateHeight > height {
@@ -1043,7 +1120,7 @@ func Run() error {
 		if err := json.Unmarshal(b, &info); err != nil || info.Addr == "" {
 			return fmt.Errorf("invalid control file")
 		}
-		// submit restore job
+		// submit restore job with retries
 		reqBody := struct {
 			CIDs        []string `json:"cids"`
 			Concurrency int      `json:"concurrency"`
@@ -1051,25 +1128,56 @@ func Run() error {
 			ByteBudget  int64    `json:"byte_budget"`
 		}{CIDs: cids, Concurrency: concurrency, Timeout: timeoutStr, ByteBudget: 0}
 		buf, _ := json.Marshal(&reqBody)
-		resp, err := http.Post("http://"+info.Addr+"/restore", "application/json", bytes.NewReader(buf))
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusAccepted {
-			body, _ := io.ReadAll(resp.Body)
-			return fmt.Errorf("restore submit failed: %s", string(body))
-		}
 		var out struct {
 			Job string `json:"job"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-			return err
+		maxRetries := 3
+		retryDelay := 2 * time.Second
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			resp, err := http.Post("http://"+info.Addr+"/restore", "application/json", bytes.NewReader(buf))
+			if err != nil {
+				if attempt < maxRetries {
+					fmt.Printf("Submit attempt %d failed: %v, retrying in %v...\n", attempt, err, retryDelay)
+					time.Sleep(retryDelay)
+					retryDelay *= 2
+					continue
+				}
+				return fmt.Errorf("restore submit failed after %d attempts: %v", maxRetries, err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusAccepted {
+				body, _ := io.ReadAll(resp.Body)
+				if attempt < maxRetries {
+					fmt.Printf("Submit attempt %d failed (status %d): %s, retrying in %v...\n", attempt, resp.StatusCode, string(body), retryDelay)
+					time.Sleep(retryDelay)
+					retryDelay *= 2
+					continue
+				}
+				return fmt.Errorf("restore submit failed after %d attempts: %s", maxRetries, string(body))
+			}
+			if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+				if attempt < maxRetries {
+					fmt.Printf("Submit attempt %d failed to decode response: %v, retrying in %v...\n", attempt, err, retryDelay)
+					time.Sleep(retryDelay)
+					retryDelay *= 2
+					continue
+				}
+				return err
+			}
+			break
+		}
+		if out.Job == "" {
+			return fmt.Errorf("restore submit failed: no job ID returned")
 		}
 		fmt.Println("Restore job:", out.Job)
-		// poll status until done
+		// poll status until done with timeout
 		client := &http.Client{Timeout: 5 * time.Second}
+		pollTimeout := 5 * time.Minute
+		pollStart := time.Now()
 		for {
+			if time.Since(pollStart) > pollTimeout {
+				return fmt.Errorf("restore poll timeout after %v", pollTimeout)
+			}
 			time.Sleep(1 * time.Second)
 			u := "http://" + info.Addr + "/restore/status?id=" + out.Job
 			r2, err := client.Get(u)
@@ -1087,6 +1195,22 @@ func Run() error {
 				if st.Done {
 					fmt.Println()
 					_ = r2.Body.Close()
+					// Emit metrics snapshot after completion
+					metricsResp, err := http.Get("http://" + info.Addr + "/metrics")
+					if err == nil {
+						var metrics map[string]interface{}
+						if json.NewDecoder(metricsResp.Body).Decode(&metrics) == nil {
+							fmt.Println("Final metrics:")
+							fmt.Printf("  dials_attempted: %v\n", metrics["dials_attempted"])
+							fmt.Printf("  dials_succeeded: %v\n", metrics["dials_succeeded"])
+							fmt.Printf("  dials_failed: %v\n", metrics["dials_failed"])
+							fmt.Printf("  restores_started: %v\n", metrics["restores_started"])
+							fmt.Printf("  restores_ok: %v\n", metrics["restores_ok"])
+							fmt.Printf("  restores_failed: %v\n", metrics["restores_failed"])
+							fmt.Printf("  restore_bytes: %v\n", metrics["restore_bytes"])
+						}
+						_ = metricsResp.Body.Close()
+					}
 					break
 				}
 			}

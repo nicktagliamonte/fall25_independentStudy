@@ -191,31 +191,33 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusAccepted)
 			_ = json.NewEncoder(w).Encode(map[string]string{"job": jobID})
-		case http.MethodGet:
-			// status query: /restore/status?id=<id>
-			if r.URL.Path != "/restore/status" {
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-			id := r.URL.Query().Get("id")
-			if id == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("missing id"))
-				return
-			}
-			jobsMu.Lock()
-			js, ok := jobs[id]
-			jobsMu.Unlock()
-			if !ok {
-				w.WriteHeader(http.StatusNotFound)
-				_, _ = w.Write([]byte("unknown job"))
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(js)
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
+	})
+
+	// Restore status endpoint (separate route for GET requests)
+	mux.HandleFunc("/restore/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("missing id"))
+			return
+		}
+		jobsMu.Lock()
+		js, ok := jobs[id]
+		jobsMu.Unlock()
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("unknown job"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(js)
 	})
 
 	// Shutdown endpoint (graceful stop)
