@@ -108,10 +108,8 @@ Or use the profiles script:
 apply_profile <run_id> wan 80 0
 ```
 
-Manual Steps (Alternative)
+Manual Steps 
 ---------------------------
-
-If you prefer manual control:
 
 1. **Start bootstrap:**
    ```bash
@@ -147,18 +145,5 @@ Troubleshooting
 ---------------
 
 - **Nodes can't connect:** Check Tailscale status (`tailscale status`), firewall rules, and that seed multiaddr uses Tailscale IP
-- **Control file not created:** Check logs (`--log` path), ensure ports are open
-- **Wrong PeerID:** Ensure `--key` path is consistent across restarts
-
-Example Topology
----------------
-
-```
-Bootstrap (Laptop, Tailscale: 100.1.1.1)
-  ├── Peer 1 (EC2 us-east-1, Tailscale: 100.99.173.11)
-  ├── Peer 2 (EC2 us-west-2, Tailscale: 100.102.6.95)
-  └── Peer 3 (EC2 eu-west-1, Tailscale: 100.126.19.118)
-```
-
-All nodes connect via Tailscale overlay network (100.x.y.z addresses).
-
+- **Control file not created:** Check logs (`--log` path), check if ports are open
+- **Wrong PeerID:** make sure `--key` path is consistent across restarts

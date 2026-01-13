@@ -278,8 +278,8 @@ def create_scaling_plots(scaling_metrics, output_dir):
     ax2 = axes[1]
     ax2.plot(n_nodes, restores_per_node, 'o-', color='#9b59b6', linewidth=2, markersize=8)
     ax2.set_xlabel('Number of Nodes')
-    ax2.set_ylabel('Restores per Node')
-    ax2.set_title('Restores per Node vs Network Size')
+    ax2.set_ylabel('Restores per Node\n(Leaf nodes restore; seed node does not)')
+    ax2.set_title('Restores per Node vs Network Size\n(Expected: (N-1)/N)')
     ax2.grid(alpha=0.3)
     
     # Plot 3: Log-log plot for complexity analysis
@@ -293,9 +293,30 @@ def create_scaling_plots(scaling_metrics, output_dir):
             ax3.loglog(n_ref, n_ref * (dials_total[0] / n_nodes[0]), '--', alpha=0.3, label='O(n)')
             ax3.loglog(n_ref, n_ref * np.log10(n_ref) * (dials_total[0] / (n_nodes[0] * np.log10(n_nodes[0]))), '--', alpha=0.3, label='O(n log n)')
             ax3.loglog(n_ref, n_ref**2 * (dials_total[0] / n_nodes[0]**2), '--', alpha=0.3, label='O(n²)')
-        ax3.set_xlabel('Number of Nodes (log scale)')
-        ax3.set_ylabel('Total Dials (log scale)')
+        
+        # Set custom tick labels for log scale (use 10, 100, 1000 instead of 10^1, 10^2, 10^3)
+        ax3.set_xlabel('Number of Nodes')
+        ax3.set_ylabel('Total Dials')
         ax3.set_title('Complexity Analysis (Log-Log)')
+        
+        # Format log scale ticks to show plain numbers instead of scientific notation
+        from matplotlib.ticker import FuncFormatter, LogLocator
+        def log_formatter(x, pos):
+            if x >= 1000:
+                return f'{int(x)}'
+            elif x >= 100:
+                return f'{int(x)}'
+            elif x >= 10:
+                return f'{int(x)}'
+            else:
+                return f'{int(x)}'
+        
+        # Set major ticks at powers of 10
+        ax3.xaxis.set_major_locator(LogLocator(base=10, numticks=10))
+        ax3.yaxis.set_major_locator(LogLocator(base=10, numticks=10))
+        ax3.xaxis.set_major_formatter(FuncFormatter(log_formatter))
+        ax3.yaxis.set_major_formatter(FuncFormatter(log_formatter))
+        
         ax3.legend()
         ax3.grid(alpha=0.3)
     

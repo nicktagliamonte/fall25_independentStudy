@@ -75,4 +75,50 @@ plot-repair:
 	fi
 	@python3 scripts/plots/repair_scaling.py $(RUN_ID)
 
+convergence-test:
+	@bash scripts/scenarios/convergence_test.sh $(NODES) $(RUNS) $(MIN_OUTBOUND)
+
+plot-convergence:
+	@if [ -z "$(RESULTS_DIR)" ]; then \
+		echo "Usage: make plot-convergence RESULTS_DIR=<results_dir>"; \
+		echo "  RESULTS_DIR: directory from convergence-test (e.g., artifacts/convergence_tests/TIMESTAMP)"; \
+		exit 1; \
+	fi
+	@python3 scripts/plots/convergence_plot.py $(RESULTS_DIR)
+
+plot-restore-efficiency:
+	@if [ -z "$(RESULTS_DIR)" ]; then \
+		echo "Usage: make plot-restore-efficiency RESULTS_DIR=<results_dir>"; \
+		echo "  RESULTS_DIR: directory from convergence-test (e.g., artifacts/convergence_tests/TIMESTAMP)"; \
+		exit 1; \
+	fi
+	@python3 scripts/plots/restore_efficiency_plot.py $(RESULTS_DIR)
+
+discovery-test:
+	@bash scripts/scenarios/discovery_test.sh $(NODES) $(RUNS) $(MIN_OUTBOUND) $(K_VALUES)
+
+plot-discovery-dynamics:
+	@if [ -z "$(RESULTS_DIR)" ]; then \
+		echo "Usage: make plot-discovery-dynamics RESULTS_DIR=<results_dir> [K=<k>]"; \
+		echo "  RESULTS_DIR: directory from discovery-test (e.g., artifacts/discovery_tests/TIMESTAMP)"; \
+		echo "  K: K value for Panel A CDF (default: 3)"; \
+		exit 1; \
+	fi
+	@if [ -z "$(K)" ]; then \
+		python3 scripts/plots/discovery_dynamics_plot.py $(RESULTS_DIR) --k 3; \
+	else \
+		python3 scripts/plots/discovery_dynamics_plot.py $(RESULTS_DIR) --k $(K); \
+	fi
+
+fault-tolerance-test:
+	@bash scripts/scenarios/fault_tolerance_test.sh $(NODES) $(RUNS) $(MIN_OUTBOUND)
+
+plot-fault-tolerance:
+	@if [ -z "$(RESULTS_DIR)" ]; then \
+		echo "Usage: make plot-fault-tolerance RESULTS_DIR=<results_dir>"; \
+		echo "  RESULTS_DIR: directory from fault-tolerance-test (e.g., artifacts/fault_tolerance_tests/TIMESTAMP)"; \
+		exit 1; \
+	fi
+	@python3 scripts/plots/fault_tolerance_plot.py $(RESULTS_DIR)
+
 

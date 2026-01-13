@@ -1,13 +1,2 @@
-7) Automation (targets + env)
-  - Create `.env.example` with `N`, `TOPOLOGY`, `MIN_OUTBOUND`, `NET_PROFILE`, `GROUPS`, `DURATION_S`
-  - Makefile shortcuts:
-    - `smoke`: `make build && NET_PROFILE=none N=5 RUN_ID=$(date +%s) make local && RUN_ID=$(date +%s) make capture INTERVAL=2 DURATION=60 && make scenario-discovery && make plots`
-    - `run`: `RUN_ID=$(date +%s) N?=20 NET_PROFILE?=wan DURATION_S?=120 make local && make capture && make plots`
-
-8) Dry run and scale‑up
-  - `make smoke` (N=5, none) to validate creation of nodes.json, CSVs, plots.
-  - `make run RUN_ID=$(date +%s) N=20 NET_PROFILE=wan DURATION_S=120` then `make scenario-failure-repair` and `make plots`; archive `artifacts/runs/$RUN_ID`.
-
-Notes
-- Start without netem to validate harness, then add profiles.
-- Keep artifacts lean (CSV + small JSON); sample at 1–2s cadence unless measuring short spikes.
+2. Scaling plots saved to: artifacts/scaling_tests/1766516729/plots/scaling_analysis.png
+    pretty good! pretty solid! useable!

@@ -49,7 +49,6 @@ Real-world interpretation:
   - This is EXPECTED behavior for star topology - not a problem
   - It means the restore workload is correctly distributed to leaf nodes
   - The increasing trend toward 1.0 indicates the bootstrap overhead becomes negligible at scale
-  - If you saw restores per node > 1.0, that would indicate redundancy or inefficiency
 
 
 Plot 3: Complexity Analysis (Log-Log)
