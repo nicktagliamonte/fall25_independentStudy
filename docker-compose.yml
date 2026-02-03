@@ -53,7 +53,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
   node3:
     build: .
     container_name: fall25-node3
@@ -77,7 +77,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
   node4:
     build: .
     container_name: fall25-node4
@@ -101,7 +101,871 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node5:
+    build: .
+    container_name: fall25-node5
+    hostname: node5
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node5.key
+      --store /app/data/node5
+      --min-outbound 4
+      --control /app/logs/node5.json
+      --log /app/logs/node5.log
+    volumes:
+      - node5-data:/app/data
+      - node5-keys:/app/keys
+      - node5-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.14
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node6:
+    build: .
+    container_name: fall25-node6
+    hostname: node6
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node6.key
+      --store /app/data/node6
+      --min-outbound 4
+      --control /app/logs/node6.json
+      --log /app/logs/node6.log
+    volumes:
+      - node6-data:/app/data
+      - node6-keys:/app/keys
+      - node6-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.15
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node7:
+    build: .
+    container_name: fall25-node7
+    hostname: node7
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node7.key
+      --store /app/data/node7
+      --min-outbound 4
+      --control /app/logs/node7.json
+      --log /app/logs/node7.log
+    volumes:
+      - node7-data:/app/data
+      - node7-keys:/app/keys
+      - node7-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.16
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node8:
+    build: .
+    container_name: fall25-node8
+    hostname: node8
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node8.key
+      --store /app/data/node8
+      --min-outbound 4
+      --control /app/logs/node8.json
+      --log /app/logs/node8.log
+    volumes:
+      - node8-data:/app/data
+      - node8-keys:/app/keys
+      - node8-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.17
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node9:
+    build: .
+    container_name: fall25-node9
+    hostname: node9
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node9.key
+      --store /app/data/node9
+      --min-outbound 4
+      --control /app/logs/node9.json
+      --log /app/logs/node9.log
+    volumes:
+      - node9-data:/app/data
+      - node9-keys:/app/keys
+      - node9-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.18
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node10:
+    build: .
+    container_name: fall25-node10
+    hostname: node10
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node10.key
+      --store /app/data/node10
+      --min-outbound 4
+      --control /app/logs/node10.json
+      --log /app/logs/node10.log
+    volumes:
+      - node10-data:/app/data
+      - node10-keys:/app/keys
+      - node10-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.19
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node11:
+    build: .
+    container_name: fall25-node11
+    hostname: node11
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node11.key
+      --store /app/data/node11
+      --min-outbound 4
+      --control /app/logs/node11.json
+      --log /app/logs/node11.log
+    volumes:
+      - node11-data:/app/data
+      - node11-keys:/app/keys
+      - node11-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.20
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node12:
+    build: .
+    container_name: fall25-node12
+    hostname: node12
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node12.key
+      --store /app/data/node12
+      --min-outbound 4
+      --control /app/logs/node12.json
+      --log /app/logs/node12.log
+    volumes:
+      - node12-data:/app/data
+      - node12-keys:/app/keys
+      - node12-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.21
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node13:
+    build: .
+    container_name: fall25-node13
+    hostname: node13
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node13.key
+      --store /app/data/node13
+      --min-outbound 4
+      --control /app/logs/node13.json
+      --log /app/logs/node13.log
+    volumes:
+      - node13-data:/app/data
+      - node13-keys:/app/keys
+      - node13-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.22
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node14:
+    build: .
+    container_name: fall25-node14
+    hostname: node14
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node14.key
+      --store /app/data/node14
+      --min-outbound 4
+      --control /app/logs/node14.json
+      --log /app/logs/node14.log
+    volumes:
+      - node14-data:/app/data
+      - node14-keys:/app/keys
+      - node14-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.23
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node15:
+    build: .
+    container_name: fall25-node15
+    hostname: node15
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node15.key
+      --store /app/data/node15
+      --min-outbound 4
+      --control /app/logs/node15.json
+      --log /app/logs/node15.log
+    volumes:
+      - node15-data:/app/data
+      - node15-keys:/app/keys
+      - node15-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.24
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node16:
+    build: .
+    container_name: fall25-node16
+    hostname: node16
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node16.key
+      --store /app/data/node16
+      --min-outbound 4
+      --control /app/logs/node16.json
+      --log /app/logs/node16.log
+    volumes:
+      - node16-data:/app/data
+      - node16-keys:/app/keys
+      - node16-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.25
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node17:
+    build: .
+    container_name: fall25-node17
+    hostname: node17
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node17.key
+      --store /app/data/node17
+      --min-outbound 4
+      --control /app/logs/node17.json
+      --log /app/logs/node17.log
+    volumes:
+      - node17-data:/app/data
+      - node17-keys:/app/keys
+      - node17-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.26
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node18:
+    build: .
+    container_name: fall25-node18
+    hostname: node18
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node18.key
+      --store /app/data/node18
+      --min-outbound 4
+      --control /app/logs/node18.json
+      --log /app/logs/node18.log
+    volumes:
+      - node18-data:/app/data
+      - node18-keys:/app/keys
+      - node18-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.27
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node19:
+    build: .
+    container_name: fall25-node19
+    hostname: node19
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node19.key
+      --store /app/data/node19
+      --min-outbound 4
+      --control /app/logs/node19.json
+      --log /app/logs/node19.log
+    volumes:
+      - node19-data:/app/data
+      - node19-keys:/app/keys
+      - node19-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.28
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node20:
+    build: .
+    container_name: fall25-node20
+    hostname: node20
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node20.key
+      --store /app/data/node20
+      --min-outbound 4
+      --control /app/logs/node20.json
+      --log /app/logs/node20.log
+    volumes:
+      - node20-data:/app/data
+      - node20-keys:/app/keys
+      - node20-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.29
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node21:
+    build: .
+    container_name: fall25-node21
+    hostname: node21
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node21.key
+      --store /app/data/node21
+      --min-outbound 4
+      --control /app/logs/node21.json
+      --log /app/logs/node21.log
+    volumes:
+      - node21-data:/app/data
+      - node21-keys:/app/keys
+      - node21-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.30
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node22:
+    build: .
+    container_name: fall25-node22
+    hostname: node22
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node22.key
+      --store /app/data/node22
+      --min-outbound 4
+      --control /app/logs/node22.json
+      --log /app/logs/node22.log
+    volumes:
+      - node22-data:/app/data
+      - node22-keys:/app/keys
+      - node22-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.31
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node23:
+    build: .
+    container_name: fall25-node23
+    hostname: node23
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node23.key
+      --store /app/data/node23
+      --min-outbound 4
+      --control /app/logs/node23.json
+      --log /app/logs/node23.log
+    volumes:
+      - node23-data:/app/data
+      - node23-keys:/app/keys
+      - node23-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.32
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node24:
+    build: .
+    container_name: fall25-node24
+    hostname: node24
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node24.key
+      --store /app/data/node24
+      --min-outbound 4
+      --control /app/logs/node24.json
+      --log /app/logs/node24.log
+    volumes:
+      - node24-data:/app/data
+      - node24-keys:/app/keys
+      - node24-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.33
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node25:
+    build: .
+    container_name: fall25-node25
+    hostname: node25
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node25.key
+      --store /app/data/node25
+      --min-outbound 4
+      --control /app/logs/node25.json
+      --log /app/logs/node25.log
+    volumes:
+      - node25-data:/app/data
+      - node25-keys:/app/keys
+      - node25-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.34
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node26:
+    build: .
+    container_name: fall25-node26
+    hostname: node26
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node26.key
+      --store /app/data/node26
+      --min-outbound 4
+      --control /app/logs/node26.json
+      --log /app/logs/node26.log
+    volumes:
+      - node26-data:/app/data
+      - node26-keys:/app/keys
+      - node26-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.35
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node27:
+    build: .
+    container_name: fall25-node27
+    hostname: node27
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node27.key
+      --store /app/data/node27
+      --min-outbound 4
+      --control /app/logs/node27.json
+      --log /app/logs/node27.log
+    volumes:
+      - node27-data:/app/data
+      - node27-keys:/app/keys
+      - node27-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.36
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node28:
+    build: .
+    container_name: fall25-node28
+    hostname: node28
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node28.key
+      --store /app/data/node28
+      --min-outbound 4
+      --control /app/logs/node28.json
+      --log /app/logs/node28.log
+    volumes:
+      - node28-data:/app/data
+      - node28-keys:/app/keys
+      - node28-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.37
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node29:
+    build: .
+    container_name: fall25-node29
+    hostname: node29
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node29.key
+      --store /app/data/node29
+      --min-outbound 4
+      --control /app/logs/node29.json
+      --log /app/logs/node29.log
+    volumes:
+      - node29-data:/app/data
+      - node29-keys:/app/keys
+      - node29-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.38
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node30:
+    build: .
+    container_name: fall25-node30
+    hostname: node30
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node30.key
+      --store /app/data/node30
+      --min-outbound 4
+      --control /app/logs/node30.json
+      --log /app/logs/node30.log
+    volumes:
+      - node30-data:/app/data
+      - node30-keys:/app/keys
+      - node30-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.39
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node31:
+    build: .
+    container_name: fall25-node31
+    hostname: node31
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node31.key
+      --store /app/data/node31
+      --min-outbound 4
+      --control /app/logs/node31.json
+      --log /app/logs/node31.log
+    volumes:
+      - node31-data:/app/data
+      - node31-keys:/app/keys
+      - node31-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.40
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node32:
+    build: .
+    container_name: fall25-node32
+    hostname: node32
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node32.key
+      --store /app/data/node32
+      --min-outbound 4
+      --control /app/logs/node32.json
+      --log /app/logs/node32.log
+    volumes:
+      - node32-data:/app/data
+      - node32-keys:/app/keys
+      - node32-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.41
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node33:
+    build: .
+    container_name: fall25-node33
+    hostname: node33
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node33.key
+      --store /app/data/node33
+      --min-outbound 4
+      --control /app/logs/node33.json
+      --log /app/logs/node33.log
+    volumes:
+      - node33-data:/app/data
+      - node33-keys:/app/keys
+      - node33-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.42
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node34:
+    build: .
+    container_name: fall25-node34
+    hostname: node34
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node34.key
+      --store /app/data/node34
+      --min-outbound 4
+      --control /app/logs/node34.json
+      --log /app/logs/node34.log
+    volumes:
+      - node34-data:/app/data
+      - node34-keys:/app/keys
+      - node34-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.43
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node35:
+    build: .
+    container_name: fall25-node35
+    hostname: node35
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node35.key
+      --store /app/data/node35
+      --min-outbound 4
+      --control /app/logs/node35.json
+      --log /app/logs/node35.log
+    volumes:
+      - node35-data:/app/data
+      - node35-keys:/app/keys
+      - node35-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.44
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node36:
+    build: .
+    container_name: fall25-node36
+    hostname: node36
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node36.key
+      --store /app/data/node36
+      --min-outbound 4
+      --control /app/logs/node36.json
+      --log /app/logs/node36.log
+    volumes:
+      - node36-data:/app/data
+      - node36-keys:/app/keys
+      - node36-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.45
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node37:
+    build: .
+    container_name: fall25-node37
+    hostname: node37
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node37.key
+      --store /app/data/node37
+      --min-outbound 4
+      --control /app/logs/node37.json
+      --log /app/logs/node37.log
+    volumes:
+      - node37-data:/app/data
+      - node37-keys:/app/keys
+      - node37-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.46
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node38:
+    build: .
+    container_name: fall25-node38
+    hostname: node38
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node38.key
+      --store /app/data/node38
+      --min-outbound 4
+      --control /app/logs/node38.json
+      --log /app/logs/node38.log
+    volumes:
+      - node38-data:/app/data
+      - node38-keys:/app/keys
+      - node38-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.47
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node39:
+    build: .
+    container_name: fall25-node39
+    hostname: node39
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node39.key
+      --store /app/data/node39
+      --min-outbound 4
+      --control /app/logs/node39.json
+      --log /app/logs/node39.log
+    volumes:
+      - node39-data:/app/data
+      - node39-keys:/app/keys
+      - node39-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.48
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+  node40:
+    build: .
+    container_name: fall25-node40
+    hostname: node40
+    command: run
+      --listen /ip4/0.0.0.0/tcp/4001
+      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --key /app/keys/node40.key
+      --store /app/data/node40
+      --min-outbound 4
+      --control /app/logs/node40.json
+      --log /app/logs/node40.log
+    volumes:
+      - node40-data:/app/data
+      - node40-keys:/app/keys
+      - node40-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.49
+    depends_on:
+      bootstrap:
+        condition: service_healthy
+    environment:
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
 networks:
   node-network:
     driver: bridge
@@ -122,3 +986,111 @@ volumes:
   node4-data:
   node4-keys:
   node4-logs:
+  node5-data:
+  node5-keys:
+  node5-logs:
+  node6-data:
+  node6-keys:
+  node6-logs:
+  node7-data:
+  node7-keys:
+  node7-logs:
+  node8-data:
+  node8-keys:
+  node8-logs:
+  node9-data:
+  node9-keys:
+  node9-logs:
+  node10-data:
+  node10-keys:
+  node10-logs:
+  node11-data:
+  node11-keys:
+  node11-logs:
+  node12-data:
+  node12-keys:
+  node12-logs:
+  node13-data:
+  node13-keys:
+  node13-logs:
+  node14-data:
+  node14-keys:
+  node14-logs:
+  node15-data:
+  node15-keys:
+  node15-logs:
+  node16-data:
+  node16-keys:
+  node16-logs:
+  node17-data:
+  node17-keys:
+  node17-logs:
+  node18-data:
+  node18-keys:
+  node18-logs:
+  node19-data:
+  node19-keys:
+  node19-logs:
+  node20-data:
+  node20-keys:
+  node20-logs:
+  node21-data:
+  node21-keys:
+  node21-logs:
+  node22-data:
+  node22-keys:
+  node22-logs:
+  node23-data:
+  node23-keys:
+  node23-logs:
+  node24-data:
+  node24-keys:
+  node24-logs:
+  node25-data:
+  node25-keys:
+  node25-logs:
+  node26-data:
+  node26-keys:
+  node26-logs:
+  node27-data:
+  node27-keys:
+  node27-logs:
+  node28-data:
+  node28-keys:
+  node28-logs:
+  node29-data:
+  node29-keys:
+  node29-logs:
+  node30-data:
+  node30-keys:
+  node30-logs:
+  node31-data:
+  node31-keys:
+  node31-logs:
+  node32-data:
+  node32-keys:
+  node32-logs:
+  node33-data:
+  node33-keys:
+  node33-logs:
+  node34-data:
+  node34-keys:
+  node34-logs:
+  node35-data:
+  node35-keys:
+  node35-logs:
+  node36-data:
+  node36-keys:
+  node36-logs:
+  node37-data:
+  node37-keys:
+  node37-logs:
+  node38-data:
+  node38-keys:
+  node38-logs:
+  node39-data:
+  node39-keys:
+  node39-logs:
+  node40-data:
+  node40-keys:
+  node40-logs:

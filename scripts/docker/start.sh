@@ -93,9 +93,12 @@ for i in $(seq 2 "$N"); do
 EOF
 done
 
-# Build the image first
+# Build the image first (skip if already exists and up to date)
 echo "Building Docker image..."
-docker-compose build
+if ! docker-compose build --progress=plain 2>&1 | tee /tmp/docker_build.log; then
+  echo "ERROR: Docker build failed. Check /tmp/docker_build.log for details" >&2
+  exit 1
+fi
 
 # Start bootstrap node first
 echo "Starting bootstrap node..."
@@ -105,7 +108,15 @@ docker-compose up -d bootstrap
 echo "Waiting for bootstrap node to be ready..."
 PEER_ID=""
 BOOTSTRAP_SEED=""
-for i in {1..60}; do
+MAX_WAIT=120
+for i in $(seq 1 $MAX_WAIT); do
+  # Check if container is running
+  if ! docker-compose ps bootstrap | grep -q "Up"; then
+    echo "ERROR: Bootstrap container is not running" >&2
+    docker-compose logs bootstrap | tail -50
+    exit 1
+  fi
+  
   if docker-compose exec -T bootstrap sh -c "test -f /app/logs/bootstrap.json" 2>/dev/null; then
     sleep 2
     CTRL_ADDR=$(docker-compose exec -T bootstrap jq -r '.addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
@@ -115,7 +126,7 @@ for i in {1..60}; do
         PEER_ID=$(docker-compose exec -T bootstrap curl -sf "http://$CTRL_ADDR/id" | jq -r '.peer' 2>/dev/null || echo "")
         if [[ -n "$PEER_ID" && "$PEER_ID" != "null" ]]; then
           BOOTSTRAP_SEED="/ip4/172.20.0.10/tcp/4001/p2p/$PEER_ID"
-          echo "Bootstrap node ready!"
+          echo "Bootstrap node ready! (took ${i}s)"
           echo "  Control: $CTRL_ADDR"
           echo "  Peer ID: $PEER_ID"
           echo "  Seed: $BOOTSTRAP_SEED"
@@ -124,12 +135,24 @@ for i in {1..60}; do
       fi
     fi
   fi
+  
+  if [[ $((i % 10)) -eq 0 ]]; then
+    echo "  Still waiting... (${i}s/${MAX_WAIT}s)"
+    docker-compose logs bootstrap | tail -5
+  fi
   sleep 1
 done
 
 if [[ -z "$PEER_ID" || "$PEER_ID" == "null" ]]; then
-  echo "Error: Failed to get bootstrap peer ID" >&2
-  docker-compose logs bootstrap
+  echo "ERROR: Failed to get bootstrap peer ID after ${MAX_WAIT}s" >&2
+  echo "Bootstrap container status:"
+  docker-compose ps bootstrap
+  echo ""
+  echo "Bootstrap logs (last 50 lines):"
+  docker-compose logs bootstrap | tail -50
+  echo ""
+  echo "Checking if bootstrap.json exists:"
+  docker-compose exec -T bootstrap ls -la /app/logs/ 2>&1 || true
   exit 1
 fi
 

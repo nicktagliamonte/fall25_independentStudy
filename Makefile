@@ -121,4 +121,15 @@ plot-fault-tolerance:
 	fi
 	@python3 scripts/plots/fault_tolerance_plot.py $(RESULTS_DIR)
 
+propagation-depth-test:
+	@bash scripts/scenarios/propagation_depth_test.sh $(NODES) $(RUNS) $(MIN_OUTBOUND)
+
+plot-propagation-depth:
+	@if [ -z "$(RESULTS_DIR)" ]; then \
+		echo "Usage: make plot-propagation-depth RESULTS_DIR=<results_dir>"; \
+		echo "  RESULTS_DIR: directory from propagation-depth-test (e.g., artifacts/propagation_depth_tests/TIMESTAMP)"; \
+		exit 1; \
+	fi
+	@python3 scripts/plots/propagation_depth_plot.py $(RESULTS_DIR)
+
 

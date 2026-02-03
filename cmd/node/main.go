@@ -1,15 +1,17 @@
-// Purpose: Thin CLI entrypoint for node; delegates to package node.
+// Purpose: CLI entrypoint for the node binary.
 
 package main
 
 import (
 	"log"
+	"os"
 
-	"github.com/nicktagliamonte/fall25_independentStudy/pkg/node"
+	n "github.com/nicktagliamonte/fall25_independentStudy/pkg/node"
 )
 
 func main() {
-	if err := node.Run(); err != nil {
+	if err := n.Run(); err != nil {
 		log.Fatal(err)
 	}
+	os.Exit(0)
 }
