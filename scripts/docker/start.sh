@@ -20,7 +20,9 @@ echo "Starting $N Docker nodes..."
 # Stop any existing containers first
 if docker-compose ps 2>/dev/null | grep -q "Up"; then
   echo "Stopping existing containers..."
-  docker-compose down
+  # Use stop + rm instead of down to avoid network removal issues when Swarm is using it
+  docker-compose stop >/dev/null 2>&1 || true
+  docker-compose rm -f >/dev/null 2>&1 || true
 fi
 
 # Generate docker-compose.yml dynamically
