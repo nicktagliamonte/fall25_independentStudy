@@ -31,18 +31,58 @@ def load_depth_data(results_dir):
         return None
     
     data_by_n = defaultdict(list)
+    
+    # Handle both JSONL (one JSON per line) and multi-line JSON formats
     with open(depths_file, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
+        content = f.read()
+    
+    # Try to parse as JSONL first (one JSON object per line)
+    lines = content.strip().split('\n')
+    current_json = []
+    brace_count = 0
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            if current_json and brace_count == 0:
+                # Complete JSON object found
+                try:
+                    entry = json.loads('\n'.join(current_json))
+                    if isinstance(entry, dict):
+                        n = entry.get('n_nodes')
+                        if n:
+                            data_by_n[n].append(entry)
+                except json.JSONDecodeError:
+                    pass
+                current_json = []
+            continue
+        
+        # Count braces to track JSON object boundaries
+        brace_count += line.count('{') - line.count('}')
+        current_json.append(line)
+        
+        # If braces are balanced, we have a complete JSON object
+        if brace_count == 0 and current_json:
             try:
-                entry = json.loads(line)
+                entry = json.loads('\n'.join(current_json))
+                if isinstance(entry, dict):
+                    n = entry.get('n_nodes')
+                    if n:
+                        data_by_n[n].append(entry)
+            except json.JSONDecodeError:
+                pass
+            current_json = []
+    
+    # Handle any remaining JSON object
+    if current_json and brace_count == 0:
+        try:
+            entry = json.loads('\n'.join(current_json))
+            if isinstance(entry, dict):
                 n = entry.get('n_nodes')
                 if n:
                     data_by_n[n].append(entry)
-            except json.JSONDecodeError:
-                continue
+        except json.JSONDecodeError:
+            pass
     
     # Aggregate by N (average across runs)
     aggregated = []
@@ -68,6 +108,25 @@ def load_depth_data(results_dir):
     return aggregated
 
 
+def load_summary_data(results_dir):
+    """Load propagation depth data from summary JSON file."""
+    results_dir = Path(results_dir)
+    summary_file = results_dir / 'plots' / 'propagation_depth_summary.json'
+    
+    if not summary_file.exists():
+        return None
+    
+    try:
+        with open(summary_file, 'r') as f:
+            data = json.load(f)
+        if isinstance(data, list) and len(data) > 0:
+            return data
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"WARNING: Could not load summary file: {e}", file=sys.stderr)
+    
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(description='Plot propagation depth vs network size')
     parser.add_argument('results_dir', help='Propagation depth test results directory')
@@ -75,6 +134,8 @@ def main():
                        help='Output directory for plots')
     parser.add_argument('--normalize', action='store_true',
                        help='Normalize depths to match log_k(N) scaling (for demonstration)')
+    parser.add_argument('--use-summary', action='store_true',
+                       help='Load data from existing summary.json instead of depths.jsonl')
     
     args = parser.parse_args()
     
@@ -90,10 +151,16 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Load data
-    data = load_depth_data(results_dir)
-    if not data:
-        print("ERROR: No depth data found", file=sys.stderr)
-        sys.exit(1)
+    if args.use_summary:
+        data = load_summary_data(results_dir)
+        if not data:
+            print("ERROR: Summary file not found. Run without --use-summary first.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        data = load_depth_data(results_dir)
+        if not data:
+            print("ERROR: No depth data found", file=sys.stderr)
+            sys.exit(1)
     
     # Normalize if requested (scale to match log_k(N))
     if args.normalize and len(data) > 1:
@@ -136,11 +203,12 @@ def main():
     
     print("=" * 100 + "\n")
     
-    # Save summary JSON
-    summary_file = output_dir / 'propagation_depth_summary.json'
-    with open(summary_file, 'w') as f:
-        json.dump(data, f, indent=2)
-    print(f"Summary data saved to: {summary_file}")
+    # Save summary JSON (unless using existing summary)
+    if not args.use_summary:
+        summary_file = output_dir / 'propagation_depth_summary.json'
+        with open(summary_file, 'w') as f:
+            json.dump(data, f, indent=2)
+        print(f"Summary data saved to: {summary_file}")
     
     # Create plots if matplotlib available
     if HAS_MATPLOTLIB and len(data) > 1:

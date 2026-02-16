@@ -53,7 +53,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node3:
     build: .
     container_name: fall25-node3
@@ -77,7 +77,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node4:
     build: .
     container_name: fall25-node4
@@ -101,7 +101,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node5:
     build: .
     container_name: fall25-node5
@@ -125,7 +125,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node6:
     build: .
     container_name: fall25-node6
@@ -149,7 +149,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node7:
     build: .
     container_name: fall25-node7
@@ -173,7 +173,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node8:
     build: .
     container_name: fall25-node8
@@ -197,7 +197,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node9:
     build: .
     container_name: fall25-node9
@@ -221,7 +221,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node10:
     build: .
     container_name: fall25-node10
@@ -245,7 +245,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node11:
     build: .
     container_name: fall25-node11
@@ -269,7 +269,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node12:
     build: .
     container_name: fall25-node12
@@ -293,7 +293,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node13:
     build: .
     container_name: fall25-node13
@@ -317,7 +317,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node14:
     build: .
     container_name: fall25-node14
@@ -341,7 +341,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node15:
     build: .
     container_name: fall25-node15
@@ -365,7 +365,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node16:
     build: .
     container_name: fall25-node16
@@ -389,7 +389,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node17:
     build: .
     container_name: fall25-node17
@@ -413,7 +413,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node18:
     build: .
     container_name: fall25-node18
@@ -437,7 +437,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node19:
     build: .
     container_name: fall25-node19
@@ -461,7 +461,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node20:
     build: .
     container_name: fall25-node20
@@ -485,7 +485,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node21:
     build: .
     container_name: fall25-node21
@@ -509,7 +509,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node22:
     build: .
     container_name: fall25-node22
@@ -533,7 +533,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node23:
     build: .
     container_name: fall25-node23
@@ -557,7 +557,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node24:
     build: .
     container_name: fall25-node24
@@ -581,7 +581,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node25:
     build: .
     container_name: fall25-node25
@@ -605,7 +605,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node26:
     build: .
     container_name: fall25-node26
@@ -629,7 +629,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node27:
     build: .
     container_name: fall25-node27
@@ -653,7 +653,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node28:
     build: .
     container_name: fall25-node28
@@ -677,7 +677,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node29:
     build: .
     container_name: fall25-node29
@@ -701,7 +701,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node30:
     build: .
     container_name: fall25-node30
@@ -725,7 +725,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node31:
     build: .
     container_name: fall25-node31
@@ -749,7 +749,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node32:
     build: .
     container_name: fall25-node32
@@ -773,7 +773,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node33:
     build: .
     container_name: fall25-node33
@@ -797,7 +797,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node34:
     build: .
     container_name: fall25-node34
@@ -821,7 +821,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node35:
     build: .
     container_name: fall25-node35
@@ -845,7 +845,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node36:
     build: .
     container_name: fall25-node36
@@ -869,7 +869,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node37:
     build: .
     container_name: fall25-node37
@@ -893,7 +893,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node38:
     build: .
     container_name: fall25-node38
@@ -917,7 +917,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node39:
     build: .
     container_name: fall25-node39
@@ -941,7 +941,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node40:
     build: .
     container_name: fall25-node40
@@ -965,7 +965,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
 networks:
   node-network:
     driver: bridge

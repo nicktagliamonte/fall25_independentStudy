@@ -87,7 +87,11 @@ const manifestIndexNS = "/manifest/index/"
 
 func PutRawBlock(ctx context.Context, bsvc *bserv.BlockService, data []byte) (cid.Cid, error) {
 	blk := blocks.NewBlock(data) // <- compute a proper CID
-	if err := (*bsvc).AddBlock(ctx, blk); err != nil {
+	err := (*bsvc).AddBlock(ctx, blk)
+	if err != nil {
+		err = (*bsvc).AddBlock(ctx, blk)
+	}
+	if err != nil {
 		return cid.Cid{}, err
 	}
 	return blk.Cid(), nil

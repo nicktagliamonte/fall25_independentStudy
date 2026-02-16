@@ -46,7 +46,11 @@ func AppendPeerAdded(ctx context.Context, d ds.Batching, bsvc *bserv.BlockServic
 	if err != nil {
 		return cid.Cid{}, 0, err
 	}
-	if err := (*bsvc).AddBlock(ctx, blk); err != nil {
+	err = (*bsvc).AddBlock(ctx, blk)
+	if err != nil {
+		err = (*bsvc).AddBlock(ctx, blk)
+	}
+	if err != nil {
 		return cid.Cid{}, 0, err
 	}
 
