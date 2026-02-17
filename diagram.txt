@@ -1,0 +1,57 @@
+graph TD
+    subgraph Internal
+        subgraph Control
+            A[stream.go]
+            B[server.go]
+            C[metrics.go]
+            D[dynamic_router.go]
+            E[wire.go]
+        end
+        subgraph Net
+            F[handshake.go]
+            G[peerstore.go]
+            H[keys.go]
+            I[host.go]
+            J[handshake_gate.go]
+        end
+        subgraph Storage
+            K[persist.go]
+            L[state.go]
+            M[store.go]
+            N[typed.go]
+        end
+    end
+
+    subgraph Pkg
+        O[start.go]
+        P[api.go]
+        Q[run.go]
+        R[restore_test.go]
+        S[api_test.go]
+    end
+
+    A --> F
+    A --> K
+    B --> F
+    B --> K
+    B --> G
+    C --> B
+    D --> B
+    D --> G
+    D --> F
+    F --> I
+    F --> J
+    G --> K
+    H --> I
+    I --> O
+    J --> F
+    K --> O
+    K --> P
+    L --> K
+    M --> K
+    N --> M
+    O --> P
+    O --> Q
+    P --> Q
+    Q --> R
+    Q --> S
