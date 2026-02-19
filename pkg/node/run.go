@@ -156,11 +156,35 @@ func dialWithTimeout(ctx context.Context, h host.Host, info peer.AddrInfo, d tim
 	return h.Connect(connectCtx, info)
 }
 
+func getHandshakePolicyFromEnv(require bool, pubs string, token string, timeout time.Duration) myhost.HandshakePolicy {
+	var caPubs [][]byte
+	if pubs != "" {
+		for _, s := range strings.Split(pubs, ",") {
+			b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+			if err == nil && len(b) == 32 {
+				caPubs = append(caPubs, b)
+			}
+		}
+	}
+	policyBase := myhost.HandshakePolicy{Timeout: timeout, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
+	if require || (len(caPubs) > 0 && token != "") {
+		policyBase.RequireCredential = true
+		policyBase.AuthScheme = "token-ed25519-v1"
+		policyBase.CAPubKeys = caPubs
+		policyBase.Token = token
+	}
+	return policyBase
+}
+
 // Run executes the CLI behavior of the node and returns an error on failure.
 func Run() error {
 	if len(os.Args) < 2 {
 		return fmt.Errorf("usage: %s <run|put|connect|get> [flags]", os.Args[0])
 	}
+
+	requireSNG40 := os.Getenv("SNG40_ENV") == "true"
+	tokenSNG40 := os.Getenv("SNG40_TOKEN")
+	pubsSNG40 := os.Getenv("SNG40_CA_PUBS")
 
 	subcmd := os.Args[1]
 	switch subcmd {
@@ -699,24 +723,7 @@ func Run() error {
 		defer h.Close()
 
 		// Install handshake hooks for inline mode.
-		require := os.Getenv("SNG40_REQUIRE_TOKEN") == "true"
-		var caPubs [][]byte
-		if pubs := os.Getenv("SNG40_CA_PUBS"); pubs != "" {
-			for _, s := range strings.Split(pubs, ",") {
-				b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
-				if err == nil && len(b) == 32 {
-					caPubs = append(caPubs, b)
-				}
-			}
-		}
-		token := os.Getenv("SNG40_TOKEN")
-		policyBase := myhost.HandshakePolicy{Timeout: 10 * time.Second, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
-		if require || (len(caPubs) > 0 && token != "") {
-			policyBase.RequireCredential = true
-			policyBase.AuthScheme = "token-ed25519-v1"
-			policyBase.CAPubKeys = caPubs
-			policyBase.Token = token
-		}
+		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, 10*time.Second)
 
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
@@ -817,36 +824,21 @@ func Run() error {
 		defer h.Close()
 
 		// Install handshake hooks for inline connect mode.
-		require := os.Getenv("SNG40_REQUIRE_TOKEN") == "true"
-		var caPubs [][]byte
-		if pubs := os.Getenv("SNG40_CA_PUBS"); pubs != "" {
-			for _, s := range strings.Split(pubs, ",") {
-				b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
-				if err == nil && len(b) == 32 {
-					caPubs = append(caPubs, b)
-				}
-			}
-		}
-		token := os.Getenv("SNG40_TOKEN")
-		base := myhost.HandshakePolicy{Timeout: dur, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
-		if require || (len(caPubs) > 0 && token != "") {
-			base.RequireCredential = true
-			base.AuthScheme = "token-ed25519-v1"
-			base.CAPubKeys = caPubs
-			base.Token = token
-		}
+		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, dur)
+
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
 			return err
 		}
 		defer stack.Bitswap.Close()
+
 		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
 		headStr := ""
 		if head.Defined() {
 			headStr = head.String()
 		}
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, base)
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base, func(pid peer.ID) {
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
 
@@ -977,24 +969,8 @@ func Run() error {
 		defer h.Close()
 
 		// Install handshake hooks for inline get mode.
-		require := os.Getenv("SNG40_REQUIRE_TOKEN") == "true"
-		var caPubs [][]byte
-		if pubs := os.Getenv("SNG40_CA_PUBS"); pubs != "" {
-			for _, s := range strings.Split(pubs, ",") {
-				b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
-				if err == nil && len(b) == 32 {
-					caPubs = append(caPubs, b)
-				}
-			}
-		}
-		token := os.Getenv("SNG40_TOKEN")
-		base := myhost.HandshakePolicy{Timeout: dur, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
-		if require || (len(caPubs) > 0 && token != "") {
-			base.RequireCredential = true
-			base.AuthScheme = "token-ed25519-v1"
-			base.CAPubKeys = caPubs
-			base.Token = token
-		}
+		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, dur)
+
 		// stack is created below; handshake registration with state must occur after
 
 		maddr, err := multiaddr.NewMultiaddr(fromAddr)
@@ -1020,8 +996,8 @@ func Run() error {
 		if head.Defined() {
 			headStr = head.String()
 		}
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, base)
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, base, func(pid peer.ID) {
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
 
