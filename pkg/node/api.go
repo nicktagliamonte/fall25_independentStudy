@@ -16,6 +16,7 @@ type Options struct {
 	// Network
 	ListenMultiaddrs []string
 	BootstrapPeers   []string
+	DHTClientMode    bool // if true, DHT runs as client (query-only); default false = server
 	MinOutbound      int
 	PerIPDialLimit   int
 	DialTimeout      time.Duration

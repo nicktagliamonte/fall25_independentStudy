@@ -247,6 +247,21 @@ func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude m
 	return infos, retMeta
 }
 
+// Remove deletes a peer from the store. Used when AddressBucketStore evicts due to Sybil limits.
+func (ps *PeerStore) Remove(pid peer.ID) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	id := pid.String()
+	if _, exists := ps.byID[id]; !exists {
+		return nil
+	}
+	if err := ps.nsp.Delete(context.Background(), ds.NewKey(escapeKey(id))); err != nil {
+		return err
+	}
+	delete(ps.byID, id)
+	return nil
+}
+
 // Prune removes peers that exceed failure limits or are stale.
 func (ps *PeerStore) Prune() (removed int, err error) {
 	ps.mu.Lock()
@@ -339,4 +354,16 @@ func escapeKey(id string) string {
 
 func unescapeKey(k string) string {
 	return strings.ReplaceAll(k, "_", "/")
+}
+
+// UpsertLearnedPeer records a peer learned from handshake or gossip. If AttackMitigation has
+// AddressBucketStore, adds to it for Sybil resistance; evicted peers are removed from PeerStore.
+func UpsertLearnedPeer(ps *PeerStore, am *AttackMitigation, pid peer.ID, addrs []ma.Multiaddr, services uint64, source string) error {
+	if am != nil && am.AddressBucketStore != nil {
+		evicted, _ := am.AddressBucketStore.Add(pid, addrs)
+		if evicted != "" {
+			_ = ps.Remove(evicted)
+		}
+	}
+	return ps.Upsert(pid, addrs, services, source)
 }

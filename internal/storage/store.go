@@ -17,49 +17,51 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	dsync "github.com/ipfs/go-datastore/sync"
 
-	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
+	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/routing"
+
+	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 )
 
 type Stack struct {
-	Datastore  ds.Batching
-	Blockstore bstore.Blockstore
-	Bitswap    *bitswap.Bitswap
-	BlockSvc   *bserv.BlockService
+	Datastore        ds.Batching
+	Blockstore       bstore.Blockstore
+	Bitswap          *bitswap.Bitswap
+	BlockSvc         *bserv.BlockService
+	DHT              *kaddht.IpfsDHT
+	Router           routing.ContentRouting
+	ProviderRecords  *LocalProviderRecords
+	OnAnnounce       func() // called after each AnnounceProvider (optional)
+	AnnounceQueue    *AnnounceQueue // when set and partitioned, announcements are queued for post-heal
+}
+
+// NewEphemeralBlockstore creates an in-memory blockstore and datastore.
+func NewEphemeralBlockstore() (bstore.Blockstore, ds.Batching) {
+	raw := ds.NewMapDatastore()
+	safe := dsync.MutexWrap(raw)
+	bs := bstore.NewBlockstore(safe)
+	return bs, safe
 }
 
 func NewStack(ctx context.Context, h host.Host) (*Stack, error) {
-	// In-memory DS/BS for PoC
-	raw := ds.NewMapDatastore()
-	safe := dsync.MutexWrap(raw)
-
-	bs := bstore.NewBlockstore(safe)
-
-	// Bitswap network over our libp2p host (no routing/DHT for PoC)
-	network := bsnet.NewFromIpfsHost(h)
-
-	// No-op content discovery (so Bitswap won’t try to use DHT/IPNI)
-	nullRouter := routinghelpers.Null{}
-
-	engine := bitswap.New(ctx, network, nullRouter, bs)
-	bsvc := bserv.New(bs, engine) // BlockService backed by Bitswap
-
-	return &Stack{
-		Datastore:  safe,
-		Blockstore: bs,
-		Bitswap:    engine,
-		BlockSvc:   &bsvc,
-	}, nil
+	dht, err := myhost.NewDHT(ctx, h, myhost.DHTConfig{Mode: myhost.DHTModeServer})
+	if err != nil {
+		return nil, err
+	}
+	stack, err := NewStackWithRouter(ctx, h, dht)
+	if err != nil {
+		_ = dht.Close()
+		return nil, err
+	}
+	stack.DHT = dht
+	stack.Router = dht
+	return stack, nil
 }
 
 // NewStackWithRouter is like NewStack but allows supplying a ContentRouting implementation.
 func NewStackWithRouter(ctx context.Context, h host.Host, router routing.ContentRouting) (*Stack, error) {
-	// In-memory DS/BS for PoC
-	raw := ds.NewMapDatastore()
-	safe := dsync.MutexWrap(raw)
-
-	bs := bstore.NewBlockstore(safe)
+	bs, safe := NewEphemeralBlockstore()
 
 	// Bitswap network over our libp2p host
 	network := bsnet.NewFromIpfsHost(h)
@@ -72,7 +74,16 @@ func NewStackWithRouter(ctx context.Context, h host.Host, router routing.Content
 		Blockstore: bs,
 		Bitswap:    engine,
 		BlockSvc:   &bsvc,
+		Router:     router,
 	}, nil
+}
+
+// Close closes Bitswap and DHT (if owned by this stack).
+func (s *Stack) Close() {
+	_ = s.Bitswap.Close()
+	if s.DHT != nil {
+		_ = s.DHT.Close()
+	}
 }
 
 // NewStackFromBlockstore builds a stack from a provided blockstore and datastore.
@@ -80,7 +91,7 @@ func NewStackFromBlockstore(ctx context.Context, h host.Host, bs bstore.Blocksto
 	network := bsnet.NewFromIpfsHost(h)
 	engine := bitswap.New(ctx, network, router, bs)
 	bsvc := bserv.New(bs, engine)
-	return &Stack{Datastore: d, Blockstore: bs, Bitswap: engine, BlockSvc: &bsvc}, nil
+	return &Stack{Datastore: d, Blockstore: bs, Bitswap: engine, BlockSvc: &bsvc, Router: router}, nil
 }
 
 const manifestIndexNS = "/manifest/index/"
@@ -114,7 +125,45 @@ func IndexCID(ctx context.Context, d ds.Batching, c cid.Cid) error {
 	return d.Put(ctx, key, []byte{1})
 }
 
-// PutRawBlockIndexed stores a block and indexes its CID.
+// AnnounceProvider announces the CID to the DHT so other nodes can discover this peer as a provider.
+// When AnnounceQueue is set and partitioned, queues for post-heal instead of announcing.
+func (s *Stack) AnnounceProvider(ctx context.Context, c cid.Cid) {
+	if s.ProviderRecords != nil {
+		s.ProviderRecords.Add(c)
+	}
+	if s.AnnounceQueue != nil && s.AnnounceQueue.IsPartitioned() {
+		s.AnnounceQueue.Add(c)
+		_ = RecordPartitionLocalOp(ctx, s.Datastore, "put", c)
+		return
+	}
+	Announce(ctx, s.Router, c)
+	if s.OnAnnounce != nil {
+		s.OnAnnounce()
+	}
+}
+
+// FlushQueuedAnnouncements drains the announce queue and announces each CID to the DHT.
+// Call after network heal. Uses Stack's Router; no-op if AnnounceQueue is nil.
+func (s *Stack) FlushQueuedAnnouncements(ctx context.Context) {
+	if s.AnnounceQueue == nil {
+		return
+	}
+	s.AnnounceQueue.Flush(ctx, func(ctx context.Context, c cid.Cid) {
+		Announce(ctx, s.Router, c)
+		if s.OnAnnounce != nil {
+			s.OnAnnounce()
+		}
+	})
+}
+
+// AnnounceProviderAsync runs AnnounceProvider in a goroutine so the caller can return
+// immediately. Ensures local Put completes before any DHT work; under partition,
+// local operations continue and announcement is best-effort.
+func (s *Stack) AnnounceProviderAsync(ctx context.Context, c cid.Cid) {
+	go s.AnnounceProvider(ctx, c)
+}
+
+// PutRawBlockIndexed stores a block and indexes its CID. Local only; no network.
 func PutRawBlockIndexed(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, data []byte) (cid.Cid, error) {
 	c, err := PutRawBlock(ctx, bsvc, data)
 	if err != nil {

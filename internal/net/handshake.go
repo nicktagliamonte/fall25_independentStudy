@@ -5,7 +5,9 @@ package net
 import (
 	"context"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,6 +39,8 @@ type VersionMsg struct {
 	WantPeerlist bool     `json:"want_peerlist,omitempty"`
 	ListenAddrs  []string `json:"listen_addrs,omitempty"`
 	Peers        []string `json:"peers,omitempty"` // multiaddrs with /p2p/<peerID>
+	// Challenge-response: base64(sign(remote_nonce)) proving possession of private key
+	ChallengeResponse string `json:"challenge_response,omitempty"`
 }
 
 type VerAckMsg struct{}
@@ -61,16 +65,67 @@ type HandshakePolicy struct {
 	AuthScheme        string   // "token-ed25519-v1"
 	CAPubKeys         [][]byte // one or more ed25519 public keys
 	Token             string   // signed token carried in AuthProof
+	// Anti-replay (optional; nil = skip)
+	NonceCache       *NonceCache
+	MessageHashCache *MessageHashCache
+	TimestampChecker *TimestampChecker
+	// Attack mitigation (optional; nil = skip)
+	AttackMitigation *AttackMitigation
 }
 
 // PeerProvider is used by the responder to include a small peer sample.
 type PeerProvider func(max int) []peer.AddrInfo
 
+// EnableAntiReplay adds NonceCache, MessageHashCache, and TimestampChecker to the policy
+// and starts their expunge loops. Returns a cleanup func to call on shutdown.
+func EnableAntiReplay(ctx context.Context, policy *HandshakePolicy) (cleanup func()) {
+	nc := NewNonceCache()
+	mhc := NewMessageHashCache()
+	tc := NewTimestampChecker()
+	go nc.Start(ctx)
+	go mhc.Start(ctx)
+	policy.NonceCache = nc
+	policy.MessageHashCache = mhc
+	policy.TimestampChecker = tc
+	return func() {
+		nc.Stop()
+		mhc.Stop()
+	}
+}
+
+// EnableAttackMitigation adds BanList, EclipseLimiter, PeerRateLimiter, and PeerMisbehaviorScorer
+// to the policy. Starts a decay loop for misbehavior scores. Returns a cleanup func (no-op; decay
+// exits when ctx is cancelled).
+func EnableAttackMitigation(ctx context.Context, policy *HandshakePolicy) (cleanup func()) {
+	am := &AttackMitigation{
+		BanList:            NewBanList(),
+		Eclipse:            NewEclipseLimiter(ASNResolverOption(NewCymruASNResolver())),
+		RateLimiter:        NewPeerRateLimiter(),
+		Misbehavior:        NewPeerMisbehaviorScorer(),
+		AddressBucketStore: NewAddressBucketStore(),
+		ResourceCap:        NewPeerResourceCap(),
+	}
+	ticker := time.NewTicker(DefaultMisbehaviorDecayPeriod)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				am.Misbehavior.Decay()
+			}
+		}
+	}()
+	policy.AttackMitigation = am
+	return func() {}
+}
+
 // RegisterHandshake installs a responder handler on the host.
 func RegisterHandshake(h host.Host, local HandshakeLocal, policy HandshakePolicy) {
 	h.SetStreamHandler(HandshakeProtocolID, func(s network.Stream) {
 		defer s.Close()
-		_ = responder(s, local, policy, nil)
+		_ = responder(s, h, local, policy, nil)
 	})
 }
 
@@ -78,7 +133,7 @@ func RegisterHandshake(h host.Host, local HandshakeLocal, policy HandshakePolicy
 func RegisterHandshakeWithPeers(h host.Host, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) {
 	h.SetStreamHandler(HandshakeProtocolID, func(s network.Stream) {
 		defer s.Close()
-		_ = responder(s, local, policy, provider)
+		_ = responder(s, h, local, policy, provider)
 	})
 }
 
@@ -96,7 +151,7 @@ func PerformHandshakeWithState(ctx context.Context, h host.Host, p peer.ID, poli
 		return nil, err
 	}
 	defer s.Close()
-	learned, remote, err := initiatorWithState(s, local, policy)
+	learned, remote, err := initiatorWithState(s, h, local, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +166,7 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 		return nil, err
 	}
 	defer s.Close()
-	learned, _, err := initiatorWithState(s, local, policy)
+	learned, _, err := initiatorWithState(s, h, local, policy)
 	if err != nil {
 		return nil, err
 	}
@@ -120,14 +175,8 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 	return learned, nil
 }
 
-// initiator is preserved for callers that don't need remote state.
-func initiator(s network.Stream, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, error) {
-	learned, _, err := initiatorWithState(s, local, policy)
-	return learned, err
-}
-
 // initiatorWithState returns learned peers and the responder's VersionMsg for state summary.
-func initiatorWithState(s network.Stream, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, VersionMsg, error) {
+func initiatorWithState(s network.Stream, h host.Host, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, VersionMsg, error) {
 	deadline := time.Now().Add(policyTimeout(policy))
 	_ = s.SetDeadline(deadline)
 	enc := json.NewEncoder(s)
@@ -159,6 +208,9 @@ func initiatorWithState(s network.Stream, local HandshakeLocal, policy Handshake
 	if err := dec.Decode(&remote); err != nil {
 		return nil, VersionMsg{}, err
 	}
+	if err := applyAntiReplay(policy, s.Conn().RemotePeer(), remote); err != nil {
+		return nil, VersionMsg{}, err
+	}
 	if err := validateVersion(remote, policy); err != nil {
 		return nil, VersionMsg{}, err
 	}
@@ -169,6 +221,12 @@ func initiatorWithState(s network.Stream, local HandshakeLocal, policy Handshake
 		}
 		if ok := verifyTokenAny(policy.CAPubKeys, s.Conn().RemotePeer(), remote.AuthProof); !ok {
 			return nil, VersionMsg{}, errors.New("bad auth token from responder")
+		}
+	}
+	// Challenge-response: verify responder signed our nonce
+	if remote.ChallengeResponse != "" {
+		if err := verifyChallengeResponse(h, s.Conn().RemotePeer(), my.Nonce, remote.ChallengeResponse); err != nil {
+			return nil, VersionMsg{}, err
 		}
 	}
 
@@ -189,7 +247,25 @@ func initiatorWithState(s network.Stream, local HandshakeLocal, policy Handshake
 	return learned, remote, nil
 }
 
-func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) error {
+func responder(s network.Stream, h host.Host, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) (err error) {
+	pid := s.Conn().RemotePeer()
+	if am := policy.AttackMitigation; am != nil {
+		if am.BanList.IsBanned(pid) {
+			return errors.New("peer banned")
+		}
+		if !am.RateLimiter.Allow(pid) {
+			return errors.New("rate limited")
+		}
+		defer func() {
+			if err != nil {
+				am.Misbehavior.AddMisbehavior(pid, 10)
+				if am.Misbehavior.ShouldDisconnect(pid) {
+					am.BanList.Ban(pid)
+				}
+			}
+		}()
+	}
+
 	deadline := time.Now().Add(policyTimeout(policy))
 	_ = s.SetDeadline(deadline)
 	enc := json.NewEncoder(s)
@@ -197,15 +273,19 @@ func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, p
 
 	// 1) recv version, validate
 	var remote VersionMsg
-	if err := dec.Decode(&remote); err != nil {
+	if err = dec.Decode(&remote); err != nil {
 		return err
 	}
-	if err := validateVersion(remote, policy); err != nil {
+	if err = applyAntiReplay(policy, pid, remote); err != nil {
+		return err
+	}
+	if err = validateVersion(remote, policy); err != nil {
 		return err
 	}
 	// If credential required: ensure scheme present; verify token now.
 	if policy.RequireCredential && remote.AuthScheme != policy.AuthScheme {
-		return errors.New("unsupported auth scheme")
+		err = errors.New("unsupported auth scheme")
+		return err
 	}
 
 	// 2) send version
@@ -222,6 +302,13 @@ func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, p
 		my.AuthScheme = policy.AuthScheme
 		my.AuthProof = policy.Token
 	}
+	// Challenge-response: sign initiator's nonce
+	sig, signErr := signChallenge(h, remote.Nonce)
+	if signErr != nil {
+		err = signErr
+		return err
+	}
+	my.ChallengeResponse = base64.StdEncoding.EncodeToString(sig)
 	// include listen addrs and peers if requested
 	my.ListenAddrs = append(my.ListenAddrs, local.ListenAddrs...)
 	if remote.WantPeerlist && provider != nil {
@@ -240,20 +327,48 @@ func responder(s network.Stream, local HandshakeLocal, policy HandshakePolicy, p
 			}
 		}
 	}
-	if err := enc.Encode(&my); err != nil {
+	if err = enc.Encode(&my); err != nil {
 		return err
 	}
 
 	// 3) recv verack (no payload expected)
 	var ack VerAckMsg
-	if err := dec.Decode(&ack); err != nil {
+	if err = dec.Decode(&ack); err != nil {
 		return err
 	}
 	// responder already verified initiator's token from Version
 
 	// 4) send verack (empty)
-	if err := enc.Encode(&VerAckMsg{}); err != nil {
+	if err = enc.Encode(&VerAckMsg{}); err != nil {
 		return err
+	}
+	if am := policy.AttackMitigation; am != nil {
+		_ = am.Eclipse.Register(context.Background(), pid, h.Peerstore().Addrs(pid))
+	}
+	return nil
+}
+
+func applyAntiReplay(policy HandshakePolicy, pid peer.ID, remote VersionMsg) error {
+	if policy.TimestampChecker != nil {
+		if err := policy.TimestampChecker.RejectExpiredUnix(remote.Timestamp); err != nil {
+			return err
+		}
+	}
+	if policy.NonceCache != nil {
+		if err := policy.NonceCache.RecordNonce(pid, remote.Nonce); err != nil {
+			return err
+		}
+	}
+	if policy.MessageHashCache != nil {
+		// Hash the message for duplicate detection
+		b, err := json.Marshal(remote)
+		if err != nil {
+			return err
+		}
+		sum := sha256.Sum256(b)
+		if err := policy.MessageHashCache.RecordHash(pid, sum[:]); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -360,4 +475,34 @@ func verifyTokenAny(caPubs [][]byte, pid peer.ID, proof string) bool {
 		}
 	}
 	return false
+}
+
+func nonceBytes(n uint64) []byte {
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, n)
+	return b
+}
+
+func signChallenge(h host.Host, nonce uint64) ([]byte, error) {
+	priv := h.Peerstore().PrivKey(h.ID())
+	if priv == nil {
+		return nil, errors.New("no private key in peerstore")
+	}
+	return priv.Sign(nonceBytes(nonce))
+}
+
+func verifyChallengeResponse(h host.Host, remote peer.ID, nonce uint64, proofB64 string) error {
+	pub := h.Peerstore().PubKey(remote)
+	if pub == nil {
+		return errors.New("no public key for remote in peerstore")
+	}
+	sig, err := base64.StdEncoding.DecodeString(proofB64)
+	if err != nil {
+		return fmt.Errorf("invalid challenge response encoding: %w", err)
+	}
+	ok, err := pub.Verify(nonceBytes(nonce), sig)
+	if err != nil || !ok {
+		return errors.New("challenge-response verification failed")
+	}
+	return nil
 }

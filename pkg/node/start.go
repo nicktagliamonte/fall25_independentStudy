@@ -3,25 +3,48 @@
 package node
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"sync"
 	"time"
 
 	stded25519 "crypto/ed25519"
 	"crypto/sha256"
 
-	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
+	bstore "github.com/ipfs/boxo/blockstore"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
+	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
+
+type service struct {
+	h               host.Host
+	dht             *kaddht.IpfsDHT
+	stack           *mystore.Stack
+	peerStore       *myhost.PeerStore
+	metrics         *ctrl.NodeMetrics
+	cancel          context.CancelFunc
+	basePolicy      myhost.HandshakePolicy
+	onHandshake     func(peerID string, info map[string]any)
+	onAck           func(peerID string, status string)
+	wg              sync.WaitGroup
+	controlAddr     string
+	controlShutdown func(context.Context) error
+	stopIBLT        func()
+}
 
 // Start launches the node with the provided options and returns a Service.
 func Start(parent context.Context, opts Options) (Service, error) {
@@ -43,6 +66,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	}
 
 	ctx, cancel := context.WithCancel(parent)
+	metrics := &ctrl.NodeMetrics{}
 
 	// Host
 	var h host.Host
@@ -60,7 +84,6 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		h = hh
 	} else {
 		if opts.EphemeralSeed != "" {
-			// Derive deterministic Ed25519 key from seed
 			sum := sha256.Sum256([]byte(opts.EphemeralSeed))
 			key := stded25519.NewKeyFromSeed(sum[:])
 			priv, err := crypto.UnmarshalEd25519PrivateKey([]byte(key))
@@ -84,42 +107,56 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		}
 	}
 
-	// Storage
-	var stack *mystore.Stack
+	// Datastore + blockstore
+	var bs bstore.Blockstore
+	var datastore ds.Batching
 	if opts.StorePath != "" {
-		bs, d, err := mystore.NewPersistentBlockstore(opts.StorePath)
+		var err error
+		bs, datastore, err = mystore.NewPersistentBlockstore(opts.StorePath)
 		if err != nil {
 			_ = h.Close()
 			cancel()
 			return nil, err
 		}
-		var router routing.ContentRouting = routinghelpers.Null{}
-		st, err := mystore.NewStackFromBlockstore(ctx, h, bs, d, router)
-		if err != nil {
-			_ = h.Close()
-			cancel()
-			return nil, err
-		}
-		stack = st
 	} else {
-		st, err := mystore.NewStack(ctx, h)
-		if err != nil {
-			_ = h.Close()
-			cancel()
-			return nil, err
-		}
-		stack = st
+		bs, datastore = mystore.NewEphemeralBlockstore()
 	}
 
-	// Peer store + metrics
-	peerStore, err := myhost.NewPeerStore(stack.Datastore)
+	// Peer store (before DHT so we can bootstrap from handshake discoveries)
+	peerStore, err := myhost.NewPeerStore(datastore)
 	if err != nil {
-		_ = stack.Bitswap.Close()
 		_ = h.Close()
 		cancel()
 		return nil, err
 	}
-	metrics := &ctrl.NodeMetrics{}
+
+	// Seeds: DHT bootstrap peers + opts.BootstrapPeers (populate PeerStore before DHT)
+	seedAddrs := append([]string{}, myhost.DefaultDHTBootstrapAddrs...)
+	seedAddrs = append(seedAddrs, opts.BootstrapPeers...)
+	seenSeeds := make(map[string]struct{})
+	for _, saddr := range seedAddrs {
+		if saddr == "" {
+			continue
+		}
+		if _, ok := seenSeeds[saddr]; ok {
+			continue
+		}
+		seenSeeds[saddr] = struct{}{}
+		if maddr, err := multiaddr.NewMultiaddr(saddr); err == nil {
+			if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil && info.ID != h.ID() {
+				_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
+			}
+		}
+	}
+
+	// Storage stack: DHT with DynamicRouter fallback for explicit provider hints
+	stack, d, dynamicRouter, err := BuildStackWithDHT(ctx, h, bs, datastore, peerStore, opts.DHTClientMode)
+	metrics.SetDHTBootstrapPeers(int64(len(myhost.DefaultDHTBootstrapAddrs) + len(opts.BootstrapPeers)))
+	if err != nil {
+		_ = h.Close()
+		cancel()
+		return nil, err
+	}
 
 	// Admission policy
 	basePolicy := myhost.HandshakePolicy{Timeout: 10 * time.Second, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
@@ -129,7 +166,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		for _, s := range opts.CAPubKeysB64 {
 			b, err := base64.StdEncoding.DecodeString(s)
 			if err != nil || len(b) != 32 {
-				_ = stack.Bitswap.Close()
+				stack.Close()
 				_ = h.Close()
 				cancel()
 				return nil, errors.New("invalid CAPubKeysB64 entry")
@@ -138,6 +175,9 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		}
 		basePolicy.Token = opts.Token
 	}
+	stopAntiReplay := myhost.EnableAntiReplay(ctx, &basePolicy)
+	defer stopAntiReplay()
+	_ = myhost.EnableAttackMitigation(ctx, &basePolicy)
 
 	// Register handshake and gate with current state
 	head, height, _ := mystore.GetHead(ctx, stack.Datastore)
@@ -152,12 +192,27 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			opts.OnHandshake(pid.String(), map[string]any{"direction": "inbound"})
 		}
 	})
-	myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(h)}, myhost.HandshakePolicy{Timeout: 10 * time.Second}, func(max int) []peer.AddrInfo {
+	myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(h)}, basePolicy, func(max int) []peer.AddrInfo {
 		infos, _ := peerStore.GetDialCandidates(max, 0, nil)
 		return infos
 	})
 
-	s := &service{h: h, stack: stack, peerStore: peerStore, metrics: metrics, cancel: cancel, basePolicy: basePolicy, onHandshake: opts.OnHandshake, onAck: opts.OnAck}
+	s := &service{h: h, dht: d, stack: stack, peerStore: peerStore, metrics: metrics, cancel: cancel, basePolicy: basePolicy, onHandshake: opts.OnHandshake, onAck: opts.OnAck}
+
+	providerRecords := mystore.NewLocalProviderRecords()
+	providerRecords.AddAllFromDatastore(ctx, stack.Datastore)
+	stack.ProviderRecords = providerRecords
+	aq := mystore.NewAnnounceQueue()
+	stack.AnnounceQueue = aq
+	pcm := myhost.NewPeerConnectivityMonitor(h,
+		myhost.PartitionMonitorOnPartitionEvent(func(e myhost.PartitionEvent) { aq.SetPartitioned(true) }),
+		myhost.PartitionMonitorOnRecovery(func() {
+			aq.SetPartitioned(false)
+			stack.FlushQueuedAnnouncements(ctx)
+		}))
+	go pcm.Start(ctx)
+	mystore.StartPeriodicReannounce(ctx, stack.Router, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
+	s.stopIBLT = InstallCatalogIBLT(ctx, h, stack)
 
 	// Pruning loop
 	s.wg.Add(1)
@@ -227,6 +282,14 @@ func Start(parent context.Context, opts Options) (Service, error) {
 					}
 				}
 				pid := info.ID
+				if am := basePolicy.AttackMitigation; am != nil {
+					if am.BanList.IsBanned(pid) {
+						continue
+					}
+					if ok, _ := am.Eclipse.CanAllow(ctx, pid, info.Addrs); !ok {
+						continue
+					}
+				}
 				_ = peerStore.RecordDialAttempt(pid)
 				metrics.IncDialsAttempted()
 				ctxDial, cancelDial := context.WithTimeout(ctx, opts.DialTimeout)
@@ -245,7 +308,9 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				_ = peerStore.RecordDialSuccess(pid)
 				metrics.IncDialsSucceeded()
 				// Non-fatal handshake + peerlist
-				if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: opts.DialTimeout}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+				pol := basePolicy
+				pol.Timeout = opts.DialTimeout
+				if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 					if opts.OnHandshake != nil {
 						opts.OnHandshake(pid.String(), map[string]any{"direction": "outbound", "remote_height": res.RemoteStateHeight})
 					}
@@ -278,12 +343,14 @@ func Start(parent context.Context, opts Options) (Service, error) {
 					if pid == h.ID() {
 						continue
 					}
-					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: 5 * time.Second}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+					pol := basePolicy
+					pol.Timeout = 5 * time.Second
+					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 						for _, info := range res.Learned {
 							if info.ID == h.ID() {
 								continue
 							}
-							_ = peerStore.Upsert(info.ID, info.Addrs, 0, "gossip")
+							_ = myhost.UpsertLearnedPeer(peerStore, basePolicy.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
 						}
 						metrics.AddGossipLearned(len(res.Learned))
 						if opts.OnHandshake != nil {
@@ -295,32 +362,163 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		}
 	}()
 
-	// Seeds
-	if len(opts.BootstrapPeers) > 0 {
-		seen := make(map[string]struct{})
-		for _, saddr := range opts.BootstrapPeers {
-			if _, ok := seen[saddr]; ok {
-				continue
-			}
-			seen[saddr] = struct{}{}
-			if maddr, err := multiaddr.NewMultiaddr(saddr); err == nil {
-				if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil && info.ID != h.ID() {
-					_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
-				}
-			}
-		}
-	}
-
 	// Control server
-	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() { cancel() })
+	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() { cancel() }, dynamicRouter)
 	if err != nil {
-		_ = stack.Bitswap.Close()
+		stack.Close()
+		_ = d.Close()
 		_ = h.Close()
 		cancel()
 		return nil, err
 	}
-	_ = addr // kept for future status
+	s.controlAddr = addr
 	s.controlShutdown = shutdown
 
 	return s, nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	if s.controlShutdown != nil {
+		_ = s.controlShutdown(ctx)
+	}
+	if s.stopIBLT != nil {
+		s.stopIBLT()
+	}
+	s.cancel()
+	s.wg.Wait()
+	s.stack.Close()
+	if s.dht != nil {
+		_ = s.dht.Close()
+	}
+	return s.h.Close()
+}
+
+func (s *service) Status(ctx context.Context) (Status, error) {
+	head, height, _ := mystore.GetHead(ctx, s.stack.Datastore)
+	st := Status{
+		PeerID: s.h.ID().String(),
+		Head:   head.String(),
+		Height: height,
+	}
+	for _, a := range s.h.Addrs() {
+		st.Addrs = append(st.Addrs, a.String())
+	}
+	snap := s.metrics.Snapshot()
+	st.Metrics.DialsAttempted = snap.DialsAttempted
+	st.Metrics.DialsSucceeded = snap.DialsSucceeded
+	st.Metrics.DialsFailed = snap.DialsFailed
+	st.Metrics.PeersPruned = snap.PeersPruned
+	st.Metrics.GossipLearned = snap.GossipLearned
+	return st, nil
+}
+
+func (s *service) PutRaw(ctx context.Context, data []byte) (string, int, error) {
+	req := struct{ Data string `json:"data"` }{Data: string(data)}
+	buf, _ := json.Marshal(req)
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Post("http://"+s.controlAddr+"/put", "application/json", bytes.NewReader(buf))
+	if err != nil {
+		return "", 0, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", 0, fmt.Errorf("put failed: %s", string(body))
+	}
+	var out struct {
+		CID string `json:"cid"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return "", 0, err
+	}
+	return out.CID, len(data), nil
+}
+
+func (s *service) GetRawFrom(ctx context.Context, providerAddr string, providerPeer string, cidStr string, timeout time.Duration) ([]byte, error) {
+	req := struct {
+		CID     string `json:"cid"`
+		Addr    string `json:"from_addr"`
+		Peer    string `json:"from_peer"`
+		Timeout string `json:"timeout"`
+	}{CID: cidStr, Addr: providerAddr, Peer: providerPeer, Timeout: timeout.String()}
+	buf, _ := json.Marshal(req)
+	resp, err := (&http.Client{Timeout: timeout + 5*time.Second}).Post("http://"+s.controlAddr+"/get", "application/json", bytes.NewReader(buf))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("get failed: %s", string(body))
+	}
+	var out struct {
+		DataB64 string `json:"data_b64"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(out.DataB64)
+}
+
+func (s *service) ListImmediatePeerIDs(ctx context.Context) ([]string, error) {
+	var ids []string
+	for _, pid := range s.h.Network().Peers() {
+		if pid != s.h.ID() {
+			ids = append(ids, pid.String())
+		}
+	}
+	return ids, nil
+}
+
+func (s *service) RestoreFromManifest(ctx context.Context, cids []string, concurrency int, timeout time.Duration, byteBudget int64) (RestoreStats, error) {
+	req := struct {
+		CIDs        []string `json:"cids"`
+		Concurrency int      `json:"concurrency"`
+		Timeout     string   `json:"timeout"`
+		ByteBudget  int64    `json:"byte_budget"`
+	}{CIDs: cids, Concurrency: concurrency, Timeout: timeout.String(), ByteBudget: byteBudget}
+	buf, _ := json.Marshal(req)
+	resp, err := (&http.Client{Timeout: 15 * time.Second}).Post("http://"+s.controlAddr+"/restore", "application/json", bytes.NewReader(buf))
+	if err != nil {
+		return RestoreStats{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusAccepted {
+		body, _ := io.ReadAll(resp.Body)
+		return RestoreStats{}, fmt.Errorf("restore submit failed: %s", string(body))
+	}
+	var submit struct {
+		Job string `json:"job"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&submit); err != nil {
+		return RestoreStats{}, err
+	}
+	client := &http.Client{Timeout: 5 * time.Second}
+	pollDeadline := time.Now().Add(timeout * time.Duration(len(cids)+1))
+	for time.Now().Before(pollDeadline) {
+		select {
+		case <-ctx.Done():
+			return RestoreStats{}, ctx.Err()
+		default:
+		}
+		time.Sleep(500 * time.Millisecond)
+		r2, err := client.Get("http://" + s.controlAddr + "/restore/status?id=" + submit.Job)
+		if err != nil {
+			continue
+		}
+		var st struct {
+			OK     int   `json:"ok"`
+			Failed int   `json:"failed"`
+			Bytes  int64 `json:"bytes"`
+			Done   bool  `json:"done"`
+		}
+		if json.NewDecoder(r2.Body).Decode(&st) != nil {
+			_ = r2.Body.Close()
+			continue
+		}
+		_ = r2.Body.Close()
+		if st.Done {
+			return RestoreStats{OK: st.OK, Failed: st.Failed, Bytes: st.Bytes}, nil
+		}
+	}
+	return RestoreStats{}, fmt.Errorf("restore poll timeout")
 }

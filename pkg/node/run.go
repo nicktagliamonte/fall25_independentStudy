@@ -20,12 +20,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
-	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
+	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
@@ -304,52 +304,114 @@ func Run() error {
 		}
 		defer h.Close()
 
-		// Optional persistent store
-		var stack *mystore.Stack
+		// Datastore + blockstore (persistent or ephemeral)
+		var bs bstore.Blockstore
+		var datastore ds.Batching
 		if storePath != "" {
-			bs, d, err := mystore.NewPersistentBlockstore(storePath)
-			if err != nil {
-				return err
-			}
-			// Router: DHT forbidden by policy; use null router here
-			var router routing.ContentRouting = routinghelpers.Null{}
-			stack, err = mystore.NewStackFromBlockstore(ctx, h, bs, d, router)
+			var err error
+			bs, datastore, err = mystore.NewPersistentBlockstore(storePath)
 			if err != nil {
 				return err
 			}
 		} else {
-			var err error
-			stack, err = mystore.NewStack(ctx, h)
-			if err != nil {
-				return err
-			}
+			bs, datastore = mystore.NewEphemeralBlockstore()
 		}
-		defer stack.Bitswap.Close()
 
-		// Now that stack is initialized, install handshake responder and gate with state head/height
-		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
-		headStr := ""
-		if head.Defined() {
-			headStr = head.String()
-		}
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second}, func(pid peer.ID) {
-			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
-		})
-
-		// Initialize PeerStore from the same datastore used by the stack
-		peerStore, err := myhost.NewPeerStore(stack.Datastore)
+		// PeerStore (before DHT so we can bootstrap from seeds)
+		peerStore, err := myhost.NewPeerStore(datastore)
 		if err != nil {
 			return err
 		}
-		// Metrics
-		metrics := &ctrl.NodeMetrics{}
-		// Apply pruning policy from flags
 		if d, err := time.ParseDuration(staleAgeStr); err == nil {
 			peerStore.SetPolicy(d, maxFailures)
 		}
 		if maxKnown > 0 {
 			peerStore.SetMaxKnown(maxKnown)
 		}
+
+		// Seeds: DHT bootstrap + CLI/env/file
+		seeds := append([]string{}, myhost.DefaultDHTBootstrapAddrs...)
+		seeds = append(seeds, seedAddrs...)
+		if env := os.Getenv("SNG40_SEEDS"); env != "" {
+			for _, s := range strings.Split(env, ",") {
+				s = strings.TrimSpace(s)
+				if s != "" {
+					seeds = append(seeds, s)
+				}
+			}
+		}
+		if seedFile != "" {
+			if b, err := os.ReadFile(seedFile); err == nil {
+				for _, line := range strings.Split(string(b), "\n") {
+					line = strings.TrimSpace(line)
+					if line != "" && !strings.HasPrefix(line, "#") {
+						seeds = append(seeds, line)
+					}
+				}
+			}
+		}
+		seenSeeds := make(map[string]struct{})
+		for _, s := range seeds {
+			if s == "" {
+				continue
+			}
+			if _, ok := seenSeeds[s]; ok {
+				continue
+			}
+			seenSeeds[s] = struct{}{}
+			maddr, err := multiaddr.NewMultiaddr(s)
+			if err != nil {
+				continue
+			}
+			if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil && info.ID != h.ID() {
+				_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
+			}
+		}
+
+		// Storage stack: DHT with DynamicRouter fallback
+		stack, dht, dynamicRouter, err := BuildStackWithDHT(ctx, h, bs, datastore, peerStore, false)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			stack.Close()
+			if dht != nil {
+				_ = dht.Close()
+			}
+		}()
+
+		policyBase := myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: 10 * time.Second}
+		stopAntiReplay := myhost.EnableAntiReplay(ctx, &policyBase)
+		defer stopAntiReplay()
+		_ = myhost.EnableAttackMitigation(ctx, &policyBase)
+
+		// Install handshake responder and gate with state head/height
+		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		headStr := ""
+		if head.Defined() {
+			headStr = head.String()
+		}
+		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
+			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		})
+
+		// Metrics
+		metrics := &ctrl.NodeMetrics{}
+		providerRecords := mystore.NewLocalProviderRecords()
+		providerRecords.AddAllFromDatastore(ctx, stack.Datastore)
+		stack.ProviderRecords = providerRecords
+		aq := mystore.NewAnnounceQueue()
+		stack.AnnounceQueue = aq
+		pcm := myhost.NewPeerConnectivityMonitor(h,
+			myhost.PartitionMonitorOnPartitionEvent(func(e myhost.PartitionEvent) { aq.SetPartitioned(true) }),
+			myhost.PartitionMonitorOnRecovery(func() {
+				aq.SetPartitioned(false)
+				stack.FlushQueuedAnnouncements(ctx)
+			}))
+		go pcm.Start(ctx)
+		mystore.StartPeriodicReannounce(ctx, stack.Router, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
+		stopIBLT := InstallCatalogIBLT(ctx, h, stack)
+		defer stopIBLT()
 		// Periodic pruning of stale or failing peers
 		go func() {
 			t := time.NewTicker(5 * time.Minute)
@@ -368,7 +430,7 @@ func Run() error {
 		// Register handshake responder for inbound peers with state summary AND peer sample
 		// This combines state head/height with peer discovery functionality
 		// Peer provider returns connected peers from network (not just peerstore) so new nodes learn about each other
-		myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, myhost.HandshakePolicy{Timeout: 10 * time.Second}, func(max int) []peer.AddrInfo {
+		myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, policyBase, func(max int) []peer.AddrInfo {
 			// Return connected peers from network (these are the peers we actually know about)
 			connectedPeers := h.Network().Peers()
 			infos := make([]peer.AddrInfo, 0, max)
@@ -456,6 +518,14 @@ func Run() error {
 						}
 					}
 					pid := info.ID
+					if am := policyBase.AttackMitigation; am != nil {
+						if am.BanList.IsBanned(pid) {
+							continue
+						}
+						if ok, _ := am.Eclipse.CanAllow(ctx, pid, info.Addrs); !ok {
+							continue
+						}
+					}
 					_ = peerStore.RecordDialAttempt(pid)
 					metrics.IncDialsAttempted()
 					// Try to connect with timeout
@@ -476,7 +546,9 @@ func Run() error {
 					_ = peerStore.RecordDialSuccess(pid)
 					metrics.IncDialsSucceeded()
 					// post-connect, attempt handshake (non-fatal), with want peerlist
-					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: dialTimeout}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+					pol := policyBase
+					pol.Timeout = dialTimeout
+					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 						// advance state head for this peer (best effort)
 						if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							// no-op
@@ -486,7 +558,7 @@ func Run() error {
 							if info2.ID == h.ID() {
 								continue
 							}
-							_ = peerStore.Upsert(info2.ID, info2.Addrs, 0, "handshake")
+							_ = myhost.UpsertLearnedPeer(peerStore, policyBase.AttackMitigation, info2.ID, info2.Addrs, 0, "handshake")
 							// Collect a small subset for immediate connection (cap at 2 per handshake)
 							if len(learnedToConnect) < 2 {
 								// Check if already connected
@@ -497,6 +569,14 @@ func Run() error {
 						}
 						// Connect to learned peers (bounded, non-blocking)
 						for _, info2 := range learnedToConnect {
+							if am := policyBase.AttackMitigation; am != nil {
+								if am.BanList.IsBanned(info2.ID) {
+									continue
+								}
+								if ok, _ := am.Eclipse.CanAllow(ctx, info2.ID, info2.Addrs); !ok {
+									continue
+								}
+							}
 							_ = peerStore.RecordDialAttempt(info2.ID)
 							metrics.IncDialsAttempted()
 							ctxDial, cancel := context.WithTimeout(ctx, dialTimeout)
@@ -543,14 +623,16 @@ func Run() error {
 						if pid == h.ID() {
 							continue
 						}
-						if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, myhost.HandshakePolicy{Timeout: 5 * time.Second}, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+						pol := policyBase
+					pol.Timeout = 5 * time.Second
+					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 							if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							}
 							for _, info := range res.Learned {
 								if info.ID == h.ID() {
 									continue
 								}
-								_ = peerStore.Upsert(info.ID, info.Addrs, 0, "gossip")
+								_ = myhost.UpsertLearnedPeer(peerStore, policyBase.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
 							}
 							metrics.AddGossipLearned(len(res.Learned))
 							// Try suffix sync if remote is ahead
@@ -565,52 +647,11 @@ func Run() error {
 			}
 		}()
 
-		// Load seeds from CLI/env/file and upsert into PeerStore
-		var seeds []string
-		seeds = append(seeds, seedAddrs...)
-		if env := os.Getenv("SNG40_SEEDS"); env != "" {
-			for _, s := range strings.Split(env, ",") {
-				s = strings.TrimSpace(s)
-				if s != "" {
-					seeds = append(seeds, s)
-				}
-			}
-		}
-		if seedFile != "" {
-			if b, err := os.ReadFile(seedFile); err == nil {
-				for _, line := range strings.Split(string(b), "\n") {
-					line = strings.TrimSpace(line)
-					if line == "" || strings.HasPrefix(line, "#") {
-						continue
-					}
-					seeds = append(seeds, line)
-				}
-			}
-		}
-		// Normalize and insert
-		seenSeeds := make(map[string]struct{})
-		for _, s := range seeds {
-			if _, ok := seenSeeds[s]; ok {
-				continue
-			}
-			seenSeeds[s] = struct{}{}
-			maddr, err := multiaddr.NewMultiaddr(s)
-			if err != nil {
-				continue
-			}
-			if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil {
-				if info.ID == h.ID() {
-					continue
-				}
-				_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
-			}
-		}
-
 		// Start control server and write daemon file
 		addr, _, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() {
 			// trigger graceful stop
 			cancelMain()
-		})
+		}, dynamicRouter)
 		if err != nil {
 			return err
 		}
@@ -724,12 +765,15 @@ func Run() error {
 
 		// Install handshake hooks for inline mode.
 		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, 10*time.Second)
+		stopAntiReplay := myhost.EnableAntiReplay(ctx, &policyBase)
+		defer stopAntiReplay()
+		_ = myhost.EnableAttackMitigation(ctx, &policyBase)
 
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
 			return err
 		}
-		defer stack.Bitswap.Close()
+		defer stack.Close()
 
 		// Now register handshake with current state head/height (after stack is ready)
 		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
@@ -746,6 +790,7 @@ func Run() error {
 		if err != nil {
 			return err
 		}
+		stack.AnnounceProviderAsync(ctx, c)
 
 		fmt.Println("CID:", c.String())
 		fmt.Printf("CID (multihash hex): %s\n", hex.EncodeToString(c.Hash()))
@@ -825,12 +870,15 @@ func Run() error {
 
 		// Install handshake hooks for inline connect mode.
 		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, dur)
+		stopAntiReplay := myhost.EnableAntiReplay(ctx, &policyBase)
+		defer stopAntiReplay()
+		_ = myhost.EnableAttackMitigation(ctx, &policyBase)
 
 		stack, err := mystore.NewStack(ctx, h)
 		if err != nil {
 			return err
 		}
-		defer stack.Bitswap.Close()
+		defer stack.Close()
 
 		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
 		headStr := ""
@@ -857,9 +905,10 @@ func Run() error {
 		}
 
 		// optional: register handshake responder for inbound peers
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, myhost.HandshakePolicy{Timeout: dur})
+		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase)
 		// initiator-side handshake to validate remote
-		policy := myhost.HandshakePolicy{MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), Timeout: dur}
+		policy := policyBase
+		policy.Timeout = dur
 		local := myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
 		res, err := myhost.PerformHandshakeWithState(ctx, h, pid, policy, local)
 		if err != nil {
@@ -970,6 +1019,9 @@ func Run() error {
 
 		// Install handshake hooks for inline get mode.
 		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, dur)
+		stopAntiReplay := myhost.EnableAntiReplay(ctx, &policyBase)
+		defer stopAntiReplay()
+		_ = myhost.EnableAttackMitigation(ctx, &policyBase)
 
 		// stack is created below; handshake registration with state must occur after
 
@@ -988,7 +1040,7 @@ func Run() error {
 		if err != nil {
 			return err
 		}
-		defer stack.Bitswap.Close()
+		defer stack.Close()
 
 		// Now that stack exists, register handshake with current state and install gate
 		head, height, _ := mystore.GetHead(ctx, stack.Datastore)

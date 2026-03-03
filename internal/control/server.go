@@ -56,9 +56,16 @@ type GetResponse struct {
 
 // Start launches the control server and returns the bound address and a shutdown func.
 // onShutdown: optional callback to trigger graceful node stop when /shutdown is called.
-func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func()) (string, func(context.Context) error, error) {
+// explicitRouter: optional; when non-nil, used for SetProviderForCID and must be composed with stack's router (e.g. via NewFallbackContentRouter).
+func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func(), explicitRouter *DynamicRouter) (string, func(context.Context) error, error) {
 	mux := http.NewServeMux()
-	router := NewDynamicRouter()
+	router := explicitRouter
+	if router == nil {
+		router = NewDynamicRouter()
+	}
+	if stack != nil && metrics != nil {
+		stack.OnAnnounce = func() { metrics.IncProviderAnnounceCount() }
+	}
 	// restore job manager (in-memory)
 	type restoreStats struct {
 		OK     int   `json:"ok"`
@@ -76,6 +83,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 
 	// Metrics endpoint (JSON)
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		if metrics != nil && stack != nil && stack.ProviderRecords != nil {
+			metrics.SetProviderRecordsCount(int64(stack.ProviderRecords.Len()))
+		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
 	})
@@ -345,6 +355,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		stack.AnnounceProviderAsync(r.Context(), c)
 		resp := PutResponse{CID: c.String(), MultihashHex: fmt.Sprintf("%x", c.Hash())}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
@@ -450,6 +461,44 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		d := 20 * time.Second
+		if req.Timeout != "" {
+			if parsed, err := time.ParseDuration(req.Timeout); err == nil {
+				d = parsed
+			}
+		}
+
+		// When explicit provider hint given, register it so composed router (DHT + DynamicRouter) can use it as fallback
+		if req.Addr != "" && req.Peer != "" {
+			if maddr, err := multiaddr.NewMultiaddr(req.Addr); err == nil {
+				if pid, err := peer.Decode(req.Peer); err == nil {
+					router.SetProviderForCID(c, peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}})
+				}
+			}
+		}
+
+		// 1. Try main stack: local blockstore + DHT provider discovery (+ explicit hints via fallback)
+		ctxFetch, cancel := context.WithTimeout(r.Context(), d)
+		start := time.Now()
+		b, err := mystore.GetBlockIndexed(ctxFetch, stack.Datastore, stack.BlockSvc, c)
+		cancel()
+		if err == nil {
+			if metrics != nil {
+				metrics.SetProviderDiscoveryLatencyNs(time.Since(start).Nanoseconds())
+			}
+			stack.AnnounceProviderAsync(r.Context(), c)
+			resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b)}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(&resp)
+			return
+		}
+
+		// 2. Fall back to explicit provider hint if given
+		if req.Addr == "" || req.Peer == "" {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
 		maddr, err := multiaddr.NewMultiaddr(req.Addr)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -463,21 +512,6 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			return
 		}
 		info := peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}}
-		// If the provider is this node, read directly from the existing stack
-		if pid == h.ID() {
-			b, err := mystore.GetBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, c)
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
-				_, _ = w.Write([]byte(err.Error()))
-				return
-			}
-			resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b)}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(&resp)
-			return
-		}
-
-		// Else, use a router-equipped ephemeral stack to fetch from remote
 		router.SetProviderForCID(c, info)
 		st, err := mystore.NewStackWithRouter(r.Context(), h, router)
 		if err != nil {
@@ -485,14 +519,8 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		defer st.Bitswap.Close()
+		defer st.Close()
 
-		d := 20 * time.Second
-		if req.Timeout != "" {
-			if parsed, err := time.ParseDuration(req.Timeout); err == nil {
-				d = parsed
-			}
-		}
 		ctxDial, cancel := context.WithTimeout(r.Context(), d)
 		defer cancel()
 		if err := h.Connect(ctxDial, info); err != nil {
@@ -532,15 +560,20 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_, _, _, _ = mystore.AppendPeerAddedIfNew(r.Context(), stack.Datastore, stack.BlockSvc, pid.String())
 		ctxFetch, cancel2 := context.WithTimeout(r.Context(), d)
 		defer cancel2()
-		b, err := mystore.GetBlockIndexed(ctxFetch, stack.Datastore, st.BlockSvc, c)
+		startFetch := time.Now()
+		b, err = mystore.GetBlockIndexed(ctxFetch, stack.Datastore, st.BlockSvc, c)
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		if metrics != nil {
+			metrics.SetProviderDiscoveryLatencyNs(time.Since(startFetch).Nanoseconds())
+		}
 		// Persist fetched block into the daemon's local store for durability/indexing.
 		// Best-effort: ignore error to still serve the response body to the client.
 		_, _ = mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, b)
+		stack.AnnounceProviderAsync(r.Context(), c)
 		resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b)}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(&resp)

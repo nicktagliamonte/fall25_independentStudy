@@ -1,2 +1,0 @@
-2. Scaling plots saved to: artifacts/scaling_tests/1766516729/plots/scaling_analysis.png
-    pretty good! pretty solid! useable!
