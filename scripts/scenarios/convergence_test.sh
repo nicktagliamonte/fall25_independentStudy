@@ -19,6 +19,15 @@ echo "Min outbound: $MIN_OUTBOUND"
 echo "Topology: $TOPOLOGY"
 echo ""
 
+# Compatibility for macOS which doesn't have timeout by default
+if ! command -v timeout &> /dev/null; then
+  if command -v gtimeout &> /dev/null; then
+    timeout() { gtimeout "$@"; }
+  else
+    timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+  fi
+fi
+
 RESULTS_DIR="artifacts/convergence_tests/$(date +%s)"
 mkdir -p "$RESULTS_DIR"
 

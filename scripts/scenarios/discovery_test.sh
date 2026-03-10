@@ -22,6 +22,15 @@ echo "Min outbound: $MIN_OUTBOUND"
 echo "Topology: $TOPOLOGY"
 echo ""
 
+# Compatibility for macOS which doesn't have timeout by default
+if ! command -v timeout &> /dev/null; then
+  if command -v gtimeout &> /dev/null; then
+    timeout() { gtimeout "$@"; }
+  else
+    timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+  fi
+fi
+
 RESULTS_DIR="artifacts/discovery_tests/$(date +%s)"
 mkdir -p "$RESULTS_DIR"
 
@@ -91,7 +100,7 @@ for N in "${NODE_COUNTS[@]}"; do
       echo "    Running discovery test for K=$K..."
       
       # Run discovery script
-      if bash scripts/scenarios/discovery.sh "$RUN_ID" "$K" >/dev/null 2>&1; then
+      if bash scripts/scenarios/discovery.sh "$RUN_ID" "$K"; then
         # Record run info (format: N|RUN_ID|K)
         echo "$N|$RUN_ID|$K" >> "$RESULTS_DIR/runs.txt"
       else

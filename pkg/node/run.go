@@ -4,6 +4,7 @@ package node
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/ipfs/go-cid"
 	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
@@ -259,6 +261,8 @@ func Run() error {
 			childArgs = append(childArgs, "--per-ip-dial-limit", fmt.Sprintf("%d", perIPDialLimit))
 
 			cmd := exec.Command(os.Args[0], childArgs...)
+			cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+
 			// If a log path was provided, still attach child stdout/err to that file to catch early output.
 			if logPath != "" {
 				f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -1275,6 +1279,140 @@ func Run() error {
 		}
 		fmt.Println("Wrote key:", outPath)
 		fmt.Println("PeerID:", pid.String())
+		return nil
+
+	case "ts-put":
+		fs := flag.NewFlagSet("ts-put", flag.ExitOnError)
+		var tshAddr, appId, name, data, filePath string
+		fs.StringVar(&tshAddr, "tsh", "127.0.0.1:2890", "TSH daemon address (host:port)")
+		fs.StringVar(&appId, "app", "defaultApp", "Application ID")
+		fs.StringVar(&name, "name", "", "Tuple name")
+		fs.StringVar(&data, "data", "", "Tuple value (string)")
+		fs.StringVar(&filePath, "file", "", "Tuple value (file)")
+		_ = fs.Parse(os.Args[2:])
+
+		if name == "" {
+			return fmt.Errorf("ts-put: --name is required")
+		}
+		if data == "" && filePath == "" {
+			return fmt.Errorf("ts-put: either --data or --file is required")
+		}
+		var val []byte
+		if filePath != "" {
+			b, err := os.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+			val = b
+		} else {
+			val = []byte(data)
+		}
+
+		// determine host IP for callback
+		ipStr := bestPublicIPv4()
+		if ipStr == "" {
+			ipStr = "127.0.0.1"
+		}
+		parsed := net.ParseIP(ipStr)
+		if parsed == nil {
+			return fmt.Errorf("failed to parse host IP: %s", ipStr)
+		}
+		ipv4 := parsed.To4()
+		if ipv4 == nil {
+			return fmt.Errorf("host IP is not IPv4: %s", ipStr)
+		}
+		hostIP := binary.BigEndian.Uint32(ipv4)
+
+		client := &myhost.TupleSpaceClient{
+			TshAddr: tshAddr,
+			HostIP:  hostIP,
+			AppId:   appId,
+		}
+		status, err := client.TsPut(name, val)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("TsPut: Success (Status: %d)\n", status)
+		return nil
+
+	case "ts-get":
+		fs := flag.NewFlagSet("ts-get", flag.ExitOnError)
+		var tshAddr, appId, name string
+		fs.StringVar(&tshAddr, "tsh", "127.0.0.1:2890", "TSH daemon address (host:port)")
+		fs.StringVar(&appId, "app", "defaultApp", "Application ID")
+		fs.StringVar(&name, "name", "", "Tuple name")
+		_ = fs.Parse(os.Args[2:])
+
+		if name == "" {
+			return fmt.Errorf("ts-get: --name is required")
+		}
+
+		ipStr := bestPublicIPv4()
+		if ipStr == "" {
+			ipStr = "127.0.0.1"
+		}
+		parsed := net.ParseIP(ipStr)
+		if parsed == nil {
+			return fmt.Errorf("failed to parse host IP: %s", ipStr)
+		}
+		ipv4 := parsed.To4()
+		if ipv4 == nil {
+			return fmt.Errorf("host IP is not IPv4: %s", ipStr)
+		}
+		hostIP := binary.BigEndian.Uint32(ipv4)
+
+		client := &myhost.TupleSpaceClient{
+			TshAddr: tshAddr,
+			HostIP:  hostIP,
+			AppId:   appId,
+		}
+		val, err := client.TsGet(name)
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stdout.Write(val); err != nil {
+			return err
+		}
+		return nil
+
+	case "ts-read":
+		fs := flag.NewFlagSet("ts-read", flag.ExitOnError)
+		var tshAddr, appId, name string
+		fs.StringVar(&tshAddr, "tsh", "127.0.0.1:2890", "TSH daemon address (host:port)")
+		fs.StringVar(&appId, "app", "defaultApp", "Application ID")
+		fs.StringVar(&name, "name", "", "Tuple name")
+		_ = fs.Parse(os.Args[2:])
+
+		if name == "" {
+			return fmt.Errorf("ts-read: --name is required")
+		}
+
+		ipStr := bestPublicIPv4()
+		if ipStr == "" {
+			ipStr = "127.0.0.1"
+		}
+		parsed := net.ParseIP(ipStr)
+		if parsed == nil {
+			return fmt.Errorf("failed to parse host IP: %s", ipStr)
+		}
+		ipv4 := parsed.To4()
+		if ipv4 == nil {
+			return fmt.Errorf("host IP is not IPv4: %s", ipStr)
+		}
+		hostIP := binary.BigEndian.Uint32(ipv4)
+
+		client := &myhost.TupleSpaceClient{
+			TshAddr: tshAddr,
+			HostIP:  hostIP,
+			AppId:   appId,
+		}
+		val, err := client.TsRead(name)
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stdout.Write(val); err != nil {
+			return err
+		}
 		return nil
 
 	default:

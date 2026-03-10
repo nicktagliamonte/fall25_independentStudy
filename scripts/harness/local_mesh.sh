@@ -108,11 +108,15 @@ nodes_json+="{\"id\":1,\"control_addr\":\"$node1_addr\",\"key_path\":\"$HOME/.sn
 if [[ "$TOPOLOGY" == "star" ]]; then
   boot_peer="$(curl -s "http://$node1_addr/id" | jq -r '.peer')"
   # Extract TCP address from node's advertised addrs
-  boot_tcp="$(curl -s "http://$node1_addr/id" | jq -r '.addrs[] | select(test("/tcp/"))' | head -n1)"
+  id_json=$(curl -s "http://$node1_addr/id")
+  boot_peer="$(echo "$id_json" | jq -r '.peer')"
+  boot_tcp="$(echo "$id_json" | jq -r '.addrs[] | select(test("/tcp/"))' | head -n1)"
+  
   if [[ -n "$boot_tcp" && "$boot_tcp" != "null" ]]; then
     boot_seed="${boot_tcp}/p2p/${boot_peer}"
+    echo "Found bootstrap seed: $boot_seed" >&2
   else
-    echo "Warning: could not extract TCP addr from node 1, seed may be incorrect" >&2
+    echo "Warning: could not extract TCP addr from node 1. JSON: $id_json" >&2
     boot_seed="/ip4/127.0.0.1/tcp/2893/p2p/$boot_peer"
   fi
 fi

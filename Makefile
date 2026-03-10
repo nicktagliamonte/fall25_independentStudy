@@ -40,6 +40,10 @@ scenario-failure-repair:
 	fi
 	@bash scripts/scenarios/failure_repair.sh $(RUN_ID) $(VICTIM_ID) $(DONOR_ID)
 
+all-tests:
+	@echo "Running all tests and generating plots..."
+	@bash scripts/scenarios/run_all_and_plot.sh
+
 scenario-partition-merge:
 	@if [ -z "$(RUN_ID)" ]; then \
 		echo "Usage: make scenario-partition-merge RUN_ID=<run_id> [T1=<seconds>] [T2=<seconds>] [GROUPS=<spec>]"; \

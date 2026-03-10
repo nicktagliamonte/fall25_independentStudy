@@ -10,6 +10,19 @@ cd "$ROOT_DIR"
 
 N="${1:-4}"
 
+# Compatibility for systems with docker compose v2 instead of docker-compose
+if ! command -v docker-compose &> /dev/null; then
+  if docker compose version &> /dev/null; then
+    docker-compose() {
+      docker compose "$@"
+    }
+    export -f docker-compose
+  else
+    echo "Error: docker-compose or docker compose not found" >&2
+    exit 1
+  fi
+fi
+
 if [[ ! "$N" =~ ^[0-9]+$ ]] || [[ "$N" -lt 2 ]]; then
   echo "Error: N must be an integer >= 2" >&2
   exit 1
@@ -160,7 +173,11 @@ fi
 
 # Update docker-compose.yml with actual peer ID (escape special chars for sed)
 ESCAPED_PEER_ID=$(echo "$PEER_ID" | sed 's/[[\.*^$()+?{|]/\\&/g')
-sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+else
+  sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+fi
 
 # Start remaining nodes (2 through N)
 echo "Starting peer nodes..."

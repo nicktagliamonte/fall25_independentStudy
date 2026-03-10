@@ -320,29 +320,19 @@ def create_scaling_plot(events_by_node, output_path, run_id):
     print(f"Scaling plot saved to: {scaling_path}")
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Plot peer discovery timeline')
-    parser.add_argument('run_id', help='Run ID (directory name under artifacts/runs/)')
-    parser.add_argument('--events-csv', help='Path to discovery_events.csv (default: auto-detect)')
-    parser.add_argument('--output', help='Output plot path (default: auto-detect)')
-    parser.add_argument('--scaling-only', action='store_true', help='Only generate scaling plot')
+def process_single_run(run_dir, output_dir=None, scaling_only=False):
+    """Process a single run directory and generate plots."""
+    run_dir = Path(run_dir)
+    run_id = run_dir.name
     
-    args = parser.parse_args()
-    
-    run_dir = Path(f"artifacts/runs/{args.run_id}")
     if not run_dir.exists():
         print(f"Error: Run directory {run_dir} not found", file=sys.stderr)
-        sys.exit(1)
+        return False
     
-    # Find events CSV
-    if args.events_csv:
-        events_csv = Path(args.events_csv)
-    else:
-        events_csv = run_dir / "discovery_events.csv"
-    
+    events_csv = run_dir / "discovery_events.csv"
     if not events_csv.exists():
         print(f"Error: {events_csv} not found. Run discovery.sh first.", file=sys.stderr)
-        sys.exit(1)
+        return False
     
     # Load events
     print(f"Loading discovery events from {events_csv}...")
@@ -350,13 +340,13 @@ def main():
     
     if not events_by_node:
         print("No discovery events found", file=sys.stderr)
-        sys.exit(1)
+        return False
     
     print(f"Loaded {sum(len(events) for events in events_by_node.values())} discovery events across {len(events_by_node)} nodes")
     
     # Determine output path
-    if args.output:
-        output_path = Path(args.output)
+    if output_dir:
+        output_path = Path(output_dir) / f"discovery_timeline_{run_id}.png"
     else:
         plots_dir = run_dir / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
@@ -364,17 +354,66 @@ def main():
     
     # Create scaling plot (always)
     print("Creating scaling behavior plot...")
-    create_scaling_plot(events_by_node, output_path, args.run_id)
+    create_scaling_plot(events_by_node, output_path, run_id)
     
-    if not args.scaling_only:
+    if not scaling_only:
         # Create detailed plots
         print("Creating discovery timeline plot...")
-        create_discovery_plot(events_by_node, output_path, args.run_id)
+        create_discovery_plot(events_by_node, output_path, run_id)
         
         print("Creating summary plot...")
-        create_summary_plot(events_by_node, output_path, args.run_id)
+        create_summary_plot(events_by_node, output_path, run_id)
+        
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Plot peer discovery timeline')
+    parser.add_argument('run_path', help='Run ID (in artifacts/runs/) OR path to results directory')
+    parser.add_argument('--events-csv', help='Path to discovery_events.csv (default: auto-detect)')
+    parser.add_argument('--output-dir', help='Output directory for plots (default: auto-detect)')
+    parser.add_argument('--scaling-only', action='store_true', help='Only generate scaling plot')
     
-    print("Done!")
+    args = parser.parse_args()
+    
+    input_path = Path(args.run_path)
+    
+    # Check if input is a suite results directory (contains runs.txt)
+    if input_path.exists() and (input_path / "runs.txt").exists():
+        print(f"Detected suite results directory: {input_path}")
+        runs_file = input_path / "runs.txt"
+        plots_dir = args.output_dir if args.output_dir else input_path / "plots"
+        Path(plots_dir).mkdir(parents=True, exist_ok=True)
+        
+        success_count = 0
+        total_count = 0
+        
+        with open(runs_file, 'r') as f:
+            for line in f:
+                if not line.strip(): continue
+                parts = line.strip().split('|')
+                if len(parts) >= 2:
+                    run_id = parts[1]
+                    run_dir = Path(f"artifacts/runs/{run_id}")
+                    print(f"\n--- Processing Run {run_id} ---")
+                    if process_single_run(run_dir, plots_dir, args.scaling_only):
+                        success_count += 1
+                    total_count += 1
+        
+        print(f"\nBatch processing complete: {success_count}/{total_count} runs plotted successfully.")
+        
+    # Check if input is a directory path (e.g. artifacts/runs/ID)
+    elif input_path.exists() and input_path.is_dir():
+        process_single_run(input_path, args.output_dir, args.scaling_only)
+        
+    # Check if input is just an ID (e.g. 12345) assumed to be in artifacts/runs/
+    else:
+        run_dir = Path(f"artifacts/runs/{input_path}")
+        if run_dir.exists():
+             process_single_run(run_dir, args.output_dir, args.scaling_only)
+        else:
+            print(f"Error: Run directory not found: {input_path} or {run_dir}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == '__main__':

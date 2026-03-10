@@ -97,13 +97,25 @@ jq -r '.[] | "\(.id)|\(.control_addr)"' "$NODES_JSON" | while IFS='|' read -r no
     neighbors_json="[]"
     neighbor_count=0
     for retry in {1..2}; do
-      neighbors_json=$(curl -sSf "http://$control_addr/neighbors" 2>/dev/null || echo "[]")
+      neighbors_json=$(curl -sSf "http://$control_addr/neighbors" || echo "[]")
       neighbor_count=$(echo "$neighbors_json" | jq 'length' 2>/dev/null || echo "0")
       if [[ "$neighbor_count" -gt 0 ]] || [[ $retry -eq 2 ]]; then
         break
       fi
       sleep 0.01  # 10ms retry delay
     done
+    
+    # Debug: Check if we got empty response unexpectedly
+    if [[ "$neighbor_count" -eq 0 && "$ELAPSED" -lt 2 ]]; then
+       echo "DEBUG: Node $node_id ($control_addr) has 0 neighbors. JSON: $neighbors_json" >&2
+       LOG_FILE="artifacts/runs/$RUN_ID/daemon_$node_id.log"
+       if [[ -f "$LOG_FILE" ]]; then
+         echo "--- Log tail for Node $node_id ---" >&2
+         tail -n 10 "$LOG_FILE" >&2
+         echo "-------------------------------" >&2
+       fi
+    fi
+
     
     # On first check, log initial state
     if [[ "$INITIAL_CHECK" == "true" ]]; then
@@ -124,12 +136,14 @@ jq -r '.[] | "\(.id)|\(.control_addr)"' "$NODES_JSON" | while IFS='|' read -r no
       fi
       # Check if this peer is new
       IS_NEW=true
-      for seen_peer in "${SEEN_PEERS[@]}"; do
-        if [[ "$seen_peer" == "$peer_id" ]]; then
-          IS_NEW=false
-          break
-        fi
-      done
+      if [[ ${#SEEN_PEERS[@]} -gt 0 ]]; then
+        for seen_peer in "${SEEN_PEERS[@]}"; do
+          if [[ "$seen_peer" == "$peer_id" ]]; then
+            IS_NEW=false
+            break
+          fi
+        done
+      fi
       
       if [[ "$IS_NEW" == "true" ]]; then
         SEEN_PEERS+=("$peer_id")
@@ -141,14 +155,14 @@ jq -r '.[] | "\(.id)|\(.control_addr)"' "$NODES_JSON" | while IFS='|' read -r no
         if [[ -z "$TS_FIRST" ]]; then
           TS_FIRST=$CURRENT_TS_NS
           TS_FIRST_REL=$((TS_FIRST - TS_START))
-          echo "  First neighbor discovered at +${TS_FIRST_REL}ns ($(awk "BEGIN {printf \"%.6f\", $TS_FIRST_REL/1000000000}")s)"
+          echo "  First neighbor discovered at +${TS_FIRST_REL}ns ($(awk -v val=$TS_FIRST_REL 'BEGIN {printf "%.6f", val/1000000000}')s)"
         fi
         
         # Record K-th neighbor discovery
         if [[ -z "$TS_K" && "$DISCOVERY_ORDER" -ge "$K" ]]; then
           TS_K=$CURRENT_TS_NS
           TS_K_REL=$((TS_K - TS_START))
-          echo "  K=$K neighbors reached at +${TS_K_REL}ns ($(awk "BEGIN {printf \"%.6f\", $TS_K_REL/1000000000}")s)"
+          echo "  K=$K neighbors reached at +${TS_K_REL}ns ($(awk -v val=$TS_K_REL 'BEGIN {printf "%.6f", val/1000000000}')s)"
           break
         fi
       fi
@@ -191,14 +205,14 @@ jq -r '.[] | "\(.id)|\(.control_addr)"' "$NODES_JSON" | while IFS='|' read -r no
   
   if [[ -n "$TS_FIRST" ]]; then
     TS_FIRST_REL=$((TS_FIRST - TS_START))
-    echo "  First: +${TS_FIRST_REL}ns ($(awk "BEGIN {printf \"%.6f\", $TS_FIRST_REL/1000000000}")s)"
+    echo "  First: +${TS_FIRST_REL}ns ($(awk -v val=$TS_FIRST_REL 'BEGIN {printf "%.6f", val/1000000000}')s)"
   else
     echo "  No neighbors discovered"
   fi
   
   if [[ -n "$TS_K" ]]; then
     TS_K_REL=$((TS_K - TS_START))
-    echo "  K=$K: +${TS_K_REL}ns ($(awk "BEGIN {printf \"%.6f\", $TS_K_REL/1000000000}")s)"
+    echo "  K=$K: +${TS_K_REL}ns ($(awk -v val=$TS_K_REL 'BEGIN {printf "%.6f", val/1000000000}')s)"
   else
     echo "  K=$K not reached (final: $NEIGHBORS_AT_END neighbors)"
   fi
