@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -427,6 +428,25 @@ func Run() error {
 			}
 		}()
 
+		// Connection security verification (ECDH/encryption)
+		go func() {
+			t := time.NewTicker(5 * time.Minute)
+			defer t.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					if err := myhost.VerifyECDHKeyDerivationUsed(h); err != nil {
+						log.Printf("connection security: %v", err)
+					}
+					if err := myhost.EnsureAllTrafficEncrypted(h); err != nil {
+						log.Printf("connection security: %v", err)
+					}
+				}
+			}
+		}()
+
 		// Register handshake responder for inbound peers with state summary AND peer sample
 		// This combines state head/height with peer discovery functionality
 		// Peer provider returns connected peers from network (not just peerstore) so new nodes learn about each other
@@ -800,6 +820,18 @@ func Run() error {
 		printDerivedPublicAddrs(addrs2)
 
 		if serve {
+			go func() {
+				t := time.NewTicker(5 * time.Minute)
+				defer t.Stop()
+				for range t.C {
+					if err := myhost.VerifyECDHKeyDerivationUsed(h); err != nil {
+						log.Printf("connection security: %v", err)
+					}
+					if err := myhost.EnsureAllTrafficEncrypted(h); err != nil {
+						log.Printf("connection security: %v", err)
+					}
+				}
+			}()
 			select {}
 		}
 		return nil
@@ -924,6 +956,12 @@ func Run() error {
 			}
 		}
 
+		if err := myhost.VerifyECDHKeyDerivationUsed(h); err != nil {
+			log.Printf("connection security: %v", err)
+		}
+		if err := myhost.EnsureAllTrafficEncrypted(h); err != nil {
+			log.Printf("connection security: %v", err)
+		}
 		fmt.Println("Connected to:", pid)
 		for _, a := range h.Addrs() {
 			fmt.Println("Our Addr:", a.String())
@@ -1069,6 +1107,12 @@ func Run() error {
 		b, err := mystore.GetBlockIndexed(fetchCtx, stack.Datastore, stack.BlockSvc, c)
 		if err != nil {
 			return err
+		}
+		if err := myhost.VerifyECDHKeyDerivationUsed(h); err != nil {
+			log.Printf("connection security: %v", err)
+		}
+		if err := myhost.EnsureAllTrafficEncrypted(h); err != nil {
+			log.Printf("connection security: %v", err)
 		}
 		if outFile != "" {
 			if err := os.WriteFile(outFile, b, 0644); err != nil {

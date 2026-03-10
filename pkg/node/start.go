@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -227,6 +228,27 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				metrics.AddPeersPruned(removed)
 			case <-ctx.Done():
 				return
+			}
+		}
+	}()
+
+	// Connection security verification (ECDH/encryption)
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if err := myhost.VerifyECDHKeyDerivationUsed(h); err != nil {
+					log.Printf("connection security: %v", err)
+				}
+				if err := myhost.EnsureAllTrafficEncrypted(h); err != nil {
+					log.Printf("connection security: %v", err)
+				}
 			}
 		}
 	}()
