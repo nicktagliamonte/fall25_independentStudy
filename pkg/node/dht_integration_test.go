@@ -1,4 +1,4 @@
-// Purpose: Integration tests for put on node A, get on node B via DHT.
+// Purpose: Integration tests for put on node A, get on node B via key-based token routing.
 
 package node
 
@@ -10,9 +10,10 @@ import (
 
 	bstore "github.com/ipfs/boxo/blockstore"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
@@ -40,7 +41,8 @@ func TestPutGetViaDHT(t *testing.T) {
 
 	buildStack := func(h host.Host, other peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode: myhost.DHTModeServer,
+			Mode:       myhost.DHTModeServer,
+			UseTokenDHT: true,
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				if other.ID == h.ID() {
 					return nil
@@ -59,6 +61,7 @@ func TestPutGetViaDHT(t *testing.T) {
 			_ = d.Close()
 			return nil, nil, err
 		}
+		stack.DHT = d
 		return stack, d, nil
 	}
 
@@ -79,42 +82,32 @@ func TestPutGetViaDHT(t *testing.T) {
 	defer dhtB.Close()
 	defer stackB.Close()
 
-	stackA.ProviderRecords = mystore.NewLocalProviderRecords()
-
-	payload := []byte("integration test payload via DHT")
-	c, err := mystore.PutRawBlockIndexed(ctx, stackA.Datastore, stackA.BlockSvc, payload)
-	if err != nil {
-		t.Fatalf("PutRawBlockIndexed: %v", err)
-	}
-	stackA.AnnounceProvider(ctx, c)
-
 	time.Sleep(2 * time.Second)
 
-	ctxProv, cancelProv := context.WithTimeout(ctx, 15*time.Second)
-	provCh := stackB.Router.FindProvidersAsync(ctxProv, c, 5)
-	var foundA bool
-	for p := range provCh {
-		if p.ID == hA.ID() {
-			foundA = true
-			break
-		}
-	}
-	cancelProv()
-	if !foundA {
-		t.Fatal("DHT FindProviders did not return node A as provider; cannot verify Get")
-	}
+	hA.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
+		_ = mystore.HandleDirectFetchStream(stream, stackA)
+	})
 
-	got, err := mystore.GetBlockIndexed(ctx, stackB.Datastore, stackB.BlockSvc, c)
+	payload := []byte("integration test payload via DHT")
+	key, c, err := stackA.PutBlock(ctx, payload)
 	if err != nil {
-		t.Fatalf("GetBlockIndexed: %v", err)
+		t.Fatalf("PutBlock: %v", err)
+	}
+	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
+
+	time.Sleep(5 * time.Second)
+
+	got, _, err := stackB.GetBlock(ctx, key)
+	if err != nil {
+		t.Fatalf("GetBlock: %v", err)
 	}
 	if !bytes.Equal(got, payload) {
 		t.Errorf("got %q, want %q", got, payload)
 	}
 }
 
-// TestPartitionAndRecovery verifies partition behavior (isolated node cannot discover providers)
-// and recovery (after connecting, content is discoverable).
+// TestPartitionAndRecovery verifies partition behavior (isolated node cannot discover via token)
+// and recovery (after connecting, content is discoverable via token routing).
 func TestPartitionAndRecovery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
@@ -142,7 +135,8 @@ func TestPartitionAndRecovery(t *testing.T) {
 
 	buildStack := func(h host.Host, bootstrapPeers []peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode: myhost.DHTModeServer,
+			Mode:       myhost.DHTModeServer,
+			UseTokenDHT: true,
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				var out []peer.AddrInfo
 				for _, p := range bootstrapPeers {
@@ -164,6 +158,7 @@ func TestPartitionAndRecovery(t *testing.T) {
 			_ = d.Close()
 			return nil, nil, err
 		}
+		stack.DHT = d
 		return stack, d, nil
 	}
 
@@ -192,68 +187,48 @@ func TestPartitionAndRecovery(t *testing.T) {
 	defer dhtC.Close()
 	defer stackC.Close()
 
-	stackA.ProviderRecords = mystore.NewLocalProviderRecords()
-
-	payload := []byte("partition recovery test")
-	c, err := mystore.PutRawBlockIndexed(ctx, stackA.Datastore, stackA.BlockSvc, payload)
-	if err != nil {
-		t.Fatalf("PutRawBlockIndexed: %v", err)
-	}
-	stackA.AnnounceProvider(ctx, c)
+	hA.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
+		_ = mystore.HandleDirectFetchStream(stream, stackA)
+	})
+	hB.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
+		_ = mystore.HandleDirectFetchStream(stream, stackB)
+	})
 
 	time.Sleep(2 * time.Second)
 
-	ctxProv, cancelProv := context.WithTimeout(ctx, 15*time.Second)
-	provCh := stackB.Router.FindProvidersAsync(ctxProv, c, 5)
-	var foundAFromB bool
-	for p := range provCh {
-		if p.ID == hA.ID() {
-			foundAFromB = true
-			break
-		}
+	payload := []byte("partition recovery test")
+	key, c, err := stackA.PutBlock(ctx, payload)
+	if err != nil {
+		t.Fatalf("PutBlock: %v", err)
 	}
-	cancelProv()
-	if !foundAFromB {
-		t.Fatal("B (same partition as A) should find A as provider")
+	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
+
+	time.Sleep(5 * time.Second)
+
+	gotB, _, err := stackB.GetBlock(ctx, key)
+	if err != nil {
+		t.Fatalf("B GetBlock: %v", err)
+	}
+	if !bytes.Equal(gotB, payload) {
+		t.Errorf("B got %q, want %q", gotB, payload)
 	}
 
-	ctxProv2, cancelProv2 := context.WithTimeout(ctx, 5*time.Second)
-	provChC := stackC.Router.FindProvidersAsync(ctxProv2, c, 5)
-	var foundFromC bool
-	for range provChC {
-		foundFromC = true
-		break
-	}
-	cancelProv2()
-	if foundFromC {
-		t.Fatal("C (partitioned) should NOT find providers before recovery")
+	_, _, err = stackC.GetBlock(ctx, key)
+	if err == nil {
+		t.Fatal("C (partitioned) should fail to get before recovery")
 	}
 
 	if err := hC.Connect(ctx, infoB); err != nil {
 		t.Fatalf("recovery connect C to B: %v", err)
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(5 * time.Second)
 
-	ctxProv3, cancelProv3 := context.WithTimeout(ctx, 15*time.Second)
-	provChC2 := stackC.Router.FindProvidersAsync(ctxProv3, c, 5)
-	var foundAfterRecovery bool
-	for p := range provChC2 {
-		if p.ID == hA.ID() || p.ID == hB.ID() {
-			foundAfterRecovery = true
-			break
-		}
-	}
-	cancelProv3()
-	if !foundAfterRecovery {
-		t.Fatal("C should find providers after recovery (connect to B)")
-	}
-
-	got, err := mystore.GetBlockIndexed(ctx, stackC.Datastore, stackC.BlockSvc, c)
+	gotC, _, err := stackC.GetBlock(ctx, key)
 	if err != nil {
-		t.Fatalf("GetBlockIndexed after recovery: %v", err)
+		t.Fatalf("C GetBlock after recovery: %v", err)
 	}
-	if !bytes.Equal(got, payload) {
-		t.Errorf("got %q, want %q", got, payload)
+	if !bytes.Equal(gotC, payload) {
+		t.Errorf("C got %q, want %q", gotC, payload)
 	}
 }

@@ -1,0 +1,748 @@
+================================================================================
+VN-IPFS ARCHITECTURAL TRANSFORMATION PLAN
+================================================================================
+Problem Statement: Current implementation uses CID-based storage with DHT routing
+of provider announcements. New requirements demand key-based storage where:
+- Key = hash(data) only (no provider ID in hash)
+- DHT routes tokens (containing physical locations), not data directly
+- Routing table stores [key, ProviderID] with multiple providers per key
+- Gateway layer for query optimization
+- Key-level locking for write operations
+
+Reference Documents:
+- newReqs.txt (new architectural requirements)
+- architecture.txt (vn-IPFS Architecture v1.4)
+- plan.txt (current implementation plan)
+
+================================================================================
+PHASE 1: KEY-BASED STORAGE FOUNDATION
+================================================================================
+Goal: Transform from CID-based to key-based storage where key = hash(data).
+
+1.1 Key Generation and Storage
+    ---------------------------
+    File: internal/storage/key.go (new)
+    
+    Current: Uses CID (content-addressed) for storage
+    Required: Use key = hash(data) for storage, with provider ID attached separately
+    
+    Tasks:
+    [x] Define Key type: hash of data (SHA256)
+    [x] Implement KeyFromData(data []byte) Key function
+    [x] Store key as primary identifier (CID derived from data for IPFS blockstore compatibility)
+    [x] Update PutRawBlockIndexed to generate and store key
+    [x] Update routing table to use Key as primary identifier (not CID)
+    
+    Key Structure:
+    - Key: []byte (SHA256 hash of data)
+    - ProviderID: peer.ID (attached to key, not in hash)
+    - Data: []byte (actual content)
+    - CID: cid.Cid (for IPFS compatibility, derived from data)
+
+1.2 Routing Table Transformation
+    -----------------------------
+    File: internal/storage/routing_table.go (modify)
+    
+    Current: map[CID] → {ProviderID, RepVector} (single provider per CID)
+    Required: map[Key] → [{ProviderID1, ProviderID2, ...}, RepVector] (multiple providers per key)
+    
+    Tasks:
+    [x] Change RoutingTableEntry to use Key instead of CID as primary identifier
+    [x] Change ProviderID field to []peer.ID (multiple providers per key)
+    [x] Update Set() to append providers (not replace) for same key
+    [x] Add AddProvider(key Key, providerID peer.ID) method
+    [x] Add RemoveProvider(key Key, providerID peer.ID) method
+    [x] Add GetProviders(key Key) []peer.ID method
+    [x] Update all call sites to use Key instead of CID for routing table operations
+
+1.3 Data Structure Update
+    -----------------------
+    File: internal/storage/store.go (modify)
+    
+    Required: "remove the device id from the data hashing only hash the data and then 
+    alter the data structure to have the device id added in to it"
+    
+    Tasks:
+    [x] Create KeyedBlock structure: {Key, Data, ProviderID, CID}
+    [x] Update PutRawBlockIndexed to return (Key, CID) tuple
+    [x] Store Key → ProviderID mapping separately from data
+    [x] Ensure ProviderID is NOT included in key hash calculation
+    [x] Update GetBlock to accept Key as primary parameter
+    [x] Create GetBlockByKey(key Key) method (primary method)
+
+================================================================================
+PHASE 2: TOKEN-BASED ROUTING ARCHITECTURE
+================================================================================
+Goal: Transform DHT to route tokens (containing physical locations) instead of 
+directly routing data/provider announcements.
+
+2.1 Token Structure Definition
+    ---------------------------
+    File: internal/storage/token.go (new)
+    
+    Required: "we want dht to route tokens. tokens should contain physical location 
+    of data. we want to add the key to dht."
+    
+    Tasks:
+    [x] Define Token struct:
+        - Key: Key (hash of data)
+        - Locations: []Location (physical locations: peer.ID + multiaddr)
+        - Timestamp: int64
+        - Version: int (for conflict resolution)
+    [x] Define Location struct:
+        - ProviderID: peer.ID
+        - Address: multiaddr.Multiaddr
+        - RTT: time.Duration (optional, for selection)
+    [x] Implement Token.Marshal() and Token.Unmarshal()
+    [x] Implement Token.Validate() (check key, locations not empty)
+    [x] Token is stateless (per newReqs.txt: "the key, the dht hash key has no state")
+
+2.2 DHT Token Routing
+    ------------------
+    File: internal/storage/token_routing.go (new)
+    
+    Required: "dht routes tokens. tokens should contain physical location of data"
+    
+    Tasks:
+    [x] Implement PutToken(ctx, key Key, token Token) error
+        - Stores token in DHT using key as DHT key
+        - Token contains locations, not data
+    [x] Implement GetToken(ctx, key Key) (Token, error)
+        - Retrieves token from DHT
+        - Returns locations for direct device-to-device fetch
+    [x] Implement UpdateTokenLocations(ctx, key Key, locations []Location) error
+        - Updates token with new locations (for replication)
+    [x] Use DHT namespace: "/tokens/" + hex(key)
+    [x] Token TTL: 48 hours (per libp2p DHT standard)
+
+2.3 Data Retrieval Flow Transformation
+    ------------------------------------
+    File: internal/storage/store.go, internal/control/server.go (modify)
+    
+    Current Flow:
+    1. Get request → DHT FindProviders → Bitswap fetch
+    
+    Required Flow:
+    1. Get request → DHT GetToken(key) → Token contains locations → Direct fetch from devices
+    
+    Tasks:
+    [x] Update GetBlock to:
+        - Accept Key parameter
+        - Call GetToken(key) to get locations
+        - Try direct fetch from each location (parallel)
+        - Return error if token not found
+    [x] Update /get endpoint to:
+        - Extract key from request
+        - Use token-based routing exclusively
+    [x] Implement DirectFetch(ctx, location Location, key Key) ([]byte, error)
+        - Opens direct stream to provider
+        - Requests data by key
+        - Returns data or error
+
+2.4 Token Synchronization
+    ------------------------
+    File: internal/storage/token_sync.go (new)
+    
+    Required: "the only function of the token is to sync with the data"
+    
+    Tasks:
+    [x] Implement TokenSync protocol:
+        - When data is stored locally, create/update token
+        - When data is deleted, remove token (or mark as deleted)
+        - When replication occurs, update token with new locations
+    [x] Auto-sync token on Put operations
+    [x] Auto-sync token on Delete operations
+    [x] Auto-sync token on Repair operations (add new replica locations)
+    [x] Token versioning for conflict resolution
+
+================================================================================
+PHASE 3: MULTI-PROVIDER ROUTING TABLE
+================================================================================
+Goal: Support multiple providers per key in routing table for replication.
+
+3.1 Routing Table Multi-Provider Support
+    --------------------------------------
+    File: internal/storage/routing_table.go (modify)
+    
+    Tasks:
+    [x] Change RoutingTableEntry structure:
+        - Key: Key (instead of CID)
+        - Providers: []ProviderInfo (instead of single ProviderID)
+        - RepVector: ReplicationVector
+    [x] Define ProviderInfo struct:
+        - ProviderID: peer.ID
+        - DistanceCategory: DistanceCategory (Near/Midrange/FarFlung)
+        - AddedAt: time.Time
+    [x] Update Set() to merge providers (not replace)
+    [x] Add AddProvider(key Key, providerID peer.ID, category DistanceCategory)
+    [x] Add RemoveProvider(key Key, providerID peer.ID)
+    [x] Add GetProviders(key Key) []ProviderInfo
+    [x] Add GetProvidersByCategory(key Key, category DistanceCategory) []peer.ID
+    [x] Update verification logic to check multiple providers per key
+
+3.2 Replication Integration
+    -------------------------
+    File: internal/storage/repair.go, internal/storage/verify.go (modify)
+    
+    Tasks:
+    [x] Update VerifyCIDStateWithRepVector to VerifyKeyStateWithRepVector
+        - Accept Key instead of CID
+        - Check multiple providers per key
+        - Verify distribution matches repVector
+    [x] Update TriggerRepair to work with keys
+        - Accept Key parameter
+        - Update token with new replica locations
+        - Add new providers to routing table
+    [x] Update repair protocol to:
+        - Replicate to multiple providers
+        - Update token with all new locations
+        - Update routing table with all providers
+
+================================================================================
+PHASE 4: KEY-LEVEL LOCKING MECHANISM
+================================================================================
+Goal: Implement mutual exclusion for keys to support concurrent writes.
+
+4.1 Key Lock Structure
+    --------------------
+    File: internal/storage/key_lock.go (new)
+    
+    Required: "mutual exclusion is possible by locking the key for h(data)"
+    
+    Tasks:
+    [x] Define KeyLock struct:
+        - Key: Key
+        - LockHolder: peer.ID (who holds the lock)
+        - AcquiredAt: time.Time
+        - ExpiresAt: time.Time
+        - Version: int (for conflict resolution)
+    [x] Implement KeyLockManager:
+        - AcquireLock(ctx, key Key, holder peer.ID, ttl time.Duration) error
+        - ReleaseLock(ctx, key Key, holder peer.ID) error
+        - IsLocked(key Key) (bool, peer.ID)
+        - ExtendLock(ctx, key Key, holder peer.ID, ttl time.Duration) error
+    [x] Store locks in DHT tuple space (for distributed locking)
+    [x] Lock key: "/locks/" + hex(key)
+    [x] Lock TTL: configurable (default 5 minutes)
+
+4.2 Write Lock Integration
+    ------------------------
+    File: internal/storage/store.go, internal/control/server.go (modify)
+    
+    Required: "if you write you need the token" (lock required for writes)
+    
+    Tasks:
+    [x] Update PutRawBlockIndexed to:
+        - Acquire lock for key before write
+        - Release lock after successful write
+        - Return error if lock cannot be acquired
+    [x] Update DeleteBlockIndexed to:
+        - Acquire lock for key before delete
+        - Release lock after successful delete
+    [x] Implement lock retry logic (exponential backoff)
+    [x] Implement lock timeout (fail if lock not acquired within timeout)
+
+4.3 Read Without Lock
+    -------------------
+    File: internal/storage/store.go (modify)
+    
+    Required: "if you read you don't have to lock it you can get a token and read 
+    from everywhere"
+    
+    Tasks:
+    [x] Ensure GetBlock does NOT require lock
+    [x] GetBlock can read from any provider (no lock check)
+    [x] Multiple concurrent reads allowed (no locking)
+
+================================================================================
+PHASE 5: GATEWAY AND QUERY OPTIMIZER
+================================================================================
+Goal: Implement stateless gateway layer with query optimizer for multi-partition 
+queries.
+
+5.1 Gateway Structure
+    -------------------
+    File: internal/gateway/gateway.go (new)
+    
+    Required: "gateway is stateless. the key, the dht hash key has no state"
+    
+    Tasks:
+    [x] Define Gateway struct (stateless):
+        - Router: routing.ContentRouting (DHT for token routing)
+        - TupleSpace: tuplespace.TupleSpace (for query operations)
+    [x] Implement Gateway.Query(ctx, query Query) ([]Result, error)
+        - Accepts query (key pattern, regex, etc.)
+        - Breaks down query if needed
+        - Routes to appropriate tuple space
+        - Aggregates results
+    [x] Gateway does NOT store state (stateless)
+    [x] Gateway routes tokens, not data
+
+5.2 Query Optimizer
+    -----------------
+    File: internal/gateway/optimizer.go (new)
+    
+    Required: "p2pTS needs to mimic the query optimizer and the general gateway 
+    concept"
+    
+    Tasks:
+    [x] Define Query struct:
+        - Pattern: string (key pattern, regex, etc.)
+        - Type: QueryType (Exact, Prefix, Regex, MultiPartition)
+    [x] Implement QueryOptimizer:
+        - ParseQuery(query string) Query
+        - BreakDownQuery(query Query) []SubQuery
+        - OptimizeQuery(query Query) Query (rewrite for efficiency)
+    [x] Multi-partition query support:
+        - Break down query involving multiple partitions
+        - Execute sub-queries in parallel
+        - Aggregate results
+    [x] Query routing:
+        - Exact key → DHT token lookup
+        - Prefix → PHT + DHT token lookup
+        - Regex → P2P tuple space
+        - Multi-partition → Break down and route to partitions
+
+5.3 Gateway Integration
+    ---------------------
+    File: internal/control/server.go (modify)
+    
+    Tasks:
+    [x] Add Gateway instance to control server
+    [x] Update /get endpoint to use Gateway.Query()
+    [x] Update /put endpoint to use Gateway for token routing
+    [x] Gateway handles token routing, not data routing (docs/GATEWAY.md)
+    [x] Data routing happens directly device-to-device after token lookup (docs/GATEWAY.md)
+
+================================================================================
+PHASE 6: P2P TUPLE SPACE FOR APPLICATION MANAGEMENT
+================================================================================
+Goal: Ensure P2P tuple space is used only for permissioned application management.
+
+6.1 Permission Enforcement
+    ------------------------
+    File: internal/tuplespace/p2p_ts.go (modify)
+    
+    Required: "top level tuple space is for application management and can only be 
+    used for permissioned users"
+    
+    Tasks:
+    [x] Add permission check to P2PTupleSpace operations:
+        - TsPut: Check if caller has permission (KYC token, etc.)
+        - TsGet: Check if caller has permission
+        - TsRead: Check if caller has permission
+    [x] Define PermissionChecker interface (internal/tuplespace/permission.go)
+    [x] Integrate with handshake/auth system (internal/net/handshake_permission.go)
+    [x] Return error if permission denied (TsPut/TsGet/TsRead return ErrPermissionDenied)
+
+6.2 Storage Layer Separation
+    --------------------------
+    File: internal/tuplespace/router.go (modify)
+    
+    Required: "bottom level is for storage and can be used by permissioned and 
+    non permissioned"
+    
+    Tasks:
+    [x] Ensure DHT tuple space does NOT require permission
+    [x] DHT tuple space is for storage layer (open)
+    [x] P2P tuple space is for application management (permissioned)
+    [x] Router routes storage queries to DHT (no permission check)
+    [x] Router routes admin queries to P2P (with permission check)
+
+================================================================================
+PHASE 7: TESTING AND VALIDATION
+================================================================================
+Goal: Ensure new architecture works correctly and maintains performance.
+
+7.1 Unit Tests
+    ------------
+    Tasks:
+    [x] Test KeyFromData() generates consistent keys
+    [x] Test Key != CID (different hashes)
+    [x] Test routing table multi-provider support
+    [x] Test token routing (PutToken, GetToken)
+    [x] Test key locking (AcquireLock, ReleaseLock)
+    [x] Test gateway query optimization
+    [x] Test permission enforcement in P2P tuple space
+
+7.2 Integration Tests
+    -------------------
+    Tasks:
+    [x] Test Put → Token created → GetToken → Direct fetch
+    [x] Test replication → Multiple providers → Token updated
+    [x] Test write lock → Concurrent writes → One succeeds
+    [x] Test read without lock → Multiple concurrent reads succeed
+    [x] Test gateway query breakdown → Multi-partition query
+
+7.3 Performance Tests
+    -------------------
+    Tasks:
+    [x] Measure token routing latency vs. provider announcement latency
+    [x] Measure key-based lookup vs. CID-based lookup
+    [x] Measure lock acquisition overhead
+    [x] Measure gateway query optimization improvement
+    [x] Verify O(log N) complexity maintained
+
+================================================================================
+PHASE 8: DOCUMENTATION AND CLEANUP
+================================================================================
+Goal: Document new architecture and remove deprecated code.
+
+8.1 Architecture Documentation
+    ---------------------------
+    Tasks:
+    [x] Document key-based storage architecture
+    [x] Document token routing mechanism
+    [x] Document key locking protocol
+    [x] Document gateway and query optimizer
+
+8.2 Code Cleanup
+    --------------
+    Tasks:
+    [x] Remove all CID-based routing code (replace with key-based)
+    [x] Update all comments to reflect key-based architecture
+    [x] Update error messages to reference keys instead of CIDs
+    [ ] Clean up unused code paths
+
+8.3 API Documentation
+    ------------------
+    Tasks:
+    [x] Document new API endpoints (key-based) (docs/API.md)
+    [x] Document token protocol (docs/TOKEN_PROTOCOL.md)
+    [x] Document locking API (docs/LOCKING_API.md)
+    [x] Document gateway query API (docs/GATEWAY_QUERY_API.md)
+    [x] Update README.md with new architecture
+
+================================================================================
+PHASE 9: ETHEREUM SWARM COMPARISON AND BENCHMARKING
+================================================================================
+Goal: Create comprehensive Docker-based comparison test suite against Ethereum Swarm
+to demonstrate performance advantages with catchy, graphable results.
+
+9.1 Script Directory Cleanup
+    --------------------------
+    File: scripts/ (massive cleanup)
+    
+    Tasks:
+    [x] Audit all scripts in scripts/ directory (50+ scripts currently)
+    [x] Remove obsolete scripts:
+        - Old CID-based test scripts
+        - Redundant scenario scripts
+        - Unused harness scripts (ec2_*, local_mesh.sh if not needed)
+        - Deprecated validation scripts
+        - Swarm-specific scripts that duplicate functionality
+    [x] Keep only essential scripts:
+        - Docker orchestration (start.sh, stop.sh, logs.sh, status.sh, clean.sh)
+        - Core Swarm comparison test suite
+        - Results analysis and plotting
+    [x] Organize remaining scripts into clear structure:
+        - scripts/docker/ (orchestration only)
+        - scripts/tests/swarm_comparison/ (comparison test suite)
+        - scripts/analysis/ (results/plotting only)
+    [x] Remove all redundant Swarm test scripts (keep only comparison suite)
+    [x] Document which scripts are kept and why in scripts/README.md
+
+9.2 Docker-Based Test Infrastructure
+    ----------------------------------
+    File: scripts/tests/swarm_comparison/ (new directory)
+    
+    Tasks:
+    [x] Create Docker Compose setup for vn-IPFS nodes:
+        - docker-compose.vnipfs.yml
+        - Support for variable node counts (10, 50, 100, 500)
+        - Health checks and startup coordination
+    [x] Create Docker Compose setup for Ethereum Swarm nodes:
+        - docker-compose.swarm.yml
+        - Same node counts for fair comparison
+        - Health checks and startup coordination
+    [x] Implement test orchestration script:
+        - Start both networks in parallel
+        - Wait for both to be healthy
+        - Run identical test scenarios on both
+        - Collect metrics from both systems
+        - Shut down cleanly
+        - Handle errors gracefully
+    [x] Test scenarios to compare:
+        - [x] Upload latency (single file)
+        - [x] Upload latency (batch upload)
+        - [x] Download latency
+        - [x] Download latency (cold start vs warm cache)
+        - [x] Network scaling (10, 50, 100, 500 nodes)
+        - [x] Replication speed (time to R replicas)
+        - [x] Lookup complexity (O(log N) verification)
+        - [x] Token routing vs provider announcement overhead
+        - [x] Key-based lookup vs CID-based lookup
+        - [x] Concurrent read/write performance
+        - [x] Partition recovery time
+    [x] Metrics collection:
+        - [x] Latency measurements (p50, p95, p99)
+        - [x] Throughput (MB/s) — upload and download in CSV, analysis, reports
+        - [x] Message counts
+        - [x] Network hops
+        - [x] CPU/memory usage
+        - [x] Storage efficiency
+
+    9.2.1 Implementation Guide: Remaining Metrics
+        ------------------------------------------
+        Step-by-step instructions for implementing the five un/partially-done metrics.
+
+        A. [x] Throughput (MB/s)
+            1. [x] Upload throughput: In upload_test.sh CSV, add column throughput_mbps
+            2. [x] Ensure upload_test.sh writes latency_ms per iteration; derive throughput in analysis
+            3. [x] swarm_comparison_analyze.py: throughput_mbps, stats table, plots
+            4. [x] generate_swarm_report.sh: upload throughput table
+            5. [x] Run run_comparison, verify throughput in HTML and markdown
+
+        B. [x] Message counts
+            1. [x] Instrument vn-IPFS control/server or libp2p layer to count inbound/outbound
+               messages per operation (put, get, lookup).
+            2. [x] Add /metrics or /debug/messages endpoint returning message counts since
+               start or per-request.
+            3. [x] Instrument Swarm (Bee) if possible — check for /debug, /metrics, or logs;
+               Swarm may expose Prometheus metrics.
+            4. [x] Create scripts/tests/swarm_comparison/message_count_test.sh: perform
+               upload/download, query message counts from both systems, write CSV
+               system,operation,message_count.
+            5. [x] Add message_count column to upload/download CSVs or separate
+               message_counts.csv; update analysis and report scripts.
+
+        C. [x] Network hops
+            1. [x] Instrument vn-IPFS DHT lookup path: log hop count from self to target
+               for each get/lookup; add to control API response or /debug.
+            2. [x] For Swarm: check Bee docs for retrieval path or hop metrics; may require
+               tracing or log parsing.
+            3. [x] Add network_hops field to get/put response or a /lookup_hops key.
+            4. [x] Create network_hops_test.sh or extend upload/download tests to record
+               hops per operation.
+            5. [x] Output system,operation,payload_size,hops; add to analysis and plots.
+
+        D. [x] CPU/memory usage
+            1. [x] Create scripts/utils/resource_monitor.sh: run docker stats --no-stream
+               --format "{{.Name}},{{.CPUPerc}},{{.MemUsage}}" in a loop during test,
+               appending to CSV with timestamp.
+            2. [x] In run_comparison.sh: spawn resource_monitor.sh in background before
+               upload/download tests; stop after tests; pass container names (fall25-*,
+               swarm-*).
+            3. [x] Output: timestamp,container,cpu_pct,mem_usage_mb.
+            4. [x] In swarm_comparison_analyze.py: load resource CSV, compute mean/peak
+               CPU and memory per system and test phase; add resource usage plots.
+            5. [x] Add resource summary to generate_swarm_report.sh.
+
+        E. [x] Storage efficiency
+            1. [x] Define metric: (payload_size * replication_count) / actual_disk_usage
+               or actual_disk_usage / payload_size (see docs/SWARM_COMPARISON_TESTS.md).
+            2. [x] For vn-IPFS: add /storage/stats or query volume size for node data dir
+               (e.g. docker exec <container> du -sb /app/data) before/after put.
+            3. [x] For Swarm: use docker exec or Bee API (if available) to get storage
+               used per node (see docs/SWARM_COMPARISON_TESTS.md).
+            4. [x] Create storage_efficiency_test.sh: upload known payload, measure disk
+               delta across nodes; compute efficiency ratio.
+            5. [x] Output: system,payload_size,nodes,disk_bytes,efficiency_ratio; add to
+               analysis and report.
+
+    9.2.2 Implementation Guide: Remaining Test Scenarios
+        -------------------------------------------------
+        Step-by-step instructions for the unchecked test scenarios in 9.2.
+
+        A. [x] Upload latency (batch upload)
+            1. [x] Add --batch-size N to upload_test.sh; default batch-size 1 (single file).
+            2. [x] Loop: upload N files sequentially (or in parallel with xargs -P), measure
+               total wall time; output batch_total_ms and per-file avg.
+            3. [x] CSV columns: system,payload_size,batch_size,iteration,latency_ms,total_batch_ms.
+            4. [x] Run batch tests (e.g. batch_size 5, 10, 20); aggregate in run_comparison.
+            5. [x] Add batch throughput (total_bytes / total_batch_s) to analysis and reports.
+
+        B. [x] Download latency (cold start vs warm cache)
+            1. [x] Add --cache-mode cold|warm to download_test.sh.
+            2. [x] Cold: ensure content not in local cache before get (new key or clear cache).
+            3. [x] Warm: perform get, then get again immediately (same key, cache hit).
+            4. [x] CSV columns: system,payload_size,iteration,cache_mode,ttfb_ms,total_ms.
+            5. [x] Run both modes; add cache_mode dimension to analysis; compare cold vs warm.
+
+        C. [x] Replication speed (time to R replicas)
+            1. [x] Add /replication/status or poll keys across nodes to count replicas over time.
+            2. [x] vn-IPFS: add endpoint or script to count nodes holding a key.
+            3. [x] Swarm: use pinning API or chunk distribution metrics if available.
+            4. [x] Create replication_test.sh: put one payload, poll replica count until R reached.
+            5. [x] Output: system,payload_size,nodes,replicas_target,time_to_R_s; add to analysis.
+
+        D. [x] Partition recovery time (longest)
+            1. [x] Simulate partition: use Docker network disconnect for subset of nodes.
+            2. [x] Put content before partition; trigger partition; heal network (reconnect).
+            3. [x] Measure time from reconnect until content available on previously partitioned nodes.
+            4. [x] Create partition_recovery_test.sh: tc or docker network as partition tool.
+            5. [x] Output: system,node_count,partition_size,recovery_time_s; add to analysis.
+            6. [x] Document: requires manual/sudo for network partition; optional CI skip.
+
+        E. [x] Lookup complexity (O(log N) verification)
+            1. [x] Instrument vn-IPFS DHT: log hop count per lookup; add to /get or /debug.
+            2. [x] Swarm: check Bee metrics or tracing for retrieval path length.
+            3. [x] Create lookup_complexity_test.sh: run lookups at N=10,50,100,500; record hops.
+            4. [x] Output: system,node_count,operation,hops; plot hops vs log(N); verify slope ~1.
+            5. [x] Add lookup_complexity.csv and log-log plot to analysis.
+
+        F. [x] Concurrent read/write performance
+            1. [x] Create concurrent_test.sh: spawn N parallel uploads and M parallel downloads.
+            2. [x] Use background jobs or xargs -P; measure aggregate throughput and latency.
+            3. [x] Test matrix: (1w/0r), (5w/5r), (10w/10r); record contention.
+            4. [x] Output: system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms.
+            5. [x] Add concurrent results to run_comparison; add plots for throughput vs concurrency.
+
+        G. [x] Token routing vs provider announcement overhead
+            1. [x] vn-IPFS: count messages for token-based lookup (no provider announce).
+            2. [x] Swarm: count provider announcements + retrieval messages.
+            3. [x] Add /metrics or instrumentation to both systems (see 9.2.1 B).
+            4. [x] Create routing_overhead_test.sh: put+get, record message counts per system.
+            5. [x] Output: system,operation,message_count,overhead_type; compare in report.
+
+        H. [x] Key-based lookup vs CID-based lookup (shortest)
+            1. [x] Define equivalent operations: vn-IPFS key lookup vs Swarm CID retrieval.
+            2. [x] Measure latency and hop count for same logical operation (store X, fetch X).
+            3. [x] Add lookup_type column (key|cid) to download or lookup test CSV.
+            4. [x] Run both; compare latency and complexity; add to analysis with side-by-side table.
+            5. [x] Document semantic equivalence in test (e.g. "key K = content hash of payload").
+
+9.3 Comparison Test Implementation
+    ---------------------------------
+    File: scripts/tests/swarm_comparison/run_comparison.sh
+    
+    Tasks:
+    [x] Implement test runner:
+        - [x] Parameterized network sizes (--nodes 10|50|100|500)
+        - [x] Parallel execution of both systems
+        - [x] Timeout handling per test (run_with_timeout; --test-timeout N sec, default 600)
+        - [x] Error recovery and retry logic (continues on test failure)
+        - [x] Results directory creation
+    [x] Test 1: Upload Performance
+        - [x] Upload same dataset to both systems (upload_test.sh; same payload sizes)
+        - [x] Measure time to completion (latency_ms, total_batch_ms)
+        - [x] Measure network overhead (bytes transferred) — upload_network_bytes.csv via container rx/tx delta
+        - [x] Measure CPU/memory usage during upload (resource_usage_upload.csv, upload-phase monitor)
+    [x] Test 2: Download Performance
+        - [x] Download same content from both systems
+        - [x] Measure cold vs warm cache performance
+        - [x] Measure lookup time (token routing vs provider discovery) — /lookup endpoint + lookup_latency_test.sh (vn-IPFS isolated; Swarm TTFB proxy)
+        - [x] Measure end-to-end latency (ttfb_ms, total_ms)
+    [x] Test 3: Scaling Test
+        - [x] Run tests at 10, 50, 100, 500 node scales
+        - [x] Measure how performance degrades (should be O(log N)) — lookup_complexity + O(log N) regression (slope, R²) in report
+        - [x] Compare against Swarm's scaling behavior — scaling comparison table (upload/download slope, R²) in report
+        - [x] Generate log-log plots showing O(log N) vs O(N) — lookup_complexity_loglog in swarm_comparison_analyze.py
+    [x] Test 4: Replication Test
+        - [x] Measure time to achieve R replicas — replication_test.sh wired into run_comparison (Step 5e)
+        - [x] Compare replication distribution (N/M/F vs Swarm's approach) — replication_distribution_test.sh + /replication/status near/midrange/farflung
+        - [x] Measure repair time after node failure — repair_time_test.sh
+        - [x] Measure replication overhead — replication_test.sh --record-overhead (replication_bytes)
+    [x] Test 5: Concurrent Operations
+        - [x] Multiple simultaneous reads (no locking)
+        - [x] Multiple simultaneous writes (with locking)
+        - [x] Measure contention and throughput (throughput_mbps, p99_latency_ms)
+        - [x] Compare lock overhead vs Swarm's approach — lock_overhead table (p99_ratio, tput_ratio) in analysis + report
+    [x] Test 6: Token Routing Efficiency
+        - [x] Measure token lookup overhead (O(log N)) — lookup_complexity_test.sh wired (Step 5d)
+        - [x] Compare against Swarm's provider announcement overhead — routing_overhead_test.sh wired (Step 6b)
+        - [x] Measure direct fetch efficiency — derived from download + lookup_latency (direct_fetch_efficiency table)
+        - [x] Measure total message count per operation (message_count_test)
+
+9.4 Results Analysis and Visualization
+    ------------------------------------
+    File: scripts/analysis/swarm_comparison_plots.py (new)
+    
+    Tasks:
+    [ ] Create comparison plots:
+        - Latency comparison (vn-IPFS vs Swarm) by network size
+            * Upload latency
+            * Download latency
+            * Lookup latency
+        - Throughput comparison by network size
+            * Upload throughput
+            * Download throughput
+        - Scaling behavior (log-log plot showing O(log N))
+            * X-axis: Network size (log scale)
+            * Y-axis: Operation time (log scale)
+            * Overlay theoretical O(log N) curve
+        - Replication speed comparison
+            * Time to R replicas
+            * Replication distribution efficiency
+        - Message overhead comparison
+            * Token routing vs provider announcements
+            * Total messages per operation
+        - Network efficiency
+            * Data transferred vs actual data size
+            * Overhead ratio
+    [ ] Generate catchy visualizations:
+        - Side-by-side bar charts (vn-IPFS vs Swarm)
+        - Line graphs showing scaling advantage (log-log)
+        - Heatmaps for multi-dimensional comparisons
+        - Performance ratio charts (vn-IPFS / Swarm) - highlight >1.0 ratios
+        - Speedup graphs (how many times faster)
+    [ ] Export results:
+        - CSV for further analysis (all raw metrics)
+        - PNG/PDF for papers/presentations (high-quality plots)
+        - Interactive HTML dashboard (optional, using plotly)
+    [ ] Generate comparison report:
+        - Summary statistics (mean, median, std dev)
+        - Key findings (bullet points)
+        - Performance advantages highlighted (bold)
+        - Complexity analysis (O(log N) verification with regression)
+        - Recommendations
+
+9.5 Benchmarking Documentation
+    -----------------------------
+    File: docs/SWARM_COMPARISON.md (new)
+    
+    Tasks:
+    [ ] Document test methodology:
+        - How tests are structured
+        - What metrics are collected
+        - How comparisons are made
+    [ ] Document test environment:
+        - Docker setup and versions
+        - Hardware specs (CPU, RAM, network)
+        - Software versions (vn-IPFS, Swarm)
+    [ ] Document test scenarios and parameters:
+        - Network sizes tested
+        - Data sizes used
+        - Replication factors
+        - Test durations
+    [ ] Document how to reproduce results:
+        - Prerequisites
+        - Step-by-step instructions
+        - Expected outputs
+    [ ] Include example commands:
+        - Running individual tests
+        - Running full comparison suite
+        - Generating plots
+    [ ] Include example plots and interpretation:
+        - What each plot shows
+        - How to read the results
+        - Key takeaways
+    [ ] Document known limitations and caveats:
+        - What the tests don't cover
+        - Environmental factors that affect results
+        - Fairness considerations
+
+================================================================================
+PHASE 10: FINAL CLEANUP
+================================================================================
+10.1 README Updates
+     -----------------
+
+     Tasks:
+     [ ] Trim the README of unnecessary or extraneous information
+     [ ] Validate that the REAEDME contains industry standard directions and explainations
+
+10.2 Root Dir and Test Suite Cleanup
+     ---------------------------------
+
+     Tasks:
+     [ ] Make sure all notes, plans, and documentation files from the root are stored somewhere reasonable
+     [ ] Remove outdated docker files, notes, binaries, and other unnecessary files from root
+     [ ] Remove some of the scripts and tests which are excessive or overkill for the final paper
+
+10.3 Documentation of Completed Work
+     ---------------------------------
+
+     Tasks:
+     [ ] ***********manual************ put notes on completed work in this branch, the old one sent to Shi
+     [ ] Generate a brief document explaining how this codebase successfully implements the items from the above

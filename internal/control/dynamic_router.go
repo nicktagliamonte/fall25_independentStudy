@@ -19,12 +19,6 @@ func NewDynamicRouter() *DynamicRouter {
 	return &DynamicRouter{byCIDStr: make(map[string]peer.AddrInfo)}
 }
 
-func (r *DynamicRouter) SetProviderForCID(c cid.Cid, p peer.AddrInfo) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.byCIDStr[c.String()] = p
-}
-
 func (r *DynamicRouter) ClearProviderForCID(c cid.Cid) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

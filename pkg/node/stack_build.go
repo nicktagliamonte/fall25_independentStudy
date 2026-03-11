@@ -7,9 +7,9 @@ import (
 
 	bstore "github.com/ipfs/boxo/blockstore"
 	ds "github.com/ipfs/go-datastore"
+	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
@@ -55,5 +55,7 @@ func BuildStackWithDHT(ctx context.Context, h host.Host, bs bstore.Blockstore, d
 		_ = d.Close()
 		return nil, nil, nil, err
 	}
+	stack.DHT = d
+	stack.KeyLockManager = mystore.NewKeyLockManagerFromDatastore(stack.Datastore)
 	return stack, d, dynamicRouter, nil
 }

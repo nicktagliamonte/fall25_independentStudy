@@ -20,15 +20,17 @@ import (
 
 	bstore "github.com/ipfs/boxo/blockstore"
 	ds "github.com/ipfs/go-datastore"
+	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
+	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
+	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
 
 type service struct {
@@ -150,7 +152,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		}
 	}
 
-	// Storage stack: DHT with DynamicRouter fallback for explicit provider hints
+	// Storage stack: DHT with DynamicRouter fallback. Token routing (key-based) is primary.
 	stack, d, dynamicRouter, err := BuildStackWithDHT(ctx, h, bs, datastore, peerStore, opts.DHTClientMode)
 	metrics.SetDHTBootstrapPeers(int64(len(myhost.DefaultDHTBootstrapAddrs) + len(opts.BootstrapPeers)))
 	if err != nil {
@@ -205,14 +207,42 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	stack.ProviderRecords = providerRecords
 	aq := mystore.NewAnnounceQueue()
 	stack.AnnounceQueue = aq
+
+	// Create repair protocol and gateway using DHT tuple space (before recovery callback setup)
+	var repairProtocol *mystore.RepairProtocol
+	var gateway *mygateway.Gateway
+	if d != nil {
+		dhtAdapter := mytuplespace.NewDHTValueStoreAdapter(d)
+		dhtTS := mytuplespace.NewDHTTupleSpace(dhtAdapter)
+		tokenized := opts.RequireToken || (len(opts.CAPubKeysB64) > 0 && opts.Token != "")
+		repairProtocol = mystore.NewRepairProtocol(stack, h, dhtTS, tokenized)
+
+		var baseTS mytuplespace.TupleSpace = dhtTS
+		if opts.TSHAddr != "" {
+			p2pTS := mytuplespace.NewP2PTupleSpace(opts.TSHAddr, 0x7f000001, "sng40")
+			p2pTS.SetPermissionChecker(myhost.NewHandshakePermissionChecker(basePolicy))
+			router := mytuplespace.NewRouter(dhtTS, p2pTS, nil)
+			baseTS = router
+		}
+		tokenTS := mytuplespace.NewTokenFallbackTupleSpace(dhtAdapter, baseTS)
+		gateway = mygateway.NewGateway(stack.Router, tokenTS)
+		if ts := gateway.TokenStore(); ts != nil {
+			stack.TokenStore = ts
+		}
+	}
+
 	pcm := myhost.NewPeerConnectivityMonitor(h,
 		myhost.PartitionMonitorOnPartitionEvent(func(e myhost.PartitionEvent) { aq.SetPartitioned(true) }),
 		myhost.PartitionMonitorOnRecovery(func() {
 			aq.SetPartitioned(false)
 			stack.FlushQueuedAnnouncements(ctx)
+			// Trigger repair protocol for missing replicas after partition recovery
+			if repairProtocol != nil {
+				stack.TriggerRepairForAllCIDsOnRecovery(ctx, h, repairProtocol)
+			}
 		}))
 	go pcm.Start(ctx)
-	mystore.StartPeriodicReannounce(ctx, stack.Router, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
+	mystore.StartPeriodicReannounce(ctx, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
 	s.stopIBLT = InstallCatalogIBLT(ctx, h, stack)
 
 	// Pruning loop
@@ -384,8 +414,12 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		}
 	}()
 
+	// Wire message metrics for P2P message counting (put, get, lookup)
+	stack.MessageSink = ctrl.NodeMetricsMessageSink(metrics)
+	stack.HopSink = ctrl.NodeMetricsHopSink(metrics)
+
 	// Control server
-	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() { cancel() }, dynamicRouter)
+	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() { cancel() }, dynamicRouter, repairProtocol, gateway, "")
 	if err != nil {
 		stack.Close()
 		_ = d.Close()
@@ -435,7 +469,9 @@ func (s *service) Status(ctx context.Context) (Status, error) {
 }
 
 func (s *service) PutRaw(ctx context.Context, data []byte) (string, int, error) {
-	req := struct{ Data string `json:"data"` }{Data: string(data)}
+	req := struct {
+		Data string `json:"data"`
+	}{Data: string(data)}
 	buf, _ := json.Marshal(req)
 	resp, err := (&http.Client{Timeout: 15 * time.Second}).Post("http://"+s.controlAddr+"/put", "application/json", bytes.NewReader(buf))
 	if err != nil {

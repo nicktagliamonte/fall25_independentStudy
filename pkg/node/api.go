@@ -29,6 +29,10 @@ type Options struct {
 	Token        string
 	CAPubKeysB64 []string
 
+	// P2P tuple space (application management, permissioned). When set, Gateway uses
+	// Router with P2PTupleSpace for regex/admin queries per newReqs.txt.
+	TSHAddr string // "host:port" of TSH daemon, e.g. "127.0.0.1:7000"
+
 	// Control-plane hooks
 	OnHandshake func(peerID string, info map[string]any)
 	OnAck       func(peerID string, status string)
@@ -44,7 +48,7 @@ type Service interface {
 	GetRawFrom(ctx context.Context, providerAddr string, providerPeer string, cidStr string, timeout time.Duration) ([]byte, error)
 	// ListImmediatePeerIDs returns currently connected peer IDs (immediate neighbors).
 	ListImmediatePeerIDs(ctx context.Context) ([]string, error)
-	// RestoreFromManifest fetches the provided CIDs with bounded concurrency and budgets.
+	// RestoreFromManifest fetches blocks by CID (manifest); Key-based API preferred for new code.
 	RestoreFromManifest(ctx context.Context, cids []string, concurrency int, timeout time.Duration, byteBudget int64) (RestoreStats, error)
 }
 

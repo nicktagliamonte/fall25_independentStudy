@@ -39,7 +39,7 @@ func TestAnnounceQueue_FlushDrainsAndCalls(t *testing.T) {
 	var flushed []cid.Cid
 	q.Flush(ctx, func(_ context.Context, c cid.Cid) { flushed = append(flushed, c) })
 	if len(flushed) != 1 || !flushed[0].Equals(pref) {
-		t.Errorf("Flush: want 1 CID, got %v", flushed)
+		t.Errorf("Flush: want 1 entry, got %v", flushed)
 	}
 	if q.QueuedLen() != 0 {
 		t.Errorf("after Flush QueuedLen want 0, got %d", q.QueuedLen())

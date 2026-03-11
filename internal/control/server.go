@@ -8,19 +8,23 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"encoding/base64"
 
 	"strconv"
 
-	"os"
 	"sync"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
+	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
 	mynet "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
@@ -34,6 +38,7 @@ type PutRequest struct {
 type PutResponse struct {
 	CID          string `json:"cid"`
 	MultihashHex string `json:"multihash_hex"`
+	NetworkHops  *int   `json:"network_hops,omitempty"`
 }
 
 type ConnectRequest struct {
@@ -43,21 +48,77 @@ type ConnectRequest struct {
 }
 
 type GetRequest struct {
-	CID     string `json:"cid"`
+	Key     string `json:"key"` // Key (hex string) - primary identifier for token-based routing
+	CID     string `json:"cid"` // CID (deprecated, kept for backward compatibility)
 	Addr    string `json:"from_addr"`
 	Peer    string `json:"from_peer"`
 	Timeout string `json:"timeout"`
 }
 
 type GetResponse struct {
-	Bytes   int    `json:"bytes"`
-	DataB64 string `json:"data_b64"`
+	Bytes       int    `json:"bytes"`
+	DataB64     string `json:"data_b64"`
+	NetworkHops *int   `json:"network_hops,omitempty"`
+}
+
+type DeleteRequest struct {
+	CID string `json:"cid"`
+}
+
+type DeleteResponse struct {
+	CID     string `json:"cid"`
+	Deleted bool   `json:"deleted"`
+}
+
+// fetchBlockFromToken fetches block data from token locations in parallel.
+// Returns first successful result or error if all fail.
+func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystore.Token, key mystore.Key) ([]byte, error) {
+	if stack == nil || len(token.Locations) == 0 {
+		return nil, fmt.Errorf("stack and token locations required")
+	}
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var result []byte
+	var fetchErrors []error
+	success := false
+	for _, loc := range token.Locations {
+		loc := loc
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			data, fetchErr := mystore.DirectFetch(ctx, stack, loc, key)
+			if fetchErr == nil && stack.MessageSink != nil {
+				stack.MessageSink.AddGetMessagesOut(1)
+				stack.MessageSink.AddGetMessagesIn(1)
+			}
+			if fetchErr != nil {
+				mu.Lock()
+				fetchErrors = append(fetchErrors, fmt.Errorf("peer %s: %w", loc.ProviderID, fetchErr))
+				mu.Unlock()
+				return
+			}
+			mu.Lock()
+			if !success && data != nil {
+				result = data
+				success = true
+			}
+			mu.Unlock()
+		}()
+	}
+	wg.Wait()
+	if !success {
+		return nil, fmt.Errorf("direct fetch failed from all %d locations: %v", len(token.Locations), fetchErrors)
+	}
+	return result, nil
 }
 
 // Start launches the control server and returns the bound address and a shutdown func.
 // onShutdown: optional callback to trigger graceful node stop when /shutdown is called.
-// explicitRouter: optional; when non-nil, used for SetProviderForCID and must be composed with stack's router (e.g. via NewFallbackContentRouter).
-func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func(), explicitRouter *DynamicRouter) (string, func(context.Context) error, error) {
+// explicitRouter: optional; when non-nil, used for DynamicRouter fallback and composed with stack's router (e.g. via NewFallbackContentRouter).
+// repairProtocol: optional repair protocol for automatic repair on vector mismatch (nil disables repair).
+// gateway: optional; when non-nil, used for token routing and query operations (Phase 5.3).
+// storePath: optional path to persistent blockstore; when non-empty, /storage/stats returns disk_bytes for that dir.
+func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func(), explicitRouter *DynamicRouter, repairProtocol *mystore.RepairProtocol, gateway *mygateway.Gateway, storePath string) (string, func(context.Context) error, error) {
 	mux := http.NewServeMux()
 	router := explicitRouter
 	if router == nil {
@@ -65,6 +126,18 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	}
 	if stack != nil && metrics != nil {
 		stack.OnAnnounce = func() { metrics.IncProviderAnnounceCount() }
+	}
+	// Register repair stream handler if repair protocol is available
+	if repairProtocol != nil && h != nil {
+		h.SetStreamHandler(mystore.RepairProtocolID, func(stream network.Stream) {
+			_ = repairProtocol.HandleRepairStream(stream)
+		})
+	}
+	// Register direct fetch stream handler for token-based routing
+	if stack != nil && h != nil {
+		h.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
+			_ = mystore.HandleDirectFetchStream(stream, stack)
+		})
 	}
 	// restore job manager (in-memory)
 	type restoreStats struct {
@@ -88,6 +161,209 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
+	})
+
+	// Storage stats endpoint: returns disk_bytes for persistent store path (storage efficiency tests).
+	mux.HandleFunc("/storage/stats", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if storePath == "" {
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"disk_bytes": nil, "reason": "ephemeral"})
+			return
+		}
+		info, err := os.Stat(storePath)
+		if err != nil {
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		if !info.IsDir() {
+			_ = json.NewEncoder(w).Encode(map[string]int64{"disk_bytes": info.Size()})
+			return
+		}
+		var total int64
+		_ = filepath.Walk(storePath, func(_ string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+			if fi != nil && !fi.IsDir() {
+				total += fi.Size()
+			}
+			return nil
+		})
+		_ = json.NewEncoder(w).Encode(map[string]int64{"disk_bytes": total})
+	})
+
+	// Replication status: returns replica count for a key (polls DHT token for locations).
+	mux.HandleFunc("/replication/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		keyHex := r.URL.Query().Get("key")
+		if keyHex == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("missing key (query param)"))
+			return
+		}
+		key, err := mystore.ParseKey(keyHex)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+			return
+		}
+		var tokenStore routing.ValueStore
+		if stack != nil {
+			tokenStore = stack.TokenStore
+			if tokenStore == nil && stack.DHT != nil {
+				tokenStore = stack.DHT
+			}
+		}
+		if tokenStore == nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("token store not available"))
+			return
+		}
+		ctxGet, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		token, err := mystore.GetToken(ctxGet, tokenStore, key)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		providers := make([]string, 0, len(token.Locations))
+		var near, midrange, farflung int
+		thresholds := mystore.DefaultRTTThresholds()
+		for _, loc := range token.Locations {
+			providers = append(providers, loc.ProviderID.String())
+			switch mystore.ClassifyDistanceByRTT(loc.RTT, &thresholds) {
+			case mystore.DistanceNear:
+				near++
+			case mystore.DistanceMidrange:
+				midrange++
+			case mystore.DistanceFarFlung:
+				farflung++
+			default:
+				midrange++
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"key":            keyHex,
+			"replica_count":  len(token.Locations),
+			"providers":      providers,
+			"timestamp":      token.Timestamp,
+			"near_count":     near,
+			"midrange_count": midrange,
+			"farflung_count": farflung,
+		})
+	})
+
+	// Lookup: isolated token lookup (GetToken only, no fetch). Returns lookup_latency_ms and network_hops for comparison.
+	mux.HandleFunc("/lookup", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		keyHex := ""
+		if r.Method == http.MethodGet {
+			keyHex = r.URL.Query().Get("key")
+		} else {
+			var req struct {
+				Key string `json:"key"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+			keyHex = req.Key
+		}
+		if keyHex == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("missing key"))
+			return
+		}
+		key, err := mystore.ParseKey(keyHex)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+			return
+		}
+		var tokenStore routing.ValueStore
+		if stack != nil {
+			tokenStore = stack.TokenStore
+			if tokenStore == nil && stack.DHT != nil {
+				tokenStore = stack.DHT
+			}
+		}
+		if tokenStore == nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte("token store not available"))
+			return
+		}
+		ctxLookup, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+		defer cancel()
+		evCtx, evCh := routing.RegisterForQueryEvents(ctxLookup)
+		evCtx2, cancel2 := context.WithCancel(evCtx)
+		defer cancel2()
+		var hops int32
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			for ev := range evCh {
+				if ev != nil && ev.Type == routing.SendingQuery {
+					hops++
+				}
+			}
+		}()
+		start := time.Now()
+		_, err = mystore.GetToken(evCtx2, tokenStore, key)
+		cancel2()
+		<-done
+		latencyMs := time.Since(start).Milliseconds()
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"lookup_latency_ms": latencyMs,
+			"network_hops":      int(hops),
+			"found":             true,
+		})
+	})
+
+	// HasKey: returns whether this node holds the key locally (for polling replica count across nodes).
+	mux.HandleFunc("/has_key", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		keyHex := r.URL.Query().Get("key")
+		if keyHex == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("missing key (query param)"))
+			return
+		}
+		key, err := mystore.ParseKey(keyHex)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+			return
+		}
+		hasKey := false
+		if stack != nil {
+			ctxGet, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+			defer cancel()
+			data, err := mystore.GetBlockByKey(ctxGet, stack.Datastore, stack.BlockSvc, key)
+			hasKey = err == nil && data != nil && len(data) > 0
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"key":     keyHex,
+			"has_key": hasKey,
+		})
 	})
 
 	// Restore endpoints
@@ -158,7 +434,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 								continue
 							}
 							ctx2, cancel2 := context.WithTimeout(context.Background(), timeout)
-							b, err := mystore.GetBlock(ctx2, stack.BlockSvc, c)
+							b, err := mystore.GetBlockByCID(ctx2, stack.BlockSvc, c)
 							cancel2()
 							mu.Lock()
 							jobsMu.Lock()
@@ -349,14 +625,50 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		c, err := mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, []byte(req.Data))
+		key, c, err := stack.PutBlock(r.Context(), []byte(req.Data))
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		stack.AnnounceProviderAsync(r.Context(), c)
-		resp := PutResponse{CID: c.String(), MultihashHex: fmt.Sprintf("%x", c.Hash())}
+		if h != nil {
+			stack.UpdateRoutingTableOnPut(key, h.ID(), nil, c)
+		}
+		putHops := 0
+		resp := PutResponse{CID: c.String(), MultihashHex: fmt.Sprintf("%x", c.Hash()), NetworkHops: &putHops}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	})
+
+	// Delete endpoint
+	mux.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var req DeleteRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		c, err := cid.Decode(req.CID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		err = stack.DeleteBlock(r.Context(), c)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+		// Clear explicit provider hint (if dynamic router is used)
+		if router != nil {
+			router.ClearProviderForCID(c)
+		}
+		resp := DeleteResponse{CID: c.String(), Deleted: true}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
 	})
@@ -449,18 +761,56 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
+		if metrics != nil {
+			metrics.AddGetMessagesIn(1)
+		}
 		var req GetRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		c, err := cid.Decode(req.CID)
-		if err != nil {
+
+		// Extract key from request (primary identifier for token-based routing)
+		var key mystore.Key
+		if req.Key != "" {
+			// Key provided - use token-based routing
+			var err error
+			key, err = mystore.ParseKey(req.Key)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+				return
+			}
+		} else if req.CID != "" {
+			// CID provided (backward compatibility) - convert to Key via routing table
+			c, err := cid.Decode(req.CID)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(fmt.Sprintf("invalid identifier: %v", err)))
+				return
+			}
+			// Get Key from routing table entry (if available)
+			if stack.RoutingTable != nil {
+				entry := stack.RoutingTable.GetByCID(c)
+				if entry != nil && !entry.Key.IsZero() {
+					key = entry.Key
+				} else {
+					w.WriteHeader(http.StatusBadRequest)
+					_, _ = w.Write([]byte("key not found in routing table"))
+					return
+				}
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte("routing table not available"))
+				return
+			}
+		} else {
 			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			_, _ = w.Write([]byte("key or cid required"))
 			return
 		}
+
 		d := 20 * time.Second
 		if req.Timeout != "" {
 			if parsed, err := time.ParseDuration(req.Timeout); err == nil {
@@ -468,118 +818,92 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			}
 		}
 
-		// When explicit provider hint given, register it so composed router (DHT + DynamicRouter) can use it as fallback
-		if req.Addr != "" && req.Peer != "" {
-			if maddr, err := multiaddr.NewMultiaddr(req.Addr); err == nil {
-				if pid, err := peer.Decode(req.Peer); err == nil {
-					router.SetProviderForCID(c, peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}})
+		ctxFetch, cancel := context.WithTimeout(r.Context(), d)
+		defer cancel()
+		start := time.Now()
+		var b []byte
+		var err error
+		var networkHops *int
+		zeroHops := 0
+		if localData, localErr := mystore.GetBlockByKey(ctxFetch, stack.Datastore, stack.BlockSvc, key); localErr == nil && localData != nil {
+			b = localData
+			networkHops = &zeroHops
+		} else if gateway != nil {
+			results, qErr := gateway.Query(ctxFetch, mygateway.Query{Pattern: key.String()})
+			if qErr == nil && len(results) > 0 {
+				var token mystore.Token
+				if token.Unmarshal(results[0].Value) == nil && token.Validate() == nil && len(token.Locations) > 0 {
+					b, err = fetchBlockFromToken(ctxFetch, stack, token, key)
+					if err == nil {
+						networkHops = &zeroHops
+					}
+				}
+			}
+		}
+		if b == nil && err == nil {
+			var hops int
+			b, hops, err = stack.GetBlock(ctxFetch, key)
+			if err == nil {
+				networkHops = &hops
+			}
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(err.Error()))
+			return
+		}
+
+		if metrics != nil {
+			metrics.SetProviderDiscoveryLatencyNs(time.Since(start).Nanoseconds())
+		}
+
+		// Get CID for announcement (if available); verify key state with replication vector
+		c, err := mystore.GetCIDFromKey(r.Context(), stack.Datastore, key)
+		if err == nil && c.Defined() {
+			tokenStore := stack.TokenStore
+			if tokenStore == nil && stack.DHT != nil {
+				tokenStore = stack.DHT
+			}
+			if stack.RoutingTable != nil && tokenStore != nil && h != nil {
+				ctxVerify, cancelVerify := context.WithTimeout(r.Context(), 5*time.Second)
+				verification, verifyErr := mystore.VerifyKeyStateWithRepVector(
+					ctxVerify,
+					key,
+					stack.RoutingTable,
+					tokenStore,
+					h.ID(),
+					nil, // RTT measurer (nil = use 0, unknown distance)
+					7,   // replication factor (default)
+					nil, // RTT thresholds (nil = use defaults)
+				)
+				cancelVerify()
+				if verifyErr == nil && verification != nil && !verification.IsSynchronized {
+					// Replica state not synchronized - trigger automatic repair
+					if repairProtocol != nil && len(b) > 0 {
+						// Trigger repair asynchronously (don't block response)
+						go func() {
+							ctxRepair, cancelRepair := context.WithTimeout(context.Background(), 30*time.Second)
+							defer cancelRepair()
+							repairResult, repairErr := repairProtocol.TriggerRepair(ctxRepair, key, verification, b)
+							if repairErr != nil {
+								// Repair failed - could log or handle error
+								_ = repairErr
+							} else if repairResult != nil && repairResult.TotalReplicasCreated > 0 {
+								// Repair succeeded - replicas created
+								_ = repairResult
+							}
+						}()
+					}
 				}
 			}
 		}
 
-		// 1. Try main stack: local blockstore + DHT provider discovery (+ explicit hints via fallback)
-		ctxFetch, cancel := context.WithTimeout(r.Context(), d)
-		start := time.Now()
-		b, err := mystore.GetBlockIndexed(ctxFetch, stack.Datastore, stack.BlockSvc, c)
-		cancel()
-		if err == nil {
-			if metrics != nil {
-				metrics.SetProviderDiscoveryLatencyNs(time.Since(start).Nanoseconds())
-			}
-			stack.AnnounceProviderAsync(r.Context(), c)
-			resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b)}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(&resp)
-			return
-		}
-
-		// 2. Fall back to explicit provider hint if given
-		if req.Addr == "" || req.Peer == "" {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		maddr, err := multiaddr.NewMultiaddr(req.Addr)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		pid, err := peer.Decode(req.Peer)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		info := peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}}
-		router.SetProviderForCID(c, info)
-		st, err := mystore.NewStackWithRouter(r.Context(), h, router)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		defer st.Close()
-
-		ctxDial, cancel := context.WithTimeout(r.Context(), d)
-		defer cancel()
-		if err := h.Connect(ctxDial, info); err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		// Verify peer before initiating any Bitswap traffic (token-based admission).
-		caB64 := os.Getenv("SNG40_CA_PUB")
-		token := os.Getenv("SNG40_TOKEN")
-		if caB64 == "" || token == "" {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("missing token env: set SNG40_CA_PUB and SNG40_TOKEN"))
-			return
-		}
-		caPub, err := base64.StdEncoding.DecodeString(caB64)
-		if err != nil || len(caPub) != 32 {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte("invalid SNG40_CA_PUB"))
-			return
-		}
-		pol := mynet.HandshakePolicy{Timeout: d, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0), RequireCredential: true, AuthScheme: "token-ed25519-v1", CAPubKeys: [][]byte{caPub}, Token: token}
-		// include our current state head/height in handshake
-		hcid, hgt, _ := mystore.GetHead(r.Context(), stack.Datastore)
-		local := mynet.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
-		if hcid.Defined() {
-			local.StateHeadCID = hcid.String()
-		}
-		local.StateHeight = hgt
-		if _, err := mynet.PerformHandshake(r.Context(), h, pid, pol, local); err != nil {
-			// Drop the connection if handshake fails.
-			h.Network().ClosePeer(pid)
-			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		_, _, _, _ = mystore.AppendPeerAddedIfNew(r.Context(), stack.Datastore, stack.BlockSvc, pid.String())
-		ctxFetch, cancel2 := context.WithTimeout(r.Context(), d)
-		defer cancel2()
-		startFetch := time.Now()
-		b, err = mystore.GetBlockIndexed(ctxFetch, stack.Datastore, st.BlockSvc, c)
-		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		if metrics != nil {
-			metrics.SetProviderDiscoveryLatencyNs(time.Since(startFetch).Nanoseconds())
-		}
-		// Persist fetched block into the daemon's local store for durability/indexing.
-		// Best-effort: ignore error to still serve the response body to the client.
-		_, _ = mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, b)
-		stack.AnnounceProviderAsync(r.Context(), c)
-		resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b)}
+		resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b), NetworkHops: networkHops}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(&resp)
 	})
 
-	// Snapshot endpoint: returns local indexed CIDs
+	// Snapshot endpoint: returns local indexed Keys/CIDs (Key-based storage; CID for compatibility)
 	mux.HandleFunc("/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)

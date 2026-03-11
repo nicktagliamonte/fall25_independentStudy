@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Purpose: Start N Swarm/Bee Docker nodes with bootstrap configuration
+# Purpose: Start N Swarm/Bee Docker nodes (N in {10, 50, 100, 500} for fair comparison with vn-IPFS)
 # Usage: ./scripts/docker/swarm/start.sh [N]
-#   N: number of nodes (default: 4)
+#   N: 10, 50, 100, or 500 (default: 10)
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT_DIR"
 
-N="${1:-4}"
+VALID_COUNTS="10 50 100 500"
+N="${1:-10}"
 
-if [[ ! "$N" =~ ^[0-9]+$ ]] || [[ "$N" -lt 1 ]]; then
-  echo "Error: N must be an integer >= 1" >&2
+if [[ ! " $VALID_COUNTS " =~ " $N " ]]; then
+  echo "Error: N must be one of: $VALID_COUNTS (for fair comparison with vn-IPFS)" >&2
   exit 1
 fi
 
@@ -50,9 +51,9 @@ NETWORKS_LINE=$(grep -n "^networks:" "$COMPOSE_FILE" | cut -d: -f1)
 # Create temp file with content before networks
 head -n $((NETWORKS_LINE - 1)) "$COMPOSE_FILE" > "$COMPOSE_FILE.tmp"
 
-# Generate node services (swarm-node1, swarm-node2, etc.) - insert before networks section
+# Generate node services (swarm-node1 .. swarm-nodeN-1) - insert before networks section
 for i in $(seq 1 $((N - 1))); do
-  IP_LAST=$((200 + i))  # Start from 201 (bootstrap is 200)
+  IP_LAST=$((200 + i))  # Bootstrap 172.20.0.200, peers 172.20.0.201+
   cat >> "$COMPOSE_FILE.tmp" <<EOF
   swarm-node${i}:
     build: scripts/docker/swarm
@@ -72,6 +73,12 @@ for i in $(seq 1 $((N - 1))); do
     networks:
       node-network:
         ipv4_address: 172.20.0.${IP_LAST}
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
     depends_on:
       swarm-bootstrap:
         condition: service_healthy
@@ -136,15 +143,16 @@ echo "Note: Swarm v0.5.8 bootnode configuration may need manual peer ID extracti
 
 # Start remaining nodes if N > 1
 if [[ "$N" -gt 1 ]]; then
-  echo "Starting $((N - 1)) additional nodes..."
+  echo "Starting $((N - 1)) peer nodes..."
   for i in $(seq 1 $((N - 1))); do
     docker-compose -f docker-compose.swarm.yml up -d "swarm-node${i}" || true
+    [[ $((i % 20)) -eq 0 ]] && echo "  Started swarm-node$i..."
   done
-  
-  # Wait for all nodes to be ready
-  echo "Waiting for all nodes to be ready..."
+
+  MAX_ATTEMPTS=$((60 + (N - 1) / 5))  # Scale wait time for large clusters
+  echo "Waiting for all nodes (up to ${MAX_ATTEMPTS} attempts)..."
   ALL_READY=false
-  for i in {1..60}; do
+  for i in $(seq 1 $MAX_ATTEMPTS); do
     READY_COUNT=0
     for j in $(seq 1 $((N - 1))); do
       if docker-compose -f docker-compose.swarm.yml exec -T "swarm-node${j}" curl -sf http://localhost:8500/ >/dev/null 2>&1; then
@@ -155,7 +163,7 @@ if [[ "$N" -gt 1 ]]; then
       ALL_READY=true
       break
     fi
-    echo "  Attempt $i/60: $READY_COUNT/$((N - 1)) nodes ready..."
+    echo "  Attempt $i/$MAX_ATTEMPTS: $READY_COUNT/$((N - 1)) nodes ready..."
     sleep 2
   done
   

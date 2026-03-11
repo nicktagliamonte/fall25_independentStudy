@@ -1,4 +1,4 @@
-// Purpose: Kademlia DHT initialization and bootstrap for content routing.
+// Purpose: Kademlia DHT initialization and bootstrap for token routing (key-based discovery).
 
 package net
 
@@ -8,8 +8,15 @@ import (
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/routing"
+	record "github.com/libp2p/go-libp2p-record"
 	"github.com/multiformats/go-multiaddr"
 )
+
+// TokenDHTProtocolPrefix is used when token storage in DHT is needed.
+// Custom prefix avoids /ipfs DHT validation (exactly pk+ipns); allows /tokens/ namespace.
+const TokenDHTProtocolPrefix protocol.ID = "/sng40/kad/1.0.0"
 
 // DHTMode selects server (full participant) or client (query-only).
 type DHTMode int
@@ -30,10 +37,32 @@ var DefaultDHTBootstrapAddrs = []string{
 
 // DHTConfig holds options for DHT initialization.
 type DHTConfig struct {
-	Mode              DHTMode
-	BootstrapAddrs    []string
-	BootstrapPeers    []peer.AddrInfo
+	Mode               DHTMode
+	BootstrapAddrs     []string
+	BootstrapPeers     []peer.AddrInfo
 	BootstrapPeersFunc func() []peer.AddrInfo // if set, used for dynamic bootstrap (e.g. from PeerStore)
+	// UseTokenDHT: when true, uses custom protocol prefix + /tokens/ validator for token storage.
+	// Incompatible with standard /ipfs DHT; use only for token-routing tests or isolated networks.
+	UseTokenDHT bool
+}
+
+// tokenRecordValidator validates /tokens/ namespace records for DHT token routing.
+type tokenRecordValidator struct{}
+
+var _ record.Validator = (*tokenRecordValidator)(nil)
+
+func (tokenRecordValidator) Validate(key string, value []byte) error {
+	if len(value) == 0 {
+		return routing.ErrNotFound
+	}
+	return nil
+}
+
+func (tokenRecordValidator) Select(key string, values [][]byte) (int, error) {
+	if len(values) == 0 {
+		return -1, routing.ErrNotFound
+	}
+	return 0, nil
 }
 
 // DefaultBootstrapPeerInfos returns parsed AddrInfos for DefaultDHTBootstrapAddrs.
@@ -50,6 +79,11 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 		opts = append(opts, kaddht.Mode(kaddht.ModeClient))
 	default:
 		opts = append(opts, kaddht.Mode(kaddht.ModeServer))
+	}
+
+	if cfg.UseTokenDHT {
+		opts = append(opts, kaddht.ProtocolPrefix(TokenDHTProtocolPrefix))
+		opts = append(opts, kaddht.NamespacedValidator("tokens", &tokenRecordValidator{}))
 	}
 
 	if cfg.BootstrapPeersFunc != nil {

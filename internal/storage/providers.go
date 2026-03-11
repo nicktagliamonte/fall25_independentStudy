@@ -1,4 +1,4 @@
-// Purpose: Provider record management for DHT content routing.
+// Purpose: Provider record tracking (legacy). Token routing (SyncTokenOnPut) is primary for discovery.
 
 package storage
 
@@ -10,19 +10,9 @@ import (
 	bstore "github.com/ipfs/boxo/blockstore"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/routing"
 )
 
-// Announce records this peer as a provider of the given CID in the DHT.
-// Called after successful Put so other nodes can discover this peer.
-func Announce(ctx context.Context, router routing.ContentRouting, c cid.Cid) {
-	if router == nil || !c.Defined() {
-		return
-	}
-	_ = router.Provide(ctx, c, true)
-}
-
-// LocalProviderRecords tracks CIDs we have announced for efficient re-announcement.
+// LocalProviderRecords tracks CIDs for metrics; token routing handles discovery.
 type LocalProviderRecords struct {
 	mu   sync.RWMutex
 	cids map[string]struct{}
@@ -33,7 +23,7 @@ func NewLocalProviderRecords() *LocalProviderRecords {
 	return &LocalProviderRecords{cids: make(map[string]struct{})}
 }
 
-// Add records a CID as locally provided.
+// Add records a CID (for metrics). Key-based token sync is primary.
 func (r *LocalProviderRecords) Add(c cid.Cid) {
 	if !c.Defined() {
 		return
@@ -43,7 +33,7 @@ func (r *LocalProviderRecords) Add(c cid.Cid) {
 	r.mu.Unlock()
 }
 
-// Remove drops a CID from the tracker (e.g. block no longer present).
+// Remove drops a CID from the tracker when block is deleted.
 func (r *LocalProviderRecords) Remove(c cid.Cid) {
 	if !c.Defined() {
 		return
@@ -91,19 +81,33 @@ func (r *LocalProviderRecords) Snapshot() []cid.Cid {
 	return out
 }
 
-// ProviderMetricsSink receives provider-related metrics (e.g. announce count, records count).
+// ProviderMetricsSink receives provider-related metrics (records count).
 type ProviderMetricsSink interface {
-	IncAnnounceCount()
 	SetProviderRecordsCount(n int)
+}
+
+// MessageMetricsSink receives P2P message counts per operation (put, get, lookup).
+type MessageMetricsSink interface {
+	AddPutMessagesIn(n int)
+	AddPutMessagesOut(n int)
+	AddGetMessagesIn(n int)
+	AddGetMessagesOut(n int)
+	AddLookupMessagesIn(n int)
+	AddLookupMessagesOut(n int)
+}
+
+// NetworkHopsSink receives DHT lookup hop counts (peers queried during iterative lookup).
+type NetworkHopsSink interface {
+	AddLookupHops(n int)
 }
 
 // DefaultReannounceInterval is the default interval for periodic re-announcement.
 const DefaultReannounceInterval = 12 * time.Hour
 
-// StartPeriodicReannounce starts a goroutine that re-announces tracked CIDs to the DHT at the given interval.
-// Records for blocks no longer in the blockstore are removed (expiry). Stops when ctx is cancelled.
-func StartPeriodicReannounce(ctx context.Context, router routing.ContentRouting, records *LocalProviderRecords, bs bstore.Blockstore, interval time.Duration, metrics ProviderMetricsSink) {
-	if router == nil || records == nil || interval <= 0 {
+// StartPeriodicReannounce prunes provider records for blocks no longer in the blockstore (expiry)
+// and updates metrics. Token routing is primary; no DHT provider announcements. Stops when ctx is cancelled.
+func StartPeriodicReannounce(ctx context.Context, records *LocalProviderRecords, bs bstore.Blockstore, interval time.Duration, metrics ProviderMetricsSink) {
+	if records == nil || interval <= 0 {
 		return
 	}
 	go func() {
@@ -119,12 +123,7 @@ func StartPeriodicReannounce(ctx context.Context, router routing.ContentRouting,
 						has, err := bs.Has(ctx, c)
 						if err != nil || !has {
 							records.Remove(c)
-							continue
 						}
-					}
-					Announce(ctx, router, c)
-					if metrics != nil {
-						metrics.IncAnnounceCount()
 					}
 				}
 				if metrics != nil {

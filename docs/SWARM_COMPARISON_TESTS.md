@@ -15,47 +15,39 @@ This document provides comprehensive documentation for the Swarm comparison test
 
 ## Overview
 
-The Swarm comparison test suite is designed to systematically compare our distributed storage system with Ethereum Swarm across multiple performance dimensions:
+The Swarm comparison test suite is designed to systematically compare our distributed storage system with Ethereum Swarm across key performance dimensions:
 
-- **Upload Latency**: Time to upload content of various sizes
+- **Upload Latency**: Time to upload content of various sizes (1KB–1MB)
 - **Download Throughput**: Time to first byte (TTFB) and total download time
-- **Content Replication**: Time for content to propagate across nodes
-- **Network Convergence**: Time for new nodes to integrate into the network
-- **Resource Usage**: CPU, memory, and network I/O during operations
 
 ### Test Architecture
 
 The test suite consists of:
 
-- **Test Scenarios**: Individual test scripts for specific metrics
-- **Orchestration**: Main comparison test that runs multiple scenarios
-- **Analysis Tools**: Scripts to analyze results and generate reports
-- **Validation**: Smoke tests and validation scripts to ensure setup is correct
-- **Monitoring**: Resource and network metrics collection
+- **Orchestration**: `run_comparison.sh` starts both systems, runs upload/download tests across node counts, aggregates results
+- **Test Scripts**: `upload_test.sh`, `download_test.sh` for individual metrics
+- **Analysis Tools**: `swarm_comparison_analyze.py` and `generate_swarm_report.sh` for results and reports
+- **Validation**: `test_api.sh` for quick Swarm API checks
 
 ### Directory Structure
 
 ```
 scripts/
-├── scenarios/          # Test scenario scripts
-│   ├── swarm_smoke_test.sh          # Quick validation test
-│   ├── swarm_upload_test.sh          # Upload latency test
-│   ├── swarm_download_test.sh        # Download throughput test
-│   ├── swarm_replication_test.sh     # Content replication test
-│   ├── swarm_convergence_test.sh     # Network convergence test
-│   └── swarm_comparison_test.sh      # Full test suite orchestrator
-├── analysis/           # Analysis and reporting tools
-│   ├── swarm_comparison_analyze.py   # Python analysis script
+├── docker/             # Docker orchestration
+│   ├── start.sh, stop.sh, logs.sh, status.sh, clean.sh
+│   └── swarm/          # Swarm/Bee v0.5.8 Docker setup
+├── tests/swarm_comparison/
+│   ├── run_comparison.sh         # Main orchestrator
+│   ├── upload_test.sh            # Upload latency test
+│   ├── download_test.sh          # Download latency test
+│   ├── partition_recovery_test.sh # Partition recovery (manual/sudo; optional CI skip)
+│   ├── test_api.sh               # Swarm API validation
+│   └── api.sh                    # Swarm HTTP API helpers
+├── analysis/
+│   ├── swarm_comparison_analyze.py   # Statistics, plots, HTML report
 │   └── generate_swarm_report.sh      # Markdown report generator
-├── monitoring/         # Resource monitoring
-│   ├── resource_monitor.sh            # Docker stats collection
-│   └── network_metrics.sh             # Network metrics collection
-├── validation/        # Validation scripts
-│   └── validate_swarm_setup.sh       # Swarm setup validation
-└── utils/              # Utility scripts
-    ├── error_handler.sh               # Error handling utilities
-    ├── test_logger.sh                 # Structured logging
-    └── results_dir.sh                 # Results directory management
+└── utils/
+    └── error_handler.sh   # Error handling utilities
 ```
 
 ## Prerequisites
@@ -89,224 +81,144 @@ If you see permission errors, add your user to the docker group or use `sudo`.
 
 ## Quick Start
 
-### 1. Validate Setup
+### 1. Validate Swarm API (optional)
 
-Before running tests, validate that your Swarm setup is correct:
+If Swarm nodes are already running, validate the API:
 
 ```bash
-./scripts/validation/validate_swarm_setup.sh
+./scripts/tests/swarm_comparison/test_api.sh http://172.20.0.200:8500
 ```
 
-This checks:
-- Docker is available
-- Swarm nodes are running
-- API endpoints are accessible
-- Basic upload/download operations work
+### 2. Run Full Comparison Test
 
-### 2. Run Smoke Test
-
-Run a quick smoke test to verify both systems work:
+The main orchestrator starts both systems, runs tests, and aggregates results:
 
 ```bash
-./scripts/scenarios/swarm_smoke_test.sh --cleanup
-```
-
-This will:
-- Start 2 nodes for each system
-- Upload a 1KB file
-- Download it back
-- Verify both systems complete successfully
-- Clean up nodes (if `--cleanup` is specified)
-
-### 3. Run Full Test Suite
-
-Run the complete comparison test:
-
-```bash
-./scripts/scenarios/swarm_comparison_test.sh \
+./scripts/tests/swarm_comparison/run_comparison.sh \
   --nodes 10,20,40 \
   --payload-sizes 1024,10240,102400,1048576 \
   --iterations 5
 ```
 
-This runs comprehensive tests across multiple node counts and payload sizes.
+This:
+- Starts our system and Swarm Docker containers
+- Runs upload and download tests across node counts and payload sizes
+- Writes results to `test_results_<timestamp>/` (or `--output-dir`)
+- Optionally stops containers (use `--skip-cleanup` to leave them running)
 
-## Test Scenarios
+## Test Scripts
 
-### Smoke Test (`swarm_smoke_test.sh`)
+### Main Orchestrator (`run_comparison.sh`)
 
-**Purpose**: Quick validation before running full test suite
+**Purpose**: Start both systems, run upload and download tests across configurations, aggregate results
 
 **What it tests**:
-- Basic upload/download operations
-- Both systems can handle simple operations
+- Upload latency across payload sizes (1KB–1MB)
+- Download latency (TTFB, total time)
+- Scaling across node counts (e.g. 10, 20, 40)
 
 **Usage**:
 ```bash
-./scripts/scenarios/swarm_smoke_test.sh [--nodes N] [--skip-start] [--cleanup]
-```
-
-**Output**: Pass/fail status for each system
-
-### Upload Latency Test (`swarm_upload_test.sh`)
-
-**Purpose**: Measure upload latency for various payload sizes
-
-**What it tests**:
-- Time to upload content of different sizes (1KB to 1MB)
-- Latency statistics (mean, median, stddev, percentiles)
-
-**Usage**:
-```bash
-./scripts/scenarios/swarm_upload_test.sh \
-  --iterations 10 \
-  --output upload_results.csv
-```
-
-**Output**: CSV file with columns: `system,payload_size,iteration,latency_ms`
-
-### Download Throughput Test (`swarm_download_test.sh`)
-
-**Purpose**: Measure download performance
-
-**What it tests**:
-- Time to first byte (TTFB)
-- Total download time
-- Throughput calculation
-
-**Usage**:
-```bash
-./scripts/scenarios/swarm_download_test.sh \
-  --iterations 10 \
-  --output download_results.csv
-```
-
-**Output**: CSV file with columns: `system,payload_size,iteration,ttfb_ms,total_ms`
-
-### Replication Propagation Test (`swarm_replication_test.sh`)
-
-**Purpose**: Measure content propagation time across nodes
-
-**What it tests**:
-- Time for content to reach 50%, 90%, and 100% of nodes
-- Content availability across network
-
-**Usage**:
-```bash
-./scripts/scenarios/swarm_replication_test.sh \
-  --nodes 10 \
-  --poll-interval 1 \
-  --max-wait 60
-```
-
-**Output**: CSV file with columns: `system,n_nodes,time_to_50pct_s,time_to_90pct_s,time_to_100pct_s`
-
-### Network Convergence Test (`swarm_convergence_test.sh`)
-
-**Purpose**: Measure network convergence when adding new nodes
-
-**What it tests**:
-- Time for new node to acquire K neighbors
-- Time for existing nodes to discover new node
-- Time for network metrics to stabilize
-
-**Usage**:
-```bash
-./scripts/scenarios/swarm_convergence_test.sh \
-  --nodes 10 \
-  --k-neighbors 4 \
-  --max-wait 120
-```
-
-**Output**: CSV file with columns: `system,n_nodes,time_to_k_neighbors_s,time_to_discovery_s,time_to_stable_s`
-
-### Full Comparison Test (`swarm_comparison_test.sh`)
-
-**Purpose**: Orchestrate multiple test scenarios
-
-**What it tests**:
-- Runs upload and download tests across multiple configurations
-- Aggregates results
-- Generates summary reports
-
-**Usage**:
-```bash
-./scripts/scenarios/swarm_comparison_test.sh \
+./scripts/tests/swarm_comparison/run_comparison.sh \
   --nodes 10,20,40 \
   --payload-sizes 1024,10240,102400,1048576 \
   --iterations 5 \
   --output-dir ./test_results
 ```
 
-**Output**: Directory with CSV files, logs, and summary reports
+**Output**: `test_results_<timestamp>/` or `--output-dir` with CSV files, logs, summary
+
+### Upload Test (`upload_test.sh`)
+
+**Purpose**: Measure upload latency for various payload sizes
+
+**Usage** (typically invoked by `run_comparison.sh`; can run standalone if nodes are up):
+```bash
+./scripts/tests/swarm_comparison/upload_test.sh --iterations 10 --output upload.csv
+```
+
+**Output**: CSV with columns: `system,payload_size,iteration,latency_ms`
+
+### Download Test (`download_test.sh`)
+
+**Purpose**: Measure download performance (TTFB, total time)
+
+**Usage**:
+```bash
+./scripts/tests/swarm_comparison/download_test.sh --iterations 10 --output download.csv
+```
+
+**Output**: CSV with columns: `system,payload_size,iteration,ttfb_ms,total_ms`
+
+### Storage Efficiency Test (`storage_efficiency_test.sh`)
+
+**Purpose**: Upload known payload, measure disk delta across nodes, compute efficiency ratio
+
+**Usage**:
+```bash
+./scripts/tests/swarm_comparison/storage_efficiency_test.sh \
+  --payload-size 65536 \
+  --replication-count 1 \
+  --output storage_efficiency_results.csv
+```
+
+**Output**: CSV with columns: `system,payload_size,nodes,disk_bytes,efficiency_ratio`
+
+### Swarm API Check (`test_api.sh`)
+
+**Purpose**: Validate Swarm API (upload, download, pin, etc.)
+
+**Usage**:
+```bash
+./scripts/tests/swarm_comparison/test_api.sh [api_address]
+```
+
+### Partition Recovery Test (`partition_recovery_test.sh`)
+
+**Purpose**: Simulate network partition, measure time from reconnect until content is available on previously partitioned nodes.
+
+**Requirements**: Manual execution; network partition uses `docker network disconnect` which typically requires Docker permissions. Use `sudo` if needed.
+
+**Usage**:
+```bash
+./scripts/tests/swarm_comparison/partition_recovery_test.sh run our_system
+./scripts/tests/swarm_comparison/partition_recovery_test.sh run swarm
+OUTPUT_FILE=./results/partition_recovery_results.csv ./scripts/tests/swarm_comparison/partition_recovery_test.sh run our_system
+```
+
+**Output**: CSV with columns: `system,node_count,partition_size,recovery_time_s`
+
+**CI**: Optional skip — partition recovery is not run by default in CI; it requires manual/sudo for network operations. Add to CI only if the runner has Docker network modify privileges.
 
 ## Running Tests
 
 ### Basic Test Execution
 
-1. **Start nodes** (if not already running):
+1. **Run full comparison** (recommended; starts Docker, runs tests, stops):
    ```bash
-   # Start our system (10 nodes)
+   ./scripts/tests/swarm_comparison/run_comparison.sh --nodes 10 --iterations 3
+   ```
+
+2. **Start nodes manually** (for standalone runs):
+   ```bash
    ./scripts/docker/start.sh 10
-   
-   # Start Swarm (10 nodes)
    ./scripts/docker/swarm/start.sh 10
    ```
 
-2. **Run individual test**:
+3. **Run individual tests** (with nodes already running):
    ```bash
-   ./scripts/scenarios/swarm_upload_test.sh --iterations 5
-   ```
-
-3. **Run full suite**:
-   ```bash
-   ./scripts/scenarios/swarm_comparison_test.sh
+   ./scripts/tests/swarm_comparison/upload_test.sh --iterations 5
+   ./scripts/tests/swarm_comparison/download_test.sh --iterations 5
    ```
 
 ### Test Configuration
 
-Tests can be configured via:
-- **Command-line arguments**: See `--help` for each script
-- **Environment variables**: Some scripts respect environment variables
-- **Configuration file**: `scripts/scenarios/swarm_test_config.sh` defines defaults
-
-Example configuration:
-```bash
-export SWARM_TEST_NODE_COUNTS="10,20,40"
-export SWARM_TEST_PAYLOAD_SIZES="1024,10240,102400"
-export SWARM_TEST_ITERATIONS=5
-```
-
-### Running Tests in Parallel
-
-For faster execution, you can run independent tests in parallel:
-
-```bash
-# Terminal 1: Upload test
-./scripts/scenarios/swarm_upload_test.sh --output upload.csv &
-
-# Terminal 2: Download test
-./scripts/scenarios/swarm_download_test.sh --output download.csv &
-
-# Wait for both to complete
-wait
-```
-
-### Monitoring During Tests
-
-Monitor resource usage during tests:
-
-```bash
-# Terminal 1: Run test
-./scripts/scenarios/swarm_comparison_test.sh
-
-# Terminal 2: Monitor resources
-./scripts/monitoring/resource_monitor.sh \
-  --containers bootstrap,node1,swarm-bootstrap \
-  --interval 1 \
-  --duration 300 \
-  --output resource_usage.csv
-```
+Use `--help` on each script for options. Main orchestrator options:
+- `--nodes 10,20,40`
+- `--payload-sizes 1024,10240,102400,1048576`
+- `--iterations 5`
+- `--output-dir <dir>`
+- `--skip-cleanup` (leave containers running after tests)
 
 ## Interpreting Results
 
@@ -326,13 +238,6 @@ swarm,1024,1,253.79
 system,payload_size,iteration,ttfb_ms,total_ms
 our_system,1024,1,1.29,1.30
 swarm,1024,1,2.45,3.12
-```
-
-**Replication Results**:
-```csv
-system,n_nodes,time_to_50pct_s,time_to_90pct_s,time_to_100pct_s
-our_system,10,5.2,8.5,12.3
-swarm,10,3.1,6.8,10.2
 ```
 
 ### Statistical Analysis
@@ -356,7 +261,7 @@ Generate a markdown report from test results:
 
 ```bash
 ./scripts/analysis/generate_swarm_report.sh \
-  --results-dir artifacts/swarm_comparison_tests/20260216_131223 \
+  --results-dir ./test_results_20260216_120002 \
   --output REPORT.md
 ```
 
@@ -366,6 +271,79 @@ The report includes:
 - Performance comparisons
 - Conclusions and recommendations
 - Links to plots and raw data
+
+### Storage Efficiency Metric (Definition)
+
+Storage efficiency measures how much disk space a system uses relative to the logical payload stored. Two equivalent formulations:
+
+1. **Efficiency ratio (primary)**  
+   `efficiency_ratio = (payload_size * replication_count) / actual_disk_usage`  
+   - Higher is better. Values &gt; 1 mean the system uses less disk than the nominal `payload_size * replication_count`.
+   - Ideal upper bound: 1.0 (no overhead; disk = payload × replicas). Overhead (indexes, metadata, chunk alignment) typically yields values &lt; 1.
+
+2. **Overhead ratio (alternative)**  
+   `overhead_ratio = actual_disk_usage / payload_size`  
+   - Lower is better. Represents bytes of disk per byte of logical payload.
+   - Equivalent relationship: `efficiency_ratio = replication_count / overhead_ratio`.
+
+For comparison tests, report `efficiency_ratio` per system so both systems are evaluated on the same scale.
+
+### Storage Usage Per Node
+
+**vn-IPFS**: Use `GET /storage/stats` (returns `disk_bytes`) or `docker exec <container> du -sb /app/data/<node>`.
+
+**Swarm (Bee)**:
+- **docker exec (recommended)**: `docker exec <container> du -sb /app/data` — returns actual disk bytes. Containers: `swarm-bootstrap`, `swarm-node1`, `swarm-node2`, …; data dir `/app/data` (from `SWARM_DATA_DIR`).
+- **Bee API (if available)**: `curl -s http://<node-host>:8500/status` returns `reserveSize`, `reserveSizeWithinRadius`, `storageRadius`. These are chunk-based metrics, not raw disk bytes; use for reserve state, not efficiency ratio. Prefer `du -sb` for `actual_disk_usage` in the efficiency formula.
+
+### Replication Status: Counting Nodes Holding a Key
+
+For replication speed tests (time to R replicas), you need to count how many nodes hold a given content reference.
+
+**vn-IPFS**:
+- `GET /replication/status?key=<hex>` — DHT token view: returns `replica_count`, `providers`, `near_count`, `midrange_count`, `farflung_count` (N/M/F distribution).
+- `GET /has_key?key=<hex>` — per-node: returns `has_key` true/false. Poll all nodes and sum to get replica count.
+
+**Swarm (Bee)** — Pinning API and chunk checks:
+
+1. **Pinning API** (per-node; content must be pinned):
+   - `GET /pins/{reference}` — 200 = root hash is pinned on this node. Poll each node to count pins.
+   - `GET /pins` — list of all pinned root references on this node.
+   - Note: Pinning is explicit. Uploaded content is not pinned by default; use `Swarm-Pin: true` on upload or `POST /pins/{reference}` after upload.
+
+2. **Chunk local check** (per-node):
+   - `HEAD /chunks/{address}` — 200 = chunk exists locally; 404 = not found. Use the chunk address (for BZZ uploads, the root reference may be a manifest; single-chunk content uses that ref as chunk address).
+   - Poll each node: `curl -sI http://172.20.0.<N>:8500/chunks/<address>` — count 200 responses.
+
+3. **Stewardship**:
+   - `GET /stewardship/{reference}` — 200 = content is available (can be served). Does not distinguish local vs proxied; less suitable for replica counting.
+
+4. **Tag sync status** (upload progress, not replica count):
+   - `GET /tags/{uid}` — returns `seen`, `stored`, `sent`, `synced`; useful for tracking upload propagation, not cross-node replica count.
+
+**Recommended for replication_test.sh (Swarm)**:
+- If using pinned uploads: poll `GET /pins/{reference}` on each Swarm node; count 200 responses.
+- Otherwise: poll `HEAD /chunks/{address}` on each node (use BZZ reference as chunk address when it is single-chunk content).
+
+### Key-Based Lookup vs CID-Based Retrieval: Equivalent Operations
+
+For fair comparison, the same logical operation is defined for both systems:
+
+| Logical operation | vn-IPFS (key-based) | Swarm (CID-based) |
+|-------------------|---------------------|-------------------|
+| **Store**         | Put payload P → Key = SHA256(P); sync token to DHT | Upload P → BZZ hash (content address) |
+| **Fetch**         | Lookup by Key → GetToken(key) → DirectFetch from provider | Fetch by hash → `GET /bzz:/<hash>/` |
+| **Identifier**    | Key (64 hex chars, SHA256 of data) | BZZ reference (content hash, 64+ hex) |
+| **Semantics**     | Content-addressed; Key = content-derived identifier | Content-addressed; hash = content-derived identifier |
+
+Both perform the same logical flow: **store payload P, then fetch P by its content-derived identifier**. Key (vn-IPFS) and BZZ hash (Swarm) are semantically equivalent: each identifies content by its digest (key K = content hash of payload; for vn-IPFS, K = SHA256(data)). For single-chunk content, Swarm's upload return value is the chunk address used for retrieval. vn-IPFS uses Key as primary; CID (multihash) is available for compatibility. `key_lookup_vs_cid_test.sh` implements this comparison and documents the equivalence in its output.
+
+### Message Counts and Routing Overhead
+
+For routing-overhead comparison (token routing vs provider announcements):
+
+- **vn-IPFS**: `/metrics` exposes `put_messages_*`, `get_messages_*`, `lookup_messages_*` (token-based lookup; no provider announce).
+- **Swarm v0.5.8**: `message_count_test.sh` queries `$SWARM_API/metrics` and parses Prometheus counters for provider announcements and retrieval messages. Metric name patterns tried: `bee_*` (Bee client), `swarm_chunk`, `swarm_retrieval`, `swarm_provider`, `swarm_announce`, `chunk_delivery`, `retrieval_request`, `provider_announce`, `retrieval`. Swarm v0.5.8 may not expose Prometheus metrics; if so, Swarm message counts report N/A. Legacy ethersphere/swarm uses different metric names than Bee; the script attempts multiple patterns.
 
 ### Key Metrics to Watch
 
@@ -378,16 +356,6 @@ The report includes:
    - Higher throughput (MB/s) is better
    - TTFB should be low for good user experience
    - Total time should scale linearly with payload size
-
-3. **Replication Time**:
-   - Time to 50%: Initial propagation speed
-   - Time to 100%: Complete network coverage
-   - Lower times indicate better replication
-
-4. **Network Convergence**:
-   - Time to K neighbors: How quickly nodes connect
-   - Time to discovery: Network awareness speed
-   - Lower times indicate better network dynamics
 
 ## Troubleshooting
 
@@ -461,73 +429,49 @@ The report includes:
 
 ### Debugging Tips
 
-1. **Enable Verbose Output**:
+1. **Check Logs**:
    ```bash
-   ./scripts/scenarios/swarm_upload_test.sh --verbose
-   ```
-
-2. **Check Logs**:
-   ```bash
-   # Our system logs
    docker logs bootstrap
    docker logs node1
-   
-   # Swarm logs
    docker logs swarm-bootstrap
    docker logs swarm-node1
    ```
 
-3. **Validate Setup**:
+2. **Validate Swarm API**:
    ```bash
-   ./scripts/validation/validate_swarm_setup.sh --verbose
+   ./scripts/tests/swarm_comparison/test_api.sh
    ```
 
-4. **Run Smoke Test**:
-   ```bash
-   ./scripts/scenarios/swarm_smoke_test.sh --verbose
-   ```
-
-5. **Check Resource Usage**:
+3. **Check Resource Usage**:
    ```bash
    docker stats
    ```
 
-6. **Inspect Network**:
+4. **Inspect Network**:
    ```bash
    docker network inspect fall25_independentstudy_node-network
    ```
+
+5. **Leave containers running** for inspection: use `--skip-cleanup` with `run_comparison.sh`
 
 ### Getting Help
 
 If you encounter issues not covered here:
 
-1. Check error logs in `artifacts/swarm_tests/<RUN_ID>/errors.log`
-2. Review test execution logs in `artifacts/swarm_tests/<RUN_ID>/logs/`
-3. Run validation script: `./scripts/validation/validate_swarm_setup.sh`
-4. Check Docker and Swarm documentation
-5. Review test script source code for detailed error handling
+1. Check error logs in `artifacts/swarm_tests/<RUN_ID>/`
+2. Run Swarm API check: `./scripts/tests/swarm_comparison/test_api.sh`
+3. Check Docker and Swarm documentation
+4. Review test script source in `scripts/tests/swarm_comparison/`
 
 ## Advanced Usage
 
-### Custom Test Configurations
-
-Create custom test configurations by modifying `scripts/scenarios/swarm_test_config.sh`:
-
-```bash
-# Edit configuration
-vim scripts/scenarios/swarm_test_config.sh
-
-# Source it before running tests
-source scripts/scenarios/swarm_test_config.sh
-./scripts/scenarios/swarm_comparison_test.sh
-```
-
 ### Integration with CI/CD
+
+**Partition recovery test**: Requires manual/sudo for network partition (e.g. `docker network disconnect`). Optional CI skip — omit partition recovery in automated runs unless the runner has Docker network modify privileges.
 
 Example CI/CD integration:
 
 ```yaml
-# Example GitHub Actions workflow
 name: Swarm Comparison Tests
 
 on: [push, pull_request]
@@ -536,24 +480,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Docker
+        run: sudo systemctl start docker
+      - name: Run Comparison Tests
         run: |
-          sudo systemctl start docker
-      - name: Run Smoke Test
-        run: |
-          ./scripts/scenarios/swarm_smoke_test.sh --cleanup
-      - name: Run Full Tests
-        run: |
-          ./scripts/scenarios/swarm_comparison_test.sh \
-            --nodes 10 \
-            --iterations 3
+          ./scripts/tests/swarm_comparison/run_comparison.sh \
+            --nodes 10 --iterations 3
       - name: Generate Report
         run: |
           ./scripts/analysis/generate_swarm_report.sh \
             --results-dir $(ls -td test_results_* | head -1)
       - name: Upload Results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: test_results_*/
@@ -561,64 +500,27 @@ jobs:
 
 ### Extending the Test Suite
 
-To add new test scenarios:
+To add new tests:
 
-1. Create new script in `scripts/scenarios/`
-2. Follow existing script patterns
-3. Use utilities from `scripts/utils/`
-4. Output results in CSV format
-5. Add documentation to this file
-
-Example template:
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-
-source "$ROOT_DIR/scripts/utils/error_handler.sh"
-source "$ROOT_DIR/scripts/utils/test_logger.sh"
-
-# Your test logic here
-```
-
-### Performance Tuning
-
-For better performance:
-
-1. **Increase node counts gradually**: Start with 2-4 nodes, then scale up
-2. **Use SSD storage**: Faster disk I/O improves test performance
-3. **Allocate more resources**: Increase Docker memory/CPU limits
-4. **Reduce test iterations**: Use fewer iterations for faster feedback
-5. **Run tests in parallel**: Use separate terminals for independent tests
+1. Create scripts in `scripts/tests/swarm_comparison/`
+2. Source `api.sh` for Swarm helpers, `scripts/utils/error_handler.sh` for error handling
+3. Output results in CSV format
+4. Add orchestration in `run_comparison.sh` if needed
 
 ### Best Practices
 
-1. **Always run smoke test first**: Validate setup before full tests
-2. **Use consistent node counts**: Compare results across similar configurations
-3. **Save test results**: Keep results for comparison over time
-4. **Monitor resources**: Watch CPU/memory during tests
-5. **Clean up after tests**: Remove containers to free resources
-6. **Document custom configurations**: Note any changes from defaults
+1. **Use consistent node counts**: Compare results across similar configurations
+2. **Save test results**: Keep `test_results_*` directories for comparison over time
+3. **Clean up after tests**: Use `./scripts/docker/stop.sh` and `./scripts/docker/swarm/start.sh` stop logic, or `--skip-cleanup` for debugging
+4. **Point analysis at results**: Use `--results-dir` with `generate_swarm_report.sh` to target `test_results_*` output
 
 ## Additional Resources
 
-- **Test Plan**: See `swarm_comparison_test_plan.txt` for detailed test plan
-- **API Documentation**: See `scripts/swarm/api.sh` for Swarm API functions
-- **Error Handling**: See `scripts/utils/ERROR_HANDLING.md` for error handling guide
-- **Logging**: See `scripts/utils/TEST_LOGGING.md` for logging documentation
-- **Results Directory**: See `scripts/utils/RESULTS_DIRECTORY.md` for results structure
-
-## Version History
-
-- **v1.0** (2026-02-16): Initial test suite implementation
-  - Upload/download latency tests
-  - Replication and convergence tests
-  - Analysis and reporting tools
-  - Validation and smoke tests
+- **Scripts README**: See `scripts/README.md` for layout and usage
+- **Swarm API Helpers**: See `scripts/tests/swarm_comparison/api.sh`
+- **Swarm Setup**: See `docs/SWARM_SETUP.md`
 
 ---
 
-**Last Updated**: 2026-02-16  
-**Maintainer**: Test Suite Development Team
+**Last Updated**: 2026-03-10  
+**Script Directory**: `scripts/tests/swarm_comparison/`

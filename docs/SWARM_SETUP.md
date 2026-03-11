@@ -565,7 +565,7 @@ export SWARM_DEBUG=false
 - **Swarm Repository**: https://github.com/ethersphere/swarm
 - **Swarm Documentation**: See Swarm v0.5.8 documentation
 - **Test Documentation**: See `docs/SWARM_COMPARISON_TESTS.md`
-- **Validation Script**: `scripts/validation/validate_swarm_setup.sh`
+- **Swarm API Check**: `scripts/tests/swarm_comparison/test_api.sh` (validates Swarm API)
 
 ## Support
 
@@ -573,7 +573,7 @@ For issues specific to this setup:
 
 1. Check this guide's troubleshooting section
 2. Review Swarm logs: `docker logs <container-name>`
-3. Run validation: `./scripts/validation/validate_swarm_setup.sh`
+3. Run Swarm API check: `./scripts/tests/swarm_comparison/test_api.sh`
 4. Check test documentation: `docs/SWARM_COMPARISON_TESTS.md`
 
 ---

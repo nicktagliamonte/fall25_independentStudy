@@ -1,0 +1,121 @@
+Starting 10 vn-IPFS Docker nodes...
+Building Docker image...
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+time="2026-03-11T13:15:15-04:00" level=warning msg="/home/nicktagliamonte/Desktop/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+#1 [internal] load local bake definitions
+#1 reading from stdin 5.11kB done
+#1 DONE 0.0s
+
+#2 [node9 internal] load build definition from Dockerfile
+#2 transferring dockerfile: 718B done
+#2 DONE 0.2s
+
+#3 [node8 internal] load metadata for docker.io/library/golang:1.24-alpine
+#3 ...
+
+#4 [node4 internal] load metadata for docker.io/library/alpine:latest
+#4 DONE 0.6s
+
+#3 [node8 internal] load metadata for docker.io/library/golang:1.24-alpine
+#3 DONE 1.7s
+
+#5 [node7 internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.1s
+
+#6 [bootstrap internal] load build context
+#6 DONE 0.0s
+
+#7 [bootstrap stage-1 1/5] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+#7 DONE 0.0s
+
+#8 [bootstrap builder 1/6] FROM docker.io/library/golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191
+#8 resolve docker.io/library/golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191
+#8 resolve docker.io/library/golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191 0.2s done
+#8 ...
+
+#9 [node5 stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#9 CACHED
+
+#10 [node2 stage-1 3/5] WORKDIR /app
+#10 CACHED
+
+#8 [node2 builder 1/6] FROM docker.io/library/golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191
+#8 resolve docker.io/library/golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191 0.2s done
+#8 sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191 10.30kB / 10.30kB done
+#8 sha256:757779acac4af1b349a20f357c7296097b4a0b89da4ad0e370b339060077282a 1.92kB / 1.92kB done
+#8 sha256:ebe4e0721205a049b6806724e1ccb05c99e334b1dc1f59e0729b31130bce3aed 2.19kB / 2.19kB done
+#8 sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191 10.30kB / 10.30kB done
+#8 sha256:757779acac4af1b349a20f357c7296097b4a0b89da4ad0e370b339060077282a 1.92kB / 1.92kB done
+#8 sha256:ebe4e0721205a049b6806724e1ccb05c99e334b1dc1f59e0729b31130bce3aed 2.19kB / 2.19kB done
+#8 sha256:c95d909b2488ff78a51d01ca745429e6d281e314006f231fe6e9f219cf5432ca 0B / 126B 0.1s
+#8 sha256:8f78851c25d251496dd39ebce311b4d914a4a97c0ba1983039165a05fd96b925 0B / 296.08kB 0.2s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 0B / 79.13MB 0.2s
+#8 sha256:c95d909b2488ff78a51d01ca745429e6d281e314006f231fe6e9f219cf5432ca 126B / 126B 0.3s done
+#8 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 0B / 32B 0.4s
+#8 sha256:8f78851c25d251496dd39ebce311b4d914a4a97c0ba1983039165a05fd96b925 296.08kB / 296.08kB 0.5s done
+#8 extracting sha256:8f78851c25d251496dd39ebce311b4d914a4a97c0ba1983039165a05fd96b925 0.1s done
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 5.24MB / 79.13MB 0.7s
+#8 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 0.6s done
+#8 extracting sha256:8f78851c25d251496dd39ebce311b4d914a4a97c0ba1983039165a05fd96b925 0.1s done
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 9.44MB / 79.13MB 0.8s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 13.63MB / 79.13MB 1.0s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 18.87MB / 79.13MB 1.2s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 25.17MB / 79.13MB 1.4s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 31.46MB / 79.13MB 1.7s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 36.70MB / 79.13MB 1.9s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 41.94MB / 79.13MB 2.1s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 50.33MB / 79.13MB 2.4s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 56.62MB / 79.13MB 2.6s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 61.87MB / 79.13MB 2.8s
+#8 ...
+
+#6 [node4 internal] load build context
+#6 transferring context: 19.86MB 2.9s done
+#6 DONE 3.1s
+
+#8 [node2 builder 1/6] FROM docker.io/library/golang:1.24-alpine@sha256:8bee1901f1e530bfb4a7850aa7a479d17ae3a18beb6e09064ed54cfd245b7191
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 67.11MB / 79.13MB 3.0s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 72.35MB / 79.13MB 3.2s
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 77.59MB / 79.13MB 3.4s
+#8 extracting sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581
+#8 sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 79.13MB / 79.13MB 3.7s done
+#8 extracting sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 5.9s
+#8 extracting sha256:f7bdfd728ac2ad72d43b82689890dc698260d3a1049845f48fb3fb942df6c581 5.9s done
+#8 extracting sha256:c95d909b2488ff78a51d01ca745429e6d281e314006f231fe6e9f219cf5432ca
+#8 extracting sha256:c95d909b2488ff78a51d01ca745429e6d281e314006f231fe6e9f219cf5432ca done
+#8 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 done
+#8 DONE 10.7s
+
+#11 [node3 builder 2/6] WORKDIR /build
+#11 DONE 0.6s
+
+#12 [node8 builder 3/6] COPY go.mod go.sum ./
+#12 DONE 0.4s
+
+#13 [node10 builder 4/6] RUN go mod download
+#13 0.450 go: go.mod requires go >= 1.26.0 (running go 1.24.13; GOTOOLCHAIN=local)
+#13 ERROR: process "/bin/sh -c go mod download" did not complete successfully: exit code: 1
+------
+ > [node4 builder 4/6] RUN go mod download:
+0.450 go: go.mod requires go >= 1.26.0 (running go 1.24.13; GOTOOLCHAIN=local)
+------
+Dockerfile:9
+
+--------------------
+
+   7 |     # Copy go mod files
+
+   8 |     COPY go.mod go.sum ./
+
+   9 | >>> RUN go mod download
+
+  10 |     
+
+  11 |     # Copy source code
+
+--------------------
+
+target node6: failed to solve: process "/bin/sh -c go mod download" did not complete successfully: exit code: 1
+
+ERROR: Docker build failed. Check /tmp/docker_build_vnipfs.log

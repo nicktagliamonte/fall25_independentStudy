@@ -1,0 +1,46 @@
+note: this is a rapidly roughly written set of requirements taken based on rapid fire verbal input during a meeting. 
+note all of it is strictly relevant, but at least some of it is
+top level tuple space is for application management and can only be used for permissioned users
+bottom level is for storage and can be used by permissioned and non permissioned
+can recruit from storage layer if people in the storage level have x level of compute and storae resources. we will pay them for their participation
+    there is a kyc component in there
+
+    ipfs is settled. we can submit it soon. the experiment is tbd how to do it
+    new paper proposal:
+        the way we use dht is different to other people's use of dht
+        we have a tsTop which is p2pTS. straight libp2p. this is for permissioned apps
+        we have a storage dhtTS. this is decentralized.
+        we use dht for keymatching. tuple matches dht. <key, data> no longer <ID, data>
+        hash(provider + CID) = key.
+        we make the key <hash(data), data>
+        when you have a put, you store locally, generate a kv, hash it, and attach to it the node ID which generated it. this loses anonymity of the storage location. we can do search for the keys. the key can match any data value
+        the idea is that dht eventually becomes a binary search tree. when you find a key then you find a location. the location is attached to the key in the routing table. to retrieve data you go direct to the device. the entire dht is a tuple space. for each key, you can have multiple devices.
+        that is how replication is allowed.
+        routing table will have a pointer which points to machine id / node id
+        essentially the idea is that the dht is specifically and exlusively for routing
+        note:  
+            my tuple space, the storage tuple space, only needs upload / read / write / delete.
+        mutual exclusion is possible by locking the key for h(data)
+            this allows support for concurrency at the dht level. has to be implemented
+        from now on, n-hop means n/m/f
+        complexity is the crux of the mater. how do we manage complexity and deliver what we want to deliver
+        regex limitation is one of the blocking limitations
+        new premise is the paper starts from a data representation error as the presented problem
+       
+data representation needs a prefix "networked". it was always <DiD, data>. this is persistent in all the hop to hop protocols. and dht. dht is an implementation of that. and that is wrong. that is the root cause problem of everything. rpc, mpi, rmi and all those. are based on that data representation. by introducting the key, the problem is all goes away. we introduce a layer of abstraction and then all this is solvable. instead of being impossible to solve. we can't do data replication when we suddenly have a new ID. what if i have same data different id? can't handle it. can't lock down the ID. foundational flaw.
+
+storage is an easy problem. the next level is the relational dbms. that's where financial transactions going on and suffers from same data representation problem and it's the hardest to overcome. clients talk to db. the db is a spof. database is ip address, then that is itself data. how do we get rid of that? really really hard. acid complience. really tough to fix. but this can apply also ot that. shi had a pattent many years ago introducing a gateway which would be in this setup the layer with all the replicas attached to the node id. or w/e. key gets lost? all the data is lost. gateway dead? each one reps a partitiondb is single database which will grow like mazon. each partition becomes a spof. each one needs to be replicated. that's the gateway. replicates every partition. but needs a top level tuple space, query optimizer, breaks down query involving multiple partitions and digests and breaks down and then returns something. storage only need one ts and search the key. the p2pTS needs to mimic the query optimizer and the general gateway concept.
+
+there's another problem. you lose a server, part of a partition. how do you resync. you have 3 good copies and one bad. how do you get that one replaced while new requests keep coming in? soln is gateway. gateway is stateless. the key, the dht hash key has no state. not like storage which does have a state. the only functino of the otken is to sync with the data. if you read you don't have to lock it you can geta token and read from eveywhere. if you write you need the token. we still have a kv but the dht do not route storage dota. routes the token to the tuple space, routes the tuples whch cary physical locations. one or many. that's the shift.
+
+centralization is only for mission critical applications, in terms of why we do itp. when push to shove and dod will use civs lmachines .
+
+
+       
+       
+we have to consider tokenization. we should have a bunch of robots critique the paper
+    rewrite the abstract, review the contents. wait for dr shi to lmk what is needed
+
+we want dht to route tokens. tokens should contain physical location of data. we want to add the key to dht.
+
+remove the device id from the data hashing only hash the data and then alter the data structure to have the device id added in to it.

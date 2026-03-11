@@ -29,8 +29,10 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
+	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
+	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
 
 type stringSlice []string
@@ -403,14 +405,41 @@ func Run() error {
 		stack.ProviderRecords = providerRecords
 		aq := mystore.NewAnnounceQueue()
 		stack.AnnounceQueue = aq
+
+		// Create repair protocol and gateway using DHT tuple space (before recovery callback setup)
+		var repairProtocol *mystore.RepairProtocol
+		var gateway *mygateway.Gateway
+		if dht != nil {
+			dhtAdapter := mytuplespace.NewDHTValueStoreAdapter(dht)
+			dhtTS := mytuplespace.NewDHTTupleSpace(dhtAdapter)
+			repairProtocol = mystore.NewRepairProtocol(stack, h, dhtTS, false) // tokenized: false for daemon mode
+
+			var baseTS mytuplespace.TupleSpace = dhtTS
+			if tshAddr := os.Getenv("TSH_ADDR"); tshAddr != "" {
+				p2pTS := mytuplespace.NewP2PTupleSpace(tshAddr, 0x7f000001, "sng40")
+				p2pTS.SetPermissionChecker(myhost.NewHandshakePermissionChecker(policyBase))
+				router := mytuplespace.NewRouter(dhtTS, p2pTS, nil)
+				baseTS = router
+			}
+			tokenTS := mytuplespace.NewTokenFallbackTupleSpace(dhtAdapter, baseTS)
+			gateway = mygateway.NewGateway(stack.Router, tokenTS)
+			if ts := gateway.TokenStore(); ts != nil {
+				stack.TokenStore = ts
+			}
+		}
+
 		pcm := myhost.NewPeerConnectivityMonitor(h,
 			myhost.PartitionMonitorOnPartitionEvent(func(e myhost.PartitionEvent) { aq.SetPartitioned(true) }),
 			myhost.PartitionMonitorOnRecovery(func() {
 				aq.SetPartitioned(false)
 				stack.FlushQueuedAnnouncements(ctx)
+				// Trigger repair protocol for missing replicas after partition recovery
+				if repairProtocol != nil {
+					stack.TriggerRepairForAllCIDsOnRecovery(ctx, h, repairProtocol)
+				}
 			}))
 		go pcm.Start(ctx)
-		mystore.StartPeriodicReannounce(ctx, stack.Router, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
+		mystore.StartPeriodicReannounce(ctx, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
 		stopIBLT := InstallCatalogIBLT(ctx, h, stack)
 		defer stopIBLT()
 		// Periodic pruning of stale or failing peers
@@ -644,8 +673,8 @@ func Run() error {
 							continue
 						}
 						pol := policyBase
-					pol.Timeout = 5 * time.Second
-					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+						pol.Timeout = 5 * time.Second
+						if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 							if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							}
 							for _, info := range res.Learned {
@@ -667,11 +696,15 @@ func Run() error {
 			}
 		}()
 
+		// Wire message metrics for P2P message counting (put, get, lookup)
+		stack.MessageSink = ctrl.NodeMetricsMessageSink(metrics)
+		stack.HopSink = ctrl.NodeMetricsHopSink(metrics)
+
 		// Start control server and write daemon file
 		addr, _, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() {
 			// trigger graceful stop
 			cancelMain()
-		}, dynamicRouter)
+		}, dynamicRouter, repairProtocol, gateway, storePath)
 		if err != nil {
 			return err
 		}
@@ -806,11 +839,16 @@ func Run() error {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
 
-		c, err := mystore.PutRawBlockIndexed(ctx, stack.Datastore, stack.BlockSvc, payload)
+		lockOpts := (*mystore.PutLockOpts)(nil)
+		if stack.KeyLockManager != nil && stack.Host != nil {
+			lockOpts = &mystore.PutLockOpts{Manager: stack.KeyLockManager, Holder: stack.Host.ID()}
+		}
+		key, c, err := mystore.PutRawBlockIndexed(ctx, stack.Datastore, stack.BlockSvc, payload, lockOpts)
 		if err != nil {
 			return err
 		}
-		stack.AnnounceProviderAsync(ctx, c)
+		// Auto-update routing table with replication vector on Put
+		stack.UpdateRoutingTableOnPut(key, h.ID(), nil, c) // nil = use default replication vector
 
 		fmt.Println("CID:", c.String())
 		fmt.Printf("CID (multihash hex): %s\n", hex.EncodeToString(c.Hash()))
@@ -1378,8 +1416,7 @@ func Run() error {
 	}
 }
 
-// staticContentRouter implements routing.ContentRouting and always returns
-// the connected provider peer for any queried CID.
+// staticContentRouter implements routing.ContentRouting. Legacy stub; key-based token routing is primary.
 type staticContentRouter struct {
 	provider peer.AddrInfo
 }

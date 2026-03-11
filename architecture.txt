@@ -1,0 +1,118 @@
+Vn-IPFS Architecture with DHT
+Justin Y. Shi | shi@temple.edu 
+V1.4
+February 24, 2026
+
+Introduction
+The landscape of decentralized systems has long been defined by the tension between the necessity of global addressability and the fragility of maintaining the state required to achieve it. At the heart of this tension lies the mechanism of content routing—the ability to locate a specific piece of data within a sprawling, dynamic network of peers without reliance on a central authority. For the past two decades, the dominant paradigm for solving this problem has been the Distributed Hash Table (DHT), a class of algorithms that structure the network overlay into a navigable graph, guaranteeing logarithmic lookup complexity at the cost of maintaining complex routing invariants [1]. While DHT is the efficient decentralized search design, such as decentralized blockchain peer discovery [2], for mission-critical extreme scale mutable storage systems that require data replication, the routing maintenance complexity negatively impacts deliverable performance and reliability [3].
+Using decentralized system for mission critical application has been a myth. Mission critical applications demand performance, reliability and security at the same time for the target missions.  Without centralized control, a decentralized system cannot really guarantee deliverable performance and security (KYC) regardless of the best effort designs.   
+Recognizing the large impacts of the wide-spread fallacies [5], the vn-IPFS (von Neumann principled [6] Inter-planetary File System) aims to resolve some long-standing decentralized storage system challenges while leveraging DHT for efficient searches in unstructured networks with an integrated optional centralized quality control. 
+In vn-IPFS, we introduce ACAN (active content addressable network) and statistic multiplexed communication and computing (SMC2) technologies, the fully decentralized vn-IPFS storage system can deliver the best-effort performance, reliability and security at the same time in any scale by exploiting all decentralized network, storage and computer resources [4] in real time. 
+To sustain this extreme scale self-powering architecture, economic incentives are programmed in the protocols that will be executed on an equally scalable immutable blockchain system. 
+A peer-to-peer Tuple Space powered management protocol supports optional control through security and KYC processes. This allows an admin to ensure deliverable performance, reliability and security always. An additional benefit of the vn-IPFS is the user data intuitive APIs with hidden replication/network maintenance overheads. This makes it suitable for mission critical extreme-scale webservices and other large-scale consumer and enterprise applications.  
+Foundational Technologies
+The fundamental change in the decentralized storage system design in vn-IPFS is the transformation from traditional <providerID, contentID(CID)> data representation to <key, value> Tuple Space abstraction for program-program coordination, where the “key” is application-specific content identity and “value” is the content value(s) that can be data or executable programs. 
+While the traditional <providerID, CID> binding works well in DHT data searches, having the Tuple Space abstraction with “key, value” Tuples enables a new dimension in program-data-program communication and coordination leveraging DHT efficient decentralized search and matching machinery. A peer-to-peer Tuple Space protocol is also supported for administrative tasks.  
+In other words, the DHT search and matching engine is used for meta data communication and storage content manipulation while actual data loading is supported by small direct swarms.
+The second critical technology is Statistic Multiplexed Communications and Computing (SMC2). This technology allows the application (in this case, the storage) to exploit all available resources dynamically in real time.
+Unlike the original Tuple Space concept that implies share-memory between multiple processors, for vn-IPFS, there are two Tuple Space implementations: a) a Tuple Space uses DHT with interface with ACAN and SMC2 disciplines; and b) a peer-to-peer Tuple space without DHT for administrative tasks (KYC required). It supports multiple parallel UVRs defined by each key matching path from the provider node. All Tuple Space implementations support put(upload), read and get(delete) protocols. The non-DHT Tuple Space supports regular expression match at a worst-case cost of O(log_20 k) hops and O(N) messaging overhead. In a tokenized version, it will support “storage-available” protocols for the open storage network sustainability needs. 
+Both Tuple Space implementations enable automatic network partition and recovery that is common in extreme scale networks.
+The peer-to-peer (non DHT) Tuple Space supports regular expression matches and exclusive-fetch semantics of the get(delete) protocol to provide a global lock for eliminating potential race conditions.
+To incentivize participation in open storage networks, vnIPFS adopts POS (proof of stake) tokenomics, where the token is named VNFT with 50,000,000,000,000 soft capped supply. Stakers acquire VNFT to become eligible. Once accepted, staked tokens are locked for the duration of the contract until expiration. Each staker issues “storage-available” get request. Stakers are selected based on their committed stakes, their RTT from the provider node, storage availability, availability duration and reputation. The tokenization layer is another optional implementation. 
+With DHT support, the regular put(upload), read and get(delete) protocols has O(lg N) complexity through locally stored routing tables. Tuples are inserted into local buckets. Queries are executed in DHT style. There is no globally synchronized state. The limitation is the key matching must be exact. 
+Data replication policy: Assuming R is the replication target (default >=7), each upload also records a customizable replication vector. The default is (Near(R*40%), Midrange(R*30%) and Far-flung(R*30%)) for this CID and places the CID in “replication-request” state. For files need higher performance and the network is reliable, vector (N:R*.9,M:R*.1,F:0) can be practical.
+In the tokenized open vnIPFS, each “storage-available” request can find a matching offer in O(lg N) messages. Each match involves evaluating the CID replication vector and local storage and network availability to decide the highest score staker through a direct communication channel. A match peer will try to fulfill the replication vector locally (near, mid-range, or far-flung from the provider), the provider will update the CID state accordingly. The replica peer will also record the newly added CID in its local routing table. 
+Only the replication hosts have updated routing tables.
+The read protocol will have O(log N) hopping complexity and O(log N) small gossip messages to find a match or claim no match can be found. The match will initiate a small download swarm from the requester to the providers through direct connections. This design is deliberate to ensure each read request reaches all potential providers. The authenticity of the user and the contents are double checked to prevent unauthorized accesses and Byzantine failures before returning results. The read protocol also verifies the CID state with its replication vector to make sure all replica states are synchronized. This will trigger automatic repair if there are “storage-available” requests around the network.
+The get(delete) protocol inserts a “delete pattern credential” tuple in local routing table. its replica delete requests will incur O(R*log N) steps. Its API waits on a return port for responses. CID remove instruction is sent until all are completed or the wait timeout. 
+This design allows the storage application to dynamically exploit all resources probabilistically for the best-effort delivery in performance, reliability and security regardless of the network scale.
+CAP and Partition tolerance: When the network partitions, many peers are lost. Each partitioned network continues to operate on reachable nodes. Updates and deletions can occur. The read protocol will repair the missing replicas. When the network heals, the peers become live again. For immutable objects (such as tuples), there will be no conflicts. Otherwise, cryptographic versioning with timestamp can resolve the conflicts.
+Like decentralized systems using DHT and variants, there is no single-point failure regardless of how the system scales. The ACAN/SMC2/p2p protocols ensure better performance, reliability and security as the system expands in size. 
+The proposed tokenomics encourages stakers sustained support in perpetuity. The token ledger ensures economic benefits for participation. For permissioned networks, they serve as a real time infrastructure monitoring tool. These features make vn-IPFS suitable for all mission-critical webservices for consumer or enterprise applications.
+Vn-IPFS Architecture
+    a) P2PTS: A global <key, value> Tuple Space abstraction implemented using enhanced libp2p protocols and supported by SMC2 kernel extension). Node ID = hash(pubkey), each node has a public/private key pair (Ed25519), Message ID (MID) = hash(payload + sender pubkey + nonce). Session key is derived via ECDH. All messages are encrypted with sender pubkey, nonce and timestamp. Each node maintains a replay protection window. All messages are signed.
+Authenticated Handshake (Prevents MITM & Identity Forgery)
+    1. Exchange public keys
+    2. Perform challenge-response
+    3. Verify signature of random nonce
+    4. Perform ECDH
+    5. Derive session key
+After handshake:
+    6. All traffic encrypted (AES-GCM or ChaCha20-Poly1305)
+    7. All traffic authenticated
+Anti-Replay protection:
+Per-peer nonce cache
+Reject: 
+    1. Duplicate message hash
+    2. Expired timestamps
+    3. Reused nonce
+    b) API Library:
+        1. Put(upload). Store in O(1). Replication messages using Bloom filter in O(log N). In this case, false-positives do not matter.
+        2. Read. O(lg N) Use small world swarm for quicker load and authentication. Use zk-SNARK non-interactive proofs.
+        3. Get(delete).  R*O(lg N).
+    c) File System parameters: 
+        1. Files are partitioned into 4KB chunks.
+        2. All files are encrypted using owner credentials.
+        3. Each file is replicated R (>=7) times to randomly selected nodes meeting custom RTT requirements.
+        4. All nodes maintain a local routing table: [CID, ProviderID, repVector]
+    d) Economic Model:
+        1. Total Supply Cap: 50,000,000,000 vnfts
+        2. Nodes are owned by stakers.
+        3. Join the vn-IPFS is free. 
+        4. Storage contracts are determined by a stake-weighted percentile.
+        5. Once the storage contract is concluded, the node simply adds itself to the peer list and informs O(1) random peers.
+        6. Token: vnft
+        7. Princing policy: 
+            i. Reputation-weighted awards: uptime, faster retrieval speeds, consistent proof validations and higher reputation scores.
+        8. A Percentage of vnft will be burned decided by DAO consensus.
+        9. Tail Emission: Decided by DAO consensus when all reserve depleted.
+    e) Node Setup and Network Initialization: 
+        1. Hard coded seed nodes in initial peer list as DNS for the system.
+        2. All nodes listen on port 5000 (default).
+        3. New node joins the network through ver-ack to setup secured communication with the first available peer and expanded peer list to the seed nodes and self. Peer lists are not synchronized amongst all nodes.
+        4. Each message carries a unique MID.
+        5. Each node maintains a local received MID list (auto expunge every 1-5 minutes), a peer list, a recent-seen peer list, and a CID routing table (auto updated by “upload” and “delete” protocols).
+        6. OpCodes: upload (0:put), read(1:read), delete (2:get) (write = read then upload), inspect(random read)(4),addnode(5)
+        7. Replication Factor R: customizable per file/account/group (default >= 7).
+        8. Replication distribution is managed in N-hop exclusion protocol: customizable per file/account/group (default: Near(40%), Midrange(30%), Far-flung(30%).
+        9. Each node runs a Bitcoin-like peer manager to track abuses: Eclips attacks (limits peers from the same IP range), uses asmap (ASN mapping), maintains diversity in outbound peers; Sybil attacks: bucketing system for address storage, randomized peer eviction logic, DoS attacks: rate limiting, resource use caps and misbehavior scores.
+        10. Each node maintains a ban-list of non-trustworthy peers. Ban duration: 24 hours.
+    f) System read protocol on port 5000: [check]
+        1. Can start on any node but authenticated.
+        2. Loop through entire local routing table for N|M|F requirements and actuals.
+        3. Send O(lg N) gossip messages with each missing N|M|F requirements entries
+        4. If receiving node also finds missing N|M|F entries, do the same. Until none can be found or replay window closes.
+    g) Node join protocol on port 5000: [local IP]
+        1. Can connect to any node after authentication. 
+        2. Send O(1) gossip messages to peers.
+Performance Evaluation
+Vn-IPFS file upload complexity is O(1) (local storage with amortized replication costs over the propagation paths).
+File read complexity is also O(lg N).
+File delete complexity is also O(lg N).
+The read protocol will check the integrity of all CID with associated N|M|F targets in O(lg N) and a small gossip storm. The repair protocol will force updating the local routing tables. This protocol can be triggered anytime by off-line RPC scripts. 
+Node failures are automatically skipped in protocols. Node “join” protocol has O(1) steps to announce the event and saturate the entire network at a later time. Multiple nodes can join at arbitrary time in parallel without complications. 
+Like other DHT-based implementations, the vnIPFS storage system throughput performance increases as more nodes joining the network incrementally since the increases in protocol complexity of O(lg N) << O(N). 
+Summary
+Vn-IPFS was designed for fully decentralized high performance storage system without any scalability limitations. Routing table and data replications are completely automated without user interference.  Unlike traditional decentralized systems using chartier gossip protocols, the p2pTS maintains efficient routing tables in the entire network scope. Content retrieval complexity is the same O(lgN) with DHT. The customizable replication vector ensures the “best effort” performance and reliability requirements of the user. The worst-case retrieval complexity (data not found) is O(lg N) messages. Routing table and content replication and maintenance overheads are amortized over the network not directly visible to the users.
+References:
+                1. J. H. Hartman, I. Murdock and T. Spalink, "The Swarm scalable storage system," Proceedings. 19th IEEE International Conference on Distributed Computing Systems (Cat. No.99CB37003), Austin, TX, USA, 1999, pp. 74-81, doi: 10.1109/ICDCS.1999.776508. keywords: {File servers;Network servers;Access protocols;File systems;Computer science;Costs;Prototypes;Fault tolerance;Clustering algorithms;Control systems},
+                2. Ethereum Swarm Sphere: https://swarm.ethereum.org
+                3. Ratnasamy, S., Stoica, I., Shenker, S. (2002). Routing Algorithms for DHTs: Some Open Questions. In: Druschel, P., Kaashoek, F., Rowstron, A. (eds) Peer-to-Peer Systems. IPTPS 2002. Lecture Notes in Computer Science, vol 2429. Springer, Berlin, Heidelberg. https://doi-org.libproxy.temple.edu/10.1007/3-540-45748-8_4
+                4. Flynn, M.: Flynn’s taxonomy, encyclopedia of parallel computing, pp 689–697. SpringerLink. https://link.springer.com/referenceworkentry/https://doi.org/10.1007/978-0-387-09766-4_2
+                5. Fallacies of Distributed Computing, Wikipedia.com. https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing. Accessed 2 Oct 2024
+                6. John von Neumann: Probabilistic Logics and the Synthesis of Reliable Organisms from Unreliable Components, Lecture delivered at the California Institute of Technology, January 1952. (url: VonNeumann1956.pdf)
+                7. Amdahl, G.: Validity of the single processor approach to achieving large-scale computing capabilities. In: AFIPS Conference LNCS Homepage, Proceedings (30), pp.483–485. http://www.springer.com/lncs. Accessed 25 Oct 2023. https://doi.org/10.1145/1465482.1465560. S2CID 195607370
+                8. Gustafson, J.L.: Reevaluating Amdahl’s law. Commun. ACM 32(5), 532–533 (1988). https://doi.org/10.1145/42411.42415. S2CID 33937392
+                9. Shi, Y.: Reevaluating Amdahl’s law and Gustafson’s law (1996). https://cis.temple.edu/~shi/wwwroot/shi/public_html/docs/amdahl/amdahl.html
+                10. Gupta, P.: Gossip protocol in distributed systems, Medium (2023). https://medium.com/nerd-for-tech/gossip-protocol-in-distributed-systems-e2b0665c7135
+                11. Loshin, D.: Data parallelism, sciencedirect, business intelligence (2nd Edition) (2013). https://www.sciencedirect.com/topics/computer-science/data-parallelism
+                12. Shi, J.: Multi-computer system and method. U.S. Patent #5,517,656 (1996)
+Google Scholar 
+                13. Shi, J.: High performance lossless ESB architecture with data protection for mission-critical applications. In: 2009 World Congress on Computer Science and Information Engineering, vol. 7 (2009)
+Google Scholar 
+                14. Shi, J.: Statistic multiplexed computing. European Patent Office, 17869136.6 – 1213/3539261 (2022)
+Google Scholar 
+                15. Shi, J.: Statistic multiplexed computing system for network-scale reliable high-performance services. U.S. Patent Office, #US 11,589,926 B1 (2023)
+Google Scholar
+                16. Ackley, D.H.: Indefinite scalability for living computation. In: Proceedings of the Thirtieth AAAI Conference on Artificial Intelligence (AAAI-16), AAAI-16 Senior Member Presentation Track Blue Sky Ideas talk (2016)
+

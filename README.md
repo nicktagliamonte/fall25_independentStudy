@@ -1,6 +1,26 @@
-# Prototype Node (early)
+# vn-IPFS Prototype Node
 
-Minimal P2P content node for quick testing
+P2P content node with key-based storage and token routing. Part of the vn-IPFS architecture (von Neumann–principled IPFS).
+
+## Architecture
+
+**Key-based storage:** The primary identifier is `Key = SHA256(data)` (64 hex chars). CID is kept for IPFS blockstore compatibility.
+
+**Token routing:** The DHT routes **tokens** (physical locations: ProviderID + Address), not block data. Discovery flow: `GetToken(key)` → `DirectFetch` to each location in parallel. Block data flows peer-to-peer via `/sng40/direct-fetch/1.0.0`.
+
+**Put flow:** `Key = KeyFromData(data)` → store in blockstore → index Key→CID → update routing table → sync token to DHT (`/tokens/<hex(key)>`).
+
+**Get flow:** Local lookup → token lookup (Gateway or DHT) → DirectFetch to providers → verify `KeyFromData(blockData) == key`.
+
+**Optional locking:** `KeyLockManager` provides write mutual exclusion per key. Reads are lock-free.
+
+### Documentation
+| Doc | Description |
+|-----|-------------|
+| [docs/API.md](docs/API.md) | Key-based HTTP API (put, get, delete, snapshot) |
+| [docs/TOKEN_PROTOCOL.md](docs/TOKEN_PROTOCOL.md) | Token structure, DHT routing, DirectFetch |
+| [docs/LOCKING_API.md](docs/LOCKING_API.md) | KeyLockManager, acquire/release, retry |
+| [docs/GATEWAY_QUERY_API.md](docs/GATEWAY_QUERY_API.md) | Gateway Query, QueryOptimizer, routing |
 
 ## Build
 ```
@@ -12,10 +32,12 @@ go build -o node ./cmd/node/main.go
 ```
 ./node put --data "hello" --serve
 ```
+Returns `multihash_hex` (Key) and `cid`.
 - Terminal B (fetch):
 ```
 ./node get --cid "<CID_FROM_A>" --from-addr "/ip4/<IP>/tcp/2893" --from-peer "<PEERID_FROM_A>" --out /tmp/out.txt
 ```
+For key-based get, use the HTTP API: `POST /get` with `{"key": "<multihash_hex>"}`. See [docs/API.md](docs/API.md).
 
 ## Run a node
 ```

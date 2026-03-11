@@ -18,14 +18,22 @@ func TestPutRawBlockIndexed_LocalStore(t *testing.T) {
 	var bsvc bserv.BlockService = &memBsvc{}
 
 	payload := []byte("local store test")
-	c, err := PutRawBlockIndexed(ctx, mem, &bsvc, payload)
+	key, c, err := PutRawBlockIndexed(ctx, mem, &bsvc, payload, nil)
 	if err != nil {
 		t.Fatalf("PutRawBlockIndexed: %v", err)
 	}
-	if !c.Defined() {
-		t.Fatal("expected defined CID")
+	if key.IsZero() {
+		t.Fatal("expected non-zero Key")
 	}
-	got, err := GetBlock(ctx, &bsvc, c)
+	if !c.Defined() {
+		t.Fatal("expected defined block identifier")
+	}
+	// Verify key matches hash of data
+	expectedKey := KeyFromData(payload)
+	if !key.Equal(expectedKey) {
+		t.Errorf("key mismatch: got %s, want %s", key.String(), expectedKey.String())
+	}
+	got, err := GetBlockByKey(ctx, mem, &bsvc, key)
 	if err != nil {
 		t.Fatalf("GetBlock: %v", err)
 	}

@@ -10,10 +10,10 @@ import (
 
 	bstore "github.com/ipfs/boxo/blockstore"
 	ds "github.com/ipfs/go-datastore"
+	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
@@ -84,7 +84,7 @@ func TestIBLTCatalogSync(t *testing.T) {
 	stackB.ProviderRecords = mystore.NewLocalProviderRecords()
 
 	payload := []byte("iblt catalog sync test payload")
-	c, err := mystore.PutRawBlockIndexed(ctx, stackA.Datastore, stackA.BlockSvc, payload)
+	_, c, err := mystore.PutRawBlockIndexed(ctx, stackA.Datastore, stackA.BlockSvc, payload, nil)
 	if err != nil {
 		t.Fatalf("PutRawBlockIndexed: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestIBLTCatalogSync(t *testing.T) {
 			continue
 		}
 		if has {
-			got, err := mystore.GetBlock(ctx, stackB.BlockSvc, c)
+			got, err := mystore.GetBlockByCID(ctx, stackB.BlockSvc, c)
 			if err != nil {
 				t.Fatalf("GetBlock: %v", err)
 			}
