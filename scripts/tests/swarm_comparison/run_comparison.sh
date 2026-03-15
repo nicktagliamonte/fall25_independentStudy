@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Purpose: Test orchestration for vn-IPFS vs Swarm comparison.
-# Starts both networks in parallel, waits for health, runs identical tests, collects metrics, shuts down cleanly.
+# Starts both networks sequentially (vn-IPFS then Swarm), waits for health, runs identical tests, collects metrics, shuts down cleanly.
 # Usage: ./scripts/tests/swarm_comparison/run_comparison.sh [options]
 #   --nodes <list>        Node counts: 10, 50, 100, 500 (default: 10,50)
 #   --payload-sizes <list> Comma-separated payload sizes in bytes (default: 1024,10240,102400,1048576)
@@ -10,6 +10,7 @@ set -euo pipefail
 #   --batch-sizes <list>  Comma-separated batch sizes for upload (default: 1,5,10,20)
 #   --output-dir <dir>    Output directory for results (default: ./test_results_<timestamp>)
 #   --test-timeout <sec>  Per-test timeout in seconds (default: 600)
+#   --tests <list>       Comma-separated test names to run (default: all). Use --tests list to print available tests.
 #   --skip-cleanup        Don't stop containers after tests (useful for debugging)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +34,7 @@ BATCH_SIZES="1,5,10,20"
 OUTPUT_DIR=""
 TEST_TIMEOUT_SEC=600
 SKIP_CLEANUP=false
+TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,message_count,key_lookup,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -61,6 +63,10 @@ while [[ $# -gt 0 ]]; do
       TEST_TIMEOUT_SEC="$2"
       shift 2
       ;;
+    --tests)
+      TESTS="$2"
+      shift 2
+      ;;
     --skip-cleanup)
       SKIP_CLEANUP=true
       shift
@@ -74,6 +80,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --batch-sizes <list>  Batch sizes for upload test (default: 1,5,10,20)"
       echo "  --output-dir <dir>    Output directory (default: ./test_results_<timestamp>)"
       echo "  --test-timeout <sec>  Per-test timeout in seconds (default: 600)"
+      echo "  --tests <list>       Comma-separated test names (default: all). Use --tests list to print available tests."
       echo "  --skip-cleanup        Don't stop containers after tests"
       exit 0
       ;;
@@ -84,6 +91,20 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Normalize TESTS (strip spaces for matching)
+TESTS="${TESTS// /}"
+
+# Handle --tests list
+if [[ "$TESTS" == "list" ]]; then
+  echo "Available tests (use --tests <name> or --tests <name1,name2,...>):"
+  echo "  upload, download_cold, download_warm, message_count, key_lookup, lookup_complexity,"
+  echo "  replication, replication_distribution, repair_time, network_hops, routing_overhead,"
+  echo "  storage_efficiency, concurrent"
+  echo ""
+  echo "Example: --tests upload,download_cold --nodes 10 --iterations 2"
+  exit 0
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -91,6 +112,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+# Helper: return 0 if test should run (empty TESTS = all; else check membership)
+should_run_test() {
+  local name="$1"
+  [[ -z "$TESTS" ]] && return 0
+  [[ ",${TESTS}," == *",${name},"* ]] && return 0
+  return 1
+}
 
 # Create output directory
 if [[ -z "$OUTPUT_DIR" ]]; then
@@ -121,6 +150,7 @@ echo "Node counts: ${NODE_COUNTS[*]}"
 echo "Payload sizes: ${PAYLOAD_ARRAY[*]} bytes"
 echo "Batch sizes (upload): ${BATCH_SIZES_ARRAY[*]}"
 echo "Iterations per test: $ITERATIONS"
+[[ -n "$TESTS" ]] && echo "Tests (filtered): $TESTS"
 echo "Output directory: $OUTPUT_DIR"
 echo ""
 
@@ -146,19 +176,17 @@ cleanup_containers() {
 
   echo -e "\n${BLUE}Cleaning up containers...${NC}"
 
-  # Stop Swarm first (uses network as external)
+  # Stop Swarm first (uses network as external) - use down to release resources fully
   if [[ -f "$ROOT_DIR/docker-compose.swarm.yml" ]] && docker-compose -f "$ROOT_DIR/docker-compose.swarm.yml" ps 2>/dev/null | grep -q "Up"; then
     echo "  Stopping Swarm..."
-    docker-compose -f "$ROOT_DIR/docker-compose.swarm.yml" stop >/dev/null 2>&1 || true
-    docker-compose -f "$ROOT_DIR/docker-compose.swarm.yml" rm -f >/dev/null 2>&1 || true
+    docker-compose -f "$ROOT_DIR/docker-compose.swarm.yml" down >/dev/null 2>&1 || true
   fi
 
-  # Stop vn-IPFS (our system) - check both compose files
+  # Stop vn-IPFS (our system) - check both compose files - use down to release resources fully
   for compose in "$ROOT_DIR/docker-compose.vnipfs.yml" "$ROOT_DIR/docker-compose.yml"; do
     if [[ -f "$compose" ]] && docker-compose -f "$compose" ps 2>/dev/null | grep -q "Up"; then
       echo "  Stopping vn-IPFS/our system..."
-      docker-compose -f "$compose" stop >/dev/null 2>&1 || true
-      docker-compose -f "$compose" rm -f >/dev/null 2>&1 || true
+      docker-compose -f "$compose" down >/dev/null 2>&1 || true
       break
     fi
   done
@@ -172,8 +200,7 @@ ensure_clean_state() {
 
   for compose in "$ROOT_DIR/docker-compose.swarm.yml" "$ROOT_DIR/docker-compose.vnipfs.yml" "$ROOT_DIR/docker-compose.yml"; do
     if [[ -f "$compose" ]] && docker-compose -f "$compose" ps 2>/dev/null | grep -q "Up"; then
-      docker-compose -f "$compose" stop >/dev/null 2>&1 || true
-      docker-compose -f "$compose" rm -f >/dev/null 2>&1 || true
+      docker-compose -f "$compose" down >/dev/null 2>&1 || true
     fi
   done
 
@@ -195,6 +222,7 @@ wait_for_stabilization() {
   local system="$1"
   local nodes="$2"
   local max_wait=90
+  [[ "$system" == "swarm" ]] && max_wait=120
   local check_interval=2
 
   echo -e "  ${CYAN}Waiting for $system to stabilize (max ${max_wait}s)...${NC}"
@@ -671,27 +699,20 @@ for node_count in "${NODE_COUNTS[@]}"; do
 
   ensure_clean_state
 
-  # Step 1: Start both networks in parallel
-  echo -e "\n${BLUE}Step 1: Starting both networks in parallel...${NC}"
-  (
-    if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
-      echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
-    else
-      echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
-    fi
-  ) &
-  VNIPFS_PID=$!
+  # Step 1: Start networks sequentially (reduces memory/CPU contention during startup)
+  echo -e "\n${BLUE}Step 1: Starting vn-IPFS...${NC}"
+  if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
+    echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+  else
+    echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+  fi
 
-  (
-    if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
-      echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
-    else
-      echo "1" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
-    fi
-  ) &
-  SWARM_PID=$!
-
-  wait $VNIPFS_PID $SWARM_PID
+  echo -e "\n${BLUE}Step 1b: Starting Swarm...${NC}"
+  if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
+    echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+  else
+    echo "1" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+  fi
 
   VNIPFS_OK=$(cat "$OUTPUT_DIR/.vnipfs_${node_count}.ok" 2>/dev/null || echo "1")
   SWARM_OK=$(cat "$OUTPUT_DIR/.swarm_${node_count}.ok" 2>/dev/null || echo "1")
@@ -708,12 +729,24 @@ for node_count in "${NODE_COUNTS[@]}"; do
     continue
   fi
 
-  echo -e "  ${GREEN}Both networks started${NC}"
+  echo -e "  ${GREEN}Both networks started (sequential)${NC}"
 
   # Step 2: Wait for both to be healthy
   echo -e "\n${BLUE}Step 2: Waiting for both systems to be healthy...${NC}"
   wait_for_stabilization "our_system" "$node_count"
   wait_for_stabilization "swarm" "$node_count"
+
+  # C.2 verification: PUT on node A, /replication/status returns replica_count>=1 within 5s
+  # Use 45s cap. Pass compose file for consistency.
+  echo -e "\n${BLUE}Step 2b: C.2 verification (replication integration)...${NC}"
+  vnipfs_compose=$(get_vnipfs_compose)
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 45 "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
+      2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors or timed out, continuing...${NC}"; true; }
+  else
+    "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
+      2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors, continuing...${NC}"; true; }
+  fi
 
   # Spawn resource monitor before upload/download tests (samples fall25-* and swarm-* each interval)
   if [[ -z "${RESOURCE_MONITOR_PID:-}" ]]; then
@@ -722,49 +755,76 @@ for node_count in "${NODE_COUNTS[@]}"; do
     echo -e "  ${GREEN}Resource monitor started (PID $RESOURCE_MONITOR_PID)${NC}"
   fi
 
-  # Step 3: Run identical test scenarios
-  echo -e "\n${BLUE}Step 3: Running upload latency test...${NC}"
-  UPLOAD_MONITOR_PID=""
-  "$ROOT_DIR/scripts/utils/resource_monitor.sh" --output "$OUTPUT_DIR/resource_usage_upload_n${node_count}.csv" --interval 5 &
-  UPLOAD_MONITOR_PID=$!
-  run_upload_test "$node_count" || echo -e "${YELLOW}Upload test had errors, continuing...${NC}"
-  if [[ -n "$UPLOAD_MONITOR_PID" ]] && kill -0 "$UPLOAD_MONITOR_PID" 2>/dev/null; then
-    kill "$UPLOAD_MONITOR_PID" 2>/dev/null || true
-    wait "$UPLOAD_MONITOR_PID" 2>/dev/null || true
-    echo -e "  ${GREEN}Upload-phase resource monitor stopped${NC}"
+  # Step 3: Run identical test scenarios (only tests in --tests list, or all if empty)
+  if should_run_test "upload"; then
+    echo -e "\n${BLUE}Step 3: Running upload latency test...${NC}"
+    UPLOAD_MONITOR_PID=""
+    "$ROOT_DIR/scripts/utils/resource_monitor.sh" --output "$OUTPUT_DIR/resource_usage_upload_n${node_count}.csv" --interval 5 &
+    UPLOAD_MONITOR_PID=$!
+    run_upload_test "$node_count" || echo -e "${YELLOW}Upload test had errors, continuing...${NC}"
+    if [[ -n "$UPLOAD_MONITOR_PID" ]] && kill -0 "$UPLOAD_MONITOR_PID" 2>/dev/null; then
+      kill "$UPLOAD_MONITOR_PID" 2>/dev/null || true
+      wait "$UPLOAD_MONITOR_PID" 2>/dev/null || true
+      echo -e "  ${GREEN}Upload-phase resource monitor stopped${NC}"
+    fi
   fi
 
-  echo -e "\n${BLUE}Step 4: Running download latency test (cold and warm)...${NC}"
-  run_download_test "$node_count" "cold" || echo -e "${YELLOW}Download test (cold) had errors, continuing...${NC}"
-  run_download_test "$node_count" "warm" || echo -e "${YELLOW}Download test (warm) had errors, continuing...${NC}"
+  if should_run_test "download_cold"; then
+    echo -e "\n${BLUE}Step 4a: Running download latency test (cold)...${NC}"
+    run_download_test "$node_count" "cold" || echo -e "${YELLOW}Download test (cold) had errors, continuing...${NC}"
+  fi
+  if should_run_test "download_warm"; then
+    echo -e "\n${BLUE}Step 4b: Running download latency test (warm)...${NC}"
+    run_download_test "$node_count" "warm" || echo -e "${YELLOW}Download test (warm) had errors, continuing...${NC}"
+  fi
 
-  echo -e "\n${BLUE}Step 5: Running message count test...${NC}"
-  run_message_count_test "$node_count" || echo -e "${YELLOW}Message count test had errors, continuing...${NC}"
+  if should_run_test "message_count"; then
+    echo -e "\n${BLUE}Step 5: Running message count test...${NC}"
+    run_message_count_test "$node_count" || echo -e "${YELLOW}Message count test had errors, continuing...${NC}"
+  fi
 
-  echo -e "\n${BLUE}Step 5b: Running key lookup vs CID retrieval test...${NC}"
-  run_key_lookup_vs_cid_test "$node_count" || echo -e "${YELLOW}Key lookup vs CID test had errors, continuing...${NC}"
+  if should_run_test "key_lookup"; then
+    echo -e "\n${BLUE}Step 5b: Running key lookup vs CID retrieval test...${NC}"
+    run_key_lookup_vs_cid_test "$node_count" || echo -e "${YELLOW}Key lookup vs CID test had errors, continuing...${NC}"
+  fi
 
-  echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
-  run_lookup_complexity_test "$node_count" || echo -e "${YELLOW}Lookup complexity test had errors, continuing...${NC}"
+  if should_run_test "lookup_complexity"; then
+    echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
+    run_lookup_complexity_test "$node_count" || echo -e "${YELLOW}Lookup complexity test had errors, continuing...${NC}"
+  fi
 
-  echo -e "\n${BLUE}Step 5e: Running replication speed test (time to R replicas)...${NC}"
-  run_replication_test "$node_count" || echo -e "${YELLOW}Replication test had errors, continuing...${NC}"
+  if should_run_test "replication"; then
+    echo -e "\n${BLUE}Step 5e: Running replication speed test (time to R replicas)...${NC}"
+    run_replication_test "$node_count" || echo -e "${YELLOW}Replication test had errors, continuing...${NC}"
+  fi
 
-  echo -e "\n${BLUE}Step 5f: Running replication distribution test (N/M/F)...${NC}"
-  run_replication_distribution_test "$node_count" || echo -e "${YELLOW}Replication distribution test had errors, continuing...${NC}"
+  if should_run_test "replication_distribution"; then
+    echo -e "\n${BLUE}Step 5f: Running replication distribution test (N/M/F)...${NC}"
+    run_replication_distribution_test "$node_count" || echo -e "${YELLOW}Replication distribution test had errors, continuing...${NC}"
+  fi
 
-  echo -e "\n${BLUE}Step 5g: Running repair time test (after node failure)...${NC}"
-  run_repair_time_test "$node_count" || echo -e "${YELLOW}Repair time test had errors, continuing...${NC}"
+  if should_run_test "repair_time"; then
+    echo -e "\n${BLUE}Step 5g: Running repair time test (after node failure)...${NC}"
+    run_repair_time_test "$node_count" || echo -e "${YELLOW}Repair time test had errors, continuing...${NC}"
+  fi
 
   if [[ "$node_count" == "${NODE_COUNTS[-1]}" ]]; then
-    echo -e "\n${BLUE}Step 6: Running network hops test...${NC}"
-    run_network_hops_test || echo -e "${YELLOW}Network hops test had errors, continuing...${NC}"
-    echo -e "\n${BLUE}Step 6b: Running routing overhead test (token vs provider announce)...${NC}"
-    run_routing_overhead_test || echo -e "${YELLOW}Routing overhead test had errors, continuing...${NC}"
-    echo -e "\n${BLUE}Step 7: Running storage efficiency test...${NC}"
-    run_storage_efficiency_test || echo -e "${YELLOW}Storage efficiency test had errors, continuing...${NC}"
-    echo -e "\n${BLUE}Step 8: Running concurrent read/write test...${NC}"
-    run_concurrent_test || echo -e "${YELLOW}Concurrent test had errors, continuing...${NC}"
+    if should_run_test "network_hops"; then
+      echo -e "\n${BLUE}Step 6: Running network hops test...${NC}"
+      run_network_hops_test || echo -e "${YELLOW}Network hops test had errors, continuing...${NC}"
+    fi
+    if should_run_test "routing_overhead"; then
+      echo -e "\n${BLUE}Step 6b: Running routing overhead test (token vs provider announce)...${NC}"
+      run_routing_overhead_test || echo -e "${YELLOW}Routing overhead test had errors, continuing...${NC}"
+    fi
+    if should_run_test "storage_efficiency"; then
+      echo -e "\n${BLUE}Step 7: Running storage efficiency test...${NC}"
+      run_storage_efficiency_test || echo -e "${YELLOW}Storage efficiency test had errors, continuing...${NC}"
+    fi
+    if should_run_test "concurrent"; then
+      echo -e "\n${BLUE}Step 8: Running concurrent read/write test...${NC}"
+      run_concurrent_test || echo -e "${YELLOW}Concurrent test had errors, continuing...${NC}"
+    fi
   fi
 
   if [[ "$node_count" != "${NODE_COUNTS[-1]}" ]]; then

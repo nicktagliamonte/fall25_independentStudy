@@ -4,9 +4,12 @@
 package storage
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -32,12 +35,50 @@ type RepairProtocol struct {
 
 // NewRepairProtocol creates a new repair protocol handler.
 func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, tokenized bool) *RepairProtocol {
+	sap := NewStorageAvailableProtocol(ts)
+	sap.PeerIDsToCheck = func() []peer.ID {
+		var pids []peer.ID
+		if h == nil {
+			return pids
+		}
+		for _, p := range h.Peerstore().Peers() {
+			if p == h.ID() {
+				continue
+			}
+			if len(h.Peerstore().Addrs(p)) == 0 {
+				continue
+			}
+			pids = append(pids, p)
+		}
+		return pids
+	}
 	return &RepairProtocol{
 		stack:            stack,
 		host:             h,
-		storageAvailable: NewStorageAvailableProtocol(ts),
+		storageAvailable: sap,
 		criteria:         DefaultSelectionCriteria(tokenized),
 	}
+}
+
+// StartAdvertisingStorageAvailability advertises this peer's storage availability
+// immediately and periodically. Call once at node startup.
+func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Context) {
+	if rp.host == nil || rp.storageAvailable == nil {
+		return
+	}
+	_ = rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, 24*time.Hour)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				_ = rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, 24*time.Hour)
+			}
+		}
+	}()
 }
 
 // getTokenStore returns the ValueStore for token operations (TokenStore or DHT).
@@ -127,6 +168,12 @@ func (rp *RepairProtocol) TriggerRepair(
 	// Calculate how many replicas are needed for each missing category
 	needed := rp.calculateNeededReplicas(verification)
 
+	// Build set of existing providers to exclude from replication targets
+	existingProviders := make(map[peer.ID]bool)
+	for _, p := range verification.Providers {
+		existingProviders[p.ProviderID] = true
+	}
+
 	// Repair each missing category
 	for category, count := range needed {
 		if count <= 0 {
@@ -145,9 +192,12 @@ func (rp *RepairProtocol) TriggerRepair(
 			continue
 		}
 
-		// Replicate to selected candidates
+		// Replicate to selected candidates (skip those that already have the block)
 		replicated := 0
 		for _, candidate := range candidates {
+			if existingProviders[candidate.PeerID] {
+				continue
+			}
 			if err := rp.replicateToPeer(ctx, c, candidate.PeerID, blockData); err != nil {
 				result.FailedPeers = append(result.FailedPeers, candidate.PeerID)
 				continue
@@ -194,6 +244,75 @@ func (rp *RepairProtocol) calculateNeededReplicas(verification *ReplicaStateVeri
 	}
 
 	return needed
+}
+
+// ReplicateToNPeers sends the block to n other nodes. Used after PUT to enforce replication.
+// Picks peers from connected network, then peerstore. Retries if no peers (waits for connections).
+func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.Cid, blockData []byte, n int) int {
+	if rp.host == nil || rp.stack == nil || n <= 0 || len(blockData) == 0 {
+		return 0
+	}
+	var peers []peer.ID
+	for attempt := 0; attempt < 20; attempt++ {
+		peers = rp.peersForReplication(n)
+		if len(peers) > 0 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return 0
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	replicated := 0
+	for _, pid := range peers {
+		if err := rp.replicateToPeer(ctx, c, pid, blockData); err != nil {
+			continue
+		}
+		replicated++
+		if rp.stack.RoutingTable != nil {
+			rp.stack.RoutingTable.AddProvider(key, pid, DistanceMidrange)
+		}
+		if replicated >= n {
+			break
+		}
+	}
+	return replicated
+}
+
+func (rp *RepairProtocol) peersForReplication(max int) []peer.ID {
+	if rp.host == nil {
+		return nil
+	}
+	var out []peer.ID
+	seen := make(map[peer.ID]bool)
+	for _, pid := range rp.host.Network().Peers() {
+		if pid == rp.host.ID() || seen[pid] {
+			continue
+		}
+		if rp.host.Network().Connectedness(pid) != network.Connected {
+			continue
+		}
+		seen[pid] = true
+		out = append(out, pid)
+		if len(out) >= max {
+			return out
+		}
+	}
+	for _, pid := range rp.host.Peerstore().Peers() {
+		if pid == rp.host.ID() || seen[pid] {
+			continue
+		}
+		if len(rp.host.Peerstore().Addrs(pid)) == 0 {
+			continue
+		}
+		seen[pid] = true
+		out = append(out, pid)
+		if len(out) >= max {
+			return out
+		}
+	}
+	return out
 }
 
 // ReplicateToPeer replicates block content to a specific peer via the repair protocol.
@@ -327,16 +446,21 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 		return fmt.Errorf("replication failed: %s", ackStr)
 	}
 
-	// Auto-sync token: update token with new replica location
-	if tokenStore := rp.getTokenStore(); rp.stack != nil && rp.stack.RoutingTable != nil && tokenStore != nil {
+	// Auto-sync token: update token with new replica location (per newReqs: token syncs with data)
+	if tokenStore := rp.getTokenStore(); rp.stack != nil && tokenStore != nil {
 		key := KeyFromData(blockData)
 		if !key.IsZero() {
-			var targetAddr multiaddr.Multiaddr
 			addrs := rp.host.Peerstore().Addrs(targetPeer)
+			var targetAddr multiaddr.Multiaddr
 			if len(addrs) > 0 {
-				targetAddr = addrs[0]
+				targetAddr = pickRoutableAddr(addrs)
+				if targetAddr == nil {
+					targetAddr = addrs[0]
+				}
 			}
-			_ = SyncTokenOnReplication(ctx, tokenStore, rp.stack.RoutingTable, key, targetPeer, targetAddr)
+			if targetAddr != nil {
+				_ = SyncTokenOnReplication(ctx, tokenStore, rp.stack.RoutingTable, key, targetPeer, targetAddr)
+			}
 		}
 	}
 
@@ -349,15 +473,16 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 	defer stream.Close()
 
 	ctx := context.Background()
+	r := bufio.NewReader(stream)
 
-	// Read CID
-	cidBytes := make([]byte, 256)
-	n, err := stream.Read(cidBytes)
+	// Read CID line
+	cidLine, err := r.ReadString('\n')
 	if err != nil {
+		_, _ = stream.Write([]byte("ERROR: read identifier\n"))
 		return fmt.Errorf("read identifier: %w", err)
 	}
-	cidStr := string(cidBytes[:n])
-	if cidStr[len(cidStr)-1] == '\n' {
+	cidStr := cidLine
+	if len(cidStr) > 0 && cidStr[len(cidStr)-1] == '\n' {
 		cidStr = cidStr[:len(cidStr)-1]
 	}
 
@@ -367,16 +492,18 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 		return fmt.Errorf("decode identifier: %w", err)
 	}
 
-	// Read block size
-	sizeBytes := make([]byte, 64)
-	n, err = stream.Read(sizeBytes)
+	// Read block size line
+	sizeLine, err := r.ReadString('\n')
 	if err != nil {
 		_, _ = stream.Write([]byte("ERROR: read size\n"))
 		return fmt.Errorf("read size: %w", err)
 	}
-
-	var blockSize int
-	if _, err := fmt.Sscanf(string(sizeBytes[:n]), "%d\n", &blockSize); err != nil {
+	sizeStr := sizeLine
+	if len(sizeStr) > 0 && sizeStr[len(sizeStr)-1] == '\n' {
+		sizeStr = sizeStr[:len(sizeStr)-1]
+	}
+	blockSize, err := strconv.Atoi(sizeStr)
+	if err != nil {
 		_, _ = stream.Write([]byte("ERROR: invalid size\n"))
 		return fmt.Errorf("parse size: %w", err)
 	}
@@ -388,14 +515,9 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 
 	// Read block data
 	blockData := make([]byte, blockSize)
-	totalRead := 0
-	for totalRead < blockSize {
-		n, err := stream.Read(blockData[totalRead:])
-		if err != nil {
-			_, _ = stream.Write([]byte("ERROR: read block data\n"))
-			return fmt.Errorf("read block data: %w", err)
-		}
-		totalRead += n
+	if _, err := io.ReadFull(r, blockData); err != nil {
+		_, _ = stream.Write([]byte("ERROR: read block data\n"))
+		return fmt.Errorf("read block data: %w", err)
 	}
 
 	// Verify CID matches

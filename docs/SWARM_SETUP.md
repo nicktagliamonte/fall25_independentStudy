@@ -274,18 +274,23 @@ docker inspect swarm-bootstrap | jq '.[0].NetworkSettings'
 
 **Problem**: Swarm v0.5.8 doesn't expose peer ID via HTTP API, making it difficult to configure bootnodes for additional nodes.
 
-**Workaround**: 
-- Bootstrap node uses placeholder peer ID: `enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399`
-- Swarm may still discover peers through other mechanisms
-- For production, extract peer ID from logs or use Swarm's peer discovery
+**Solution** (implemented in `scripts/docker/swarm/start.sh`):
+- After bootstrap is ready, the script extracts the enode using `ethereum/client-go:alltools-stable` devp2p tool
+- Tries `/app/data/swarm/nodekey`, `/app/data/geth/nodekey`, and `/app/data/nodekey`
+- Replaces `PLACEHOLDER_PEER_ID` in the compose file before starting peer nodes
 
-**Extracting Peer ID** (if needed):
+**Manual extraction** (if needed):
 ```bash
+# Using geth devp2p (requires ethereum/client-go:alltools-stable)
+docker run --rm --volumes-from swarm-bootstrap ethereum/client-go:alltools-stable \
+  devp2p key to-enode /app/data/swarm/nodekey
+# Output uses 127.0.0.1:30303; replace with 172.20.0.200:30399 for compose.
+
 # Check bootstrap logs for peer ID
 docker logs swarm-bootstrap | grep -i "enode\|peer"
 
-# Or check data directory
-docker exec swarm-bootstrap cat /app/data/nodekey
+# Inspect data directory
+docker exec swarm-bootstrap ls -la /app/data/swarm/
 ```
 
 ### Issue 2: Address Already in Use

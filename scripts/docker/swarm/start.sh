@@ -18,12 +18,10 @@ fi
 
 echo "Starting $N Swarm/Bee Docker nodes..."
 
-# Stop any existing Swarm containers first (but don't remove network if other containers use it)
+# Stop any existing Swarm containers first (use down to release resources; network is external)
 if docker-compose -f docker-compose.swarm.yml ps 2>/dev/null | grep -q "Up"; then
   echo "Stopping existing Swarm containers..."
-  # Stop containers and remove volumes, but don't remove network (it may be shared with our system)
-  docker-compose -f docker-compose.swarm.yml stop 2>/dev/null || true
-  docker-compose -f docker-compose.swarm.yml rm -f 2>/dev/null || true
+  docker-compose -f docker-compose.swarm.yml down 2>/dev/null || true
 fi
 
 # Ensure the shared network exists (created by our system's docker-compose)
@@ -135,11 +133,36 @@ fi
 
 echo "Bootstrap node is ready!"
 
-# Get bootstrap peer ID (Swarm v0.5.8 doesn't expose this via API easily)
-# We'll need to extract it from logs or use a placeholder
-# For now, we'll use the placeholder and let Swarm handle bootnode discovery
-BOOTSTRAP_PEER_ID="PLACEHOLDER_PEER_ID"
-echo "Note: Swarm v0.5.8 bootnode configuration may need manual peer ID extraction from logs"
+# Extract bootstrap enode from nodekey using geth devp2p (Swarm v0.5.8 stores at /app/data/swarm/nodekey)
+BOOTNODE_ENODE=""
+for nodekey_path in /app/data/swarm/nodekey /app/data/geth/nodekey /app/data/nodekey; do
+  RAW_ENODE=$(docker run --rm --volumes-from swarm-bootstrap ethereum/client-go:alltools-stable \
+    devp2p key to-enode "$nodekey_path" 2>/dev/null | tr -d '\n\r')
+  if [[ -n "$RAW_ENODE" && "$RAW_ENODE" == enode://* ]]; then
+    # Replace default 127.0.0.1:30303 with bootstrap address
+    BOOTNODE_ENODE="${RAW_ENODE%@*}@172.20.0.200:30399"
+    break
+  fi
+  BOOTNODE_ENODE=""
+done
+
+if [[ -z "$BOOTNODE_ENODE" ]]; then
+  if [[ "$N" -gt 1 ]]; then
+    echo "ERROR: Failed to extract bootstrap enode from nodekey. Peers will not connect." >&2
+    echo "  Check that swarm-bootstrap created a nodekey at /app/data/swarm/nodekey." >&2
+    exit 1
+  fi
+  echo "Note: Could not extract bootstrap enode (single-node mode, not required)"
+  BOOTSTRAP_PEER_ID=""
+else
+  BOOTSTRAP_PEER_ID="${BOOTNODE_ENODE#enode://}"; BOOTSTRAP_PEER_ID="${BOOTSTRAP_PEER_ID%%@*}"
+  if [[ "$N" -gt 1 ]]; then
+    if sed -i.bak "s|enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399|$BOOTNODE_ENODE|g" "$COMPOSE_FILE"; then
+      rm -f "${COMPOSE_FILE}.bak"
+    fi
+    echo "Bootnode enode: $BOOTNODE_ENODE"
+  fi
+fi
 
 # Start remaining nodes if N > 1
 if [[ "$N" -gt 1 ]]; then

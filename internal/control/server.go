@@ -4,19 +4,17 @@ package control
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
-
-	"encoding/base64"
-
 	"strconv"
-
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -30,6 +28,9 @@ import (
 )
 
 // no persistent server struct is required
+
+// ReplicationFactorR is the enforced minimum replicas per file (Near 40%, Midrange 30%, Far 30%).
+const ReplicationFactorR = 7
 
 type PutRequest struct {
 	Data string `json:"data"`
@@ -226,8 +227,19 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		defer cancel()
 		token, err := mystore.GetToken(ctxGet, tokenStore, key)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(err.Error()))
+			// Return 200 with replica_count=0 and error_reason for diagnostics (surfaces why GetToken fails)
+			errorReason := "token_not_found"
+			if strings.Contains(err.Error(), "invalid") {
+				errorReason = "invalid_key"
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"key":           keyHex,
+				"replica_count": 0,
+				"providers":     []string{},
+				"error_reason":  errorReason,
+				"error_detail":  err.Error(),
+			})
 			return
 		}
 		providers := make([]string, 0, len(token.Locations))
@@ -625,7 +637,8 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		key, c, err := stack.PutBlock(r.Context(), []byte(req.Data))
+		blockData := []byte(req.Data)
+		key, c, err := stack.PutBlock(r.Context(), blockData)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
@@ -635,7 +648,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			stack.UpdateRoutingTableOnPut(key, h.ID(), nil, c)
 		}
 		putHops := 0
-		resp := PutResponse{CID: c.String(), MultihashHex: fmt.Sprintf("%x", c.Hash()), NetworkHops: &putHops}
+		// multihash_hex must be 64 hex chars (Key) for /replication/status and /get
+		keyHex := key.String()
+		resp := PutResponse{CID: c.String(), MultihashHex: keyHex, NetworkHops: &putHops}
+
+		// Block until replication completes (or 10s timeout). Ensures replica_count >= 2 before client polls.
+		if repairProtocol != nil && h != nil && len(blockData) > 0 {
+			ctxRepair, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, blockData, 6)
+			cancel()
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
 	})
@@ -825,6 +848,11 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		var err error
 		var networkHops *int
 		zeroHops := 0
+		fetchedFromRemote := false
+		// B.3: networkHops populated in all code paths:
+		// - Local: GetBlockByKey hit → networkHops = &zeroHops (correct; no DHT lookup)
+		// - Gateway: Query hit, fetchBlockFromToken success → networkHops = &zeroHops (gateway path; DHT hops not tracked)
+		// - stack.GetBlock: DHT GetToken + DirectFetch → networkHops = &hops from GetBlock return (DHT lookup hops)
 		if localData, localErr := mystore.GetBlockByKey(ctxFetch, stack.Datastore, stack.BlockSvc, key); localErr == nil && localData != nil {
 			b = localData
 			networkHops = &zeroHops
@@ -836,6 +864,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 					b, err = fetchBlockFromToken(ctxFetch, stack, token, key)
 					if err == nil {
 						networkHops = &zeroHops
+						fetchedFromRemote = true
 					}
 				}
 			}
@@ -845,6 +874,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			b, hops, err = stack.GetBlock(ctxFetch, key)
 			if err == nil {
 				networkHops = &hops
+				fetchedFromRemote = true
 			}
 		}
 		if err != nil {
@@ -855,6 +885,14 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 
 		if metrics != nil {
 			metrics.SetProviderDiscoveryLatencyNs(time.Since(start).Nanoseconds())
+		}
+
+		// Store fetched block locally when fetched from remote (per newReqs: token syncs with data)
+		// Fetcher becomes a replica; SyncTokenOnPut adds this peer to token Locations
+		if fetchedFromRemote && stack != nil && len(b) > 0 {
+			ctxStore, cancelStore := context.WithTimeout(context.Background(), 10*time.Second)
+			_, _, _ = stack.PutBlock(ctxStore, b)
+			cancelStore()
 		}
 
 		// Get CID for announcement (if available); verify key state with replication vector
@@ -873,7 +911,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 					tokenStore,
 					h.ID(),
 					nil, // RTT measurer (nil = use 0, unknown distance)
-					7,   // replication factor (default)
+					ReplicationFactorR,
 					nil, // RTT thresholds (nil = use defaults)
 				)
 				cancelVerify()

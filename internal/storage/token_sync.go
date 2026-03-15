@@ -6,6 +6,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -14,6 +15,19 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
 )
+
+// pickRoutableAddr returns the first address that is routable by other peers.
+// Skips /ip4/0.0.0.0 (listen-all, not reachable). Prefers /ip4/172.x, /ip4/10.x, /ip4/127.0.0.1.
+func pickRoutableAddr(addrs []multiaddr.Multiaddr) multiaddr.Multiaddr {
+	for _, a := range addrs {
+		s := a.String()
+		if strings.Contains(s, "/ip4/0.0.0.0/") {
+			continue
+		}
+		return a
+	}
+	return nil
+}
 
 // SyncTokenOnPut creates or updates a token when data is stored locally.
 // Creates a token with the current peer as a location, or updates existing token
@@ -30,17 +44,20 @@ func SyncTokenOnPut(ctx context.Context, dht routing.ValueStore, h host.Host, ke
 		return fmt.Errorf("key cannot be zero")
 	}
 
-	// Get current peer's address
+	// Get current peer's address - prefer routable (skip 0.0.0.0, not reachable by other peers)
 	peerID := h.ID()
 	addrs := h.Addrs()
 	if len(addrs) == 0 {
 		return fmt.Errorf("host has no addresses")
 	}
+	addr := pickRoutableAddr(addrs)
+	if addr == nil {
+		addr = addrs[0]
+	}
 
-	// Create location for current peer (use first address)
 	location := Location{
 		ProviderID: peerID,
-		Address:    addrs[0],
+		Address:    addr,
 		RTT:        0, // Unknown RTT for local storage
 	}
 
@@ -141,42 +158,19 @@ func SyncTokenOnDelete(ctx context.Context, dht routing.ValueStore, h host.Host,
 }
 
 // SyncTokenOnReplication updates a token with new replica locations when replication occurs.
-// Adds new replica peer locations to the token, or updates existing locations.
+// Per newReqs.txt: "the only function of the token is to sync with the data".
+// Adds new replica peer to token Locations. Does not require routing table—the node
+// that replicates (e.g. worker that fetched from bootstrap) may not have the key locally.
 func SyncTokenOnReplication(ctx context.Context, dht routing.ValueStore, routingTable *RoutingTable, key Key, newReplicaPeerID peer.ID, newReplicaAddr multiaddr.Multiaddr) error {
 	if dht == nil {
 		return fmt.Errorf("DHT required for token sync")
 	}
-	if routingTable == nil {
-		return fmt.Errorf("routing table required for token sync")
-	}
 	if key.IsZero() {
 		return fmt.Errorf("key cannot be zero")
 	}
-
-	// Get all providers from routing table for this key
-	providers := routingTable.GetProviders(key)
-	if len(providers) == 0 {
-		return fmt.Errorf("no providers found in routing table for key")
+	if newReplicaAddr == nil {
+		return fmt.Errorf("address required for new replica")
 	}
-
-	// Build locations from all providers
-	locations := make([]Location, 0, len(providers))
-	seenPeers := make(map[peer.ID]bool)
-
-	// Add new replica location
-	if newReplicaAddr != nil {
-		locations = append(locations, Location{
-			ProviderID: newReplicaPeerID,
-			Address:    newReplicaAddr,
-			RTT:        0, // Unknown RTT
-		})
-		seenPeers[newReplicaPeerID] = true
-	}
-
-	// Add other providers from routing table
-	// Note: We don't have addresses for all providers, so we'll need to get them from peerstore or DHT
-	// For now, we'll include the new replica and let other providers update their own tokens
-	// This is a simplified approach - in a full implementation, we'd query DHT for provider addresses
 
 	// Use conflict resolution to update token
 	// This handles concurrent updates from multiple peers

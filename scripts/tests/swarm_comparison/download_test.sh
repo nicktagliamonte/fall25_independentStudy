@@ -38,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       ITERATIONS="$2"
       shift 2
       ;;
+    --cache-mode)
+      CACHE_MODE="$2"
+      shift 2
+      ;;
     --output)
       OUTPUT_FILE="$2"
       shift 2
@@ -186,8 +190,9 @@ generate_test_file() {
   dd if=/dev/urandom of="$output" bs=1 count="$size" 2>/dev/null
 }
 
-# Function to upload to our system and get CID
-upload_our_system_get_cid() {
+# Function to upload to our system and return key (multihash_hex) for token-based GET.
+# Key is primary; CID fallback only when key unavailable.
+upload_our_system_get_key() {
   local file_path="$1"
   
   if [[ -z "$OUR_CONTAINER" || -z "$OUR_API_ADDR" ]]; then
@@ -195,35 +200,25 @@ upload_our_system_get_cid() {
     return 1
   fi
   
-  # Read file and base64 encode (for binary data)
   local data_b64=$(base64 -w 0 < "$file_path" 2>/dev/null || base64 < "$file_path" | tr -d '\n')
-  
-  # Control server binds to 127.0.0.1 inside container, so we need docker exec
   local api_url="http://$OUR_API_ADDR/put"
-  
-  # Create JSON payload file
   local json_payload="$TEMP_DIR/put_payload_$$.json"
   echo "{\"data\":\"$data_b64\"}" > "$json_payload"
   
-  # Copy JSON to container and execute curl inside container
   docker cp "$json_payload" "${OUR_CONTAINER}:/tmp/put_payload_$$.json" >/dev/null 2>&1
-  local response=$(docker exec "$OUR_CONTAINER" curl -sSf -X POST \
+  local response=$(docker exec "$OUR_CONTAINER" curl -sSf -m 60 -X POST \
     -H "Content-Type: application/json" \
     -d @/tmp/put_payload_$$.json \
     "$api_url" 2>&1)
   docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_$$.json" >/dev/null 2>&1 || true
-  
   rm -f "$json_payload"
   
-  # Extract CID from response
-  local cid=$(echo "$response" | jq -r '.cid' 2>/dev/null || echo "")
-  
-  if [[ -z "$cid" || "$cid" == "null" ]]; then
-    echo "ERROR: Failed to upload or get CID. Response: $response" >&2
+  local key=$(echo "$response" | jq -r '.multihash_hex // empty' 2>/dev/null || echo "")
+  if [[ -z "$key" || "$key" == "null" || ${#key} -ne 64 ]]; then
+    echo "ERROR: Failed to upload or get key (multihash_hex). Response: $response" >&2
     return 1
   fi
-  
-  echo "$cid"
+  echo "$key"
 }
 
 # Function to get provider info (peer ID and address) for our system
@@ -244,7 +239,7 @@ get_provider_info() {
 # Function to download from our system and measure latency
 # Uses GET_CONTAINER/GET_API_ADDR (cold: different node; warm: same as upload)
 download_our_system() {
-  local cid="$1"
+  local key="$1"
   local peer_id="$2"
   local addr="$3"
   local output_path="$4"
@@ -254,9 +249,8 @@ download_our_system() {
     return 1
   fi
   
-  # Create get request JSON
   local get_req="$TEMP_DIR/get_req_$$.json"
-  echo "{\"cid\":\"$cid\",\"from_peer\":\"$peer_id\",\"from_addr\":\"$addr\",\"timeout\":\"30s\"}" > "$get_req"
+  echo "{\"key\":\"$key\",\"timeout\":\"30s\"}" > "$get_req"
   
   # Measure download time
   local start_time=$(date +%s.%N)
@@ -264,8 +258,7 @@ download_our_system() {
   # Copy request to getter container and execute curl inside it
   docker cp "$get_req" "${GET_CONTAINER}:/tmp/get_req_$$.json" >/dev/null 2>&1
   
-  # Use curl with write-out to measure TTFB
-  local curl_output=$(docker exec "$GET_CONTAINER" curl -sSf -w "\n%{time_starttransfer}\n%{time_total}" -X POST \
+  local curl_output=$(docker exec "$GET_CONTAINER" curl -sSf -m 35 -w "\n%{time_starttransfer}\n%{time_total}" -X POST \
     -H "Content-Type: application/json" \
     -d @/tmp/get_req_$$.json \
     "http://$GET_API_ADDR/get" 2>&1)
@@ -427,12 +420,12 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   
   # Upload to our system
   echo "    Uploading to our system..."
-  OUR_CID=$(upload_our_system_get_cid "$test_file" 2>&1)
-  if [[ $? -ne 0 || -z "$OUR_CID" ]]; then
+  OUR_KEY=$(upload_our_system_get_key "$test_file" 2>&1)
+  if [[ $? -ne 0 || -z "$OUR_KEY" ]]; then
     echo -e "    ${RED}Failed to upload to our system${NC}"
-    OUR_CID=""
+    OUR_KEY=""
   else
-    echo "    Uploaded CID: $OUR_CID"
+    echo "    Uploaded key: ${OUR_KEY:0:16}..."
   fi
   
   # Upload to Swarm
@@ -445,7 +438,7 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     echo "    Uploaded hash: $SWARM_HASH"
   fi
   
-  if [[ -z "$OUR_CID" && -z "$SWARM_HASH" ]]; then
+  if [[ -z "$OUR_KEY" && -z "$SWARM_HASH" ]]; then
     echo -e "    ${RED}Both uploads failed, skipping this size${NC}"
     continue
   fi
@@ -459,14 +452,14 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   our_total=()
   our_failures=0
   
-  if [[ -n "$OUR_CID" ]]; then
+  if [[ -n "$OUR_KEY" ]]; then
     for i in $(seq 1 $ITERATIONS); do
       echo -n "    Iteration $i/$ITERATIONS... "
       output_file="$TEMP_DIR/our_download_${size}_${i}.bin"
       if [[ "$CACHE_MODE" == "warm" ]]; then
-        download_our_system "$OUR_CID" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$TEMP_DIR/our_prime_$$.bin" >/dev/null 2>&1 || true
+        download_our_system "$OUR_KEY" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$TEMP_DIR/our_prime_$$.bin" >/dev/null 2>&1 || true
       fi
-      result=$(download_our_system "$OUR_CID" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$output_file" 2>&1)
+      result=$(download_our_system "$OUR_KEY" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$output_file" 2>&1)
       if [[ $? -eq 0 ]]; then
         IFS='|' read -r ttfb total hops <<< "$result"
         hops=${hops:-}
@@ -481,7 +474,7 @@ for size in "${PAYLOAD_SIZES[@]}"; do
       fi
     done
   else
-    echo "    Skipping (upload failed)"
+    echo "    Skipping our system (upload failed)"
   fi
   
   # Test Swarm downloads

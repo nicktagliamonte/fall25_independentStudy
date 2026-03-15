@@ -427,6 +427,9 @@ func Run() error {
 				stack.TokenStore = ts
 			}
 		}
+		if repairProtocol != nil {
+			repairProtocol.StartAdvertisingStorageAvailability(ctx)
+		}
 
 		pcm := myhost.NewPeerConnectivityMonitor(h,
 			myhost.PartitionMonitorOnPartitionEvent(func(e myhost.PartitionEvent) { aq.SetPartitioned(true) }),

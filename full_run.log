@@ -1,0 +1,211 @@
+Output directory: ./test_results_full
+==========================================
+Swarm Comparison Test Suite
+==========================================
+Node counts: 10 50 100
+Payload sizes: 1024 10240 102400 1048576 bytes
+Batch sizes (upload): 1 5 10 20
+Iterations per test: 5
+Output directory: ./test_results_full
+
+
+==========================================
+Testing with 10 nodes
+==========================================
+  [0;36mEnsuring clean state...[0m
+
+[0;34mStep 1: Starting both networks in parallel...[0m
+  [0;32mBoth networks started[0m
+
+[0;34mStep 2: Waiting for both systems to be healthy...[0m
+  [0;36mWaiting for our_system to stabilize (max 90s)...[0m
+    our_system ready after 1s
+  [0;36mWaiting for swarm to stabilize (max 90s)...[0m
+    swarm ready after 8s
+
+[0;34mStep 2b: C.2 verification (replication integration)...[0m
+  C.2 verify: starting...
+  C.2 verify: using container=fall25-bootstrap addr=127.0.0.1:45939
+  C.2 verify: PUT request...
+  C.2 verify: PUT failed or no key
+  C.2 verify: response: 
+  [1;33mC.2 verification had errors or timed out, continuing...[0m
+  [0;32mResource monitor started (PID 2973570)[0m
+
+[0;34mStep 3: Running upload latency test...[0m
+
+[0;32mRunning upload latency test (N=10, batch_sizes: 1 5 10 20)...[0m
+  Batch size 1...
+./scripts/tests/swarm_comparison/run_comparison.sh: line 729: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/scripts/utils/resource_monitor.sh: Permission denied
+./scripts/tests/swarm_comparison/run_comparison.sh: line 737: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/scripts/utils/resource_monitor.sh: Permission denied
+    Detected control API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+    ==========================================
+    Upload Latency Test
+    ==========================================
+    Our System API: http://127.0.0.1:45939
+    Swarm API: http://172.20.0.200:8500
+    Iterations per size: 5
+    Batch size: 1
+    Output file: ./test_results_full/upload_n10_batch1.csv
+    
+    Verifying API endpoints...
+    [0;32m✓ Our system API is accessible[0m
+    [0;32m✓ Swarm API is accessible[0m
+    
+    [0;34mTesting payload size: 1KB (1024 bytes)[0m
+      Generating test file...
+    
+      [0;32mTesting our system...[0m
+        Iteration 1/5 (batch_size=1)...   [0;32m✓ batch_size=1: ./test_results_full/upload_n10_batch1.csv[0m
+  Batch size 5...
+    Detected control API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+    ==========================================
+    Upload Latency Test
+    ==========================================
+    Our System API: http://127.0.0.1:45939
+    Swarm API: http://172.20.0.200:8500
+    Iterations per size: 5
+    Batch size: 5
+    Output file: ./test_results_full/upload_n10_batch5.csv
+    
+    Verifying API endpoints...
+    [0;32m✓ Our system API is accessible[0m
+    [1;33m[2026-03-12 11:18:19] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 1/3)[0m
+    [1;33m[2026-03-12 11:18:26] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 2/3)[0m
+    [1;33m[2026-03-12 11:18:35] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 3/3)[0m
+    [0;31m[2026-03-12 11:18:35] ERROR: API endpoint failed after 3 attempts: http://172.20.0.200:8500/[0m
+    [0;31m[2026-03-12 11:18:35] ERROR: Swarm API not accessible (Context: url: http://172.20.0.200:8500)[0m
+    [1;33mWarning: Swarm API (http://172.20.0.200:8500) may not be accessible[0m
+    
+    [0;34mTesting payload size: 1KB (1024 bytes)[0m
+      Generating test file...
+    
+      [0;32mTesting our system...[0m
+        Iteration 1/5 (batch_size=5)...   [0;32m✓ batch_size=5: ./test_results_full/upload_n10_batch5.csv[0m
+  Batch size 10...
+    Detected control API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+    ==========================================
+    Upload Latency Test
+    ==========================================
+    Our System API: http://127.0.0.1:45939
+    Swarm API: http://172.20.0.200:8500
+    Iterations per size: 5
+    Batch size: 10
+    Output file: ./test_results_full/upload_n10_batch10.csv
+    
+    Verifying API endpoints...
+    [0;32m✓ Our system API is accessible[0m
+    [1;33m[2026-03-12 11:19:26] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 1/3)[0m
+    [1;33m[2026-03-12 11:19:33] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 2/3)[0m
+    [1;33m[2026-03-12 11:19:43] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 3/3)[0m
+    [0;31m[2026-03-12 11:19:43] ERROR: API endpoint failed after 3 attempts: http://172.20.0.200:8500/[0m
+    [0;31m[2026-03-12 11:19:43] ERROR: Swarm API not accessible (Context: url: http://172.20.0.200:8500)[0m
+    [1;33mWarning: Swarm API (http://172.20.0.200:8500) may not be accessible[0m
+    
+    [0;34mTesting payload size: 1KB (1024 bytes)[0m
+      Generating test file...
+    
+      [0;32mTesting our system...[0m
+        Iteration 1/5 (batch_size=10)...   [0;32m✓ batch_size=10: ./test_results_full/upload_n10_batch10.csv[0m
+  Batch size 20...
+    Detected control API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+    ==========================================
+    Upload Latency Test
+    ==========================================
+    Our System API: http://127.0.0.1:45939
+    Swarm API: http://172.20.0.200:8500
+    Iterations per size: 5
+    Batch size: 20
+    Output file: ./test_results_full/upload_n10_batch20.csv
+    
+    Verifying API endpoints...
+    [0;32m✓ Our system API is accessible[0m
+    [1;33m[2026-03-12 11:20:33] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 1/3)[0m
+    [1;33m[2026-03-12 11:20:40] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 2/3)[0m
+    [1;33m[2026-03-12 11:20:49] WARNING: API endpoint not accessible: http://172.20.0.200:8500/ (Context: attempt 3/3)[0m
+    [0;31m[2026-03-12 11:20:49] ERROR: API endpoint failed after 3 attempts: http://172.20.0.200:8500/[0m
+    [0;31m[2026-03-12 11:20:49] ERROR: Swarm API not accessible (Context: url: http://172.20.0.200:8500)[0m
+    [1;33mWarning: Swarm API (http://172.20.0.200:8500) may not be accessible[0m
+    
+    [0;34mTesting payload size: 1KB (1024 bytes)[0m
+      Generating test file...
+    
+      [0;32mTesting our system...[0m
+        Iteration 1/5 (batch_size=20)...   [0;32m✓ batch_size=20: ./test_results_full/upload_n10_batch20.csv[0m
+
+[0;34mStep 4: Running download latency test (cold and warm)...[0m
+
+[0;32mRunning download latency test (N=10, cache_mode=cold)...[0m
+Detected control API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+==========================================
+Download Latency Test
+==========================================
+Our System API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 5
+Cache mode: cold
+Output file: ./test_results_full/download_n10_cold.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+Cold mode: using fall25-node100 for get (content not in local cache)
+Getting provider info for our system...
+  Peer ID: 12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+  Address: /ip4/172.20.0.10/tcp/4001
+
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to both systems...[0m
+    Uploading to our system...
+  [0;32m✓ Download test (cold) complete: ./test_results_full/download_n10_cold.csv[0m
+
+[0;32mRunning download latency test (N=10, cache_mode=warm)...[0m
+Detected control API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+==========================================
+Download Latency Test
+==========================================
+Our System API: http://127.0.0.1:45939 (container: fall25-bootstrap)
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 5
+Cache mode: warm
+Output file: ./test_results_full/download_n10_warm.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[1;33mWarning: Swarm API (http://172.20.0.200:8500) may not be accessible[0m
+Getting provider info for our system...
+  Peer ID: 12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+  Address: /ip4/172.20.0.10/tcp/4001
+
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to both systems...[0m
+    Uploading to our system...
+  [0;32m✓ Download test (warm) complete: ./test_results_full/download_n10_warm.csv[0m
+
+[0;34mStep 5: Running message count test...[0m
+  Running message count test (N=10)...
+Message count test: our=http://127.0.0.1:45939 swarm=http://172.20.0.200:8500
+
+[0;32mOur system...[0m
+  put messages: 5, get messages: 1
+
+[0;32mSwarm...[0m
+  [1;33mSwarm /metrics not available (v0.5.8 may not expose Prometheus metrics)[0m
+
+Results: ./test_results_full/message_counts_n10.csv
+system,operation,message_count
+our_system,put,5
+our_system,get,1
+swarm,put,N/A
+swarm,get,N/A
+  [0;32m✓ Message count test complete: ./test_results_full/message_counts_n10.csv[0m
+
+[0;34mStep 5b: Running key lookup vs CID retrieval test...[0m
+
+[0;32mRunning key lookup vs CID retrieval test (N=10)...[0m

@@ -170,77 +170,9 @@ else
   fi
 fi
 
-# --- Swarm ---
-echo -e "\n${GREEN}Swarm: put, wait R, stop one node, measure repair time${NC}"
-if [[ ! -f "$swarm_compose" ]] || ! docker ps --format '{{.Names}}' | grep -q "^swarm-bootstrap$"; then
-  echo -e "  ${YELLOW}Swarm not running, skipping${NC}"
-  echo "swarm,$NODE_COUNT,SKIP" >> "$OUTPUT_FILE"
-else
-  docker cp "$TEMP_DIR/payload.bin" "swarm-bootstrap:/tmp/repair_$$.bin" 2>/dev/null
-  hash=$($compose_cmd -f "$swarm_compose" exec -T swarm-bootstrap /app/swarm up /tmp/repair_$$.bin 2>&1 | grep -oE '[a-fA-F0-9]{64}' | head -1 || echo "")
-  $compose_cmd -f "$swarm_compose" exec -T swarm-bootstrap rm -f /tmp/repair_$$.bin 2>/dev/null || true
-  if [[ -z "$hash" || ${#hash} -lt 32 ]]; then
-    echo -e "  ${RED}Upload failed${NC}"
-    echo "swarm,$NODE_COUNT,FAILED" >> "$OUTPUT_FILE"
-  else
-    echo "  Hash: $hash"
-    swarm_containers=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^swarm-(bootstrap|node)' || true))
-    start=$(date +%s)
-    while true; do
-      now=$(date +%s)
-      elapsed=$((now - start))
-      [[ $elapsed -ge 90 ]] && break
-      count=0
-      for c in "${swarm_containers[@]}"; do
-        code=$(docker exec "$c" curl -sI -o /dev/null -w "%{http_code}" "http://localhost:8500/chunks/$hash" 2>/dev/null || echo "000")
-        [[ "$code" == "200" ]] && ((count++)) || true
-      done
-      [[ "$count" -ge "$REPLICAS_TARGET" ]] && break
-      sleep "$POLL_INTERVAL_S"
-    done
-    count=0
-    for c in "${swarm_containers[@]}"; do
-      code=$(docker exec "$c" curl -sI -o /dev/null -w "%{http_code}" "http://localhost:8500/chunks/$hash" 2>/dev/null || echo "000")
-      [[ "$code" == "200" ]] && ((count++)) || true
-    done
-    if [[ "$count" -lt "$REPLICAS_TARGET" ]]; then
-      echo -e "  ${YELLOW}Did not reach R before failure step${NC}"
-      echo "swarm,$NODE_COUNT,SKIP" >> "$OUTPUT_FILE"
-    else
-      node_to_stop=$(echo "${swarm_containers[@]}" | tr ' ' '\n' | grep -E '^swarm-node' | head -1)
-      if [[ -n "$node_to_stop" ]]; then
-        echo "  Stopping $node_to_stop..."
-        docker stop "$node_to_stop" >/dev/null 2>&1 || true
-        sleep 3
-        repair_start=$(date +%s)
-        repair_time="TIMEOUT"
-        remaining=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^swarm-(bootstrap|node)' || true))
-        while true; do
-          now=$(date +%s)
-          elapsed=$((now - repair_start))
-          [[ $elapsed -ge $TIMEOUT_S ]] && break
-          count=0
-          for c in "${remaining[@]}"; do
-            code=$(docker exec "$c" curl -sI -o /dev/null -w "%{http_code}" "http://localhost:8500/chunks/$hash" 2>/dev/null || echo "000")
-            [[ "$code" == "200" ]] && ((count++)) || true
-          done
-          if [[ "$count" -ge "$REPLICAS_TARGET" ]]; then
-            repair_time=$elapsed
-            echo -e "  ${GREEN}Chunks restored on $count nodes in ${elapsed}s${NC}"
-            break
-          fi
-          remaining=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^swarm-(bootstrap|node)' || true))
-          sleep "$POLL_INTERVAL_S"
-        done
-        docker start "$node_to_stop" >/dev/null 2>&1 || true
-        echo "swarm,$NODE_COUNT,$repair_time" >> "$OUTPUT_FILE"
-      else
-        echo -e "  ${YELLOW}No swarm-node to stop${NC}"
-        echo "swarm,$NODE_COUNT,SKIP" >> "$OUTPUT_FILE"
-      fi
-    fi
-  fi
-fi
+# --- Swarm (skipped: no OOB replication; benchmark our system only) ---
+echo -e "\n${YELLOW}Swarm: skipped (no OOB replication; benchmark our system only)${NC}"
+echo "swarm,$NODE_COUNT,SKIP" >> "$OUTPUT_FILE"
 
 echo ""
 echo "Results: $OUTPUT_FILE"

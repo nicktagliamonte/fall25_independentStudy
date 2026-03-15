@@ -46,8 +46,8 @@ for i in $(seq 2 "$N"); do
     container_name: fall25-node${i}
     hostname: node${i}
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.${IP_LAST}/tcp/4001
+      --listen /ip4/172.20.0.${IP_LAST}/udp/4002/quic-v1
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
       --min-outbound 4

@@ -35,6 +35,7 @@ while [[ $# -gt 0 ]]; do
     --payload-size)      PAYLOAD_SIZE="$2"; shift 2 ;;
     --output)            OUTPUT_FILE="$2"; shift 2 ;;
     --system)            SYSTEM_FILTER="$2"; shift 2 ;;
+    --append)            APPEND=true; shift ;;
     --help)
       echo "Usage: $0 [--our-api <c>] [--swarm-api <addr>] [--concurrent-writes N] [--concurrent-reads M] [--payload-size <n>] [--output <file>] [--system our_system|swarm]"
       exit 0

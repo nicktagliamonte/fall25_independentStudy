@@ -138,6 +138,9 @@ echo ""
 # Generate test file
 dd if=/dev/urandom of="$TEMP_DIR/payload.bin" bs=1 count="$PAYLOAD_SIZE" 2>/dev/null
 
+bytes_before=0
+[[ "$RECORD_OVERHEAD" == "true" ]] && bytes_before=$(get_network_bytes_for_pattern '^fall25-|^bootstrap$|^node[0-9]+$' 2>/dev/null || echo "0")
+
 # --- Our system ---
 echo -e "${GREEN}Our system: put and poll /replication/status until R >= $REPLICAS_TARGET${NC}"
 data_b64=$(base64 -w 0 < "$TEMP_DIR/payload.bin" 2>/dev/null || base64 < "$TEMP_DIR/payload.bin" | tr -d '\n')
@@ -148,18 +151,43 @@ resp=$(docker exec "$OUR_CONTAINER" curl -sSf -X POST -H "Content-Type: applicat
   -d @/tmp/put_req_rep_$$.json "http://$OUR_API_ADDR/put" 2>/dev/null || echo "{}")
 docker exec "$OUR_CONTAINER" rm -f /tmp/put_req_rep_$$.json >/dev/null 2>&1 || true
 
-KEY=$(echo "$resp" | jq -r '.multihash_hex // .cid // empty')
+KEY=$(echo "$resp" | jq -r '.multihash_hex // .key // empty')
 if [[ -z "$KEY" || "$KEY" == "null" ]]; then
-  if [[ -n "$(echo "$resp" | jq -r '.cid // empty')" ]]; then
-    cid_val=$(echo "$resp" | jq -r '.cid')
-    KEY=$(echo "$cid_val" | grep -oE '[a-fA-F0-9]{64}' || echo "$cid_val" | sed 's/.*Qm//' | head -c 64)
+  KEY=$(echo "$resp" | jq -r '.cid // empty')
+  if [[ -n "$KEY" && "$KEY" != "null" ]]; then
+    KEY=$(echo "$KEY" | grep -oE '[a-fA-F0-9]{64}' || echo "")
   fi
 fi
-if [[ -z "$KEY" || ${#KEY} -lt 32 ]]; then
-  echo -e "  ${RED}Upload failed, no key. Response: $resp${NC}"
+# Require key: 64 hex chars (multihash_hex). ParseKey fails otherwise.
+if [[ -z "$KEY" || ${#KEY} -ne 64 ]]; then
+  echo -e "  ${RED}Upload failed: key must be 64 hex chars (multihash_hex). Got: len=${KEY:+${#KEY}} key=${KEY:0:20}... Response: $resp${NC}"
+  echo "our_system,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,FAILED" >> "$OUTPUT_FILE"
+elif ! [[ "$KEY" =~ ^[a-fA-F0-9]{64}$ ]]; then
+  echo -e "  ${RED}Upload failed: key must be hex (64 chars). Got: $KEY${NC}"
   echo "our_system,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,FAILED" >> "$OUTPUT_FILE"
 else
   echo "  Key: $KEY"
+  # Option C: GET from worker node (cold) triggers VerifyKeyState+TriggerRepair; then poll replication
+  WORKER_CONTAINER=""
+  WORKER_API=""
+  for c in $(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-node[0-9]+$' || true); do
+    addr=$(docker exec "$c" jq -r '.addr // .Addr' /app/logs/"${c#fall25-}".json 2>/dev/null || echo "")
+    if [[ -n "$addr" && "$addr" != "null" ]]; then
+      WORKER_CONTAINER="$c"
+      WORKER_API="http://$addr"
+      break
+    fi
+  done
+  if [[ -n "$WORKER_CONTAINER" && -n "$WORKER_API" ]]; then
+    echo "  Triggering repair: GET from $WORKER_CONTAINER (cold)..."
+    get_json=$(echo "{\"key\":\"$KEY\",\"timeout\":\"30s\"}" | docker exec -i "$WORKER_CONTAINER" tee /tmp/get_rep_$$.json >/dev/null 2>&1)
+    docker exec "$WORKER_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
+      -d @/tmp/get_rep_$$.json "$WORKER_API/get" >/dev/null 2>&1 || true
+    docker exec "$WORKER_CONTAINER" rm -f /tmp/get_rep_$$.json 2>/dev/null || true
+    sleep 2
+  else
+    echo "  No worker node found for GET-triggered repair; polling bootstrap token only"
+  fi
   start=$(date +%s)
   time_to_r=""
   while true; do
@@ -189,72 +217,23 @@ else
   else
     echo "our_system,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,$time_to_r" >> "$OUTPUT_FILE"
   fi
-fi
-
-# --- Swarm ---
-echo -e "\n${GREEN}Swarm: put and poll HEAD /chunks/{ref} on each node until R >= $REPLICAS_TARGET${NC}"
-compose_file="$ROOT_DIR/docker-compose.swarm.yml"
-[[ ! -f "$compose_file" ]] && compose_file="$ROOT_DIR/docker-compose.yml"
-container_name="swarm-bootstrap"
-docker cp "$TEMP_DIR/payload.bin" "${container_name}:/tmp/swarm_rep_$$.bin" 2>/dev/null || container_name=""
-if [[ -z "$container_name" ]]; then
-  if docker ps --format '{{.Names}}' | grep -q "^swarm-bootstrap$"; then
-    container_name="swarm-bootstrap"
-    docker cp "$TEMP_DIR/payload.bin" "${container_name}:/tmp/swarm_rep_$$.bin" 2>/dev/null || container_name=""
+  # C.3 verification: assert time_to_R reaches target or replica_count>=REPLICAS_TARGET
+  if [[ "$time_to_r" == "TIMEOUT" || "$time_to_r" == "FAILED" ]]; then
+    echo -e "  ${RED}C.3 verification failed: time_to_R=$time_to_r (expected numeric or target reached)${NC}" >&2
+    exit 1
+  fi
+  if [[ "$count" -lt "$REPLICAS_TARGET" ]]; then
+    echo -e "  ${RED}C.3 verification failed: replica_count=$count < target=$REPLICAS_TARGET${NC}" >&2
+    exit 1
   fi
 fi
 
-if [[ -z "$container_name" ]]; then
-  echo -e "  ${YELLOW}Swarm containers not running, skipping${NC}"
-  if [[ "$RECORD_OVERHEAD" == "true" ]]; then
-    echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,SKIP," >> "$OUTPUT_FILE"
-  else
-    echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,SKIP" >> "$OUTPUT_FILE"
-  fi
+# --- Swarm (skipped: Swarm v0.5.8 does not replicate chunks out-of-band; test would hang) ---
+echo -e "\n${YELLOW}Swarm: skipped (no OOB replication; benchmark our system only)${NC}"
+if [[ "$RECORD_OVERHEAD" == "true" ]]; then
+  echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,SKIP," >> "$OUTPUT_FILE"
 else
-  compose_cmd="docker-compose"
-  command -v docker-compose >/dev/null 2>&1 || compose_cmd="docker compose"
-  hash=$($compose_cmd -f "$compose_file" exec -T "$container_name" /app/swarm up /tmp/swarm_rep_$$.bin 2>&1 | grep -oE '[a-fA-F0-9]{64}' | head -1 || echo "")
-  $compose_cmd -f "$compose_file" exec -T "$container_name" rm -f /tmp/swarm_rep_$$.bin 2>/dev/null || true
-
-  if [[ -z "$hash" || ${#hash} -lt 32 ]]; then
-    echo -e "  ${RED}Upload failed, no hash${NC}"
-    echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,FAILED" >> "$OUTPUT_FILE"
-  else
-    echo "  Hash: $hash"
-    swarm_containers=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^swarm-(bootstrap|node)' || true))
-    start=$(date +%s)
-    time_to_r=""
-    while true; do
-      now=$(date +%s)
-      elapsed=$((now - start))
-      if [[ $elapsed -ge $TIMEOUT_S ]]; then
-        echo -e "  ${YELLOW}Timeout after ${TIMEOUT_S}s (last count: ${count:-0})${NC}"
-        time_to_r="TIMEOUT"
-        break
-      fi
-      count=0
-      for c in "${swarm_containers[@]}"; do
-        code=$(docker exec "$c" curl -sI -o /dev/null -w "%{http_code}" "http://localhost:8500/chunks/$hash" 2>/dev/null || echo "000")
-        [[ "$code" == "200" ]] && ((count++)) || true
-      done
-      echo -n "  Poll: nodes_with_chunk=$count (${elapsed}s)... "
-      if [[ "$count" -ge "$REPLICAS_TARGET" ]]; then
-        time_to_r="$elapsed"
-        echo -e "${GREEN}reached R=$REPLICAS_TARGET in ${elapsed}s${NC}"
-        break
-      fi
-      echo ""
-      sleep "$POLL_INTERVAL_S"
-    done
-    if [[ "$RECORD_OVERHEAD" == "true" ]]; then
-      bytes_after=$(get_network_bytes_for_pattern '^swarm-' 2>/dev/null || echo "0")
-      overhead=$((bytes_after - bytes_before))
-      echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,$time_to_r,$overhead" >> "$OUTPUT_FILE"
-    else
-      echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,$time_to_r" >> "$OUTPUT_FILE"
-    fi
-  fi
+  echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,SKIP" >> "$OUTPUT_FILE"
 fi
 
 echo ""

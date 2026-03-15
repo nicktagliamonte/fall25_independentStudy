@@ -1,0 +1,7 @@
+Key lookup vs CID retrieval test
+  store X, fetch X — same payload, same logical operation
+  Semantic equivalence: key K = content hash of payload (SHA256); Swarm CID/BZZ = content hash
+  our=http://127.0.0.1:45939 swarm=http://172.20.0.200:8500 iterations=5 payload=10240
+  Output: ./test_results_full/key_lookup_vs_cid_n10.csv
+
+[0;32mOur system (key-based lookup)...[0m

@@ -24,7 +24,8 @@ func BuildStackWithDHT(ctx context.Context, h host.Host, bs bstore.Blockstore, d
 		mode = myhost.DHTModeClient
 	}
 	dhtCfg := myhost.DHTConfig{
-		Mode: mode,
+		Mode:        mode,
+		UseTokenDHT: true, // required for /tokens/ namespace (SyncTokenOnPut, GetToken, replication)
 		BootstrapPeersFunc: func() []peer.AddrInfo {
 			defaults := myhost.DefaultBootstrapPeerInfos()
 			fromStore, _ := peerStore.GetDialCandidates(50, 0, nil)

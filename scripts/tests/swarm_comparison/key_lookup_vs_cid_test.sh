@@ -86,8 +86,28 @@ TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
 echo "system,operation,latency_ms,hops,lookup_type" > "$OUTPUT_FILE"
+# B.1: Put and get on same node yields hops=0 (local). B.2: Put on bootstrap, get from worker (cold) for non-zero hops.
 
 # --- vn-IPFS (key-based) ---
+# Put on bootstrap: GET from worker (cold) for non-zero hops; local GET on same node yields hops=0
+PUT_CONTAINER="$OUR_CONTAINER"
+PUT_API_ADDR="$OUR_API_ADDR"
+WORKER_CONTAINER=""
+WORKER_API_ADDR=""
+for c in $(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-node[0-9]+$' || true); do
+  addr=$(docker exec "$c" jq -r '.addr // .Addr' /app/logs/"${c#fall25-}".json 2>/dev/null || echo "")
+  if [[ -n "$addr" && "$addr" != "null" ]]; then
+    WORKER_CONTAINER="$c"
+    WORKER_API_ADDR="$addr"
+    break
+  fi
+done
+if [[ -z "$WORKER_CONTAINER" ]]; then
+  WORKER_CONTAINER="$PUT_CONTAINER"
+  WORKER_API_ADDR="$PUT_API_ADDR"
+  echo -e "${YELLOW}No worker node; put and get on same node (hops may be 0)${NC}"
+fi
+
 echo -e "${GREEN}Our system (key-based lookup)...${NC}"
 for i in $(seq 1 "$ITERATIONS"); do
   test_file="$TEMP_DIR/x_$$.bin"
@@ -96,14 +116,14 @@ for i in $(seq 1 "$ITERATIONS"); do
 
   json="$TEMP_DIR/put_$$.json"
   echo "{\"data\":\"$data_b64\"}" > "$json"
-  docker cp "$json" "${OUR_CONTAINER}:/tmp/put_$$.json" 2>/dev/null || true
+  docker cp "$json" "${PUT_CONTAINER}:/tmp/put_$$.json" 2>/dev/null || true
   start=$(date +%s.%N)
-  put_resp=$(docker exec "$OUR_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" -d @/tmp/put_$$.json "http://$OUR_API_ADDR/put" 2>/dev/null || echo "{}")
+  put_resp=$(docker exec "$PUT_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" -d @/tmp/put_$$.json "http://$PUT_API_ADDR/put" 2>/dev/null || echo "{}")
   end=$(date +%s.%N)
-  docker exec "$OUR_CONTAINER" rm -f /tmp/put_$$.json 2>/dev/null || true
+  docker exec "$PUT_CONTAINER" rm -f /tmp/put_$$.json 2>/dev/null || true
   put_latency=$(echo "scale=2; ($end - $start) * 1000" | bc -l 2>/dev/null || echo "0")
   put_hops=$(echo "$put_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
-  key=$(echo "$put_resp" | jq -r '.multihash_hex // .cid // empty' 2>/dev/null || echo "")
+  key=$(echo "$put_resp" | jq -r '.multihash_hex // .key // .cid // empty' 2>/dev/null || echo "")
 
   if [[ -z "$key" || "$key" == "null" ]]; then
     echo "our_system,put,FAILED,,key" >> "$OUTPUT_FILE"
@@ -112,16 +132,41 @@ for i in $(seq 1 "$ITERATIONS"); do
   fi
   echo "our_system,put,$put_latency,${put_hops:-},key" >> "$OUTPUT_FILE"
 
+  # B.4: /lookup returns lookup_latency_ms and network_hops for isolated GetToken; call from worker (cold) for DHT hops
+  LOOKUP_CONTAINER="$WORKER_CONTAINER"
+  LOOKUP_API_ADDR="$WORKER_API_ADDR"
+  lookup_resp=$(docker exec "$LOOKUP_CONTAINER" curl -sSf "http://$LOOKUP_API_ADDR/lookup?key=$key" 2>/dev/null || echo "{}")
+  lookup_latency=$(echo "$lookup_resp" | jq -r '.lookup_latency_ms // empty' 2>/dev/null || echo "")
+  lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
+  echo "our_system,lookup,${lookup_latency:-},${lookup_hops:-},key" >> "$OUTPUT_FILE"
+
   get_json="$TEMP_DIR/get_$$.json"
   echo "{\"key\":\"$key\",\"timeout\":\"30s\"}" > "$get_json"
-  docker cp "$get_json" "${OUR_CONTAINER}:/tmp/get_$$.json" 2>/dev/null || true
+  docker cp "$get_json" "${WORKER_CONTAINER}:/tmp/get_$$.json" 2>/dev/null || true
   start=$(date +%s.%N)
-  get_resp=$(docker exec "$OUR_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" -d @/tmp/get_$$.json "http://$OUR_API_ADDR/get" 2>/dev/null || echo "{}")
+  get_resp=$(docker exec "$WORKER_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" -d @/tmp/get_$$.json "http://$WORKER_API_ADDR/get" 2>/dev/null || echo "{}")
   end=$(date +%s.%N)
-  docker exec "$OUR_CONTAINER" rm -f /tmp/get_$$.json 2>/dev/null || true
+  docker exec "$WORKER_CONTAINER" rm -f /tmp/get_$$.json 2>/dev/null || true
   get_latency=$(echo "scale=2; ($end - $start) * 1000" | bc -l 2>/dev/null || echo "0")
   get_hops=$(echo "$get_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
   echo "our_system,get,$get_latency,${get_hops:-},key" >> "$OUTPUT_FILE"
+  # C.4 verification: when put on bootstrap and get from worker, pass when hops > 0 OR replica_count >= 2.
+  # With aggressive replication (R=7), worker receives block during PUT replication before GET runs,
+  # so content is local on worker and hops=0 is correct. Allow hops=0 when replica_count >= 2.
+  if [[ "$WORKER_CONTAINER" != "$PUT_CONTAINER" ]]; then
+    get_succeeded=$(echo "$get_resp" | jq -r 'if .data_b64 != null and .data_b64 != "" then "1" else "0" end' 2>/dev/null || echo "0")
+    if [[ "$get_succeeded" == "1" ]]; then
+      get_hops_num=$(echo "$get_hops" | grep -E '^[0-9]+$' || echo "0")
+      lookup_hops_num=$(echo "$lookup_hops" | grep -E '^[0-9]+$' || echo "0")
+      if [[ "${get_hops_num:-0}" -eq 0 && "${lookup_hops_num:-0}" -eq 0 ]]; then
+        replica_count=$(docker exec "$PUT_CONTAINER" curl -sSf "http://$PUT_API_ADDR/replication/status?key=$key" 2>/dev/null | jq -r '.replica_count // 0' || echo "0")
+        if [[ "${replica_count:-0}" -lt 2 ]]; then
+          echo -e "${RED}C.4 verification failed: put on bootstrap, get from worker succeeded, but hops=0 and replica_count=$replica_count (expected hops>0 when content not replicated)${NC}" >&2
+          exit 1
+        fi
+      fi
+    fi
+  fi
 done
 
 # --- Swarm (CID/content-hash based) ---

@@ -3,8 +3,13 @@
 package storage
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
+	"log"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +34,25 @@ import (
 
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 )
+
+// gatherAddrsForPeer returns addresses for connecting to the provider.
+// Prefers location.Address if routable (not 0.0.0.0); falls back to peerstore (e.g. from DHT bootstrap).
+func gatherAddrsForPeer(h host.Host, loc Location) []multiaddr.Multiaddr {
+	var addrs []multiaddr.Multiaddr
+	if loc.Address != nil {
+		s := loc.Address.String()
+		if !strings.Contains(s, "/ip4/0.0.0.0/") {
+			addrs = []multiaddr.Multiaddr{loc.Address}
+		}
+	}
+	if len(addrs) == 0 {
+		addrs = h.Peerstore().Addrs(loc.ProviderID)
+	}
+	if len(addrs) == 0 && loc.Address != nil {
+		addrs = []multiaddr.Multiaddr{loc.Address}
+	}
+	return addrs
+}
 
 // KeyedBlock represents a block with its key, data, provider ID, and CID.
 // Per newReqs.txt: Key is hash(data) only; ProviderID is attached separately, not in hash.
@@ -192,9 +216,12 @@ func (s *Stack) GetBlock(ctx context.Context, k Key) ([]byte, int, error) {
 		return localData, 0, nil
 	}
 
-	// Get token from DHT to find locations
-	if s.DHT == nil {
-		return nil, 0, fmt.Errorf("DHT required for token-based routing")
+	tokenStore := s.TokenStore
+	if tokenStore == nil && s.DHT != nil {
+		tokenStore = routing.ValueStore(s.DHT)
+	}
+	if tokenStore == nil {
+		return nil, 0, fmt.Errorf("token store or DHT required for token-based routing")
 	}
 
 	evCtx, evCh := routing.RegisterForQueryEvents(ctx)
@@ -210,7 +237,7 @@ func (s *Stack) GetBlock(ctx context.Context, k Key) ([]byte, int, error) {
 			}
 		}
 	}()
-	token, err := GetToken(evCtx, s.DHT, k)
+	token, err := GetToken(evCtx, tokenStore, k)
 	cancel()
 	<-done
 	if s.MessageSink != nil {
@@ -284,21 +311,13 @@ func DirectFetch(ctx context.Context, stack *Stack, location Location, key Key) 
 
 	// Connect to peer if not already connected
 	if stack.Host.Network().Connectedness(location.ProviderID) != network.Connected {
-		// Use address from location if available
-		var addrs []multiaddr.Multiaddr
-		if location.Address != nil {
-			addrs = []multiaddr.Multiaddr{location.Address}
-		} else {
-			// Fallback to peerstore addresses
-			addrs = stack.Host.Peerstore().Addrs(location.ProviderID)
-		}
-
+		addrs := gatherAddrsForPeer(stack.Host, location)
 		if len(addrs) == 0 {
 			return nil, fmt.Errorf("no addresses found for peer %s", location.ProviderID)
 		}
-
 		info := peer.AddrInfo{ID: location.ProviderID, Addrs: addrs}
-		ctxDial, cancel := context.WithTimeout(ctx, 10*time.Second)
+		stack.Host.Peerstore().AddAddrs(info.ID, info.Addrs, 30*time.Minute)
+		ctxDial, cancel := context.WithTimeout(ctx, 15*time.Second)
 		err := stack.Host.Connect(ctxDial, info)
 		cancel()
 		if err != nil {
@@ -306,56 +325,44 @@ func DirectFetch(ctx context.Context, stack *Stack, location Location, key Key) 
 		}
 	}
 
-	// Open stream to provider
-	stream, err := stack.Host.NewStream(ctx, location.ProviderID, DirectFetchProtocolID)
+	streamCtx, streamCancel := context.WithTimeout(ctx, 45*time.Second)
+	defer streamCancel()
+	stream, err := stack.Host.NewStream(streamCtx, location.ProviderID, DirectFetchProtocolID)
 	if err != nil {
 		return nil, fmt.Errorf("open stream: %w", err)
 	}
 	defer stream.Close()
 
-	// Send key (as hex string)
 	keyStr := key.String()
 	if _, err := stream.Write([]byte(keyStr + "\n")); err != nil {
 		return nil, fmt.Errorf("write key: %w", err)
 	}
 
-	// Read response: first line is status ("OK\n" or "ERROR: ...\n")
-	statusBuf := make([]byte, 256)
-	n, err := stream.Read(statusBuf)
+	r := bufio.NewReader(stream)
+	statusLine, err := r.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("read status: %w", err)
 	}
-	statusStr := string(statusBuf[:n])
-
-	if len(statusStr) >= 5 && statusStr[:5] == "ERROR" {
-		return nil, fmt.Errorf("fetch failed: %s", statusStr)
+	if len(statusLine) >= 5 && statusLine[:5] == "ERROR" {
+		return nil, fmt.Errorf("fetch failed: %s", strings.TrimSpace(statusLine))
 	}
 
-	// Read block size (next line)
-	sizeBuf := make([]byte, 64)
-	n, err = stream.Read(sizeBuf)
+	sizeLine, err := r.ReadString('\n')
 	if err != nil {
 		return nil, fmt.Errorf("read size: %w", err)
 	}
-
-	var blockSize int
-	if _, err := fmt.Sscanf(string(sizeBuf[:n]), "%d\n", &blockSize); err != nil {
+	sizeStr := strings.TrimSpace(sizeLine)
+	blockSize, err := strconv.Atoi(sizeStr)
+	if err != nil {
 		return nil, fmt.Errorf("parse size: %w", err)
 	}
-
-	if blockSize <= 0 || blockSize > 10*1024*1024 { // 10MB limit
+	if blockSize <= 0 || blockSize > 10*1024*1024 {
 		return nil, fmt.Errorf("invalid block size: %d", blockSize)
 	}
 
-	// Read block data
 	blockData := make([]byte, blockSize)
-	totalRead := 0
-	for totalRead < blockSize {
-		n, err := stream.Read(blockData[totalRead:])
-		if err != nil {
-			return nil, fmt.Errorf("read block data: %w", err)
-		}
-		totalRead += n
+	if _, err := io.ReadFull(r, blockData); err != nil {
+		return nil, fmt.Errorf("read block data: %w", err)
 	}
 
 	// Verify key matches
@@ -368,7 +375,6 @@ func DirectFetch(ctx context.Context, stack *Stack, location Location, key Key) 
 }
 
 // HandleDirectFetchStream handles incoming direct fetch requests by key.
-// Should be registered as a stream handler on the host.
 // Protocol: client sends key (hex string + "\n"), server responds with:
 //   - Status: "OK\n" or "ERROR: ...\n"
 //   - If OK: block size (int + "\n"), then block data
@@ -376,18 +382,14 @@ func HandleDirectFetchStream(stream network.Stream, stack *Stack) error {
 	defer stream.Close()
 
 	ctx := context.Background()
+	r := bufio.NewReader(stream)
 
-	// Read key (as hex string)
-	keyBytes := make([]byte, 256)
-	n, err := stream.Read(keyBytes)
+	keyLine, err := r.ReadString('\n')
 	if err != nil {
 		_, _ = stream.Write([]byte("ERROR: read key\n"))
 		return fmt.Errorf("read key: %w", err)
 	}
-	keyStr := string(keyBytes[:n])
-	if len(keyStr) > 0 && keyStr[len(keyStr)-1] == '\n' {
-		keyStr = keyStr[:len(keyStr)-1]
-	}
+	keyStr := strings.TrimSpace(keyLine)
 
 	// Parse key
 	key, err := ParseKey(keyStr)
@@ -403,7 +405,7 @@ func HandleDirectFetchStream(stream network.Stream, stack *Stack) error {
 		return fmt.Errorf("get block: %w", err)
 	}
 
-	if blockData == nil || len(blockData) == 0 {
+	if len(blockData) == 0 {
 		_, _ = stream.Write([]byte("ERROR: block not found\n"))
 		return fmt.Errorf("block not found for key %s", key.String())
 	}
@@ -743,7 +745,9 @@ func (s *Stack) UpdateRoutingTableOnPut(k Key, providerID peer.ID, repVector *Re
 		}
 		if store != nil {
 			ctx := context.Background()
-			_ = SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink)
+			if syncErr := SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink); syncErr != nil {
+				log.Printf("SyncTokenOnPut failed for key %s: %v (host.Addrs=%d)", k.String(), syncErr, len(s.Host.Addrs()))
+			}
 		}
 	}
 }

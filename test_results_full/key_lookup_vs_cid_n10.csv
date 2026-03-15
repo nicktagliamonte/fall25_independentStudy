@@ -1,0 +1,16 @@
+system,operation,latency_ms,hops,lookup_type
+our_system,put,155915.915736000,0,key
+our_system,lookup,15000,0,key
+our_system,get,37813.941082000,,key
+our_system,put,109408.922894000,0,key
+our_system,lookup,20127,0,key
+our_system,get,25263.494565000,,key
+our_system,put,125822.882996000,0,key
+our_system,lookup,15097,0,key
+our_system,get,10174.782688000,,key
+our_system,put,72770.471022000,0,key
+our_system,lookup,15000,0,key
+our_system,get,15181.432645000,,key
+our_system,put,385306.409329000,0,key
+our_system,lookup,40108,0,key
+our_system,get,22048.440442000,,key

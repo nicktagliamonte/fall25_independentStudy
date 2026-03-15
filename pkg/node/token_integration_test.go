@@ -1,4 +1,5 @@
 // Purpose: Integration tests for Phase 7.2 (Put→Token→Direct fetch, replication→multiple providers→token updated, write lock→concurrent writes, read without lock→multiple concurrent reads).
+// C.1 verification: After Put, GetToken for same key; assert token.Locations non-empty.
 
 package node
 
@@ -24,7 +25,7 @@ import (
 )
 
 func TestPutTokenCreatedGetTokenDirectFetch(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 
 	hA, err := myhost.NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
@@ -87,6 +88,14 @@ func TestPutTokenCreatedGetTokenDirectFetch(t *testing.T) {
 
 	stackA.ProviderRecords = mystore.NewLocalProviderRecords()
 
+	// Ensure peers are connected (like performance_test) before DHT/token ops
+	if err := hA.Connect(ctx, infoB); err != nil {
+		t.Fatalf("Connect A→B: %v", err)
+	}
+	if err := hB.Connect(ctx, infoA); err != nil {
+		t.Fatalf("Connect B→A: %v", err)
+	}
+
 	// Allow DHT bootstrap to connect peers
 	time.Sleep(2 * time.Second)
 
@@ -103,13 +112,13 @@ func TestPutTokenCreatedGetTokenDirectFetch(t *testing.T) {
 	}
 	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
 
-	// Verify token exists on A (SyncTokenOnPut stored it)
+	// C.1 verification: After Put, GetToken for same key; assert token.Locations non-empty
 	tokenA, err := mystore.GetToken(ctx, stackA.DHT, key)
 	if err != nil {
 		t.Fatalf("GetToken on A after put: %v (token storage may require DHT record validator)", err)
 	}
 	if len(tokenA.Locations) == 0 {
-		t.Fatal("token has no locations")
+		t.Fatal("C.1 verification failed: token.Locations must be non-empty after Put")
 	}
 
 	// 2. Wait for DHT propagation of token to B

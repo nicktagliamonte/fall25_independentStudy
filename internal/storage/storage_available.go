@@ -41,6 +41,10 @@ type StorageAvailableOffer struct {
 // Integrates with tuple space for O(log N) discovery and replica selection algorithm.
 type StorageAvailableProtocol struct {
 	ts tuplespace.TupleSpace
+	// PeerIDsToCheck returns peer IDs to query for storage-available offers.
+	// When set, used for DHT-backed tuple space (no pattern matching); each peer
+	// is looked up as "storage-available:<peer_id>". When nil, uses pattern match.
+	PeerIDsToCheck func() []peer.ID
 	// RTTMeasurer is an optional function to measure RTT to a peer.
 	// If nil, RTT will be set to 0 (unknown) in candidates.
 	RTTMeasurer func(peerID peer.ID) (time.Duration, error)
@@ -110,8 +114,8 @@ func (sap *StorageAvailableProtocol) WithdrawStorageAvailable(peerID peer.ID) er
 }
 
 // FindStorageAvailableCandidates finds storage-available peers matching the desired distance category.
-// Uses tuple space pattern matching (P2P tuple space supports regex).
-// Returns candidates ready for replica selection algorithm.
+// When PeerIDsToCheck is set (DHT tuple space): iterates over those peers and TsRead each
+// "storage-available:<peer_id>". When nil: uses pattern matching (P2P tuple space supports regex).
 //
 // Parameters:
 //   - providerID: The provider node's peer ID (for RTT measurement)
@@ -119,10 +123,6 @@ func (sap *StorageAvailableProtocol) WithdrawStorageAvailable(peerID peer.ID) er
 //   - maxCandidates: Maximum number of candidates to return
 //
 // Returns: List of PeerCandidate structs, sorted by selection score.
-//
-// Note: This implementation reads offers iteratively. P2P tuple space's regex matching
-// provides O(log N) discovery. In practice, multiple reads may be needed to enumerate
-// all matching offers, or the tuple space implementation may support batch reads.
 func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	providerID peer.ID,
 	desiredCategory DistanceCategory,
@@ -132,52 +132,69 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 		return nil, errors.New("tuple space required")
 	}
 
-	// Use pattern matching to find all storage-available offers
-	// Pattern: "storage-available:*" matches all offers
-	pattern := StorageAvailableTuplePrefix + "*"
-
 	var candidates []PeerCandidate
 	seenPeers := make(map[string]bool)
-	maxIterations := maxCandidates * 2 // Limit iterations to avoid infinite loops
 
-	// Read offers iteratively (non-consuming reads)
-	// P2P tuple space regex matching provides O(log N) discovery
+	if sap.PeerIDsToCheck != nil {
+		// DHT tuple space: no pattern matching; iterate over known peers
+		for _, pid := range sap.PeerIDsToCheck() {
+			if len(candidates) >= maxCandidates {
+				break
+			}
+			tupleName := StorageAvailableTuplePrefix + pid.String()
+			offerData, err := sap.ts.TsRead(tupleName)
+			if err != nil {
+				continue
+			}
+			var offer StorageAvailableOffer
+			if err := json.Unmarshal(offerData, &offer); err != nil {
+				continue
+			}
+			if seenPeers[offer.PeerID] {
+				continue
+			}
+			seenPeers[offer.PeerID] = true
+			candidate, err := sap.offerToCandidate(offer, providerID)
+			if err != nil {
+				continue
+			}
+			if candidate.DistanceCategory == desiredCategory {
+				candidates = append(candidates, candidate)
+			}
+		}
+		if len(candidates) == 0 {
+			return nil, fmt.Errorf("no storage-available offers found (checked %d peers)", len(sap.PeerIDsToCheck()))
+		}
+		return candidates, nil
+	}
+
+	// P2P tuple space: pattern matching
+	pattern := StorageAvailableTuplePrefix + "*"
+	maxIterations := maxCandidates * 2
 	for i := 0; i < maxIterations && len(candidates) < maxCandidates; i++ {
 		offerData, err := sap.ts.TsRead(pattern)
 		if err != nil {
-			// No more offers found or error
 			if len(candidates) == 0 {
 				return nil, fmt.Errorf("no storage-available offers found: %w", err)
 			}
-			// Found some candidates, return what we have
 			break
 		}
-
 		var offer StorageAvailableOffer
 		if err := json.Unmarshal(offerData, &offer); err != nil {
-			// Skip invalid offers
 			continue
 		}
-
-		// Skip if we've already seen this peer
 		if seenPeers[offer.PeerID] {
 			continue
 		}
 		seenPeers[offer.PeerID] = true
-
-		// Convert to PeerCandidate
 		candidate, err := sap.offerToCandidate(offer, providerID)
 		if err != nil {
-			// Skip invalid candidates
 			continue
 		}
-
-		// Filter by distance category
 		if candidate.DistanceCategory == desiredCategory {
 			candidates = append(candidates, candidate)
 		}
 	}
-
 	return candidates, nil
 }
 
@@ -217,7 +234,7 @@ func (sap *StorageAvailableProtocol) FindAndSelectReplicas(
 // Measures RTT if RTTMeasurer is set, otherwise uses 0.
 func (sap *StorageAvailableProtocol) offerToCandidate(
 	offer StorageAvailableOffer,
-	providerID peer.ID,
+	_ peer.ID,
 ) (PeerCandidate, error) {
 	peerID, err := peer.Decode(offer.PeerID)
 	if err != nil {

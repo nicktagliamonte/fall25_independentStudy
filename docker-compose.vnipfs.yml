@@ -9,8 +9,8 @@ services:
     container_name: fall25-bootstrap
     hostname: bootstrap
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.10/tcp/4001
+      --listen /ip4/172.20.0.10/udp/4002/quic-v1
       --key /app/keys/bootstrap.key
       --store /app/data/bootstrap
       --min-outbound 4
@@ -35,8 +35,8 @@ services:
     container_name: fall25-node2
     hostname: node2
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.11/tcp/4001
+      --listen /ip4/172.20.0.11/udp/4002/quic-v1
       --key /app/keys/node2.key
       --store /app/data/node2
       --min-outbound 4
@@ -53,14 +53,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node3:
     build: .
     container_name: fall25-node3
     hostname: node3
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.12/tcp/4001
+      --listen /ip4/172.20.0.12/udp/4002/quic-v1
       --key /app/keys/node3.key
       --store /app/data/node3
       --min-outbound 4
@@ -77,14 +77,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node4:
     build: .
     container_name: fall25-node4
     hostname: node4
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.13/tcp/4001
+      --listen /ip4/172.20.0.13/udp/4002/quic-v1
       --key /app/keys/node4.key
       --store /app/data/node4
       --min-outbound 4
@@ -101,14 +101,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node5:
     build: .
     container_name: fall25-node5
     hostname: node5
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.14/tcp/4001
+      --listen /ip4/172.20.0.14/udp/4002/quic-v1
       --key /app/keys/node5.key
       --store /app/data/node5
       --min-outbound 4
@@ -125,14 +125,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node6:
     build: .
     container_name: fall25-node6
     hostname: node6
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.15/tcp/4001
+      --listen /ip4/172.20.0.15/udp/4002/quic-v1
       --key /app/keys/node6.key
       --store /app/data/node6
       --min-outbound 4
@@ -149,14 +149,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node7:
     build: .
     container_name: fall25-node7
     hostname: node7
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.16/tcp/4001
+      --listen /ip4/172.20.0.16/udp/4002/quic-v1
       --key /app/keys/node7.key
       --store /app/data/node7
       --min-outbound 4
@@ -173,14 +173,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node8:
     build: .
     container_name: fall25-node8
     hostname: node8
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.17/tcp/4001
+      --listen /ip4/172.20.0.17/udp/4002/quic-v1
       --key /app/keys/node8.key
       --store /app/data/node8
       --min-outbound 4
@@ -197,14 +197,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node9:
     build: .
     container_name: fall25-node9
     hostname: node9
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.18/tcp/4001
+      --listen /ip4/172.20.0.18/udp/4002/quic-v1
       --key /app/keys/node9.key
       --store /app/data/node9
       --min-outbound 4
@@ -221,14 +221,14 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
   node10:
     build: .
     container_name: fall25-node10
     hostname: node10
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.19/tcp/4001
+      --listen /ip4/172.20.0.19/udp/4002/quic-v1
       --key /app/keys/node10.key
       --store /app/data/node10
       --min-outbound 4
@@ -245,7 +245,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
 networks:
   node-network:
     driver: bridge

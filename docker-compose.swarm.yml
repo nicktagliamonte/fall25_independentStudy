@@ -43,7 +43,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node1-data:/app/data
       - swarm-node1-logs:/app/logs
@@ -70,7 +70,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node2-data:/app/data
       - swarm-node2-logs:/app/logs
@@ -97,7 +97,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node3-data:/app/data
       - swarm-node3-logs:/app/logs
@@ -124,7 +124,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node4-data:/app/data
       - swarm-node4-logs:/app/logs
@@ -151,7 +151,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node5-data:/app/data
       - swarm-node5-logs:/app/logs
@@ -178,7 +178,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node6-data:/app/data
       - swarm-node6-logs:/app/logs
@@ -205,7 +205,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node7-data:/app/data
       - swarm-node7-logs:/app/logs
@@ -232,7 +232,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node8-data:/app/data
       - swarm-node8-logs:/app/logs
@@ -259,7 +259,7 @@ services:
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
-      - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://ffcc918191c30f95edc377da8b0e24585b7db4245061d862610b1c7739078b8d6013fce8e4cbe55fc56df12bd5c8f76bd5af9233163736580c1db43fe79175c7@172.20.0.200:30399
     volumes:
       - swarm-node9-data:/app/data
       - swarm-node9-logs:/app/logs

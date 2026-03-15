@@ -10,71 +10,34 @@ SWARM_API_ADDR="${SWARM_API_ADDR:-http://localhost:8500}"
 # Upload a file to Swarm
 # Usage: upload_file api_addr file_path [container_name]
 # Returns: hash (Swarm reference)
-# Note: Swarm v0.5.8 uses CLI tool 'swarm up' for uploads, not direct HTTP POST
+# Swarm v0.5.8 HTTP API: POST to /bzz:/ with raw bytes returns content hash
 upload_file() {
   local api_addr="${1:-$SWARM_API_ADDR}"
   local file_path="${2:-}"
-  local container_name="${3:-}"
   
   if [[ -z "$file_path" || ! -f "$file_path" ]]; then
     echo "ERROR: File not found: $file_path" >&2
     return 1
   fi
   
-  # Determine container name from API address if not provided
-  if [[ -z "$container_name" ]]; then
-    if [[ "$api_addr" == "http://172.20.0.200:8500" ]] || [[ "$api_addr" == *"172.20.0.200"* ]]; then
-      container_name="swarm-bootstrap"
-    elif [[ "$api_addr" == *"172.20.0."* ]]; then
-      # Extract IP address part
-      local ip_part=$(echo "$api_addr" | grep -oE '172\.20\.0\.([0-9]+)' | cut -d. -f4)
-      if [[ "$ip_part" == "200" ]]; then
-        container_name="swarm-bootstrap"
-      elif [[ "$ip_part" =~ ^[0-9]+$ && $ip_part -ge 201 ]]; then
-        container_name="swarm-node$((ip_part - 200))"
-      else
-        container_name="swarm-bootstrap"  # Default fallback
-      fi
-    else
-      container_name="swarm-bootstrap"  # Default fallback
-    fi
+  # Strip trailing slash from api_addr for URL construction
+  local base="${api_addr%/}"
+  
+  # Swarm v0.5.8 HTTP API: POST to /bzz:/ returns hex hash (per mainframe-swarm-guide)
+  local hash
+  hash=$(curl -sSf -m 120 -X POST \
+    -H "Content-Type: application/octet-stream" \
+    --data-binary "@$file_path" \
+    "$base/bzz:/" 2>&1)
+  
+  # Response is raw hex string (64 chars for Swarm hash)
+  if [[ "$hash" =~ ^[a-fA-F0-9]{64,}$ ]]; then
+    echo "${hash:0:64}"
+    return 0
   fi
   
-  # Find docker-compose file (could be docker-compose.swarm.yml or generated)
-  local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  local root_dir="$(cd "$script_dir/../.." && pwd)"
-  local compose_file="$root_dir/docker-compose.swarm.yml"
-  
-  # Copy file into container, upload via CLI, then extract hash
-  local temp_file="/tmp/swarm_upload_$(basename "$file_path")_$$"
-  
-  # Copy file to container using docker cp (more reliable than docker-compose exec)
-  if ! docker cp "$file_path" "${container_name}:${temp_file}" 2>/dev/null; then
-    echo "ERROR: Failed to copy file to container $container_name. Is the container running?" >&2
-    return 1
-  fi
-  
-  # Upload via swarm CLI tool
-  local compose_cmd="docker-compose"
-  if command -v docker-compose >/dev/null 2>&1; then
-    compose_cmd="docker-compose"
-  elif docker compose version >/dev/null 2>&1; then
-    compose_cmd="docker compose"
-  fi
-  
-  local hash=$($compose_cmd -f "$compose_file" exec -T "$container_name" \
-    /app/swarm up "$temp_file" 2>&1 | grep -oE '[a-fA-F0-9]{64,}' | head -1 || echo "")
-  
-  # Clean up temp file in container
-  $compose_cmd -f "$compose_file" exec -T "$container_name" \
-    rm -f "$temp_file" 2>/dev/null || true
-  
-  if [[ -z "$hash" || ${#hash} -lt 64 ]]; then
-    echo "ERROR: Failed to upload file via swarm CLI. Output may contain error messages." >&2
-    return 1
-  fi
-  
-  echo "$hash"
+  echo "ERROR: Swarm upload failed. Response: $hash" >&2
+  return 1
 }
 
 # Note: Swarm v0.5.8 does not use postage stamps

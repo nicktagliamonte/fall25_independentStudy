@@ -66,6 +66,9 @@ if [ "${SWARM_DEBUG:-}" = "true" ]; then
   CMD="$CMD --debug"
 fi
 
+# Disable NAT traversal in containers (no UPnP)
+CMD="$CMD --nat none"
+
 echo "Starting Swarm v0.5.8 node..."
 echo "Command: $CMD"
 echo "Data directory: $DATA_DIR"
