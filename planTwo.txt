@@ -847,5 +847,5 @@ PHASE 10: FINAL CLEANUP
      ---------------------------------
 
      Tasks:
-     [ ] ***********manual************ put notes on completed work in this branch, the old one sent to Shi
+     [ ] put notes on completed work in this branch, the old one sent to Dr. Shi
      [ ] Generate a brief document explaining how this codebase successfully implements the items from the above
