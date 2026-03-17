@@ -5,7 +5,6 @@ package node
 import (
 	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -636,132 +635,171 @@ func Run() error {
 		return nil
 
 	case "put":
-		fs := flag.NewFlagSet("put", flag.ExitOnError)
-		var listenAddrs stringSlice
-		var data string
-		var filePath string
-		var serve bool
-		var controlPath string
-		var daemon bool
-		var httpDebug string
-		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
-		fs.StringVar(&data, "data", "", "inline data to store as a block")
-		fs.StringVar(&filePath, "file", "", "path to file to store as a block")
-		fs.BoolVar(&serve, "serve", false, "keep node running to serve inbound wants")
-		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
-		fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
-		fs.StringVar(&httpDebug, "http-debug", "", "optional host:port to serve /cid/<cid> debug handler")
+
+		fs := flag.NewFlagSet("ts-put", flag.ExitOnError)
+		var tshAddr, appId, name, data, filePath string
+		fs.StringVar(&tshAddr, "tsh", "127.0.0.1:2890", "TSH daemon address (host:port)")
+		fs.StringVar(&appId, "app", "defaultApp", "Application ID")
+		fs.StringVar(&name, "name", "", "Tuple name")
+		fs.StringVar(&data, "data", "", "Tuple value (string)")
+		fs.StringVar(&filePath, "file", "", "Tuple value (file)")
 		_ = fs.Parse(os.Args[2:])
-		if len(listenAddrs) == 0 {
-			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/2893",
-				"/ip4/0.0.0.0/udp/2894/quic-v1",
-			}
-		}
 
+		if name == "" {
+			return fmt.Errorf("ts-put: --name is required")
+		}
 		if data == "" && filePath == "" {
-			return fmt.Errorf("put: either --data or --file is required")
+			return fmt.Errorf("ts-put: either --data or --file is required")
 		}
-		if data != "" && filePath != "" {
-			return fmt.Errorf("put: specify only one of --data or --file")
-		}
-
-		var payload []byte
+		var val []byte
 		if filePath != "" {
-			f, err := os.Open(filePath)
+			b, err := os.ReadFile(filePath)
 			if err != nil {
 				return err
 			}
-			defer f.Close()
-			b, err := io.ReadAll(f)
-			if err != nil {
-				return err
-			}
-			payload = b
+			val = b
 		} else {
-			payload = []byte(data)
+			val = []byte(data)
 		}
 
-		ctx := context.Background()
-
-		// If --daemon, use running daemon at controlPath
-		if daemon {
-			if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
-				var info struct {
-					Addr string `json:"addr"`
-				}
-				if json.Unmarshal(b, &info) == nil && info.Addr != "" {
-					// send HTTP request to daemon
-					client := &http.Client{Timeout: 15 * time.Second}
-					var reqBody = struct {
-						Data string `json:"data"`
-					}{Data: string(payload)}
-					buf, _ := json.Marshal(reqBody)
-					resp, err := client.Post("http://"+info.Addr+"/put", "application/json", bytes.NewReader(buf))
-					if err != nil {
-						return err
-					}
-					defer resp.Body.Close()
-					if resp.StatusCode != http.StatusOK {
-						body, _ := io.ReadAll(resp.Body)
-						return fmt.Errorf("daemon put failed: %s", string(body))
-					}
-					var out struct {
-						CID          string `json:"cid"`
-						MultihashHex string `json:"multihash_hex"`
-					}
-					if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-						return err
-					}
-					fmt.Println("CID:", out.CID)
-					fmt.Printf("CID (multihash hex): %s\n", out.MultihashHex)
-					return nil
-				}
-			}
-		}
-		// Inline mode
-		h, err := myhost.NewHost(ctx, listenAddrs)
-		if err != nil {
-			return err
-		}
-		defer h.Close()
-
-		// Install handshake hooks for inline mode.
-		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, 10*time.Second)
-
-		stack, err := mystore.NewStack(ctx, h)
-		if err != nil {
-			return err
-		}
-		defer stack.Bitswap.Close()
-
-		// Now register handshake with current state head/height (after stack is ready)
-		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
-		headStr := ""
-		if head.Defined() {
-			headStr = head.String()
-		}
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
-			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
-		})
-
-		c, err := mystore.PutRawBlockIndexed(ctx, stack.Datastore, stack.BlockSvc, payload)
+		client, err := newTupleSpaceClient(tshAddr, appId)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("CID:", c.String())
-		fmt.Printf("CID (multihash hex): %s\n", hex.EncodeToString(c.Hash()))
-
-		addrs2 := hostAddrsStrings(h)
-		printBanner(h.ID().String(), addrs2)
-		printDerivedPublicAddrs(addrs2)
-
-		if serve {
-			select {}
+		status, err := client.TsPut(name, val)
+		if err != nil {
+			return err
 		}
+		fmt.Printf("TsPut: Success (Status: %d)\n", status)
 		return nil
+
+		// fs := flag.NewFlagSet("put", flag.ExitOnError)
+		// var listenAddrs stringSlice
+		// var data string
+		// var filePath string
+		// var serve bool
+		// var controlPath string
+		// var daemon bool
+		// var httpDebug string
+		// fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
+		// fs.StringVar(&data, "data", "", "inline data to store as a block")
+		// fs.StringVar(&filePath, "file", "", "path to file to store as a block")
+		// fs.BoolVar(&serve, "serve", false, "keep node running to serve inbound wants")
+		// fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
+		// fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
+		// fs.StringVar(&httpDebug, "http-debug", "", "optional host:port to serve /cid/<cid> debug handler")
+		// _ = fs.Parse(os.Args[2:])
+		// if len(listenAddrs) == 0 {
+		// 	listenAddrs = []string{
+		// 		"/ip4/0.0.0.0/tcp/2893",
+		// 		"/ip4/0.0.0.0/udp/2894/quic-v1",
+		// 	}
+		// }
+
+		// if data == "" && filePath == "" {
+		// 	return fmt.Errorf("put: either --data or --file is required")
+		// }
+		// if data != "" && filePath != "" {
+		// 	return fmt.Errorf("put: specify only one of --data or --file")
+		// }
+
+		// var payload []byte
+		// if filePath != "" {
+		// 	f, err := os.Open(filePath)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	defer f.Close()
+		// 	b, err := io.ReadAll(f)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	payload = b
+		// } else {
+		// 	payload = []byte(data)
+		// }
+
+		// ctx := context.Background()
+
+		// // If --daemon, use running daemon at controlPath
+		// if daemon {
+		// 	if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
+		// 		var info struct {
+		// 			Addr string `json:"addr"`
+		// 		}
+		// 		if json.Unmarshal(b, &info) == nil && info.Addr != "" {
+		// 			// send HTTP request to daemon
+		// 			client := &http.Client{Timeout: 15 * time.Second}
+		// 			var reqBody = struct {
+		// 				Data string `json:"data"`
+		// 			}{Data: string(payload)}
+		// 			buf, _ := json.Marshal(reqBody)
+		// 			resp, err := client.Post("http://"+info.Addr+"/put", "application/json", bytes.NewReader(buf))
+		// 			if err != nil {
+		// 				return err
+		// 			}
+		// 			defer resp.Body.Close()
+		// 			if resp.StatusCode != http.StatusOK {
+		// 				body, _ := io.ReadAll(resp.Body)
+		// 				return fmt.Errorf("daemon put failed: %s", string(body))
+		// 			}
+		// 			var out struct {
+		// 				CID          string `json:"cid"`
+		// 				MultihashHex string `json:"multihash_hex"`
+		// 			}
+		// 			if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		// 				return err
+		// 			}
+		// 			fmt.Println("CID:", out.CID)
+		// 			fmt.Printf("CID (multihash hex): %s\n", out.MultihashHex)
+		// 			return nil
+		// 		}
+		// 	}
+		// }
+		// // Inline mode
+		// h, err := myhost.NewHost(ctx, listenAddrs)
+		// if err != nil {
+		// 	return err
+		// }
+		// defer h.Close()
+
+		// // Install handshake hooks for inline mode.
+		// policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, 10*time.Second)
+
+		// stack, err := mystore.NewStack(ctx, h)
+		// if err != nil {
+		// 	return err
+		// }
+		// defer stack.Bitswap.Close()
+
+		// // Now register handshake with current state head/height (after stack is ready)
+		// head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		// headStr := ""
+		// if head.Defined() {
+		// 	headStr = head.String()
+		// }
+		// myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
+		// _ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
+		// 	_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		// })
+
+		// c, err := mystore.PutRawBlockIndexed(ctx, stack.Datastore, stack.BlockSvc, payload)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// fmt.Println("CID:", c.String())
+		// fmt.Printf("CID (multihash hex): %s\n", hex.EncodeToString(c.Hash()))
+
+		// addrs2 := hostAddrsStrings(h)
+		// printBanner(h.ID().String(), addrs2)
+		// printDerivedPublicAddrs(addrs2)
+
+		// if serve {
+		// 	select {}
+		// }
+		// return nil
 
 	case "connect":
 		fs := flag.NewFlagSet("connect", flag.ExitOnError)
@@ -886,151 +924,176 @@ func Run() error {
 		return nil
 
 	case "get":
-		fs := flag.NewFlagSet("get", flag.ExitOnError)
-		var listenAddrs stringSlice
-		var cidStr string
-		var fromAddr string
-		var fromPeer string
-		var timeoutStr string
-		var controlPath string
-		var daemon bool
-		var outFile string
-		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
-		fs.StringVar(&cidStr, "cid", "", "content ID to fetch")
-		fs.StringVar(&fromAddr, "from-addr", "", "provider multiaddr")
-		fs.StringVar(&fromPeer, "from-peer", "", "provider peer ID")
-		fs.StringVar(&timeoutStr, "timeout", "20s", "fetch timeout (e.g., 20s)")
-		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
-		fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
-		fs.StringVar(&outFile, "out", "", "write fetched bytes to this file (optional)")
+		fs := flag.NewFlagSet("ts-read", flag.ExitOnError)
+		var tshAddr, appId, name string
+		fs.StringVar(&tshAddr, "tsh", "127.0.0.1:2890", "TSH daemon address (host:port)")
+		fs.StringVar(&appId, "app", "defaultApp", "Application ID")
+		fs.StringVar(&name, "name", "", "Tuple name")
 		_ = fs.Parse(os.Args[2:])
-		if len(listenAddrs) == 0 {
-			listenAddrs = []string{
-				"/ip4/0.0.0.0/tcp/2893",
-				"/ip4/0.0.0.0/udp/2894/quic-v1",
-			}
+
+		if name == "" {
+			return fmt.Errorf("ts-read: --name is required")
 		}
-		if cidStr == "" || fromAddr == "" || fromPeer == "" {
-			return fmt.Errorf("get: --cid, --from-addr, and --from-peer are required")
-		}
-		dur, err := time.ParseDuration(timeoutStr)
+
+		client, err := newTupleSpaceClient(tshAddr, appId)
 		if err != nil {
 			return err
 		}
 
-		ctx := context.Background()
-
-		// If --daemon, prefer daemon
-		if daemon {
-			if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
-				var info struct {
-					Addr string `json:"addr"`
-				}
-				if json.Unmarshal(b, &info) == nil && info.Addr != "" {
-					var reqBody = struct {
-						CID     string `json:"cid"`
-						Addr    string `json:"from_addr"`
-						Peer    string `json:"from_peer"`
-						Timeout string `json:"timeout"`
-					}{CID: cidStr, Addr: fromAddr, Peer: fromPeer, Timeout: timeoutStr}
-					buf, _ := json.Marshal(reqBody)
-					resp, err := http.Post("http://"+info.Addr+"/get", "application/json", bytes.NewReader(buf))
-					if err != nil {
-						return err
-					}
-					defer resp.Body.Close()
-					if resp.StatusCode != http.StatusOK {
-						body, _ := io.ReadAll(resp.Body)
-						return fmt.Errorf("daemon get failed: %s", string(body))
-					}
-					var out struct {
-						Bytes   int    `json:"bytes"`
-						DataB64 string `json:"data_b64"`
-					}
-					if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-						return err
-					}
-					decoded, err := base64.StdEncoding.DecodeString(out.DataB64)
-					if err != nil {
-						return err
-					}
-					if outFile != "" {
-						if err := os.WriteFile(outFile, decoded, 0644); err != nil {
-							return err
-						}
-						fmt.Printf("Fetched %d bytes -> %s\n", len(decoded), outFile)
-					} else {
-						fmt.Printf("Fetched %d bytes\n", len(decoded))
-					}
-					return nil
-				}
-			}
-		}
-		h, err := myhost.NewHost(ctx, listenAddrs)
+		val, err := client.TsRead(name)
 		if err != nil {
 			return err
 		}
-		defer h.Close()
-
-		// Install handshake hooks for inline get mode.
-		policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, dur)
-
-		// stack is created below; handshake registration with state must occur after
-
-		maddr, err := multiaddr.NewMultiaddr(fromAddr)
-		if err != nil {
+		if _, err := os.Stdout.Write(val); err != nil {
 			return err
-		}
-		pid, err := peer.Decode(fromPeer)
-		if err != nil {
-			return err
-		}
-		info := peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}}
-
-		staticRouter := &staticContentRouter{provider: info}
-		stack, err := mystore.NewStackWithRouter(ctx, h, staticRouter)
-		if err != nil {
-			return err
-		}
-		defer stack.Bitswap.Close()
-
-		// Now that stack exists, register handshake with current state and install gate
-		head, height, _ := mystore.GetHead(ctx, stack.Datastore)
-		headStr := ""
-		if head.Defined() {
-			headStr = head.String()
-		}
-		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
-			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
-		})
-
-		// Use the minimum of default dial (10s) and fetch timeout to avoid exceeding fetch budget
-		dialDur := minDuration(dur, 10*time.Second)
-		if err := dialWithTimeout(ctx, h, info, dialDur); err != nil {
-			return err
-		}
-
-		c, err := cid.Decode(cidStr)
-		if err != nil {
-			return err
-		}
-
-		fetchCtx, cancel2 := context.WithTimeout(ctx, dur)
-		defer cancel2()
-		b, err := mystore.GetBlockIndexed(fetchCtx, stack.Datastore, stack.BlockSvc, c)
-		if err != nil {
-			return err
-		}
-		if outFile != "" {
-			if err := os.WriteFile(outFile, b, 0644); err != nil {
-				return err
-			}
-			fmt.Printf("Fetched %d bytes -> %s\n", len(b), outFile)
-		} else {
-			fmt.Printf("Fetched %d bytes\n", len(b))
 		}
 		return nil
+
+		// fs := flag.NewFlagSet("get", flag.ExitOnError)
+		// var listenAddrs stringSlice
+		// var cidStr string
+		// var fromAddr string
+		// var fromPeer string
+		// var timeoutStr string
+		// var controlPath string
+		// var daemon bool
+		// var outFile string
+		// fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
+		// fs.StringVar(&cidStr, "cid", "", "content ID to fetch")
+		// fs.StringVar(&fromAddr, "from-addr", "", "provider multiaddr")
+		// fs.StringVar(&fromPeer, "from-peer", "", "provider peer ID")
+		// fs.StringVar(&timeoutStr, "timeout", "20s", "fetch timeout (e.g., 20s)")
+		// fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to daemon control file")
+		// fs.BoolVar(&daemon, "daemon", false, "use a running daemon at --control instead of inline")
+		// fs.StringVar(&outFile, "out", "", "write fetched bytes to this file (optional)")
+		// _ = fs.Parse(os.Args[2:])
+		// if len(listenAddrs) == 0 {
+		// 	listenAddrs = []string{
+		// 		"/ip4/0.0.0.0/tcp/2893",
+		// 		"/ip4/0.0.0.0/udp/2894/quic-v1",
+		// 	}
+		// }
+		// if cidStr == "" || fromAddr == "" || fromPeer == "" {
+		// 	return fmt.Errorf("get: --cid, --from-addr, and --from-peer are required")
+		// }
+		// dur, err := time.ParseDuration(timeoutStr)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// ctx := context.Background()
+
+		// // If --daemon, prefer daemon
+		// if daemon {
+		// 	if b, err := os.ReadFile(controlPath); err == nil && len(b) > 0 {
+		// 		var info struct {
+		// 			Addr string `json:"addr"`
+		// 		}
+		// 		if json.Unmarshal(b, &info) == nil && info.Addr != "" {
+		// 			var reqBody = struct {
+		// 				CID     string `json:"cid"`
+		// 				Addr    string `json:"from_addr"`
+		// 				Peer    string `json:"from_peer"`
+		// 				Timeout string `json:"timeout"`
+		// 			}{CID: cidStr, Addr: fromAddr, Peer: fromPeer, Timeout: timeoutStr}
+		// 			buf, _ := json.Marshal(reqBody)
+		// 			resp, err := http.Post("http://"+info.Addr+"/get", "application/json", bytes.NewReader(buf))
+		// 			if err != nil {
+		// 				return err
+		// 			}
+		// 			defer resp.Body.Close()
+		// 			if resp.StatusCode != http.StatusOK {
+		// 				body, _ := io.ReadAll(resp.Body)
+		// 				return fmt.Errorf("daemon get failed: %s", string(body))
+		// 			}
+		// 			var out struct {
+		// 				Bytes   int    `json:"bytes"`
+		// 				DataB64 string `json:"data_b64"`
+		// 			}
+		// 			if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		// 				return err
+		// 			}
+		// 			decoded, err := base64.StdEncoding.DecodeString(out.DataB64)
+		// 			if err != nil {
+		// 				return err
+		// 			}
+		// 			if outFile != "" {
+		// 				if err := os.WriteFile(outFile, decoded, 0644); err != nil {
+		// 					return err
+		// 				}
+		// 				fmt.Printf("Fetched %d bytes -> %s\n", len(decoded), outFile)
+		// 			} else {
+		// 				fmt.Printf("Fetched %d bytes\n", len(decoded))
+		// 			}
+		// 			return nil
+		// 		}
+		// 	}
+		// }
+		// h, err := myhost.NewHost(ctx, listenAddrs)
+		// if err != nil {
+		// 	return err
+		// }
+		// defer h.Close()
+
+		// // Install handshake hooks for inline get mode.
+		// policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, dur)
+
+		// // stack is created below; handshake registration with state must occur after
+
+		// maddr, err := multiaddr.NewMultiaddr(fromAddr)
+		// if err != nil {
+		// 	return err
+		// }
+		// pid, err := peer.Decode(fromPeer)
+		// if err != nil {
+		// 	return err
+		// }
+		// info := peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}}
+
+		// staticRouter := &staticContentRouter{provider: info}
+		// stack, err := mystore.NewStackWithRouter(ctx, h, staticRouter)
+		// if err != nil {
+		// 	return err
+		// }
+		// defer stack.Bitswap.Close()
+
+		// // Now that stack exists, register handshake with current state and install gate
+		// head, height, _ := mystore.GetHead(ctx, stack.Datastore)
+		// headStr := ""
+		// if head.Defined() {
+		// 	headStr = head.String()
+		// }
+		// myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
+		// _ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
+		// 	_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
+		// })
+
+		// // Use the minimum of default dial (10s) and fetch timeout to avoid exceeding fetch budget
+		// dialDur := minDuration(dur, 10*time.Second)
+		// if err := dialWithTimeout(ctx, h, info, dialDur); err != nil {
+		// 	return err
+		// }
+
+		// c, err := cid.Decode(cidStr)
+		// if err != nil {
+		// 	return err
+		// }
+
+		// fetchCtx, cancel2 := context.WithTimeout(ctx, dur)
+		// defer cancel2()
+		// b, err := mystore.GetBlockIndexed(fetchCtx, stack.Datastore, stack.BlockSvc, c)
+		// if err != nil {
+		// 	return err
+		// }
+		// if outFile != "" {
+		// 	if err := os.WriteFile(outFile, b, 0644); err != nil {
+		// 		return err
+		// 	}
+		// 	fmt.Printf("Fetched %d bytes -> %s\n", len(b), outFile)
+		// } else {
+		// 	fmt.Printf("Fetched %d bytes\n", len(b))
+		// }
+		// return nil
 
 	case "shutdown":
 		fs := flag.NewFlagSet("shutdown", flag.ExitOnError)
@@ -1281,60 +1344,6 @@ func Run() error {
 		fmt.Println("PeerID:", pid.String())
 		return nil
 
-	case "ts-put":
-		fs := flag.NewFlagSet("ts-put", flag.ExitOnError)
-		var tshAddr, appId, name, data, filePath string
-		fs.StringVar(&tshAddr, "tsh", "127.0.0.1:2890", "TSH daemon address (host:port)")
-		fs.StringVar(&appId, "app", "defaultApp", "Application ID")
-		fs.StringVar(&name, "name", "", "Tuple name")
-		fs.StringVar(&data, "data", "", "Tuple value (string)")
-		fs.StringVar(&filePath, "file", "", "Tuple value (file)")
-		_ = fs.Parse(os.Args[2:])
-
-		if name == "" {
-			return fmt.Errorf("ts-put: --name is required")
-		}
-		if data == "" && filePath == "" {
-			return fmt.Errorf("ts-put: either --data or --file is required")
-		}
-		var val []byte
-		if filePath != "" {
-			b, err := os.ReadFile(filePath)
-			if err != nil {
-				return err
-			}
-			val = b
-		} else {
-			val = []byte(data)
-		}
-
-		// determine host IP for callback
-		ipStr := bestPublicIPv4()
-		if ipStr == "" {
-			ipStr = "127.0.0.1"
-		}
-		parsed := net.ParseIP(ipStr)
-		if parsed == nil {
-			return fmt.Errorf("failed to parse host IP: %s", ipStr)
-		}
-		ipv4 := parsed.To4()
-		if ipv4 == nil {
-			return fmt.Errorf("host IP is not IPv4: %s", ipStr)
-		}
-		hostIP := binary.BigEndian.Uint32(ipv4)
-
-		client := &myhost.TupleSpaceClient{
-			TshAddr: tshAddr,
-			HostIP:  hostIP,
-			AppId:   appId,
-		}
-		status, err := client.TsPut(name, val)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("TsPut: Success (Status: %d)\n", status)
-		return nil
-
 	case "ts-get":
 		fs := flag.NewFlagSet("ts-get", flag.ExitOnError)
 		var tshAddr, appId, name string
@@ -1347,25 +1356,11 @@ func Run() error {
 			return fmt.Errorf("ts-get: --name is required")
 		}
 
-		ipStr := bestPublicIPv4()
-		if ipStr == "" {
-			ipStr = "127.0.0.1"
+		client, err := newTupleSpaceClient(tshAddr, appId)
+		if err != nil {
+			return err
 		}
-		parsed := net.ParseIP(ipStr)
-		if parsed == nil {
-			return fmt.Errorf("failed to parse host IP: %s", ipStr)
-		}
-		ipv4 := parsed.To4()
-		if ipv4 == nil {
-			return fmt.Errorf("host IP is not IPv4: %s", ipStr)
-		}
-		hostIP := binary.BigEndian.Uint32(ipv4)
 
-		client := &myhost.TupleSpaceClient{
-			TshAddr: tshAddr,
-			HostIP:  hostIP,
-			AppId:   appId,
-		}
 		val, err := client.TsGet(name)
 		if err != nil {
 			return err
@@ -1387,25 +1382,11 @@ func Run() error {
 			return fmt.Errorf("ts-read: --name is required")
 		}
 
-		ipStr := bestPublicIPv4()
-		if ipStr == "" {
-			ipStr = "127.0.0.1"
+		client, err := newTupleSpaceClient(tshAddr, appId)
+		if err != nil {
+			return err
 		}
-		parsed := net.ParseIP(ipStr)
-		if parsed == nil {
-			return fmt.Errorf("failed to parse host IP: %s", ipStr)
-		}
-		ipv4 := parsed.To4()
-		if ipv4 == nil {
-			return fmt.Errorf("host IP is not IPv4: %s", ipStr)
-		}
-		hostIP := binary.BigEndian.Uint32(ipv4)
 
-		client := &myhost.TupleSpaceClient{
-			TshAddr: tshAddr,
-			HostIP:  hostIP,
-			AppId:   appId,
-		}
 		val, err := client.TsRead(name)
 		if err != nil {
 			return err
@@ -1422,6 +1403,30 @@ func Run() error {
 
 // staticContentRouter implements routing.ContentRouting and always returns
 // the connected provider peer for any queried CID.
+
+func newTupleSpaceClient(tshAddr, appId string) (*myhost.TupleSpaceClient, error) {
+	// determine host IP for callback
+	ipStr := bestPublicIPv4()
+	if ipStr == "" {
+		ipStr = "127.0.0.1"
+	}
+	parsed := net.ParseIP(ipStr)
+	if parsed == nil {
+		return nil, fmt.Errorf("failed to parse host IP: %s", ipStr)
+	}
+	ipv4 := parsed.To4()
+	if ipv4 == nil {
+		return nil, fmt.Errorf("host IP is not IPv4: %s", ipStr)
+	}
+	hostIP := binary.BigEndian.Uint32(ipv4)
+
+	return &myhost.TupleSpaceClient{
+		TshAddr: tshAddr,
+		HostIP:  hostIP,
+		AppId:   appId,
+	}, nil
+}
+
 type staticContentRouter struct {
 	provider peer.AddrInfo
 }
