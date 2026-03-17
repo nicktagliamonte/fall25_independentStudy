@@ -1,9 +1,1 @@
-==========================================
-Network Hops Test (vn-IPFS)
-==========================================
-API: http://127.0.0.1:38521 (PUT on fall25-bootstrap, GET hops via cold lookup)
-Iterations: 1
-Output: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/network_hops/network_hops_results.csv
-
-  Waiting 15s for DHT before first cold lookup...
-Payload size: 1024 bytes
+timeout: failed to run command ‘/home/nicktagliamonte/Desktop/fall25_independentStudy/scripts/tests/swarm_comparison/network_hops_test.sh’: No such file or directory

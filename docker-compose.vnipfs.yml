@@ -53,7 +53,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node3:
     build: .
     container_name: fall25-node3
@@ -77,7 +77,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node4:
     build: .
     container_name: fall25-node4
@@ -101,7 +101,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node5:
     build: .
     container_name: fall25-node5
@@ -125,7 +125,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node6:
     build: .
     container_name: fall25-node6
@@ -149,7 +149,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node7:
     build: .
     container_name: fall25-node7
@@ -173,7 +173,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node8:
     build: .
     container_name: fall25-node8
@@ -197,7 +197,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node9:
     build: .
     container_name: fall25-node9
@@ -221,7 +221,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node10:
     build: .
     container_name: fall25-node10
@@ -245,13 +245,11 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
 networks:
   node-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+    external: true
+    name: fall25_independentstudy_node-network
 volumes:
   bootstrap-data:
   bootstrap-keys:

@@ -32,7 +32,5 @@ services:
 
 networks:
   node-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+    external: true
+    name: fall25_independentstudy_node-network
