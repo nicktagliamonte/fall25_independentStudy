@@ -1,0 +1,9 @@
+system,payload_size,nodes,replicas_target,time_to_R_s,replication_bytes
+our_system,65536,10,2,0,2819626
+swarm,65536,10,2,SKIP,
+our_system,65536,10,2,0,2669213
+swarm,65536,10,2,SKIP,
+our_system,65536,10,2,.55,2829008
+swarm,65536,10,2,SKIP,
+our_system,65536,10,2,0.74,2777916
+swarm,65536,10,2,SKIP,

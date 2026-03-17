@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -69,6 +70,20 @@ type DeleteRequest struct {
 type DeleteResponse struct {
 	CID     string `json:"cid"`
 	Deleted bool   `json:"deleted"`
+}
+
+// simulatedRTTForPeer returns a deterministic RTT for a peer when simulate_distances=1.
+// Uses index within sorted provider list to guarantee at least one Near, Midrange, Farflung.
+// Caller must pass sorted provider IDs and index; returns 10ms/75ms/250ms by round-robin.
+func simulatedRTTByIndex(index int) time.Duration {
+	switch index % 3 {
+	case 0:
+		return 10 * time.Millisecond
+	case 1:
+		return 75 * time.Millisecond
+	default:
+		return 250 * time.Millisecond
+	}
 }
 
 // fetchBlockFromToken fetches block data from token locations in parallel.
@@ -245,9 +260,20 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		providers := make([]string, 0, len(token.Locations))
 		var near, midrange, farflung int
 		thresholds := mystore.DefaultRTTThresholds()
-		for _, loc := range token.Locations {
+		simulateDistances := r.URL.Query().Get("simulate_distances") == "1"
+		locs := token.Locations
+		if simulateDistances {
+			locs = make([]mystore.Location, len(token.Locations))
+			copy(locs, token.Locations)
+			sort.Slice(locs, func(i, j int) bool { return locs[i].ProviderID.String() < locs[j].ProviderID.String() })
+		}
+		for i, loc := range locs {
 			providers = append(providers, loc.ProviderID.String())
-			switch mystore.ClassifyDistanceByRTT(loc.RTT, &thresholds) {
+			rtt := loc.RTT
+			if simulateDistances && rtt == 0 {
+				rtt = simulatedRTTByIndex(i)
+			}
+			switch mystore.ClassifyDistanceByRTT(rtt, &thresholds) {
 			case mystore.DistanceNear:
 				near++
 			case mystore.DistanceMidrange:

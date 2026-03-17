@@ -34,7 +34,7 @@ BATCH_SIZES="1,5,10,20"
 OUTPUT_DIR=""
 TEST_TIMEOUT_SEC=600
 SKIP_CLEANUP=false
-TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,message_count,key_lookup,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
+TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -97,7 +97,7 @@ TESTS="${TESTS// /}"
 # Handle --tests list
 if [[ "$TESTS" == "list" ]]; then
   echo "Available tests (use --tests <name> or --tests <name1,name2,...>):"
-  echo "  upload, download_cold, download_warm, message_count, key_lookup, lookup_complexity,"
+  echo "  upload, download_cold, download_warm, lookup_complexity,"
   echo "  replication, replication_distribution, repair_time, network_hops, routing_overhead,"
   echo "  storage_efficiency, concurrent"
   echo ""
@@ -121,10 +121,12 @@ should_run_test() {
   return 1
 }
 
-# Create output directory
+# Create output directory (resolve relative paths to ROOT_DIR)
 if [[ -z "$OUTPUT_DIR" ]]; then
   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
   OUTPUT_DIR="$ROOT_DIR/test_results_$TIMESTAMP"
+elif [[ "$OUTPUT_DIR" != /* ]]; then
+  OUTPUT_DIR="${ROOT_DIR}/${OUTPUT_DIR#./}"
 fi
 
 mkdir -p "$OUTPUT_DIR"
@@ -290,26 +292,6 @@ run_upload_test() {
   fi
 }
 
-# Function to run message count test
-run_message_count_test() {
-  local node_count="$1"
-  local output_file="$OUTPUT_DIR/message_counts_n${node_count}.csv"
-  
-  echo -e "  Running message count test (N=$node_count)..."
-  
-  "$ROOT_DIR/scripts/tests/swarm_comparison/message_count_test.sh" \
-    --output "$output_file" \
-    2>&1 | tee "$OUTPUT_DIR/message_count_n${node_count}.log" || true
-  
-  if [[ -f "$output_file" ]]; then
-    echo -e "  ${GREEN}✓ Message count test complete: $output_file${NC}"
-    return 0
-  else
-    echo -e "  ${YELLOW}Message count test produced no output${NC}"
-    return 0
-  fi
-}
-
 # Function to run network hops test
 run_network_hops_test() {
   local output_file="$OUTPUT_DIR/network_hops_results.csv"
@@ -376,20 +358,6 @@ run_lookup_complexity_test() {
     2>&1 | tee -a "$OUTPUT_DIR/lookup_complexity.log" | sed 's/^/  /' || true
   if [[ -f "$output_file" ]]; then
     echo -e "  ${GREEN}✓ Lookup complexity: $output_file${NC}"
-  fi
-}
-
-# Function to run key lookup vs CID retrieval test (store X, fetch X; key vs cid)
-run_key_lookup_vs_cid_test() {
-  local node_count="$1"
-  local output_file="$OUTPUT_DIR/key_lookup_vs_cid_n${node_count}.csv"
-  echo -e "\n${GREEN}Running key lookup vs CID retrieval test (N=$node_count)...${NC}"
-  run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/key_lookup_vs_cid_test.sh" \
-    --iterations "$ITERATIONS" \
-    --output "$output_file" \
-    2>&1 | tee "$OUTPUT_DIR/key_lookup_vs_cid_n${node_count}.log" | sed 's/^/  /' || true
-  if [[ -f "$output_file" ]]; then
-    echo -e "  ${GREEN}✓ Key lookup vs CID test complete: $output_file${NC}"
   fi
 }
 
@@ -494,21 +462,6 @@ run_download_test() {
   fi
 }
 
-# Function to aggregate message count results (merge per-node CSVs into one)
-aggregate_message_counts() {
-  local msg_agg="$OUTPUT_DIR/message_counts.csv"
-  echo "system,operation,message_count,node_count" > "$msg_agg"
-  for node_count in "${NODE_COUNTS[@]}"; do
-    local f="$OUTPUT_DIR/message_counts_n${node_count}.csv"
-    if [[ -f "$f" ]]; then
-      tail -n +2 "$f" | while IFS=',' read -r system operation count; do
-        [[ -n "$system" && -n "$operation" ]] && echo "$system,$operation,$count,$node_count"
-      done >> "$msg_agg"
-    fi
-  done
-  [[ -s "$msg_agg" ]] && echo "  Aggregated message counts: $msg_agg"
-}
-
 # Function to aggregate results
 aggregate_results() {
   echo -e "\n${BLUE}Aggregating results...${NC}"
@@ -530,34 +483,21 @@ aggregate_results() {
   
   # Aggregate download results (cold and warm)
   local download_agg="$OUTPUT_DIR/download_aggregated.csv"
-  echo "system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms" > "$download_agg"
+  echo "system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type" > "$download_agg"
   
   for node_count in "${NODE_COUNTS[@]}"; do
     for cache_mode in cold warm; do
       local download_file="$OUTPUT_DIR/download_n${node_count}_${cache_mode}.csv"
       if [[ -f "$download_file" ]]; then
-        tail -n +2 "$download_file" | while IFS=',' read -r system payload_size iteration cache_mode_val ttfb_ms total_ms; do
+        tail -n +2 "$download_file" | while IFS=',' read -r system payload_size iteration cache_mode_val ttfb_ms total_ms lookup_type; do
           if [[ "$ttfb_ms" != "ERROR" && "$total_ms" != "ERROR" ]]; then
-            echo "$system,$node_count,$payload_size,$iteration,$cache_mode_val,$ttfb_ms,$total_ms"
+            echo "$system,$node_count,$payload_size,$iteration,$cache_mode_val,$ttfb_ms,$total_ms,${lookup_type:-}"
           fi
         done >> "$download_agg"
       fi
     done
   done
   
-  # Aggregate key lookup vs CID results
-  local kl_agg="$OUTPUT_DIR/key_lookup_vs_cid_aggregated.csv"
-  echo "system,node_count,operation,latency_ms,hops,lookup_type" > "$kl_agg"
-  for node_count in "${NODE_COUNTS[@]}"; do
-    local f="$OUTPUT_DIR/key_lookup_vs_cid_n${node_count}.csv"
-    if [[ -f "$f" ]]; then
-      tail -n +2 "$f" | while IFS=',' read -r system operation latency_ms hops lookup_type; do
-        [[ -n "$system" && -n "$operation" ]] && echo "$system,$node_count,$operation,$latency_ms,$hops,$lookup_type"
-      done >> "$kl_agg"
-    fi
-  done
-  [[ -s "$kl_agg" ]] && echo "  Aggregated key lookup vs CID: $kl_agg"
-
   echo "  Aggregated upload results: $upload_agg"
   echo "  Aggregated download results: $download_agg"
   if [[ -f "$OUTPUT_DIR/replication_results.csv" ]]; then
@@ -569,7 +509,6 @@ aggregate_results() {
   if [[ -f "$OUTPUT_DIR/repair_time_results.csv" ]]; then
     echo "  Repair time results: $OUTPUT_DIR/repair_time_results.csv"
   fi
-  aggregate_message_counts
 }
 
 # Function to generate summary report
@@ -652,17 +591,6 @@ generate_summary_report() {
       done
     fi
 
-    # Message count test summary
-    if [[ -f "$OUTPUT_DIR/message_counts.csv" ]]; then
-      echo ""
-      echo "Message Count Test Results:"
-      echo "----------------------------"
-      echo "  Results file: message_counts.csv"
-      tail -n +2 "$OUTPUT_DIR/message_counts.csv" | while IFS=',' read -r system op count nodes; do
-        echo "    $system $op: $count messages (N=$nodes)"
-      done
-    fi
-    
     echo ""
     echo "=========================================="
     echo "All results saved to: $OUTPUT_DIR"
@@ -700,6 +628,12 @@ for node_count in "${NODE_COUNTS[@]}"; do
   ensure_clean_state
 
   # Step 1: Start networks sequentially (reduces memory/CPU contention during startup)
+  # When only running lookup_complexity, skip Swarm to reduce resource contention for cold lookup
+  SKIP_SWARM=false
+  if [[ "$TESTS" == "lookup_complexity" ]]; then
+    SKIP_SWARM=true
+  fi
+
   echo -e "\n${BLUE}Step 1: Starting vn-IPFS...${NC}"
   if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
     echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
@@ -707,11 +641,15 @@ for node_count in "${NODE_COUNTS[@]}"; do
     echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
   fi
 
-  echo -e "\n${BLUE}Step 1b: Starting Swarm...${NC}"
-  if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
-    echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+  if [[ "$SKIP_SWARM" != "true" ]]; then
+    echo -e "\n${BLUE}Step 1b: Starting Swarm...${NC}"
+    if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
+      echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+    else
+      echo "1" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+    fi
   else
-    echo "1" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+    echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
   fi
 
   VNIPFS_OK=$(cat "$OUTPUT_DIR/.vnipfs_${node_count}.ok" 2>/dev/null || echo "1")
@@ -729,12 +667,12 @@ for node_count in "${NODE_COUNTS[@]}"; do
     continue
   fi
 
-  echo -e "  ${GREEN}Both networks started (sequential)${NC}"
+  [[ "$SKIP_SWARM" == "true" ]] && echo -e "  ${GREEN}vn-IPFS started (Swarm skipped for lookup_complexity-only run)${NC}" || echo -e "  ${GREEN}Both networks started (sequential)${NC}"
 
-  # Step 2: Wait for both to be healthy
+  # Step 2: Wait for both to be healthy (skip swarm wait when Swarm was not started)
   echo -e "\n${BLUE}Step 2: Waiting for both systems to be healthy...${NC}"
   wait_for_stabilization "our_system" "$node_count"
-  wait_for_stabilization "swarm" "$node_count"
+  [[ "$SKIP_SWARM" != "true" ]] && wait_for_stabilization "swarm" "$node_count"
 
   # C.2 verification: PUT on node A, /replication/status returns replica_count>=1 within 5s
   # Use 45s cap. Pass compose file for consistency.
@@ -778,18 +716,10 @@ for node_count in "${NODE_COUNTS[@]}"; do
     run_download_test "$node_count" "warm" || echo -e "${YELLOW}Download test (warm) had errors, continuing...${NC}"
   fi
 
-  if should_run_test "message_count"; then
-    echo -e "\n${BLUE}Step 5: Running message count test...${NC}"
-    run_message_count_test "$node_count" || echo -e "${YELLOW}Message count test had errors, continuing...${NC}"
-  fi
-
-  if should_run_test "key_lookup"; then
-    echo -e "\n${BLUE}Step 5b: Running key lookup vs CID retrieval test...${NC}"
-    run_key_lookup_vs_cid_test "$node_count" || echo -e "${YELLOW}Key lookup vs CID test had errors, continuing...${NC}"
-  fi
-
   if should_run_test "lookup_complexity"; then
     echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
+    echo -e "  ${CYAN}Waiting 20s for DHT to stabilize before cold lookup...${NC}"
+    sleep 20
     run_lookup_complexity_test "$node_count" || echo -e "${YELLOW}Lookup complexity test had errors, continuing...${NC}"
   fi
 
@@ -857,15 +787,13 @@ echo "  - upload_n<N>_batch<B>.csv: Upload latency results (N nodes, batch size 
 echo "  - upload_network_bytes.csv: Network bytes transferred during upload (system,payload_size,batch_size,bytes_transferred)"
 echo "  - download_n<N>_cold.csv, download_n<N>_warm.csv: Download latency results (cold/warm cache)"
 echo "  - upload_aggregated.csv: All upload results combined"
-echo "  - download_aggregated.csv: All download results combined"
-echo "  - message_counts.csv: P2P message counts per operation (when available)"
+echo "  - download_aggregated.csv: system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type"
 echo "  - network_hops_results.csv: DHT lookup hops per operation (when available)"
 echo "  - storage_efficiency_results.csv: disk_bytes, efficiency_ratio per system (when available)"
 echo "  - replication_results.csv: system,payload_size,nodes,replicas_target,time_to_R_s[,replication_bytes] (when available)"
 echo "  - replication_distribution.csv: system,node_count,near,midrange,farflung (N/M/F vs Swarm N/A)"
 echo "  - repair_time_results.csv: system,node_count,repair_time_s (when available)"
 echo "  - concurrent_results.csv: system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms (when available)"
-echo "  - key_lookup_vs_cid_n<N>.csv, key_lookup_vs_cid_aggregated.csv: system,operation,latency_ms,hops,lookup_type (key|cid)"
 echo "  - lookup_latency_n<N>.csv: isolated lookup latency (token vs TTFB proxy)"
 echo "  - lookup_complexity_results.csv: system,node_count,operation,hops (O(log N) regression)"
 echo "  - routing_overhead_results.csv: system,operation,message_count,overhead_type (token vs provider announce)"

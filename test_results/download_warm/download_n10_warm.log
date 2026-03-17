@@ -1,0 +1,208 @@
+Detected control API: http://127.0.0.1:40445 (container: fall25-bootstrap)
+==========================================
+Download Latency Test
+==========================================
+Our System API: http://127.0.0.1:40445 (container: fall25-bootstrap)
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 1
+Cache mode: warm
+Output file: ./test_results_download_warm/download_n10_warm.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+Getting provider info for our system...
+  Peer ID: 12D3KooWBXeSxnQuZEyPNqp85FRoCc4UsCmxBq2p9MfD4kEQHW7o
+  Address: /ip4/172.20.0.10/tcp/4001
+
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to both systems...[0m
+    Uploading to our system...
+    Uploaded key: 41ef0d7e84199f27...
+    Uploading to Swarm...
+    Uploaded hash: e045850917ed5bdc0fb28f20941760594995ed01161fc4398d99ddc004f858f5
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 1.74 ms, Total: 1.79 ms hops=0
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/1... TTFB: 0.75 ms, Total: 0.81 ms
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    1.74 ms
+      Max:    1.74 ms
+      Avg:    1.74 ms
+      P50:    1.74 ms
+      P90:    1.74 ms
+      P99:    1.74 ms
+    [0;32mOur System (Total):[0m
+      Min:    1.79 ms
+      Max:    1.79 ms
+      Avg:    1.79 ms
+      P50:    1.79 ms
+      P90:    1.79 ms
+      P99:    1.79 ms
+    [0;32mSwarm (TTFB):[0m
+      Min:    0.75 ms
+      Max:    0.75 ms
+      Avg:    0.75 ms
+      P50:    0.75 ms
+      P90:    0.75 ms
+      P99:    0.75 ms
+    [0;32mSwarm (Total):[0m
+      Min:    0.81 ms
+      Max:    0.81 ms
+      Avg:    0.80 ms
+      P50:    0.81 ms
+      P90:    0.81 ms
+      P99:    0.81 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to both systems...[0m
+    Uploading to our system...
+    Uploaded key: 9567494eab14e73f...
+    Uploading to Swarm...
+    Uploaded hash: 99345f9631f25e823ba0045867dfb416a54375bf4a20af92a4b2fd7dfc75d9a1
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 1.28 ms, Total: 1.31 ms hops=0
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/1... TTFB: 2.47 ms, Total: 2.61 ms
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    1.28 ms
+      Max:    1.28 ms
+      Avg:    1.28 ms
+      P50:    1.28 ms
+      P90:    1.28 ms
+      P99:    1.28 ms
+    [0;32mOur System (Total):[0m
+      Min:    1.31 ms
+      Max:    1.31 ms
+      Avg:    1.30 ms
+      P50:    1.31 ms
+      P90:    1.31 ms
+      P99:    1.31 ms
+    [0;32mSwarm (TTFB):[0m
+      Min:    2.47 ms
+      Max:    2.47 ms
+      Avg:    2.46 ms
+      P50:    2.47 ms
+      P90:    2.47 ms
+      P99:    2.47 ms
+    [0;32mSwarm (Total):[0m
+      Min:    2.61 ms
+      Max:    2.61 ms
+      Avg:    2.61 ms
+      P50:    2.61 ms
+      P90:    2.61 ms
+      P99:    2.61 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to both systems...[0m
+    Uploading to our system...
+    Uploaded key: 5862344d96a27774...
+    Uploading to Swarm...
+    Uploaded hash: 6ce2feb0b3494db84273f7341dc232c82b48cea96fbd1bc45af25702c465646c
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 5.32 ms, Total: 6.10 ms hops=0
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/1... TTFB: 3.45 ms, Total: 3.95 ms
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    5.32 ms
+      Max:    5.32 ms
+      Avg:    5.32 ms
+      P50:    5.32 ms
+      P90:    5.32 ms
+      P99:    5.32 ms
+    [0;32mOur System (Total):[0m
+      Min:    6.10 ms
+      Max:    6.10 ms
+      Avg:    6.09 ms
+      P50:    6.10 ms
+      P90:    6.10 ms
+      P99:    6.10 ms
+    [0;32mSwarm (TTFB):[0m
+      Min:    3.45 ms
+      Max:    3.45 ms
+      Avg:    3.45 ms
+      P50:    3.45 ms
+      P90:    3.45 ms
+      P99:    3.45 ms
+    [0;32mSwarm (Total):[0m
+      Min:    3.95 ms
+      Max:    3.95 ms
+      Avg:    3.95 ms
+      P50:    3.95 ms
+      P90:    3.95 ms
+      P99:    3.95 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to both systems...[0m
+    Uploading to our system...
+    Uploaded key: 4747c568524bdfa4...
+    Uploading to Swarm...
+    Uploaded hash: fcef3b2bc20c018a5f6594378782d7b9e90dce944d01954f88c8f0e25b2cf84e
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 4.35 ms, Total: 5.51 ms hops=0
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/1... TTFB: 1.11 ms, Total: 3.11 ms
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    4.35 ms
+      Max:    4.35 ms
+      Avg:    4.35 ms
+      P50:    4.35 ms
+      P90:    4.35 ms
+      P99:    4.35 ms
+    [0;32mOur System (Total):[0m
+      Min:    5.51 ms
+      Max:    5.51 ms
+      Avg:    5.50 ms
+      P50:    5.51 ms
+      P90:    5.51 ms
+      P99:    5.51 ms
+    [0;32mSwarm (TTFB):[0m
+      Min:    1.11 ms
+      Max:    1.11 ms
+      Avg:    1.10 ms
+      P50:    1.11 ms
+      P90:    1.11 ms
+      P99:    1.11 ms
+    [0;32mSwarm (Total):[0m
+      Min:    3.11 ms
+      Max:    3.11 ms
+      Avg:    3.11 ms
+      P50:    3.11 ms
+      P90:    3.11 ms
+      P99:    3.11 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: ./test_results_download_warm/download_n10_warm.csv
+
+To view results:
+  cat ./test_results_download_warm/download_n10_warm.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('./test_results_download_warm/download_n10_warm.csv'); print(df.groupby(['system', 'payload_size'])[['ttfb_ms', 'total_ms']].describe())"

@@ -142,11 +142,13 @@ bytes_before=0
 [[ "$RECORD_OVERHEAD" == "true" ]] && bytes_before=$(get_network_bytes_for_pattern '^fall25-|^bootstrap$|^node[0-9]+$' 2>/dev/null || echo "0")
 
 # --- Our system ---
+# Timer starts at PUT so we measure actual replication time (not time from first poll)
 echo -e "${GREEN}Our system: put and poll /replication/status until R >= $REPLICAS_TARGET${NC}"
 data_b64=$(base64 -w 0 < "$TEMP_DIR/payload.bin" 2>/dev/null || base64 < "$TEMP_DIR/payload.bin" | tr -d '\n')
 payload_file="$TEMP_DIR/put_req.json"
 echo "{\"data\":\"$data_b64\"}" > "$payload_file"
 docker cp "$payload_file" "${OUR_CONTAINER}:/tmp/put_req_rep_$$.json" >/dev/null 2>&1
+start=$(date +%s.%N 2>/dev/null || date +%s)
 resp=$(docker exec "$OUR_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
   -d @/tmp/put_req_rep_$$.json "http://$OUR_API_ADDR/put" 2>/dev/null || echo "{}")
 docker exec "$OUR_CONTAINER" rm -f /tmp/put_req_rep_$$.json >/dev/null 2>&1 || true
@@ -184,16 +186,18 @@ else
     docker exec "$WORKER_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
       -d @/tmp/get_rep_$$.json "$WORKER_API/get" >/dev/null 2>&1 || true
     docker exec "$WORKER_CONTAINER" rm -f /tmp/get_rep_$$.json 2>/dev/null || true
-    sleep 2
   else
     echo "  No worker node found for GET-triggered repair; polling bootstrap token only"
   fi
-  start=$(date +%s)
   time_to_r=""
+  fast_poll=0.25
   while true; do
-    now=$(date +%s)
-    elapsed=$((now - start))
-    if [[ $elapsed -ge $TIMEOUT_S ]]; then
+    now=$(date +%s.%N 2>/dev/null || date +%s)
+    elapsed=$(awk "BEGIN {printf \"%.2f\", $now - $start}" 2>/dev/null || echo "$(( $(date +%s) - ${start%%.*} ))")
+    [[ "$elapsed" == .* ]] && elapsed="0$elapsed"
+    elapsed_int=${elapsed%%.*}
+    [[ -z "$elapsed_int" ]] && elapsed_int=0
+    if [[ "$elapsed_int" -ge "$TIMEOUT_S" ]]; then
       echo -e "  ${YELLOW}Timeout after ${TIMEOUT_S}s (last count: ${count:-0})${NC}"
       time_to_r="TIMEOUT"
       break
@@ -207,7 +211,11 @@ else
       break
     fi
     echo ""
-    sleep "$POLL_INTERVAL_S"
+    if [[ "${elapsed_int:-0}" -lt 15 ]]; then
+      sleep "$fast_poll"
+    else
+      sleep "$POLL_INTERVAL_S"
+    fi
   done
   overhead=""
   if [[ "$RECORD_OVERHEAD" == "true" ]]; then

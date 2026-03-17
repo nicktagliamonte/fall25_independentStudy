@@ -1,0 +1,2226 @@
+Starting 10 vn-IPFS Docker nodes...
+Building Docker image...
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.5s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 258.39kB 0.0s done
+#7 DONE 0.0s
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#11 DONE 0.3s
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 9.8s
+
+#13 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#13 CACHED
+
+#14 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#14 CACHED
+
+#15 [stage-1 3/5] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 writing image sha256:8c3a8f92f4365cfa6a0ab31e64e73b6bd86a103eb863ada92587100a033026cc done
+#17 naming to docker.io/library/fall25_independentstudy-bootstrap done
+#17 DONE 0.0s
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.1s
+#3 DONE 0.1s
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#3 DONE 0.2s
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#3 DONE 0.1s
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 147.62kB 0.1s done
+#7 DONE 0.1s
+
+#7 [internal] load build context
+#7 transferring context: 263.81kB 0.0s done
+
+#7 [internal] load build context
+#7 transferring context: 263.81kB 0.1s done
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 263.81kB 0.1s done
+
+#7 [internal] load build context
+#7 transferring context: 263.81kB 0.0s done
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 263.81kB 0.0s done
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 263.81kB 0.0s done
+#7 transferring context: 263.81kB 0.0s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 transferring context: 263.81kB 0.0s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 2/6] WORKDIR /build
+#9 CACHED
+
+#10 [builder 3/6] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [builder 4/6] RUN go mod download
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#11 DONE 0.3s
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.8s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.8s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 0.8s
+#9 DONE 0.8s
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.8s
+#9 DONE 0.8s
+
+#9 DONE 0.8s
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.8s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 14.6s
+#10 DONE 14.1s
+#10 DONE 14.1s
+#13 DONE 14.1s
+#10 DONE 14.1s
+#10 DONE 14.1s
+#10 DONE 14.1s
+
+#13 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#13 CACHED
+
+#14 [stage-1 3/5] WORKDIR /app
+#14 CACHED
+
+#15 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#15 CACHED
+
+#16 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 writing image sha256:89b4c48a705eab9dc7036b383b454d557e415fa1f158a47e4371db0701b699f3 done
+#17 naming to docker.io/library/fall25_independentstudy-node3 done
+#17 DONE 0.0s
+#10 DONE 14.1s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:b97239545afe78858ccd21eea74e72606d2994c8a3a22ff88cb7bbcb4f66e1ed done
+#12 naming to docker.io/library/fall25_independentstudy-node9 done
+#12 DONE 0.0s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:881068e1c4c89c5b86c14c7e79be7506f449f8e482a612df736abd98eee99fa0 done
+#12 naming to docker.io/library/fall25_independentstudy-node5 done
+#12 DONE 0.0s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:dc9b69f78b1b02a1437070c88d578feb467d94c7aeff065c099fdd54b6a623da done
+#12 naming to docker.io/library/fall25_independentstudy-node2 done
+#12 DONE 0.0s
+#10 DONE 14.1s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:29b3469c10d52cb4a2f7a7349179a6eec78aa4d293cac4b4708704f942418487 done
+#12 naming to docker.io/library/fall25_independentstudy-node8 done
+#12 DONE 0.0s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:667fa5d8083cebdedfd8d7a450727d7e8a5ca341338af457a69ed21295fee990 done
+#12 naming to docker.io/library/fall25_independentstudy-node7 done
+#12 DONE 0.0s
+
+#11 [stage-1 3/5] WORKDIR /app
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#12 CACHED
+
+#13 [builder 2/6] WORKDIR /build
+#13 CACHED
+
+#14 [builder 3/6] COPY go.mod go.sum ./
+#14 CACHED
+
+#15 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#15 CACHED
+
+#16 [builder 4/6] RUN go mod download
+#16 CACHED
+
+#17 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#17 CACHED
+
+#18 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#18 CACHED
+
+#19 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#19 CACHED
+
+#20 exporting to image
+#20 exporting layers done
+#20 writing image sha256:73e8dece77cefdaa537e1685e795ec6141ee3f9ae98162721c3232a286b234af done
+#20 naming to docker.io/library/fall25_independentstudy-node10 done
+#20 DONE 0.0s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:7a0b675b34eda5bed901e1bca72b7d8fb5c1f2fc91532de70218bfc3731a0e9f done
+#12 naming to docker.io/library/fall25_independentstudy-node6 done
+#12 DONE 0.0s
+
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 writing image sha256:3bd122ecd6e7d4c8efbaacce6971e0ee0a4f7985b8fac3b51c4e41b7f1a4a9a6 done
+#15 naming to docker.io/library/fall25_independentstudy-node4 done
+#15 DONE 0.0s
+Starting bootstrap node...
+time="2026-03-15T16:39:58-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Creating
+ Container fall25-bootstrap  Created
+ Container fall25-bootstrap  Starting
+ Container fall25-bootstrap  Started
+Waiting for bootstrap (health check)...
+Bootstrap ready (1s)
+Starting peer nodes 2..10...
+time="2026-03-15T16:40:01-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node2  Creating
+ Container fall25-node2  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node2  Starting
+ Container fall25-node2  Started
+time="2026-03-15T16:40:04-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node3  Creating
+ Container fall25-node3  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node3  Starting
+ Container fall25-node3  Started
+time="2026-03-15T16:40:05-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node4  Creating
+ Container fall25-node4  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node4  Starting
+ Container fall25-node4  Started
+time="2026-03-15T16:40:06-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node5  Creating
+ Container fall25-node5  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node5  Starting
+ Container fall25-node5  Started
+time="2026-03-15T16:40:07-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node6  Creating
+ Container fall25-node6  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node6  Starting
+ Container fall25-node6  Started
+time="2026-03-15T16:40:07-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node7  Creating
+ Container fall25-node7  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node7  Starting
+ Container fall25-node7  Started
+time="2026-03-15T16:40:08-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node8  Creating
+ Container fall25-node8  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node8  Starting
+ Container fall25-node8  Started
+time="2026-03-15T16:40:09-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node9  Creating
+ Container fall25-node9  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node9  Starting
+ Container fall25-node9  Started
+time="2026-03-15T16:40:10-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node10  Creating
+ Container fall25-node10  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node10  Starting
+ Container fall25-node10  Started
+Waiting for nodes to connect...
+
+vn-IPFS: 10 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f
+Starting 10 vn-IPFS Docker nodes...
+Building Docker image...
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 227.89kB 0.0s done
+#7 DONE 0.0s
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#11 DONE 0.3s
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 12.4s
+
+#13 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#13 CACHED
+
+#14 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#14 CACHED
+
+#15 [stage-1 3/5] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 writing image sha256:8c3a8f92f4365cfa6a0ab31e64e73b6bd86a103eb863ada92587100a033026cc done
+#17 naming to docker.io/library/fall25_independentstudy-bootstrap done
+#17 DONE 0.0s
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 [internal] load build definition from Dockerfile
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 transferring dockerfile: 718B done
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#3 DONE 0.1s
+#1 DONE 0.0s
+
+#3 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 [internal] load build definition from Dockerfile
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#1 transferring dockerfile: 718B done
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#2 DONE 0.0s
+
+#1 transferring dockerfile: 718B done
+#2 DONE 0.0s
+
+#1 DONE 0.0s
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 DONE 0.0s
+#3 DONE 0.1s
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 DONE 0.0s
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#2 [internal] load metadata for docker.io/library/alpine:latest
+
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+#2 DONE 0.0s
+
+
+#3 DONE 0.1s
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+
+#7 [internal] load build context
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+
+#7 [internal] load build context
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+
+#7 [internal] load build context
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+
+#7 [internal] load build context
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 180.50kB 0.1s done
+#7 transferring context: 234.40kB 0.0s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 2/6] WORKDIR /build
+#9 CACHED
+
+#10 [builder 3/6] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [builder 4/6] RUN go mod download
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#9 [builder 5/6] COPY . .
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 transferring context: 234.40kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#9 DONE 3.7s
+#12 DONE 3.7s
+#9 DONE 3.7s
+#9 DONE 3.7s
+#9 DONE 3.7s
+#9 DONE 3.7s
+#9 DONE 3.7s
+#9 DONE 3.7s
+#11 DONE 3.7s
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#13 DONE 17.3s
+
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#10 DONE 17.3s
+#10 DONE 17.3s
+#14 CACHED
+
+
+#15 exporting to image
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#10 DONE 17.3s
+#15 exporting layers done
+#15 writing image sha256:881068e1c4c89c5b86c14c7e79be7506f449f8e482a612df736abd98eee99fa0 done
+#11 CACHED
+#15 naming to docker.io/library/fall25_independentstudy-node5 done
+
+
+#12 exporting to image
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+#10 DONE 17.3s
+#15 DONE 0.0s
+#10 DONE 17.3s
+
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#10 DONE 17.3s
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+
+#11 CACHED
+#12 exporting to image
+
+#12 exporting to image
+#11 CACHED
+#10 DONE 17.3s
+#12 exporting layers done
+#12 writing image sha256:89b4c48a705eab9dc7036b383b454d557e415fa1f158a47e4371db0701b699f3 done
+#12 naming to docker.io/library/fall25_independentstudy-node3 done
+#12 DONE 0.0s
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting layers done
+#12 writing image sha256:dc9b69f78b1b02a1437070c88d578feb467d94c7aeff065c099fdd54b6a623da done
+#12 naming to docker.io/library/fall25_independentstudy-node2 done
+#12 writing image sha256:73e8dece77cefdaa537e1685e795ec6141ee3f9ae98162721c3232a286b234af done
+#12 naming to docker.io/library/fall25_independentstudy-node10 done
+#12 DONE 0.0s
+#12 DONE 0.0s
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting to image
+#12 writing image sha256:667fa5d8083cebdedfd8d7a450727d7e8a5ca341338af457a69ed21295fee990 done
+#12 naming to docker.io/library/fall25_independentstudy-node7 done
+#12 exporting layers done
+#12 DONE 0.0s
+
+#12 exporting layers done
+#12 writing image sha256:29b3469c10d52cb4a2f7a7349179a6eec78aa4d293cac4b4708704f942418487 done
+#12 writing image sha256:b97239545afe78858ccd21eea74e72606d2994c8a3a22ff88cb7bbcb4f66e1ed done
+#12 naming to docker.io/library/fall25_independentstudy-node8 done
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#12 DONE 0.0s
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:3bd122ecd6e7d4c8efbaacce6971e0ee0a4f7985b8fac3b51c4e41b7f1a4a9a6 done
+#12 naming to docker.io/library/fall25_independentstudy-node4 done
+#12 DONE 0.0s
+#12 naming to docker.io/library/fall25_independentstudy-node9 done
+#12 DONE 0.0s
+#12 DONE 17.3s
+
+#13 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#13 CACHED
+
+#14 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#14 CACHED
+
+#15 [stage-1 3/5] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 writing image sha256:7a0b675b34eda5bed901e1bca72b7d8fb5c1f2fc91532de70218bfc3731a0e9f done
+#17 naming to docker.io/library/fall25_independentstudy-node6 done
+#17 DONE 0.0s
+Starting bootstrap node...
+time="2026-03-15T16:43:56-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Creating
+ Container fall25-bootstrap  Created
+ Container fall25-bootstrap  Starting
+ Container fall25-bootstrap  Started
+Waiting for bootstrap (health check)...
+Bootstrap ready (1s)
+Starting peer nodes 2..10...
+time="2026-03-15T16:43:59-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node2  Creating
+ Container fall25-node2  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node2  Starting
+ Container fall25-node2  Started
+time="2026-03-15T16:44:02-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node3  Creating
+ Container fall25-node3  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node3  Starting
+ Container fall25-node3  Started
+time="2026-03-15T16:44:03-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node4  Creating
+ Container fall25-node4  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node4  Starting
+ Container fall25-node4  Started
+time="2026-03-15T16:44:04-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node5  Creating
+ Container fall25-node5  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node5  Starting
+ Container fall25-node5  Started
+time="2026-03-15T16:44:05-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node6  Creating
+ Container fall25-node6  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node6  Starting
+ Container fall25-node6  Started
+time="2026-03-15T16:44:05-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node7  Creating
+ Container fall25-node7  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node7  Starting
+ Container fall25-node7  Started
+time="2026-03-15T16:44:06-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node8  Creating
+ Container fall25-node8  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node8  Starting
+ Container fall25-node8  Started
+time="2026-03-15T16:44:07-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node9  Creating
+ Container fall25-node9  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node9  Starting
+ Container fall25-node9  Started
+time="2026-03-15T16:44:08-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node10  Creating
+ Container fall25-node10  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node10  Starting
+ Container fall25-node10  Started
+Waiting for nodes to connect...
+
+vn-IPFS: 10 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f
+Starting 10 vn-IPFS Docker nodes...
+Building Docker image...
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 284.25kB 0.0s done
+#7 DONE 0.0s
+
+#8 [builder 3/6] COPY go.mod go.sum ./
+#8 CACHED
+
+#9 [builder 2/6] WORKDIR /build
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#11 DONE 0.5s
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 10.0s
+
+#13 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#13 CACHED
+
+#14 [stage-1 3/5] WORKDIR /app
+#14 CACHED
+
+#15 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#15 CACHED
+
+#16 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 writing image sha256:8c3a8f92f4365cfa6a0ab31e64e73b6bd86a103eb863ada92587100a033026cc done
+#17 naming to docker.io/library/fall25_independentstudy-bootstrap done
+#17 DONE 0.0s
+#1 [internal] load build definition from Dockerfile
+#1 [internal] load build definition from Dockerfile
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 transferring dockerfile: 718B done
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+#1 [internal] load build definition from Dockerfile
+
+#1 DONE 0.0s
+#1 DONE 0.0s
+#1 transferring dockerfile: 718B done
+
+#1 [internal] load build definition from Dockerfile
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 [internal] load build definition from Dockerfile
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+#1 DONE 0.0s
+#1 transferring dockerfile: 718B done
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 DONE 0.0s
+
+#1 DONE 0.0s
+#2 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 transferring dockerfile: 718B done
+#3 DONE 0.1s
+#1 DONE 0.0s
+
+#3 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#3 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+#2 DONE 0.0s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#2 DONE 0.0s
+#3 DONE 0.1s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#2 DONE 0.0s
+#3 DONE 0.1s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#3 DONE 0.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 209.75kB 0.0s done
+#7 DONE 0.0s
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#6 DONE 0.0s
+
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.1s
+
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 288.29kB 0.1s done
+
+#4 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 289.04kB 0.1s done
+
+#11 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 4/6] RUN go mod download
+#9 CACHED
+
+#10 [builder 2/6] WORKDIR /build
+#10 CACHED
+
+#11 [builder 3/6] COPY go.mod go.sum ./
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 DONE 0.1s
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 2/6] WORKDIR /build
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#11 DONE 0.6s
+#9 DONE 0.5s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 0.5s
+#9 DONE 0.5s
+
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.5s
+#9 DONE 0.5s
+
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.5s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 0.5s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 0.5s
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#13 DONE 23.2s
+#10 DONE 23.2s
+#10 DONE 23.2s
+#10 DONE 23.2s
+#10 DONE 23.2s
+#10 DONE 23.2s
+#10 DONE 23.2s
+#12 DONE 23.2s
+#13 DONE 23.2s
+
+#14 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#14 CACHED
+
+#15 [stage-1 3/5] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#16 CACHED
+
+#17 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#17 CACHED
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+
+#12 writing image sha256:7a0b675b34eda5bed901e1bca72b7d8fb5c1f2fc91532de70218bfc3731a0e9f done
+
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 CACHED
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#12 naming to docker.io/library/fall25_independentstudy-node6 done
+#11 CACHED
+
+#12 exporting to image
+#11 CACHED
+#12 DONE 0.0s
+
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:881068e1c4c89c5b86c14c7e79be7506f449f8e482a612df736abd98eee99fa0 done
+#12 naming to docker.io/library/fall25_independentstudy-node5 done
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#12 DONE 0.0s
+#11 CACHED
+
+#12 exporting to image
+#12 exporting to image
+#12 exporting layers done
+#12 exporting layers done
+#12 writing image sha256:73e8dece77cefdaa537e1685e795ec6141ee3f9ae98162721c3232a286b234af done
+#12 exporting layers done
+#12 naming to docker.io/library/fall25_independentstudy-node10 done
+#12 writing image sha256:3bd122ecd6e7d4c8efbaacce6971e0ee0a4f7985b8fac3b51c4e41b7f1a4a9a6 done
+#12 naming to docker.io/library/fall25_independentstudy-node4 done
+
+#15 exporting to image
+#15 exporting layers done
+#15 writing image sha256:dc9b69f78b1b02a1437070c88d578feb467d94c7aeff065c099fdd54b6a623da done
+#15 naming to docker.io/library/fall25_independentstudy-node2 done
+#15 DONE 0.0s
+
+#12 DONE 0.0s
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#12 DONE 0.0s
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:667fa5d8083cebdedfd8d7a450727d7e8a5ca341338af457a69ed21295fee990 done
+#12 writing image sha256:b97239545afe78858ccd21eea74e72606d2994c8a3a22ff88cb7bbcb4f66e1ed done
+#12 naming to docker.io/library/fall25_independentstudy-node9 done
+#12 DONE 0.0s
+#12 naming to docker.io/library/fall25_independentstudy-node7 done
+#12 DONE 0.0s
+
+#13 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 writing image sha256:89b4c48a705eab9dc7036b383b454d557e415fa1f158a47e4371db0701b699f3 done
+#14 naming to docker.io/library/fall25_independentstudy-node3 done
+#14 DONE 0.0s
+
+#18 exporting to image
+#18 exporting layers done
+#18 writing image sha256:29b3469c10d52cb4a2f7a7349179a6eec78aa4d293cac4b4708704f942418487 done
+#18 naming to docker.io/library/fall25_independentstudy-node8 done
+#18 DONE 0.0s
+Starting bootstrap node...
+time="2026-03-15T16:45:45-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Creating
+ Container fall25-bootstrap  Created
+ Container fall25-bootstrap  Starting
+ Container fall25-bootstrap  Started
+Waiting for bootstrap (health check)...
+Bootstrap ready (1s)
+Starting peer nodes 2..10...
+time="2026-03-15T16:45:48-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node2  Creating
+ Container fall25-node2  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node2  Starting
+ Container fall25-node2  Started
+time="2026-03-15T16:45:51-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node3  Creating
+ Container fall25-node3  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node3  Starting
+ Container fall25-node3  Started
+time="2026-03-15T16:45:52-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node4  Creating
+ Container fall25-node4  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node4  Starting
+ Container fall25-node4  Started
+time="2026-03-15T16:45:53-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node5  Creating
+ Container fall25-node5  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node5  Starting
+ Container fall25-node5  Started
+time="2026-03-15T16:45:54-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node6  Creating
+ Container fall25-node6  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node6  Starting
+ Container fall25-node6  Started
+time="2026-03-15T16:45:56-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node7  Creating
+ Container fall25-node7  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node7  Starting
+ Container fall25-node7  Started
+time="2026-03-15T16:45:57-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node8  Creating
+ Container fall25-node8  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node8  Starting
+ Container fall25-node8  Started
+time="2026-03-15T16:45:58-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node9  Creating
+ Container fall25-node9  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node9  Starting
+ Container fall25-node9  Started
+time="2026-03-15T16:45:59-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node10  Creating
+ Container fall25-node10  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node10  Starting
+ Container fall25-node10  Started
+Waiting for nodes to connect...
+
+vn-IPFS: 10 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f
+Starting 10 vn-IPFS Docker nodes...
+Building Docker image...
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.2s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 341.26kB 0.1s done
+#7 DONE 0.1s
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#11 DONE 0.3s
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 11.3s
+
+#13 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#13 CACHED
+
+#14 [stage-1 3/5] WORKDIR /app
+#14 CACHED
+
+#15 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#15 CACHED
+
+#16 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 writing image sha256:8c3a8f92f4365cfa6a0ab31e64e73b6bd86a103eb863ada92587100a033026cc done
+#17 naming to docker.io/library/fall25_independentstudy-bootstrap done
+#17 DONE 0.0s
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 [internal] load build definition from Dockerfile
+#1 [internal] load build definition from Dockerfile
+#2 DONE 0.0s
+#1 transferring dockerfile: 718B done
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#1 DONE 0.0s
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+
+#1 DONE 0.0s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 [internal] load build definition from Dockerfile
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 DONE 0.0s
+#3 DONE 0.1s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 transferring dockerfile: 718B done
+#2 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#1 transferring dockerfile: 718B done
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 DONE 0.0s
+#2 DONE 0.0s
+
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#1 transferring dockerfile: 718B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 DONE 0.0s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+
+#2 DONE 0.0s
+
+#3 DONE 0.1s
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#3 DONE 0.1s
+
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 718B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:latest
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#3 DONE 0.1s
+#3 DONE 0.1s
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#5 DONE 0.0s
+
+#6 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 241.40kB 0.1s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 345.44kB 0.1s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 345.82kB 0.1s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 345.82kB 0.1s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 345.82kB 0.1s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 345.82kB 0.1s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 345.82kB 0.0s done
+
+#4 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#4 DONE 0.0s
+
+#5 [stage-1 1/5] FROM docker.io/library/alpine:latest
+#5 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 2B done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 346.56kB 0.0s done
+#7 transferring context: 346.93kB 0.0s done
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 2/6] WORKDIR /build
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 2/6] WORKDIR /build
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 2/6] WORKDIR /build
+#9 CACHED
+
+#10 [builder 3/6] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [builder 4/6] RUN go mod download
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 3/6] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [builder 4/6] RUN go mod download
+#10 CACHED
+
+#11 [builder 2/6] WORKDIR /build
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 2/6] WORKDIR /build
+#9 CACHED
+
+#10 [builder 3/6] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [builder 4/6] RUN go mod download
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#7 DONE 0.1s
+
+#8 [builder 4/6] RUN go mod download
+#8 CACHED
+
+#9 [builder 4/6] RUN go mod download
+#9 CACHED
+
+#10 [builder 2/6] WORKDIR /build
+#10 CACHED
+
+#11 [builder 3/6] COPY go.mod go.sum ./
+#11 CACHED
+
+#12 [builder 5/6] COPY . .
+#11 DONE 0.8s
+#12 DONE 0.8s
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#12 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 0.9s
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 1.6s
+#9 DONE 1.6s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 1.6s
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 1.6s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#9 DONE 1.6s
+
+#10 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#12 DONE 1.6s
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+
+#13 [builder 6/6] RUN go build -o bin/node ./cmd/node
+#10 DONE 39.4s
+#13 DONE 39.4s
+#10 DONE 39.4s
+#10 DONE 39.4s
+#13 DONE 39.4s
+#13 DONE 40.2s
+
+#13 DONE 39.4s
+#14 [stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#14 CACHED
+
+#15 [stage-1 3/5] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#16 CACHED
+
+
+#17 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 CACHED
+#12 DONE 40.2s
+
+#13 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#13 CACHED
+#13 DONE 40.1s
+
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 writing image sha256:29b3469c10d52cb4a2f7a7349179a6eec78aa4d293cac4b4708704f942418487 done
+#15 naming to docker.io/library/fall25_independentstudy-node8
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+
+
+
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 writing image sha256:b97239545afe78858ccd21eea74e72606d2994c8a3a22ff88cb7bbcb4f66e1ed done
+#11 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#12 naming to docker.io/library/fall25_independentstudy-node9 done
+#11 CACHED
+
+#12 exporting to image
+#12 DONE 0.0s
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#12 exporting layers done
+#12 exporting to image
+#12 writing image sha256:dc9b69f78b1b02a1437070c88d578feb467d94c7aeff065c099fdd54b6a623da done
+#12 naming to docker.io/library/fall25_independentstudy-node2 done
+#12 exporting layers done
+#12 DONE 0.0s
+#12 writing image sha256:89b4c48a705eab9dc7036b383b454d557e415fa1f158a47e4371db0701b699f3 done
+#12 naming to docker.io/library/fall25_independentstudy-node3 done
+#12 DONE 0.0s
+#15 writing image sha256:3bd122ecd6e7d4c8efbaacce6971e0ee0a4f7985b8fac3b51c4e41b7f1a4a9a6 done
+#15 naming to docker.io/library/fall25_independentstudy-node4 done
+#15 DONE 0.0s
+
+#14 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 writing image sha256:667fa5d8083cebdedfd8d7a450727d7e8a5ca341338af457a69ed21295fee990 done
+#15 naming to docker.io/library/fall25_independentstudy-node7 done
+#15 DONE 0.0s
+#17 CACHED
+
+#18 exporting to image
+#18 exporting layers done
+#18 writing image sha256:7a0b675b34eda5bed901e1bca72b7d8fb5c1f2fc91532de70218bfc3731a0e9f done
+#18 naming to docker.io/library/fall25_independentstudy-node6 done
+#18 DONE 0.0s
+
+#15 exporting to image
+#15 exporting layers done
+#15 writing image sha256:881068e1c4c89c5b86c14c7e79be7506f449f8e482a612df736abd98eee99fa0 done
+#15 naming to docker.io/library/fall25_independentstudy-node5 done
+#15 DONE 0.0s
+
+#14 exporting to image
+#14 exporting layers done
+#14 writing image sha256:73e8dece77cefdaa537e1685e795ec6141ee3f9ae98162721c3232a286b234af done
+#14 naming to docker.io/library/fall25_independentstudy-node10 done
+#14 DONE 0.0s
+#15 naming to docker.io/library/fall25_independentstudy-node8 done
+#15 DONE 0.0s
+Starting bootstrap node...
+time="2026-03-15T16:48:23-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Creating
+ Container fall25-bootstrap  Created
+ Container fall25-bootstrap  Starting
+ Container fall25-bootstrap  Started
+Waiting for bootstrap (health check)...
+Bootstrap ready (1s)
+Starting peer nodes 2..10...
+time="2026-03-15T16:48:25-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node2  Creating
+ Container fall25-node2  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node2  Starting
+ Container fall25-node2  Started
+time="2026-03-15T16:48:29-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node3  Creating
+ Container fall25-node3  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node3  Starting
+ Container fall25-node3  Started
+time="2026-03-15T16:48:30-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node4  Creating
+ Container fall25-node4  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node4  Starting
+ Container fall25-node4  Started
+time="2026-03-15T16:48:30-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node5  Creating
+ Container fall25-node5  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node5  Starting
+ Container fall25-node5  Started
+time="2026-03-15T16:48:31-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node6  Creating
+ Container fall25-node6  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node6  Starting
+ Container fall25-node6  Started
+time="2026-03-15T16:48:32-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node7  Creating
+ Container fall25-node7  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node7  Starting
+ Container fall25-node7  Started
+time="2026-03-15T16:48:34-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node8  Creating
+ Container fall25-node8  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node8  Starting
+ Container fall25-node8  Started
+time="2026-03-15T16:48:34-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node9  Creating
+ Container fall25-node9  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node9  Starting
+ Container fall25-node9  Started
+time="2026-03-15T16:48:35-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 swarm-node55 swarm-node54 swarm-node53 swarm-node52 swarm-node51 swarm-node50 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 swarm-node49 swarm-node48 swarm-node47 swarm-node46 swarm-node45 swarm-node44 swarm-node43 swarm-node42 swarm-node41 swarm-node40 swarm-node39 swarm-node38 swarm-node37 swarm-node36 swarm-node35 swarm-node34 swarm-node33 swarm-node32 swarm-node31 swarm-node30 swarm-node29 swarm-node28 swarm-node27 swarm-node26 swarm-node25 swarm-node24 swarm-node23 swarm-node22 swarm-node21 swarm-node20 swarm-node19 swarm-node18 swarm-node17 swarm-node16 swarm-node15 swarm-node14 swarm-node13 swarm-node12 swarm-node11 swarm-node10]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap  Running
+ Container fall25-node10  Creating
+ Container fall25-node10  Created
+ Container fall25-bootstrap  Waiting
+ Container fall25-bootstrap  Healthy
+ Container fall25-node10  Starting
+ Container fall25-node10  Started
+Waiting for nodes to connect...
+
+vn-IPFS: 10 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f

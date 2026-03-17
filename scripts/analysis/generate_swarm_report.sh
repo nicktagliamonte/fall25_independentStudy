@@ -833,74 +833,6 @@ EOF
 EOF
   fi
 
-  # Key lookup vs CID retrieval (side-by-side comparison)
-  key_lookup_file=""
-  for f in "$RESULTS_DIR"/key_lookup_vs_cid_aggregated.csv "$RESULTS_DIR"/key_lookup_vs_cid*.csv; do
-    if [[ -f "$f" ]]; then
-      key_lookup_file="$f"
-      break
-    fi
-  done
-
-  if [[ -n "$key_lookup_file" && -f "$key_lookup_file" ]]; then
-    cat <<EOF
-### Key Lookup vs CID Retrieval (Side-by-Side)
-
-Same logical operation (store X, fetch X). vn-IPFS uses key-based lookup; Swarm uses CID-based retrieval. Latency and hops per operation.
-
-| System | Lookup Type | Put Latency (ms) | Put Hops | Get Latency (ms) | Get Hops | Samples |
-|--------|-------------|------------------|----------|------------------|----------|---------|
-EOF
-    awk -F',' '
-      NR == 1 { next }
-      {
-        sys = $1
-        op = (NF >= 6) ? $3 : $2
-        lat = (NF >= 6) ? $4 : $3
-        hops = (NF >= 6) ? $5 : $4
-        lt = (NF >= 6) ? $6 : $5
-      }
-      lat != "FAILED" && lat != "ERROR" && lat != "" && lat ~ /^[0-9.]/ {
-        key = sys "," lt
-        if (op == "put") {
-          put_n[key]++
-          put_sum[key] += lat + 0
-          if (hops != "" && hops != "N/A" && hops ~ /^[0-9]/) {
-            put_hops_n[key]++
-            put_hops_sum[key] += hops + 0
-          }
-        } else if (op == "get") {
-          get_n[key]++
-          get_sum[key] += lat + 0
-          if (hops != "" && hops != "N/A" && hops ~ /^[0-9]/) {
-            get_hops_n[key]++
-            get_hops_sum[key] += hops + 0
-          }
-        }
-      }
-      END {
-        for (key in put_n) {
-          put_mean = (put_n[key] > 0) ? put_sum[key] / put_n[key] : 0
-          get_mean = (get_n[key] > 0) ? get_sum[key] / get_n[key] : 0
-          put_hops_str = (put_hops_n[key] > 0) ? sprintf("%.1f", put_hops_sum[key] / put_hops_n[key]) : "N/A"
-          get_hops_str = (get_hops_n[key] > 0) ? sprintf("%.1f", get_hops_sum[key] / get_hops_n[key]) : "N/A"
-          split(key, p, ",")
-          sys = p[1]
-          lt = p[2]
-          n = put_n[key] + get_n[key]
-          printf "| %s | %s | %.2f | %s | %.2f | %s | %d |\n",
-            sys, lt, put_mean, put_hops_str, get_mean, get_hops_str, n
-        }
-      }
-    ' "$key_lookup_file" | sort -t'|' -k1,1 -k2,2
-    cat <<EOF
-
-**Raw Data**: [Key Lookup vs CID]($(basename "$RESULTS_DIR")/$(basename "$key_lookup_file"))
-
----
-EOF
-  fi
-
   # Isolated lookup latency (token routing vs provider discovery)
   lookup_latency_file=""
   for f in "$RESULTS_DIR"/lookup_latency*.csv; do
@@ -1211,41 +1143,6 @@ EOF
 EOF
   fi
 
-  # Message count test
-  message_counts_file=""
-  for f in "$RESULTS_DIR"/message_counts*.csv; do
-    if [[ -f "$f" ]]; then
-      message_counts_file="$f"
-      break
-    fi
-  done
-  
-  if [[ -n "$message_counts_file" && -f "$message_counts_file" ]]; then
-    cat <<EOF
-### Message Count Test
-
-P2P message counts per operation (put, get). vn-IPFS reports via /metrics; Swarm may report N/A if Prometheus metrics are unavailable.
-
-| System | Operation | Message Count | Node Count |
-|--------|-----------|---------------|------------|
-EOF
-    
-    tail -n +2 "$message_counts_file" | awk -F',' '{
-      sys = $1
-      op = $2
-      count = $3
-      nodes = ($4 != "" ? $4 : "-")
-      printf "| %s | %s | %s | %s |\n", sys, op, count, nodes
-    }' | sort
-    
-    cat <<EOF
-
-**Raw Data**: [Message Counts]($(basename "$RESULTS_DIR")/$(basename "$message_counts_file"))
-
----
-EOF
-  fi
-  
   # Replication propagation test (check subdirectories and root)
   repl_file=""
   for f in "$OUR_SYSTEM_DIR"/*replication*.csv "$SWARM_DIR"/*replication*.csv "$COMPARISON_DIR"/*replication*.csv "$RESULTS_DIR"/*replication*.csv; do
@@ -1424,12 +1321,10 @@ $(basename "$RESULTS_DIR")/
 - **Our System Results**: \`our_system/\`
 - **Swarm Results**: \`swarm/\`
 - **Comparison Data**: \`comparison/\`
-- **Message Counts**: \`message_counts.csv\` (when available)
 - **Storage Efficiency**: \`storage_efficiency_results.csv\` (when available)
 - **Replication Speed**: \`replication_results.csv\` (when available)
 - **Partition Recovery**: \`partition_recovery_results.csv\` (when available)
 - **Lookup Complexity**: \`lookup_complexity_results.csv\` or \`lookup_complexity.csv\` (when available)
-- **Key Lookup vs CID**: \`key_lookup_vs_cid_aggregated.csv\` or \`key_lookup_vs_cid_n<N>.csv\` (when available)
 - **Concurrent Read/Write**: \`concurrent_results.csv\` (when available)
 - **Resource Usage**: \`resource_usage.csv\` (when available)
 - **Test Logs**: \`logs/\`

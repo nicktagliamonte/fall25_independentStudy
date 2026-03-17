@@ -1,0 +1,32 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 10 | Iterations: 1
+Output: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/lookup_complexity/lookup_complexity_results.csv
+
+
+Results: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/lookup_complexity/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_type
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 10 | Iterations: 1
+Output: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/lookup_complexity/lookup_complexity_results.csv
+
+  Waiting 25s for DHT to stabilize before cold lookup...
+
+Results: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/lookup_complexity/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_type
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 10 | Iterations: 1
+Output: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/lookup_complexity/lookup_complexity_results.csv
+
+  Waiting 25s for DHT to stabilize before cold lookup...
+
+Results: /mnt/School/1_Temple/fall25/independentStudy/fall25_independentStudy/test_results/lookup_complexity/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_type

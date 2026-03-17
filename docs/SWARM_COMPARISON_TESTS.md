@@ -336,14 +336,11 @@ For fair comparison, the same logical operation is defined for both systems:
 | **Identifier**    | Key (64 hex chars, SHA256 of data) | BZZ reference (content hash, 64+ hex) |
 | **Semantics**     | Content-addressed; Key = content-derived identifier | Content-addressed; hash = content-derived identifier |
 
-Both perform the same logical flow: **store payload P, then fetch P by its content-derived identifier**. Key (vn-IPFS) and BZZ hash (Swarm) are semantically equivalent: each identifies content by its digest (key K = content hash of payload; for vn-IPFS, K = SHA256(data)). For single-chunk content, Swarm's upload return value is the chunk address used for retrieval. vn-IPFS uses Key as primary; CID (multihash) is available for compatibility. `key_lookup_vs_cid_test.sh` implements this comparison and documents the equivalence in its output.
+Both perform the same logical flow: **store payload P, then fetch P by its content-derived identifier**. Key (vn-IPFS) and BZZ hash (Swarm) are semantically equivalent: each identifies content by its digest (key K = content hash of payload; for vn-IPFS, K = SHA256(data)). For single-chunk content, Swarm's upload return value is the chunk address used for retrieval. vn-IPFS uses Key as primary; CID (multihash) is available for compatibility.
 
-### Message Counts and Routing Overhead
+### Routing Overhead
 
-For routing-overhead comparison (token routing vs provider announcements):
-
-- **vn-IPFS**: `/metrics` exposes `put_messages_*`, `get_messages_*`, `lookup_messages_*` (token-based lookup; no provider announce).
-- **Swarm v0.5.8**: `message_count_test.sh` queries `$SWARM_API/metrics` and parses Prometheus counters for provider announcements and retrieval messages. Metric name patterns tried: `bee_*` (Bee client), `swarm_chunk`, `swarm_retrieval`, `swarm_provider`, `swarm_announce`, `chunk_delivery`, `retrieval_request`, `provider_announce`, `retrieval`. Swarm v0.5.8 may not expose Prometheus metrics; if so, Swarm message counts report N/A. Legacy ethersphere/swarm uses different metric names than Bee; the script attempts multiple patterns.
+For routing-overhead comparison (token routing vs provider announcements), `routing_overhead_test.sh` measures message counts per operation. vn-IPFS uses token lookup; Swarm uses provider announcements and retrieval.
 
 ### Key Metrics to Watch
 

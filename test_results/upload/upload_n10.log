@@ -1,0 +1,564 @@
+Detected control API: http://127.0.0.1:46115 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://127.0.0.1:46115
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 2
+Batch size: 1
+Output file: ./test_results_upload/upload_n10_batch1.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=1)... total=298.63 ms, per-file avg=298.63 ms hops=0
+    Iteration 2/2 (batch_size=1)... total=359.95 ms, per-file avg=359.95 ms hops=0
+    [0;34mNetwork bytes (our_system): 4981660[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=1)... total=49.85 ms, per-file avg=49.85 ms
+    Iteration 2/2 (batch_size=1)... total=32.53 ms, per-file avg=32.53 ms
+    [0;34mNetwork bytes (swarm): 29383[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    298.63 ms
+      Max:    359.95 ms
+      Avg:    329.29 ms
+      P50:    359.95 ms
+      P90:    359.95 ms
+      P99:    359.95 ms
+    [0;32mSwarm:[0m
+      Min:    32.53 ms
+      Max:    49.85 ms
+      Avg:    41.19 ms
+      P50:    49.85 ms
+      P90:    49.85 ms
+      P99:    49.85 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=1)... total=284.80 ms, per-file avg=284.79 ms hops=0
+    Iteration 2/2 (batch_size=1)... total=252.70 ms, per-file avg=252.69 ms hops=0
+    [0;34mNetwork bytes (our_system): 3451437[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=1)... total=15.68 ms, per-file avg=15.68 ms
+    Iteration 2/2 (batch_size=1)... total=16.71 ms, per-file avg=16.71 ms
+    [0;34mNetwork bytes (swarm): 55610[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    252.69 ms
+      Max:    284.79 ms
+      Avg:    268.74 ms
+      P50:    284.79 ms
+      P90:    284.79 ms
+      P99:    284.79 ms
+    [0;32mSwarm:[0m
+      Min:    15.68 ms
+      Max:    16.71 ms
+      Avg:    16.19 ms
+      P50:    16.71 ms
+      P90:    16.71 ms
+      P99:    16.71 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=1)... total=310.67 ms, per-file avg=310.67 ms hops=0
+    Iteration 2/2 (batch_size=1)... total=311.50 ms, per-file avg=311.50 ms hops=0
+    [0;34mNetwork bytes (our_system): 5888454[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=1)... total=37.69 ms, per-file avg=37.68 ms
+    Iteration 2/2 (batch_size=1)... total=17.51 ms, per-file avg=17.50 ms
+    [0;34mNetwork bytes (swarm): 884722[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System:[0m
+      Min:    310.67 ms
+      Max:    311.50 ms
+      Avg:    311.08 ms
+      P50:    311.50 ms
+      P90:    311.50 ms
+      P99:    311.50 ms
+    [0;32mSwarm:[0m
+      Min:    17.50 ms
+      Max:    37.68 ms
+      Avg:    27.59 ms
+      P50:    37.68 ms
+      P90:    37.68 ms
+      P99:    37.68 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=1)... total=591.53 ms, per-file avg=591.53 ms hops=0
+    Iteration 2/2 (batch_size=1)... total=518.92 ms, per-file avg=518.91 ms hops=0
+    [0;34mNetwork bytes (our_system): 36921635[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=1)... total=79.37 ms, per-file avg=79.37 ms
+    Iteration 2/2 (batch_size=1)... total=17.17 ms, per-file avg=17.16 ms
+    [0;34mNetwork bytes (swarm): 21546753[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System:[0m
+      Min:    518.91 ms
+      Max:    591.53 ms
+      Avg:    555.22 ms
+      P50:    591.53 ms
+      P90:    591.53 ms
+      P99:    591.53 ms
+    [0;32mSwarm:[0m
+      Min:    17.16 ms
+      Max:    79.37 ms
+      Avg:    48.26 ms
+      P50:    79.37 ms
+      P90:    79.37 ms
+      P99:    79.37 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: ./test_results_upload/upload_n10_batch1.csv
+Network bytes: ./test_results_upload/upload_network_bytes.csv
+
+To view results:
+  cat ./test_results_upload/upload_n10_batch1.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('./test_results_upload/upload_n10_batch1.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"
+Detected control API: http://127.0.0.1:46115 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://127.0.0.1:46115
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 2
+Batch size: 5
+Output file: ./test_results_upload/upload_n10_batch5.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=5)... total=1613.24 ms, per-file avg=322.64 ms hops=0
+    Iteration 2/2 (batch_size=5)... total=1555.37 ms, per-file avg=311.07 ms hops=0
+    [0;34mNetwork bytes (our_system): 16367026[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=5)... total=165.92 ms, per-file avg=33.18 ms
+    Iteration 2/2 (batch_size=5)... total=172.30 ms, per-file avg=34.46 ms
+    [0;34mNetwork bytes (swarm): 65462[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    311.07 ms
+      Max:    322.64 ms
+      Avg:    316.85 ms
+      P50:    322.64 ms
+      P90:    322.64 ms
+      P99:    322.64 ms
+    [0;32mSwarm:[0m
+      Min:    33.18 ms
+      Max:    34.46 ms
+      Avg:    33.82 ms
+      P50:    34.46 ms
+      P90:    34.46 ms
+      P99:    34.46 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=5)... total=1534.68 ms, per-file avg=306.93 ms hops=0
+    Iteration 2/2 (batch_size=5)... total=1593.77 ms, per-file avg=318.75 ms hops=0
+    [0;34mNetwork bytes (our_system): 17756470[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=5)... total=160.47 ms, per-file avg=32.09 ms
+    Iteration 2/2 (batch_size=5)... total=177.54 ms, per-file avg=35.50 ms
+    [0;34mNetwork bytes (swarm): 235612[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    306.93 ms
+      Max:    318.75 ms
+      Avg:    312.84 ms
+      P50:    318.75 ms
+      P90:    318.75 ms
+      P99:    318.75 ms
+    [0;32mSwarm:[0m
+      Min:    32.09 ms
+      Max:    35.50 ms
+      Avg:    33.79 ms
+      P50:    35.50 ms
+      P90:    35.50 ms
+      P99:    35.50 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=5)... total=1697.45 ms, per-file avg=339.49 ms hops=0
+    Iteration 2/2 (batch_size=5)... total=1640.18 ms, per-file avg=328.03 ms hops=0
+    [0;34mNetwork bytes (our_system): 32633180[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=5)... total=150.19 ms, per-file avg=30.03 ms
+    Iteration 2/2 (batch_size=5)... total=170.91 ms, per-file avg=34.18 ms
+    [0;34mNetwork bytes (swarm): 1746109[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System:[0m
+      Min:    328.03 ms
+      Max:    339.49 ms
+      Avg:    333.76 ms
+      P50:    339.49 ms
+      P90:    339.49 ms
+      P99:    339.49 ms
+    [0;32mSwarm:[0m
+      Min:    30.03 ms
+      Max:    34.18 ms
+      Avg:    32.10 ms
+      P50:    34.18 ms
+      P90:    34.18 ms
+      P99:    34.18 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=5)... total=1975.42 ms, per-file avg=395.08 ms hops=0
+    Iteration 2/2 (batch_size=5)... total=1915.66 ms, per-file avg=383.13 ms hops=0
+    [0;34mNetwork bytes (our_system): 187974488[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=5)... total=182.45 ms, per-file avg=36.49 ms
+    Iteration 2/2 (batch_size=5)... total=105.61 ms, per-file avg=21.12 ms
+    [0;34mNetwork bytes (swarm): 29216849[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System:[0m
+      Min:    383.13 ms
+      Max:    395.08 ms
+      Avg:    389.10 ms
+      P50:    395.08 ms
+      P90:    395.08 ms
+      P99:    395.08 ms
+    [0;32mSwarm:[0m
+      Min:    21.12 ms
+      Max:    36.49 ms
+      Avg:    28.80 ms
+      P50:    36.49 ms
+      P90:    36.49 ms
+      P99:    36.49 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: ./test_results_upload/upload_n10_batch5.csv
+Network bytes: ./test_results_upload/upload_network_bytes.csv
+
+To view results:
+  cat ./test_results_upload/upload_n10_batch5.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('./test_results_upload/upload_n10_batch5.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"
+Detected control API: http://127.0.0.1:46115 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://127.0.0.1:46115
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 2
+Batch size: 10
+Output file: ./test_results_upload/upload_n10_batch10.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=10)... total=2835.66 ms, per-file avg=283.56 ms hops=0
+    Iteration 2/2 (batch_size=10)... total=3057.73 ms, per-file avg=305.77 ms hops=0
+    [0;34mNetwork bytes (our_system): 34443809[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=10)... total=153.53 ms, per-file avg=15.35 ms
+    Iteration 2/2 (batch_size=10)... total=286.58 ms, per-file avg=28.65 ms
+    [0;34mNetwork bytes (swarm): 53676[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    283.56 ms
+      Max:    305.77 ms
+      Avg:    294.66 ms
+      P50:    305.77 ms
+      P90:    305.77 ms
+      P99:    305.77 ms
+    [0;32mSwarm:[0m
+      Min:    15.35 ms
+      Max:    28.65 ms
+      Avg:    22.00 ms
+      P50:    28.65 ms
+      P90:    28.65 ms
+      P99:    28.65 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=10)... total=2738.34 ms, per-file avg=273.83 ms hops=0
+    Iteration 2/2 (batch_size=10)... total=2711.16 ms, per-file avg=271.11 ms hops=0
+    [0;34mNetwork bytes (our_system): 40279100[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=10)... total=185.59 ms, per-file avg=18.55 ms
+    Iteration 2/2 (batch_size=10)... total=152.50 ms, per-file avg=15.24 ms
+    [0;34mNetwork bytes (swarm): 322195[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    271.11 ms
+      Max:    273.83 ms
+      Avg:    272.47 ms
+      P50:    273.83 ms
+      P90:    273.83 ms
+      P99:    273.83 ms
+    [0;32mSwarm:[0m
+      Min:    15.24 ms
+      Max:    18.55 ms
+      Avg:    16.89 ms
+      P50:    18.55 ms
+      P90:    18.55 ms
+      P99:    18.55 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=10)... total=3079.70 ms, per-file avg=307.97 ms hops=0
+    Iteration 2/2 (batch_size=10)... total=2991.11 ms, per-file avg=299.11 ms hops=0
+    [0;34mNetwork bytes (our_system): 66287783[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=10)... total=277.21 ms, per-file avg=27.72 ms
+    Iteration 2/2 (batch_size=10)... total=300.75 ms, per-file avg=30.07 ms
+    [0;34mNetwork bytes (swarm): 3692482[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System:[0m
+      Min:    299.11 ms
+      Max:    307.97 ms
+      Avg:    303.54 ms
+      P50:    307.97 ms
+      P90:    307.97 ms
+      P99:    307.97 ms
+    [0;32mSwarm:[0m
+      Min:    27.72 ms
+      Max:    30.07 ms
+      Avg:    28.89 ms
+      P50:    30.07 ms
+      P90:    30.07 ms
+      P99:    30.07 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=10)... total=3726.37 ms, per-file avg=372.63 ms hops=0
+    Iteration 2/2 (batch_size=10)... total=3648.39 ms, per-file avg=364.83 ms hops=0
+    [0;34mNetwork bytes (our_system): 377131130[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=10)... total=323.08 ms, per-file avg=32.30 ms
+    Iteration 2/2 (batch_size=10)... total=494.80 ms, per-file avg=49.48 ms
+    [0;34mNetwork bytes (swarm): 40576519[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System:[0m
+      Min:    364.83 ms
+      Max:    372.63 ms
+      Avg:    368.73 ms
+      P50:    372.63 ms
+      P90:    372.63 ms
+      P99:    372.63 ms
+    [0;32mSwarm:[0m
+      Min:    32.30 ms
+      Max:    49.48 ms
+      Avg:    40.89 ms
+      P50:    49.48 ms
+      P90:    49.48 ms
+      P99:    49.48 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: ./test_results_upload/upload_n10_batch10.csv
+Network bytes: ./test_results_upload/upload_network_bytes.csv
+
+To view results:
+  cat ./test_results_upload/upload_n10_batch10.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('./test_results_upload/upload_n10_batch10.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"
+Detected control API: http://127.0.0.1:46115 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://127.0.0.1:46115
+Swarm API: http://172.20.0.200:8500
+Iterations per size: 2
+Batch size: 20
+Output file: ./test_results_upload/upload_n10_batch20.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=20)... total=4978.94 ms, per-file avg=248.94 ms hops=0
+    Iteration 2/2 (batch_size=20)... total=5603.05 ms, per-file avg=280.15 ms hops=0
+    [0;34mNetwork bytes (our_system): 65702816[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=20)... total=508.82 ms, per-file avg=25.44 ms
+    Iteration 2/2 (batch_size=20)... total=508.68 ms, per-file avg=25.43 ms
+    [0;34mNetwork bytes (swarm): 192807[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    248.94 ms
+      Max:    280.15 ms
+      Avg:    264.54 ms
+      P50:    280.15 ms
+      P90:    280.15 ms
+      P99:    280.15 ms
+    [0;32mSwarm:[0m
+      Min:    25.43 ms
+      Max:    25.44 ms
+      Avg:    25.43 ms
+      P50:    25.44 ms
+      P90:    25.44 ms
+      P99:    25.44 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=20)... total=6120.90 ms, per-file avg=306.04 ms hops=0
+    Iteration 2/2 (batch_size=20)... total=6199.44 ms, per-file avg=309.97 ms hops=0
+    [0;34mNetwork bytes (our_system): 73803734[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=20)... total=680.57 ms, per-file avg=34.02 ms
+    Iteration 2/2 (batch_size=20)... total=509.16 ms, per-file avg=25.45 ms
+    [0;34mNetwork bytes (swarm): 741873[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    306.04 ms
+      Max:    309.97 ms
+      Avg:    308.00 ms
+      P50:    309.97 ms
+      P90:    309.97 ms
+      P99:    309.97 ms
+    [0;32mSwarm:[0m
+      Min:    25.45 ms
+      Max:    34.02 ms
+      Avg:    29.73 ms
+      P50:    34.02 ms
+      P90:    34.02 ms
+      P99:    34.02 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=20)... total=6240.16 ms, per-file avg=312.00 ms hops=0
+    Iteration 2/2 (batch_size=20)... total=6291.69 ms, per-file avg=314.58 ms hops=0
+    [0;34mNetwork bytes (our_system): 134216128[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=20)... total=723.78 ms, per-file avg=36.18 ms
+    Iteration 2/2 (batch_size=20)... total=554.70 ms, per-file avg=27.73 ms
+    [0;34mNetwork bytes (swarm): 6042932[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System:[0m
+      Min:    312.00 ms
+      Max:    314.58 ms
+      Avg:    313.29 ms
+      P50:    314.58 ms
+      P90:    314.58 ms
+      P99:    314.58 ms
+    [0;32mSwarm:[0m
+      Min:    27.73 ms
+      Max:    36.18 ms
+      Avg:    31.95 ms
+      P50:    36.18 ms
+      P90:    36.18 ms
+      P99:    36.18 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mTesting our system...[0m
+    Iteration 1/2 (batch_size=20)... total=8169.34 ms, per-file avg=408.46 ms hops=0
+    Iteration 2/2 (batch_size=20)... total=7265.39 ms, per-file avg=363.26 ms hops=0
+    [0;34mNetwork bytes (our_system): 754924772[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/2 (batch_size=20)... total=556.21 ms, per-file avg=27.81 ms
+    Iteration 2/2 (batch_size=20)... total=620.77 ms, per-file avg=31.03 ms
+    [0;34mNetwork bytes (swarm): 64601290[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System:[0m
+      Min:    363.26 ms
+      Max:    408.46 ms
+      Avg:    385.86 ms
+      P50:    408.46 ms
+      P90:    408.46 ms
+      P99:    408.46 ms
+    [0;32mSwarm:[0m
+      Min:    27.81 ms
+      Max:    31.03 ms
+      Avg:    29.42 ms
+      P50:    31.03 ms
+      P90:    31.03 ms
+      P99:    31.03 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: ./test_results_upload/upload_n10_batch20.csv
+Network bytes: ./test_results_upload/upload_network_bytes.csv
+
+To view results:
+  cat ./test_results_upload/upload_n10_batch20.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('./test_results_upload/upload_n10_batch20.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"

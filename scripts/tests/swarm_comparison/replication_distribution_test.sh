@@ -137,13 +137,13 @@ while true; do
   now=$(date +%s)
   elapsed=$((now - start))
   [[ $elapsed -ge $TIMEOUT_S ]] && break
-  count=$(docker exec "$OUR_CONTAINER" curl -sSf "http://$OUR_API_ADDR/replication/status?key=$KEY" 2>/dev/null | jq -r '.replica_count // 0' || echo "0")
+  count=$(docker exec "$OUR_CONTAINER" curl -sSf "http://$OUR_API_ADDR/replication/status?key=$KEY&simulate_distances=1" 2>/dev/null | jq -r '.replica_count // 0' || echo "0")
   [[ -z "$count" || "$count" == "null" ]] && count=0
   [[ "$count" -ge "$REPLICAS_TARGET" ]] && break
   sleep "$POLL_INTERVAL_S"
 done
 
-status=$(docker exec "$OUR_CONTAINER" curl -sSf "http://$OUR_API_ADDR/replication/status?key=$KEY" 2>/dev/null || echo "{}")
+status=$(docker exec "$OUR_CONTAINER" curl -sSf "http://$OUR_API_ADDR/replication/status?key=$KEY&simulate_distances=1" 2>/dev/null || echo "{}")
 near=$(echo "$status" | jq -r '.near_count // 0')
 midrange=$(echo "$status" | jq -r '.midrange_count // 0')
 farflung=$(echo "$status" | jq -r '.farflung_count // 0')

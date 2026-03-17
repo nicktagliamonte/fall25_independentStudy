@@ -27,6 +27,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
@@ -1414,9 +1415,115 @@ func Run() error {
 		fmt.Println("PeerID:", pid.String())
 		return nil
 
+	case "lookup-key":
+		fs := flag.NewFlagSet("lookup-key", flag.ExitOnError)
+		var bootstrapAddr string
+		var keyHex string
+		var timeoutStr string
+		fs.StringVar(&bootstrapAddr, "bootstrap", "", "bootstrap peer multiaddr (e.g. /ip4/172.20.0.10/tcp/4001/p2p/...)")
+		fs.StringVar(&keyHex, "key", "", "key (64 hex chars) to lookup")
+		fs.StringVar(&timeoutStr, "timeout", "30s", "lookup timeout")
+		_ = fs.Parse(os.Args[2:])
+		if bootstrapAddr == "" || keyHex == "" {
+			return fmt.Errorf("lookup-key: --bootstrap and --key are required")
+		}
+		timeout, err := time.ParseDuration(timeoutStr)
+		if err != nil {
+			return fmt.Errorf("lookup-key: invalid timeout: %w", err)
+		}
+		return runLookupKey(bootstrapAddr, keyHex, timeout)
+
 	default:
-		return fmt.Errorf("unknown subcommand: %s\nusage: %s <run|put|connect|get|shutdown|restore|snapshot|neighbors|keygen> [flags]", subcmd, os.Args[0])
+		return fmt.Errorf("unknown subcommand: %s\nusage: %s <run|put|connect|get|shutdown|restore|snapshot|neighbors|keygen|lookup-key> [flags]", subcmd, os.Args[0])
 	}
+}
+
+// runLookupKey runs a one-off DHT lookup from a fresh node (cold lookup).
+// The new node has no local DHT state, so GetValue must traverse the DHT and reports non-zero hops.
+func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	key, err := mystore.ParseKey(keyHex)
+	if err != nil {
+		return fmt.Errorf("invalid key: %w", err)
+	}
+
+	ma, err := multiaddr.NewMultiaddr(bootstrapAddr)
+	if err != nil {
+		return fmt.Errorf("invalid bootstrap addr: %w", err)
+	}
+	info, err := peer.AddrInfoFromP2pAddr(ma)
+	if err != nil {
+		return fmt.Errorf("parse bootstrap: %w", err)
+	}
+
+	h, err := myhost.NewHost(ctx, []string{"/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1"})
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+
+	if err := h.Connect(ctx, *info); err != nil {
+		return fmt.Errorf("connect to bootstrap: %w", err)
+	}
+	time.Sleep(3 * time.Second)
+
+	dhtCfg := myhost.DHTConfig{
+		Mode:           myhost.DHTModeServer,
+		UseTokenDHT:    true,
+		BootstrapPeers: []peer.AddrInfo{*info},
+	}
+	d, err := myhost.NewDHT(ctx, h, dhtCfg)
+	if err != nil {
+		return fmt.Errorf("create DHT: %w", err)
+	}
+	defer d.Close()
+
+	deadline := time.Now().Add(90 * time.Second)
+	for d.RoutingTable().Size() == 0 && time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context cancelled before DHT bootstrap")
+		default:
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+	if d.RoutingTable().Size() == 0 {
+		return fmt.Errorf("DHT routing table empty after 90s (bootstrap may have failed)")
+	}
+
+	evCtx, evCh := routing.RegisterForQueryEvents(ctx)
+	evCtx2, cancel2 := context.WithCancel(evCtx)
+	defer cancel2()
+	var hops int32
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for ev := range evCh {
+			if ev != nil && ev.Type == routing.SendingQuery {
+				hops++
+			}
+		}
+	}()
+	dhtKey := mystore.TokenNamespace + key.String()
+	_, _ = d.GetClosestPeers(evCtx2, dhtKey)
+	cancel2()
+	<-done
+
+	_, err = mystore.GetToken(ctx, routing.ValueStore(d), key)
+
+	out := map[string]interface{}{
+		"network_hops": int(hops),
+		"found":        err == nil,
+	}
+	if err != nil {
+		out["error"] = err.Error()
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "")
+	return enc.Encode(out)
 }
 
 // staticContentRouter implements routing.ContentRouting. Legacy stub; key-based token routing is primary.

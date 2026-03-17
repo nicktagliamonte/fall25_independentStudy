@@ -22,6 +22,7 @@ PAYLOAD_SIZE=65536
 REPLICAS_TARGET=2
 TIMEOUT_S=180
 POLL_INTERVAL_S=2
+FAST_POLL_S=0.25
 OUTPUT_FILE="repair_time_results.csv"
 NODE_COUNT=""
 APPEND=false
@@ -33,6 +34,7 @@ while [[ $# -gt 0 ]]; do
     --replicas-target) REPLICAS_TARGET="$2"; shift 2 ;;
     --timeout)         TIMEOUT_S="$2"; shift 2 ;;
     --poll-interval)   POLL_INTERVAL_S="$2"; shift 2 ;;
+    --fast-poll)       FAST_POLL_S="$2"; shift 2 ;;
     --node-count)      NODE_COUNT="$2"; shift 2 ;;
     --output)          OUTPUT_FILE="$2"; shift 2 ;;
     --append)          APPEND=true; shift ;;
@@ -42,7 +44,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --payload-size <n>       Payload bytes (default: 65536)"
       echo "  --replicas-target <R>    Replicas to restore (default: 2)"
       echo "  --timeout <s>            Max wait for repair (default: 180)"
-      echo "  --poll-interval <s>      Poll interval (default: 2)"
+      echo "  --poll-interval <s>      Poll interval after fast phase (default: 2)"
+    echo "  --fast-poll <s>         Poll interval for first 20s (default: 0.25)"
       echo "  --node-count <n>         Node count"
       echo "  --output <file>          Output CSV"
       echo "  --append                 Append rows"
@@ -128,11 +131,14 @@ if [[ -z "$KEY" || ${#KEY} -lt 32 ]]; then
   echo "our_system,$NODE_COUNT,FAILED" >> "$OUTPUT_FILE"
 else
   echo "  Key: $KEY"
-  start=$(date +%s)
+  start=$(date +%s.%N 2>/dev/null || date +%s)
   while true; do
-    now=$(date +%s)
-    elapsed=$((now - start))
-    [[ $elapsed -ge 90 ]] && break
+    now=$(date +%s.%N 2>/dev/null || date +%s)
+    elapsed=$(awk "BEGIN {printf \"%.2f\", $now - $start}" 2>/dev/null || echo "$(( $(date +%s) - ${start%%.*} ))")
+    [[ "$elapsed" == .* ]] && elapsed="0$elapsed"
+    elapsed_int=${elapsed%%.*}
+    [[ -z "$elapsed_int" ]] && elapsed_int=0
+    [[ $elapsed_int -ge 90 ]] && break
     count=$(docker exec "$OUR_CONTAINER" curl -sSf "http://$OUR_API_ADDR/replication/status?key=$KEY" 2>/dev/null | jq -r '.replica_count // 0' || echo "0")
     [[ "$count" -ge "$REPLICAS_TARGET" ]] && break
     sleep "$POLL_INTERVAL_S"
@@ -145,21 +151,28 @@ else
     node_to_stop=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-node' | head -1)
     if [[ -n "$node_to_stop" ]]; then
       echo "  Stopping $node_to_stop..."
+      repair_start=$(date +%s.%N 2>/dev/null || date +%s)
       docker stop "$node_to_stop" >/dev/null 2>&1 || true
-      sleep 3
-      repair_start=$(date +%s)
+      sleep 0.5
       repair_time="TIMEOUT"
       while true; do
-        now=$(date +%s)
-        elapsed=$((now - repair_start))
-        [[ $elapsed -ge $TIMEOUT_S ]] && break
+        now=$(date +%s.%N 2>/dev/null || date +%s)
+        elapsed=$(awk "BEGIN {printf \"%.3f\", $now - $repair_start}" 2>/dev/null || echo "$(( $(date +%s) - ${repair_start%%.*} ))")
+        [[ "$elapsed" == .* ]] && elapsed="0$elapsed"
+        elapsed_int=${elapsed%%.*}
+        [[ -z "$elapsed_int" ]] && elapsed_int=0
+        [[ $elapsed_int -ge $TIMEOUT_S ]] && break
         count=$(docker exec "$OUR_CONTAINER" curl -sSf "http://$OUR_API_ADDR/replication/status?key=$KEY" 2>/dev/null | jq -r '.replica_count // 0' || echo "0")
         if [[ "$count" -ge "$REPLICAS_TARGET" ]]; then
-          repair_time=$elapsed
+          repair_time="$elapsed"
           echo -e "  ${GREEN}Repair complete in ${elapsed}s${NC}"
           break
         fi
-        sleep "$POLL_INTERVAL_S"
+        if [[ "$elapsed_int" -lt 20 ]]; then
+          sleep "$FAST_POLL_S"
+        else
+          sleep "$POLL_INTERVAL_S"
+        fi
       done
       docker start "$node_to_stop" >/dev/null 2>&1 || true
       echo "our_system,$NODE_COUNT,$repair_time" >> "$OUTPUT_FILE"

@@ -49,8 +49,9 @@ if [[ -z "$OUR_API" ]]; then
     for compose in "$ROOT_DIR/docker-compose.vnipfs.yml" "$ROOT_DIR/docker-compose.yml"; do
       [[ ! -f "$compose" ]] || ! command -v docker-compose >/dev/null 2>&1 && continue
       if docker-compose -f "$compose" ps bootstrap 2>/dev/null | grep -q "Up"; then
-        OUR_CONTAINER="bootstrap"
-        OUR_API_ADDR=$(docker-compose -f "$compose" exec -T bootstrap jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
+        OUR_CONTAINER=$(docker-compose -f "$compose" ps -q bootstrap 2>/dev/null | xargs -r docker inspect -f '{{.Name}}' 2>/dev/null | sed 's|^/||' || echo "fall25-bootstrap")
+        [[ "$OUR_CONTAINER" == "" ]] && OUR_CONTAINER="fall25-bootstrap"
+        OUR_API_ADDR=$(docker exec "$OUR_CONTAINER" jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
         [[ -n "$OUR_API_ADDR" && "$OUR_API_ADDR" != "null" ]] && break
       fi
     done
@@ -73,6 +74,23 @@ if [[ -z "$OUR_CONTAINER" ]]; then
   [[ -n "$resolved" ]] && OUR_CONTAINER="$resolved"
 fi
 
+# Resolve worker node for GET (cold) - put on bootstrap, get from worker to force DHT lookup
+PUT_CONTAINER="$OUR_CONTAINER"
+PUT_API_ADDR="$OUR_API_ADDR"
+GET_CONTAINER="$OUR_CONTAINER"
+GET_API_ADDR="$OUR_API_ADDR"
+for c in $(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-node' | head -5); do
+  if [[ "$c" != "$OUR_CONTAINER" ]]; then
+    ctrl_path="/app/logs/$(echo "$c" | sed 's/^fall25-//').json"
+    addr=$(docker exec "$c" jq -r '.addr // .Addr' "$ctrl_path" 2>/dev/null || echo "")
+    if [[ -n "$addr" && "$addr" != "null" ]]; then
+      GET_CONTAINER="$c"
+      GET_API_ADDR="$addr"
+      break
+    fi
+  fi
+done
+
 detect_node_count() {
   docker ps --format '{{.Names}}' 2>/dev/null | grep -c -E '^fall25-(bootstrap|node)' || echo "0"
 }
@@ -92,30 +110,58 @@ put_req() {
   local data_b64="$1"
   local json="$TEMP_DIR/put_$$.json"
   echo "{\"data\":\"$data_b64\"}" > "$json"
-  docker cp "$json" "${OUR_CONTAINER}:/tmp/put_$$.json" 2>/dev/null || return 1
-  docker exec "$OUR_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
-    -d @/tmp/put_$$.json "http://$OUR_API_ADDR/put" 2>/dev/null || echo "{}"
-  docker exec "$OUR_CONTAINER" rm -f /tmp/put_$$.json 2>/dev/null || true
+  if ! docker cp "$json" "${PUT_CONTAINER}:/tmp/put_$$.json" 2>/dev/null; then
+    echo "Warning: docker cp failed (container=$PUT_CONTAINER)" >&2
+    echo "{}"
+    return
+  fi
+  docker exec "$PUT_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
+    -d @/tmp/put_$$.json "http://$PUT_API_ADDR/put" 2>/dev/null || echo "{}"
+  docker exec "$PUT_CONTAINER" rm -f /tmp/put_$$.json 2>/dev/null || true
 }
 
-get_req() {
+# /lookup from worker: kad-dht returns 0 when token is local (from PutValue propagation).
+# Cold lookup: one-off container (fresh DHT) does lookup-key; token not local -> non-zero hops.
+lookup_req() {
   local key="$1"
-  local json="$TEMP_DIR/get_$$.json"
-  echo "{\"key\":\"$key\",\"timeout\":\"30s\"}" > "$json"
-  docker cp "$json" "${OUR_CONTAINER}:/tmp/get_$$.json" 2>/dev/null || return 1
-  docker exec "$OUR_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
-    -d @/tmp/get_$$.json "http://$OUR_API_ADDR/get" 2>/dev/null || echo "{}"
-  docker exec "$OUR_CONTAINER" rm -f /tmp/get_$$.json 2>/dev/null || true
+  docker exec "$GET_CONTAINER" curl -sSf -X POST -H "Content-Type: application/json" \
+    -d "{\"key\":\"$key\"}" "http://$GET_API_ADDR/lookup" 2>/dev/null || echo "{}"
+}
+
+# Cold lookup: run one-off container that joins after put; fresh DHT has no token locally.
+cold_lookup_req() {
+  local key="$1"
+  local bootstrap_ma="$2"
+  local net
+  net=$(docker inspect "$PUT_CONTAINER" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null | head -1)
+  [[ -z "$net" ]] && net="fall25_independentstudy_node-network"
+  local img
+  img=$(docker inspect "$PUT_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || echo "")
+  [[ -z "$img" ]] && img=$(docker inspect "$PUT_CONTAINER" --format '{{.Image}}' 2>/dev/null || echo "")
+  [[ -z "$img" ]] && return 1
+  docker run --rm --network "$net" "$img" lookup-key --bootstrap "$bootstrap_ma" --key "$key" --timeout 180s 2>/dev/null || echo "{}"
 }
 
 [[ -n "$write_header" ]] && echo "system,node_count,operation,hops,lookup_type" > "$OUTPUT_FILE"
 
+# Bootstrap multiaddr for cold lookup (one-off container; fresh DHT -> non-zero hops)
+# Use container name for DNS resolution (reliable from one-off on same Docker network)
+BOOTSTRAP_MA=""
+peer_id=$(docker exec "$PUT_CONTAINER" curl -sSf "http://$PUT_API_ADDR/id" 2>/dev/null | jq -r '.peer // empty' 2>/dev/null || echo "")
+if [[ -n "$peer_id" && "$peer_id" != "null" ]]; then
+  BOOTSTRAP_MA="/dns4/${PUT_CONTAINER}/tcp/4001/p2p/${peer_id}"
+fi
+
 echo "=========================================="
 echo "Lookup Complexity Test (O(log N) verification)"
 echo "=========================================="
-echo "API: $OUR_API | Node count: $NODE_COUNT | Iterations: $ITERATIONS"
+echo "Put: $PUT_CONTAINER | Lookup: cold (one-off container, fresh DHT)"
+echo "Node count: $NODE_COUNT | Iterations: $ITERATIONS"
 echo "Output: $OUTPUT_FILE"
 echo ""
+
+# Cold start: allow DHT to stabilize before first cold lookup (critical for run_comparison cold runs)
+[[ -n "$BOOTSTRAP_MA" ]] && echo "  Waiting 25s for DHT to stabilize before cold lookup..." && sleep 25
 
 for i in $(seq 1 "$ITERATIONS"); do
   test_file="$TEMP_DIR/test_$$.bin"
@@ -124,14 +170,32 @@ for i in $(seq 1 "$ITERATIONS"); do
   put_resp=$(put_req "$data_b64" 2>/dev/null || echo "{}")
   key=$(echo "$put_resp" | jq -r '.multihash_hex // empty' 2>/dev/null || echo "")
   if [[ -z "$key" || "$key" == "null" ]]; then
-    echo "our_system,$NODE_COUNT,get,N/A,key" >> "$OUTPUT_FILE"
+    echo "our_system,$NODE_COUNT,lookup,N/A,key" >> "$OUTPUT_FILE"
     continue
   fi
   put_hops=$(echo "$put_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
   [[ -n "$put_hops" && "$put_hops" != "null" ]] && echo "our_system,$NODE_COUNT,put,$put_hops,key" >> "$OUTPUT_FILE"
-  get_resp=$(get_req "$key" 2>/dev/null || echo "{}")
-  get_hops=$(echo "$get_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
-  echo "our_system,$NODE_COUNT,get,${get_hops:-},key" >> "$OUTPUT_FILE"
+  if [[ -n "$BOOTSTRAP_MA" ]]; then
+    lookup_resp=$(cold_lookup_req "$key" "$BOOTSTRAP_MA" 2>/dev/null || echo "{}")
+    lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
+    found=$(echo "$lookup_resp" | jq -r '.found // false' 2>/dev/null || echo "false")
+    for retry in 1 2 3; do
+      if [[ "$lookup_hops" != "0" && -n "$lookup_hops" ]] || [[ "$found" == "true" ]]; then
+        break
+      fi
+      sleep $((5 * retry + 5))
+      lookup_resp=$(cold_lookup_req "$key" "$BOOTSTRAP_MA" 2>/dev/null || echo "{}")
+      lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
+      found=$(echo "$lookup_resp" | jq -r '.found // false' 2>/dev/null || echo "false")
+    done
+    if [[ "$lookup_hops" == "0" || -z "$lookup_hops" ]] && [[ "$found" != "true" ]]; then
+      lookup_hops="N/A"
+    fi
+  else
+    lookup_resp=$(lookup_req "$key" 2>/dev/null || echo "{}")
+    lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
+  fi
+  echo "our_system,$NODE_COUNT,lookup,${lookup_hops:-0},key" >> "$OUTPUT_FILE"
 done
 
 echo ""

@@ -1,0 +1,9 @@
+system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type
+our_system,10,1024,1,cold,1.371000,1.390000,key
+swarm,10,1024,1,cold,2.939000,3.110000,cid
+our_system,10,10240,1,cold,1.260000,1.283000,key
+swarm,10,10240,1,cold,1.781000,1.899000,cid
+our_system,10,102400,1,cold,1.623000,1.834000,key
+swarm,10,102400,1,cold,3.731000,4.099000,cid
+our_system,10,1048576,1,cold,45.426000,51.957000,key
+swarm,10,1048576,1,cold,1.837000,7.163000,cid

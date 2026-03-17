@@ -72,8 +72,7 @@ def load_data(results_dir):
     
     upload_df = None
     download_df = None
-    message_counts_df = None
-    
+
     if upload_agg_file.exists():
         upload_df = pd.read_csv(upload_agg_file)
         print(f"Loaded aggregated upload data: {len(upload_df)} rows")
@@ -115,43 +114,6 @@ def load_data(results_dir):
             if download_dfs:
                 download_df = pd.concat(download_dfs, ignore_index=True)
                 print(f"Loaded download data from {len(download_files)} files: {len(download_df)} rows")
-    
-    # Load message counts
-    message_counts_file = results_path / "message_counts.csv"
-    msg_files = sorted(results_path.glob("message_counts_n*.csv"))
-    if message_counts_file.exists():
-        try:
-            mc = pd.read_csv(message_counts_file)
-            if 'message_count' in mc.columns:
-                mc = mc[~mc['message_count'].isin(['N/A', 'FAILED'])].copy()
-                mc['message_count'] = pd.to_numeric(mc['message_count'], errors='coerce')
-                mc = mc.dropna(subset=['message_count'])
-                if len(mc) > 0:
-                    message_counts_df = mc
-                    if 'node_count' not in message_counts_df.columns:
-                        message_counts_df['node_count'] = 0
-                    print(f"Loaded message counts: {len(message_counts_df)} rows")
-        except Exception:
-            pass
-    if message_counts_df is None and msg_files:
-        try:
-            dfs = []
-            for f in msg_files:
-                df = pd.read_csv(f)
-                node_count = int(f.stem.split('_n')[1])
-                df['node_count'] = node_count
-                dfs.append(df)
-            if dfs:
-                mc = pd.concat(dfs, ignore_index=True)
-                if 'message_count' in mc.columns:
-                    mc = mc[~mc['message_count'].isin(['N/A', 'FAILED'])].copy()
-                    mc['message_count'] = pd.to_numeric(mc['message_count'], errors='coerce')
-                    mc = mc.dropna(subset=['message_count'])
-                    if len(mc) > 0:
-                        message_counts_df = mc
-                        print(f"Loaded message counts from {len(msg_files)} files: {len(message_counts_df)} rows")
-        except Exception:
-            pass
     
     # Load network hops (dedicated file or extract from upload/download)
     hops_df = None
@@ -361,7 +323,7 @@ def load_data(results_dir):
         except Exception:
             pass
 
-    return upload_df, download_df, message_counts_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df
+    return upload_df, download_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df
 
 def generate_upload_plots(upload_df):
     """Generate upload latency comparison plots"""
@@ -673,31 +635,6 @@ def generate_resource_plots(resource_df):
 
     return plots
 
-def generate_message_count_plots(message_counts_df):
-    """Generate message count comparison plot"""
-    plots = {}
-    if message_counts_df is None or len(message_counts_df) == 0:
-        return plots
-    fig, ax = plt.subplots(figsize=(10, 6))
-    pivot = message_counts_df.groupby(['system', 'operation'])['message_count'].mean().reset_index()
-    x = np.arange(len(pivot))
-    colors = ['#3498db' if s == 'our_system' else '#e74c3c' for s in pivot['system']]
-    ax.bar(x, pivot['message_count'], color=colors)
-    ax.set_xticks(x)
-    ax.set_xticklabels(
-        [f"{row['system']}\n{row['operation']}" for _, row in pivot.iterrows()],
-        rotation=0, ha='center'
-    )
-    ax.set_ylabel('Message Count', fontsize=12)
-    ax.set_title('P2P Message Counts per Operation (Put/Get)', fontsize=14, fontweight='bold')
-    from matplotlib.patches import Patch
-    ax.legend(handles=[
-        Patch(facecolor='#3498db', label='our_system'),
-        Patch(facecolor='#e74c3c', label='swarm')
-    ])
-    plots['message_counts_bar'] = plot_to_base64(fig)
-    return plots
-
 def generate_replication_plots(replication_df):
     """Generate replication speed comparison (time to R replicas)"""
     plots = {}
@@ -861,7 +798,7 @@ def generate_storage_efficiency_plots(storage_efficiency_df):
     plots['storage_efficiency_bar'] = plot_to_base64(fig)
     return plots
 
-def generate_statistics_tables(upload_df, download_df, message_counts_df=None, hops_df=None, resource_df=None, storage_efficiency_df=None, replication_df=None, partition_recovery_df=None, lookup_complexity_df=None, concurrent_df=None, replication_distribution_df=None, repair_time_df=None, routing_overhead_df=None, lookup_latency_df=None):
+def generate_statistics_tables(upload_df, download_df, hops_df=None, resource_df=None, storage_efficiency_df=None, replication_df=None, partition_recovery_df=None, lookup_complexity_df=None, concurrent_df=None, replication_distribution_df=None, repair_time_df=None, routing_overhead_df=None, lookup_latency_df=None):
     """Generate HTML tables with statistics"""
     tables = {}
     
@@ -1121,7 +1058,7 @@ def generate_statistics_tables(upload_df, download_df, message_counts_df=None, h
                 tables['direct_fetch_efficiency'] = pd.DataFrame(rows).to_html(index=False, classes='stats-table', table_id='direct-fetch-efficiency')
     return tables
 
-def generate_html_report(results_dir, upload_df, download_df, plots, tables, message_counts_df=None, hops_df=None, resource_df=None, storage_efficiency_df=None, replication_df=None, partition_recovery_df=None, lookup_complexity_df=None, concurrent_df=None, replication_distribution_df=None, repair_time_df=None, routing_overhead_df=None, lookup_latency_df=None):
+def generate_html_report(results_dir, upload_df, download_df, plots, tables, hops_df=None, resource_df=None, storage_efficiency_df=None, replication_df=None, partition_recovery_df=None, lookup_complexity_df=None, concurrent_df=None, replication_distribution_df=None, repair_time_df=None, routing_overhead_df=None, lookup_latency_df=None):
     """Generate HTML report with all statistics and visualizations"""
     
     html_content = f"""<!DOCTYPE html>
@@ -1404,22 +1341,6 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, mes
         <img src="data:image/png;base64,{plots['storage_efficiency_bar']}" alt="Storage Efficiency Bar Chart">
     </div>
 """
-    if message_counts_df is not None and len(message_counts_df) > 0 and 'message_counts' in tables:
-        html_content += """
-    <h2>Message Count Analysis</h2>
-    <p>P2P message counts per operation (put, get) for comparison.</p>
-"""
-        html_content += f"""
-    <h3>Message Counts by System and Operation</h3>
-    {tables['message_counts']}
-"""
-        if 'message_counts_bar' in plots:
-            html_content += f"""
-    <div class="plot-container">
-        <h3>Bar Chart: Message Counts per Operation</h3>
-        <img src="data:image/png;base64,{plots['message_counts_bar']}" alt="Message Counts Bar Chart">
-    </div>
-"""
     if replication_df is not None and len(replication_df) > 0 and 'replication' in tables:
         html_content += """
     <h2>Replication Speed Analysis</h2>
@@ -1563,7 +1484,7 @@ def main():
         sys.exit(1)
     
     print(f"Loading data from: {results_path}")
-    upload_df, download_df, message_counts_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df = load_data(results_path)
+    upload_df, download_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df = load_data(results_path)
     
     if upload_df is None and download_df is None and hops_df is None and resource_df is None and storage_efficiency_df is None and replication_df is None and partition_recovery_df is None and lookup_complexity_df is None:
         print("Error: No CSV files found in results directory", file=sys.stderr)
@@ -1572,7 +1493,6 @@ def main():
     print("\nGenerating plots...")
     upload_plots = generate_upload_plots(upload_df)
     download_plots = generate_download_plots(download_df)
-    message_plots = generate_message_count_plots(message_counts_df)
     hops_plots = generate_network_hops_plots(hops_df)
     resource_plots = generate_resource_plots(resource_df)
     storage_eff_plots = generate_storage_efficiency_plots(storage_efficiency_df)
@@ -1580,15 +1500,15 @@ def main():
     partition_recovery_plots = generate_partition_recovery_plots(partition_recovery_df)
     lookup_complexity_plots = generate_lookup_complexity_plots(lookup_complexity_df)
     concurrent_plots = generate_concurrent_plots(concurrent_df)
-    plots = {**upload_plots, **download_plots, **message_plots, **hops_plots, **resource_plots, **storage_eff_plots, **replication_plots, **partition_recovery_plots, **lookup_complexity_plots, **concurrent_plots}
+    plots = {**upload_plots, **download_plots, **hops_plots, **resource_plots, **storage_eff_plots, **replication_plots, **partition_recovery_plots, **lookup_complexity_plots, **concurrent_plots}
     print(f"Generated {len(plots)} plots")
     
     print("\nCalculating statistics...")
-    tables = generate_statistics_tables(upload_df, download_df, message_counts_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df)
+    tables = generate_statistics_tables(upload_df, download_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df)
     print(f"Generated {len(tables)} statistics tables")
     
     print("\nGenerating HTML report...")
-    html_content = generate_html_report(str(results_path), upload_df, download_df, plots, tables, message_counts_df, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df)
+    html_content = generate_html_report(str(results_path), upload_df, download_df, plots, tables, hops_df, resource_df, storage_efficiency_df, replication_df, partition_recovery_df, lookup_complexity_df, concurrent_df, replication_distribution_df, repair_time_df, routing_overhead_df, lookup_latency_df)
     
     # Determine output path
     if args.output:
