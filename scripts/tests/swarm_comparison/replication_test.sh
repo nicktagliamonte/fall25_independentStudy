@@ -17,7 +17,7 @@ export RUN_ID ERROR_LOG_DIR
 mkdir -p "$ERROR_LOG_DIR"
 
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 PAYLOAD_SIZE=65536
 REPLICAS_TARGET=2
 TIMEOUT_S=120
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
     --help)
       echo "Usage: $0 [options]"
       echo "  --our-api <addr>         Our system (default: auto-detect)"
-      echo "  --swarm-api <addr>       Swarm API (default: http://172.20.0.200:8500)"
+      echo "  --swarm-api <addr>       Swarm API (default: http://127.0.0.1:8500)"
       echo "  --payload-size <n>       Payload bytes (default: 65536)"
       echo "  --replicas-target <R>    Replicas to reach (default: 2)"
       echo "  --timeout <s>            Max wait seconds (default: 120)"

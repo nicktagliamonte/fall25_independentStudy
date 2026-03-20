@@ -4,7 +4,7 @@ set -euo pipefail
 # Purpose: Download latency test comparing our system vs Swarm v0.5.8
 # Usage: ./scripts/tests/swarm_comparison/download_test.sh [options]
 #   --our-api <container> Our system container name (default: auto-detect bootstrap)
-#   --swarm-api <addr>   Swarm API address (default: http://172.20.0.200:8500)
+#   --swarm-api <addr>   Swarm API address (default: http://127.0.0.1:8500)
 #   --iterations <n>     Number of iterations per size (default: 10)
 #   --cache-mode <mode>  cold|warm (default: cold)
 #   --output <file>      Output CSV file (default: download_latency_results.csv)
@@ -17,7 +17,7 @@ source "$SCRIPT_DIR/api.sh"
 
 # Default values
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 ITERATIONS=10
 CACHE_MODE="cold"
 OUTPUT_FILE="download_latency_results.csv"
@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo "Options:"
       echo "  --our-api <container> Our system container name (default: auto-detect)"
-      echo "  --swarm-api <addr>   Swarm API address (default: http://172.20.0.200:8500)"
+      echo "  --swarm-api <addr>   Swarm API address (default: http://127.0.0.1:8500)"
       echo "  --iterations <n>     Iterations per size (default: 10)"
       echo "  --cache-mode <mode>  cold|warm (default: cold)"
       echo "  --output <file>      Output CSV file (default: download_latency_results.csv)"

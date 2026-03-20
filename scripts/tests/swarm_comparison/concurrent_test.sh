@@ -5,7 +5,7 @@ set -euo pipefail
 # Output: system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms
 # Usage: ./scripts/tests/swarm_comparison/concurrent_test.sh [options]
 #   --our-api <container>      Our system container (default: auto-detect)
-#   --swarm-api <addr>         Swarm API (default: http://172.20.0.200:8500)
+#   --swarm-api <addr>         Swarm API (default: http://127.0.0.1:8500)
 #   --concurrent-writes <n>    Parallel uploads (default: 5)
 #   --concurrent-reads <n>     Parallel downloads (default: 5)
 #   --payload-size <bytes>     Payload size (default: 65536)
@@ -18,7 +18,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$SCRIPT_DIR/api.sh"
 
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 CONCURRENT_WRITES=5
 CONCURRENT_READS=5
 PAYLOAD_SIZE=65536

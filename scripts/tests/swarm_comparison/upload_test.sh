@@ -26,7 +26,7 @@ mkdir -p "$ERROR_LOG_DIR"
 
 # Default values
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 ITERATIONS=10
 OUTPUT_FILE="upload_latency_results.csv"
 PAYLOAD_SIZES=(1024 10240 102400 1048576)  # 1KB, 10KB, 100KB, 1MB

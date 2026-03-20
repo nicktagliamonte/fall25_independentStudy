@@ -5,7 +5,7 @@ set -euo pipefail
 # Output: system,operation,message_count,overhead_type
 # Usage: ./scripts/tests/swarm_comparison/routing_overhead_test.sh [options]
 #   --our-api <addr>     Our system API (default: auto-detect bootstrap)
-#   --swarm-api <addr>   Swarm API (default: http://172.20.0.200:8500)
+#   --swarm-api <addr>   Swarm API (default: http://127.0.0.1:8500)
 #   --output <file>      Output CSV (default: routing_overhead_results.csv)
 #   --payload-size <n>   Payload bytes (default: 10240)
 
@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/api.sh"
 source "$ROOT_DIR/scripts/utils/error_handler.sh" 2>/dev/null || true
 
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 OUTPUT_FILE="routing_overhead_results.csv"
 PAYLOAD_SIZE=10240
 
@@ -29,7 +29,7 @@ while [[ $# -gt 0 ]]; do
     --help)
       echo "Usage: $0 [options]"
       echo "  --our-api <addr>     Our system API (default: auto-detect)"
-      echo "  --swarm-api <addr>   Swarm API (default: http://172.20.0.200:8500)"
+      echo "  --swarm-api <addr>   Swarm API (default: http://127.0.0.1:8500)"
       echo "  --output <file>      Output CSV (default: routing_overhead_results.csv)"
       echo "  --payload-size <n>   Payload bytes (default: 10240)"
       exit 0

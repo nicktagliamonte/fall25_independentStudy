@@ -12,7 +12,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$SCRIPT_DIR/api.sh"
 
 # Default API address
-API="${1:-http://172.20.0.200:8500}"
+API="${1:-http://127.0.0.1:8500}"
 
 # Colors for output
 RED='\033[0;31m'

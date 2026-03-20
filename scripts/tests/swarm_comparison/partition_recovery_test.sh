@@ -20,7 +20,7 @@ source "$SCRIPT_DIR/api.sh"
 NETWORK="${NETWORK:-fall25_independentstudy_node-network}"
 PARTITION_SIZE="${PARTITION_SIZE:-3}"
 PAYLOAD_SIZE="${PAYLOAD_SIZE:-4096}"
-SWARM_API="${SWARM_API:-http://172.20.0.200:8500}"
+SWARM_API="${SWARM_API:-http://127.0.0.1:8500}"
 RECOVERY_TIMEOUT_S="${RECOVERY_TIMEOUT_S:-120}"
 POLL_INTERVAL_S="${POLL_INTERVAL_S:-2}"
 OUTPUT_FILE="${OUTPUT_FILE:-}"
@@ -333,7 +333,7 @@ case "$cmd" in
     echo "     RECOVERY_TIMEOUT_S (default: 120)"
     echo "     POLL_INTERVAL_S (default: 2)"
     echo "     OUTPUT_FILE (optional CSV: system,node_count,partition_size,recovery_time_s)"
-    echo "     SWARM_API (default: http://172.20.0.200:8500)"
+    echo "     SWARM_API (default: http://127.0.0.1:8500)"
     echo "     DISCONNECTED_FILE (default: /tmp/partition_disconnected_$$.txt)"
     exit 1
     ;;

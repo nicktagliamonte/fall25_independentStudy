@@ -125,7 +125,11 @@ if [[ -z "$PEER_ID" || "$PEER_ID" == "null" ]]; then
 fi
 
 ESCAPED_PEER_ID=$(echo "$PEER_ID" | sed 's/[[\.*^$()+?{|]/\\&/g')
-sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+else
+  sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+fi
 
 echo "Starting peer nodes 2..$N..."
 for i in $(seq 2 "$N"); do

@@ -5,7 +5,7 @@ set -euo pipefail
 # Uploads a known payload, measures disk delta across nodes, computes efficiency ratio.
 # Usage: ./scripts/tests/swarm_comparison/storage_efficiency_test.sh [options]
 #   --our-api <addr>       Our system API (default: auto-detect from bootstrap)
-#   --swarm-api <addr>     Swarm API (default: http://172.20.0.200:8500)
+#   --swarm-api <addr>     Swarm API (default: http://127.0.0.1:8500)
 #   --payload-size <n>     Payload size in bytes (default: 65536)
 #   --replication-count <n> Nominal replica count for efficiency formula (default: 1)
 #   --output <file>        Output CSV (default: storage_efficiency_results.csv)
@@ -22,7 +22,7 @@ export RUN_ID ERROR_LOG_DIR
 mkdir -p "$ERROR_LOG_DIR"
 
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 PAYLOAD_SIZE=65536
 REPLICATION_COUNT=1
 OUTPUT_FILE="storage_efficiency_results.csv"
@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
     --help)
       echo "Usage: $0 [options]"
       echo "  --our-api <addr>        Our system API"
-      echo "  --swarm-api <addr>      Swarm API (default: http://172.20.0.200:8500)"
+      echo "  --swarm-api <addr>      Swarm API (default: http://127.0.0.1:8500)"
       echo "  --payload-size <n>      Payload bytes (default: 65536)"
       echo "  --replication-count <n> Nominal replicas for formula (default: 1)"
       echo "  --output <file>         Output CSV"

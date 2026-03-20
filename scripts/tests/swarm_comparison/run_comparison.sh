@@ -245,7 +245,7 @@ wait_for_stabilization() {
     done
   elif [[ "$system" == "swarm" ]]; then
     for i in $(seq 1 $max_wait); do
-      if curl -sf "http://172.20.0.200:8500/" >/dev/null 2>&1; then
+      if curl -sf "http://127.0.0.1:8500/" >/dev/null 2>&1; then
         local running_nodes=$(docker-compose -f "$ROOT_DIR/docker-compose.swarm.yml" ps --services 2>/dev/null | grep -E '^(swarm-bootstrap|swarm-node)' | wc -l)
         if [[ $running_nodes -ge $nodes ]]; then
           echo "    $system ready after ${i}s"

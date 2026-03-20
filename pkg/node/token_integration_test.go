@@ -45,7 +45,7 @@ func TestPutTokenCreatedGetTokenDirectFetch(t *testing.T) {
 
 	buildStack := func(h host.Host, other peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode:       myhost.DHTModeServer,
+			Mode:        myhost.DHTModeServer,
 			UseTokenDHT: true, // enables /tokens/ namespace for token routing
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				if other.ID == h.ID() {
@@ -155,7 +155,7 @@ func TestReplicationMultipleProvidersTokenUpdated(t *testing.T) {
 
 	buildStack := func(h host.Host, other peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode:       myhost.DHTModeServer,
+			Mode:        myhost.DHTModeServer,
 			UseTokenDHT: true,
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				if other.ID == h.ID() {
@@ -299,7 +299,7 @@ func TestWriteLockConcurrentWritesOneSucceeds(t *testing.T) {
 	stackB.PutLockRetryConfig = &mystore.LockRetryConfig{
 		InitialBackoff: 20 * time.Millisecond,
 		MaxBackoff:     100 * time.Millisecond,
-		Timeout:       500 * time.Millisecond,
+		Timeout:        500 * time.Millisecond,
 	}
 
 	payload := []byte("concurrent write lock test payload")
@@ -359,7 +359,7 @@ func TestReadWithoutLockMultipleConcurrentReadsSucceed(t *testing.T) {
 
 	buildStack := func(h host.Host, other peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode:       myhost.DHTModeServer,
+			Mode:        myhost.DHTModeServer,
 			UseTokenDHT: true,
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				if other.ID == h.ID() {

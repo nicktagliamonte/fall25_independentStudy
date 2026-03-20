@@ -160,7 +160,11 @@ fi
 
 # Update docker-compose.yml with actual peer ID (escape special chars for sed)
 ESCAPED_PEER_ID=$(echo "$PEER_ID" | sed 's/[[\.*^$()+?{|]/\\&/g')
-sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  sed -i '' "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+else
+  sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
+fi
 
 # Start remaining nodes (2 through N)
 echo "Starting peer nodes..."

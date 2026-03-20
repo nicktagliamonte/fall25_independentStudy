@@ -11,7 +11,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$SCRIPT_DIR/api.sh"
 
 OUR_API=""
-SWARM_API="http://172.20.0.200:8500"
+SWARM_API="http://127.0.0.1:8500"
 ITERATIONS=10
 PAYLOAD_SIZE=10240
 OUTPUT_FILE="lookup_latency_results.csv"
