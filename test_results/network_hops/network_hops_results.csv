@@ -1,5 +1,0 @@
-system,operation,payload_size,iteration,hops
-vn-ipfs,put,1024,1,0
-vn-ipfs,get,1024,1,1
-vn-ipfs,put,10240,1,0
-vn-ipfs,get,10240,1,11

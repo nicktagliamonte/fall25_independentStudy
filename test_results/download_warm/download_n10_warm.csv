@@ -1,9 +1,0 @@
-system,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type
-our_system,1024,1,warm,1.740000,1.792000,key
-swarm,1024,1,warm,.754000,.806000,cid
-our_system,10240,1,warm,1.282000,1.307000,key
-swarm,10240,1,warm,2.466000,2.610000,cid
-our_system,102400,1,warm,5.320000,6.097000,key
-swarm,102400,1,warm,3.450000,3.955000,cid
-our_system,1048576,1,warm,4.354000,5.505000,key
-swarm,1048576,1,warm,1.105000,3.114000,cid

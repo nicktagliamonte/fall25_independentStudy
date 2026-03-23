@@ -1,7 +1,0 @@
-timestamp,container,cpu_pct,mem_usage_mb
-2026-03-15T17:26:58Z,swarm-node9,1.64,284.3
-2026-03-15T17:26:58Z,swarm-node8,0.98,286.1
-2026-03-15T17:26:58Z,swarm-node7,1.57,366.6
-2026-03-15T17:26:58Z,swarm-node6,0.30,288
-2026-03-15T17:26:58Z,swarm-node5,0.19,285
-2026-03-15T17:26:58Z,swarm-node4,7.73,289.6
