@@ -132,6 +132,8 @@ This:
 
 **Purpose**: Measure upload latency for various payload sizes
 
+**Equivalence**: Both systems return after the first successful store (time to first copy). vn-IPFS replicates to peers asynchronously; Swarm does chunk replication in the background. Latency is measured from request start until response, so both are comparable.
+
 **Usage** (typically invoked by `run_comparison.sh`; can run standalone if nodes are up):
 ```bash
 ./scripts/tests/swarm_comparison/upload_test.sh --iterations 10 --output upload.csv

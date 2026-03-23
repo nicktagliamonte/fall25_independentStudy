@@ -678,15 +678,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		keyHex := key.String()
 		resp := PutResponse{CID: c.String(), MultihashHex: keyHex, NetworkHops: &putHops}
 
-		// Block until replication completes (or 10s timeout). Ensures replica_count >= 2 before client polls.
-		if repairProtocol != nil && h != nil && len(blockData) > 0 {
-			ctxRepair, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, blockData, 6)
-			cancel()
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(resp)
+
+		// Replicate asynchronously (matches Swarm: return after first copy; replication is background).
+		if repairProtocol != nil && h != nil && len(blockData) > 0 {
+			go func() {
+				ctxRepair, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, blockData, 6)
+			}()
+		}
 	})
 
 	// Delete endpoint

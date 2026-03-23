@@ -29,6 +29,8 @@ Stores a block. Key is derived from data (`SHA256(data)`). Token is synced to DH
 ```
 `network_hops`: DHT lookup hops for this operation (0 for put; token sync is not instrumented).
 
+PUT returns immediately after the first successful store (local + routing table). Replication to peers runs asynchronously, matching Swarm's behavior for fair comparison.
+
 **Key-based usage:** Use `multihash_hex` as the key for subsequent GET operations.
 
 **Errors:** `400` invalid request; `500` storage error (e.g. lock contention).
