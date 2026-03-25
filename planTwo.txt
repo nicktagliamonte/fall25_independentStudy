@@ -924,16 +924,154 @@ to demonstrate performance advantages with catchy, graphable results.
         - Fairness considerations
 
 ================================================================================
-PHASE 10: FINAL CLEANUP
+PHASE 10: FOLDERS AND NAMESPACE (FIRST-CLASS)
 ================================================================================
-10.1 README Updates
+Choice: **First-class directory / collection objects** (not client-only path prefixes). This matches
+common practice in content-addressed stacks (e.g. IPFS UnixFS / IPLD directory nodes): folders are
+addressable structures (Merkle or key-rooted) that participate in replication and routing, not
+only a UI convenience over a flat keyspace.
+
+Goal: Replicated namespace you can list, traverse, and attach ACLs to; paths resolve to objects
+under a root policy.
+
+10.1 Model and documentation
+     ------------------------
+     Tasks:
+     [ ] Add docs/NAMESPACE.md (or extend docs/REPLICATION.md): directory entry schema (name → child
+         key/CID), single-writer or CRDT choice for concurrent edits, link to token/DHT publication.
+     [ ] Define how directory keys relate to Put/Get and provider records (directory CID vs entry keys).
+
+10.2 API and implementation
+     ------------------------
+     Tasks:
+     [ ] APIs: create directory, add link, remove link, list children, resolve path → object key.
+     [ ] Replicate directory objects with same R as policy for user roots; tombstones on unlink.
+     [ ] Tests: mkdir, nested path, rename semantics (copy-on-write or update), concurrent readers.
+
+================================================================================
+PHASE 11: ACCOUNTS, IDENTITY, AND ACCESS CONTROL
+================================================================================
+Authentication: **only public keys** are stored in the replicated account record; the matching
+**private key never leaves the client**. Login proves control via signature over a server-issued
+challenge (industry-standard pattern, analogous to SSH / Web3 wallet auth).
+
+Distributed login is allowed (any geography); **no concurrent sessions**: each successful login
+revokes prior session tokens so only the **latest** session remains valid.
+
+11.1 Account object schema (replicated)
+     ------------------------------------
+     Canonical fields (versioned record, extensible):
+     - **account_id**: stable id derived from canonical encoding of the signing public key (e.g.
+       SHA-256 over type-prefixed ed25519 public key bytes), used as primary key in APIs and DHT.
+     - **signing_public_key**: ed25519 public key (32-byte) in a fixed multiformat or PEM-less raw form.
+     - **record_version** / **updated_at**: for optimistic concurrency and replication merge rules.
+     - **display_name** (optional): non-unique human label; not used for security decisions.
+     - **quota_policy_ref** (optional): CID or key pointing to quota / billing attachment.
+     - **roots_ref** (optional): CID(s) for default namespace roots (“my files”).
+     Private keys are **never** a field; servers must reject any upload that claims to store them.
+
+     Tasks:
+     [ ] Encode schema in docs (API.md + REPLICATION.md) and as a versioned protobuf/JSON struct.
+     [ ] Replicate account records with cluster R; document merge on version conflict.
+
+11.2 Auth and sessions
+     -------------------
+     Tasks:
+     [ ] Challenge–response login: nonce issued, client signs with private key, server verifies with
+         stored signing_public_key.
+     [ ] Session token issuance; on new login, invalidate all prior tokens for that account_id.
+     [ ] Tests: login from two logical devices, second login revokes first; signature failure paths.
+
+================================================================================
+PHASE 12: DELETION, OWNERSHIP, AND DELEGATED CAPABILITIES
+================================================================================
+Rejected: (1) any collaborator deletes globally, (2) delete only if share/update cap, (3) majority
+vote. Adopted: each object has exactly **one owner**; owner grants **delegated** capabilities
+(read / update / delete) to other principals (identified by account_id or pubkey). Delegates act
+within the granted cap; owner may revoke.
+
+Deletion is **logical / top-down**: mark object (and children if policy says cascade) deleted and
+quota reclaimable; physical blocks reclaimed by GC/compaction — no requirement to zero entire media
+synchronously.
+
+12.1 Documentation and metadata
+     ----------------------------
+     Tasks:
+     [ ] Document owner + delegate capability matrix in API + REPLICATION; max delegation depth if any.
+     [ ] Object metadata: owner_id, optional cap_list or cap_root CID, revocation epoch.
+
+12.2 Implementation
+     ----------------
+     Tasks:
+     [ ] Enforce read/update/delete checks using owner + delegations; audit log optional.
+     [ ] Tombstone / deleted flag propagation; deny reads per policy; cascade rules for trees.
+     [ ] Space accounting: free quota for owner on delete; GC reclaims storage.
+     [ ] Tests: owner delete; delegate with delete cap; delegate without delete cannot delete;
+           revocation; orphan-cap cleanup.
+
+================================================================================
+PHASE 13: RESERVATION (CID- OR KEY-ANCHORED ALLOCATION)
+================================================================================
+Why a bare quota row is insufficient: if “20 TB reserved” exists only in a side table with **no**
+object in the same namespace as normal puts, other writers or GC paths can still **double-book**
+physical pool unless every allocator globally agrees on that ledger. **Industry-aligned fix**:
+bind the reservation to a **first-class object** with a **stable key or CID** so replication,
+routing, DHT/provider records, and quota attribution match normal objects. Clients and operators
+can **find** the reservation the same way as data.
+
+We do **not** need to ship 20 TB of zero bytes over the network: the **on-wire payload** can be a
+small **manifest** (logical_size, reservation flag, owner_id). The **store** maps that CID/key to
+**sparse** or **extent-based** allocation so disk is not filled with literal zeros cluster-wide. The
+important part is the **addressable object** occupies the namespace and quota graph so nothing else
+can claim that commitment without protocol violation.
+
+13.1 Protocol
+     ---------
+     Tasks:
+     [ ] Reserve API creates reservation object; returns key/CID; manifest encodes logical_size +
+         kind=reservation; normal PUT uses kind=data (or single reserved bit in header).
+     [ ] Provider / token path publishes reservation object like any other for discoverability.
+
+13.2 Storage and upgrade
+     ----------------------
+     Tasks:
+     [ ] Backend: map CID/key → quota slot + sparse extents; enforce cap on write until upgraded.
+     [ ] Upgrade path: replace or patch manifest in place with real content hash when user uploads data.
+     [ ] Release / shrink reservation semantics and tokenomics interaction.
+     [ ] Tests: reserve → locate by CID; concurrent put cannot steal space; upgrade to real payload;
+           exceed reserved size fails cleanly.
+
+================================================================================
+PHASE 14: TOKENOMICS, QUOTA WARNINGS, AND METERING
+================================================================================
+(1) Logically centralized (or federated) settlement for money / credits.
+(2) Quota and billing warnings (Filecoin-esque operational goals).
+(3) Metering: length of stay, bandwidth, stored size → inputs to issuance or charges.
+
+14.1 Design and docs
+     ----------------
+     Tasks:
+     [ ] docs/TOKENOMICS.md: dimensions, issuer role, linkage to account_id and reservation CIDs.
+     [ ] Define metering events (ingest duration, egress bytes, logical bytes); log sink and retention.
+
+14.2 Implementation
+     ----------------
+     Tasks:
+     [ ] Central issuer / ledger interface (stub + pluggable backend acceptable for v0).
+     [ ] Soft warnings and hard caps tied to account and reservation objects.
+     [ ] Tests: threshold alerts, cap enforcement, audit sample for one period.
+
+================================================================================
+PHASE 15: FINAL CLEANUP
+================================================================================
+15.1 README Updates
      -----------------
 
      Tasks:
      [ ] Trim the README of unnecessary or extraneous information
      [ ] Validate that the REAEDME contains industry standard directions and explainations
 
-10.2 Root Dir and Test Suite Cleanup
+15.2 Root Dir and Test Suite Cleanup
      ---------------------------------
 
      Tasks:
@@ -941,7 +1079,7 @@ PHASE 10: FINAL CLEANUP
      [ ] Remove outdated docker files, notes, binaries, and other unnecessary files from root
      [ ] Remove some of the scripts and tests which are excessive or overkill for the final paper
 
-10.3 Documentation of Completed Work
+15.3 Documentation of Completed Work
      ---------------------------------
 
      Tasks:
