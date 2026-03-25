@@ -1,3 +1,0 @@
-system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms
-our_system,5,5,.54,222.691000000
-swarm,5,5,.82,24.033000000

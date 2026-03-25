@@ -726,6 +726,16 @@ func putRawBlockIndexedInner(ctx context.Context, d ds.Batching, bsvc *bserv.Blo
 // Auto-syncs token on Put operations (creates/updates token with current peer location).
 // No-op if RoutingTable is nil.
 func (s *Stack) UpdateRoutingTableOnPut(k Key, providerID peer.ID, repVector *ReplicationVector, c cid.Cid) {
+	s.updateRoutingTableOnPut(k, providerID, repVector, c, false)
+}
+
+// UpdateRoutingTableOnPutAsync is like UpdateRoutingTableOnPut but runs SyncTokenOnPut in background.
+// Use for HTTP PUT when matching Swarm semantics (return after local store; DHT announce async).
+func (s *Stack) UpdateRoutingTableOnPutAsync(k Key, providerID peer.ID, repVector *ReplicationVector, c cid.Cid) {
+	s.updateRoutingTableOnPut(k, providerID, repVector, c, true)
+}
+
+func (s *Stack) updateRoutingTableOnPut(k Key, providerID peer.ID, repVector *ReplicationVector, c cid.Cid, asyncTokenSync bool) {
 	if s.RoutingTable == nil || k.IsZero() {
 		return
 	}
@@ -744,9 +754,16 @@ func (s *Stack) UpdateRoutingTableOnPut(k Key, providerID peer.ID, repVector *Re
 			store = s.TokenStore
 		}
 		if store != nil {
-			ctx := context.Background()
-			if syncErr := SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink); syncErr != nil {
-				log.Printf("SyncTokenOnPut failed for key %s: %v (host.Addrs=%d)", k.String(), syncErr, len(s.Host.Addrs()))
+			doSync := func() {
+				ctx := context.Background()
+				if syncErr := SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink); syncErr != nil {
+					log.Printf("SyncTokenOnPut failed for key %s: %v (host.Addrs=%d)", k.String(), syncErr, len(s.Host.Addrs()))
+				}
+			}
+			if asyncTokenSync {
+				go doSync()
+			} else {
+				doSync()
 			}
 		}
 	}

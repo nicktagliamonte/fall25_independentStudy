@@ -50,8 +50,12 @@ NETWORKS_LINE=$(grep -n "^networks:" "$COMPOSE_FILE" | cut -d: -f1)
 head -n $((NETWORKS_LINE - 1)) "$COMPOSE_FILE" > "$COMPOSE_FILE.tmp"
 
 # Generate node services (swarm-node1 .. swarm-nodeN-1) - insert before networks section
+# IP: bootstrap 172.20.0.200; node i gets 172.20.$((o3)).$((o4)) where offset=200+i, o3=offset/256, o4=offset%256
 for i in $(seq 1 $((N - 1))); do
-  IP_LAST=$((200 + i))  # Bootstrap 172.20.0.200, peers 172.20.0.201+
+  offset=$((200 + i))
+  IP_OCT3=$((offset / 256))
+  IP_OCT4=$((offset % 256))
+  IP_ADDR="172.20.${IP_OCT3}.${IP_OCT4}"
   cat >> "$COMPOSE_FILE.tmp" <<EOF
   swarm-node${i}:
     build: scripts/docker/swarm
@@ -70,7 +74,7 @@ for i in $(seq 1 $((N - 1))); do
       - swarm-node${i}-logs:/app/logs
     networks:
       node-network:
-        ipv4_address: 172.20.0.${IP_LAST}
+        ipv4_address: ${IP_ADDR}
     healthcheck:
       test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
       interval: 5s
@@ -208,8 +212,10 @@ echo ""
 echo "Node addresses:"
 echo "  swarm-bootstrap: http://172.20.0.200:8500"
 for i in $(seq 1 $((N - 1))); do
-  IP_LAST=$((200 + i))
-  echo "  swarm-node${i}: http://172.20.0.${IP_LAST}:8500"
+  offset=$((200 + i))
+  o3=$((offset / 256))
+  o4=$((offset % 256))
+  echo "  swarm-node${i}: http://172.20.${o3}.${o4}:8500"
 done
 echo ""
 echo "To check status: docker-compose -f docker-compose.swarm.yml ps"

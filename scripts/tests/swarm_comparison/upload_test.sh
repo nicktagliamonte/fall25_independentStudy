@@ -158,6 +158,13 @@ if ! check_required_tools bc jq; then
   exit 1
 fi
 
+# Detect direct API (port 9400 exposed for fair comparison with Swarm - no docker exec overhead)
+OUR_API_DIRECT=""
+if curl -sf -m 3 http://127.0.0.1:9400/health >/dev/null 2>&1; then
+  OUR_API_DIRECT="http://127.0.0.1:9400"
+  echo "Using direct API (127.0.0.1:9400) for fair latency measurement"
+fi
+
 # Verify API endpoints are accessible
 echo "Verifying API endpoints..."
 
@@ -221,47 +228,52 @@ generate_test_file() {
 upload_our_system() {
   local file_path="$1"
   
-  if [[ -z "$OUR_CONTAINER" || -z "$OUR_API_ADDR" ]]; then
-    echo "ERROR: Container or API address not set" >&2
-    return 1
-  fi
-  
   # Read file and base64 encode
   local data_b64=$(base64 -w 0 < "$file_path" 2>/dev/null || base64 < "$file_path" | tr -d '\n')
-  
-  # Control server binds to 127.0.0.1 inside container, so we need docker exec
-  local api_url="http://$OUR_API_ADDR/put"
-  
-  # Create JSON payload file
   local json_payload="$TEMP_DIR/put_payload_$$.json"
   echo "{\"data\":\"$data_b64\"}" > "$json_payload"
   
-  # Measure upload time
   local start_time=$(date +%s.%N)
-  
-  # Copy JSON to container with retry
-  if ! retry_with_backoff 3 1 10 \
-    docker cp "$json_payload" "${OUR_CONTAINER}:/tmp/put_payload_$$.json" >/dev/null 2>&1; then
-    log_error "Failed to copy payload to container" "container: $OUR_CONTAINER"
-    rm -f "$json_payload"
-    echo "ERROR"
-    return 1
-  fi
-  
-  # Execute upload with timeout
   local response=""
-  if ! response=$(with_timeout 30 docker exec "$OUR_CONTAINER" curl -sSf -X POST \
-    -H "Content-Type: application/json" \
-    -d @/tmp/put_payload_$$.json \
-    "$api_url" 2>&1); then
-    log_error "Upload request failed" "container: $OUR_CONTAINER, url: $api_url"
+  
+  if [[ -n "$OUR_API_DIRECT" ]]; then
+    # Direct curl (matches Swarm - no docker exec/cp overhead)
+    if ! response=$(curl -sSf -m 30 -X POST \
+      -H "Content-Type: application/json" \
+      -d @"$json_payload" \
+      "$OUR_API_DIRECT/put" 2>&1); then
+      log_error "Direct upload failed" "url: $OUR_API_DIRECT/put"
+      rm -f "$json_payload"
+      echo "ERROR"
+      return 1
+    fi
+  elif [[ -n "$OUR_CONTAINER" && -n "$OUR_API_ADDR" ]]; then
+    # Fallback: docker exec (control port not exposed)
+    local api_url="http://$OUR_API_ADDR/put"
+    if ! retry_with_backoff 3 1 10 \
+      docker cp "$json_payload" "${OUR_CONTAINER}:/tmp/put_payload_$$.json" >/dev/null 2>&1; then
+      log_error "Failed to copy payload to container" "container: $OUR_CONTAINER"
+      rm -f "$json_payload"
+      echo "ERROR"
+      return 1
+    fi
+    if ! response=$(with_timeout 30 docker exec "$OUR_CONTAINER" curl -sSf -X POST \
+      -H "Content-Type: application/json" \
+      -d @/tmp/put_payload_$$.json \
+      "$api_url" 2>&1); then
+      log_error "Upload request failed" "container: $OUR_CONTAINER, url: $api_url"
+      docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_$$.json" >/dev/null 2>&1 || true
+      rm -f "$json_payload"
+      echo "ERROR"
+      return 1
+    fi
     docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_$$.json" >/dev/null 2>&1 || true
+  else
+    echo "ERROR: No API endpoint (set OUR_API_DIRECT or OUR_CONTAINER+OUR_API_ADDR)" >&2
     rm -f "$json_payload"
-    echo "ERROR"
     return 1
   fi
   
-  docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_$$.json" >/dev/null 2>&1 || true
   rm -f "$json_payload"
   local end_time=$(date +%s.%N)
   

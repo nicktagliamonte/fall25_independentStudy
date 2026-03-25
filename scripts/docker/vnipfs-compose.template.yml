@@ -16,6 +16,10 @@ services:
       --min-outbound 4
       --control /app/logs/bootstrap.json
       --log /app/logs/bootstrap.log
+    environment:
+      - SNG40_CONTROL_LISTEN=0.0.0.0:9400
+    ports:
+      - "9400:9400"
     volumes:
       - bootstrap-data:/app/data
       - bootstrap-keys:/app/keys

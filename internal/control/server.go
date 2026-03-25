@@ -671,7 +671,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			return
 		}
 		if h != nil {
-			stack.UpdateRoutingTableOnPut(key, h.ID(), nil, c)
+			stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
 		}
 		putHops := 0
 		// multihash_hex must be 64 hex chars (Key) for /replication/status and /get
@@ -996,7 +996,11 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		})
 	})
 
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	listenAddr := "127.0.0.1:0"
+	if a := os.Getenv("SNG40_CONTROL_LISTEN"); a != "" {
+		listenAddr = a
+	}
+	ln, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1007,5 +1011,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	}()
 
 	shutdown := func(ctx context.Context) error { return s.Shutdown(ctx) }
-	return ln.Addr().String(), shutdown, nil
+	addr := ln.Addr().String()
+	if strings.HasPrefix(addr, "0.0.0.0:") {
+		addr = "127.0.0.1:" + strings.TrimPrefix(addr, "0.0.0.0:")
+	}
+	return addr, shutdown, nil
 }
