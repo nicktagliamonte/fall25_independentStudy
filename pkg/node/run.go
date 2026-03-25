@@ -1493,6 +1493,9 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 	if d.RoutingTable().Size() == 0 {
 		return fmt.Errorf("DHT routing table empty after 90s (bootstrap may have failed)")
 	}
+	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
+		log.Printf("lookup-key: dht_rt_size=%d", d.RoutingTable().Size())
+	}
 
 	evCtx, evCh := routing.RegisterForQueryEvents(ctx)
 	evCtx2, cancel2 := context.WithCancel(evCtx)
@@ -1513,6 +1516,9 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 	<-done
 
 	_, err = mystore.GetToken(ctx, routing.ValueStore(d), key)
+	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
+		log.Printf("lookup-key: network_hops=%d (query events in GetClosestPeers phase) found=%v", int(hops), err == nil)
+	}
 
 	out := map[string]interface{}{
 		"network_hops": int(hops),

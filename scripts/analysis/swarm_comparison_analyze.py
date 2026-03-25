@@ -340,6 +340,16 @@ def generate_upload_plots(upload_df):
     if len(upload_df) == 0:
         return plots
 
+    # Paper / suite default: batch 10 and 20 were dropped from run_comparison (slow, noisy).
+    if 'batch_size' in upload_df.columns:
+        upload_df['batch_size'] = pd.to_numeric(upload_df['batch_size'], errors='coerce').fillna(1).astype(int)
+        _rows_before = len(upload_df)
+        upload_df = upload_df[upload_df['batch_size'].isin([1, 5])].copy()
+        if len(upload_df) == 0:
+            return plots
+        if _rows_before > len(upload_df):
+            print(f"Upload plots: batch_size restricted to {{1,5}} ({_rows_before} -> {len(upload_df)} rows)")
+
     # Derive throughput: batch when total_batch_ms available, else per-file
     if 'total_batch_ms' in upload_df.columns and 'batch_size' in upload_df.columns:
         upload_df['total_batch_ms'] = pd.to_numeric(upload_df['total_batch_ms'], errors='coerce')
@@ -658,15 +668,17 @@ def generate_replication_plots(replication_df):
     return plots
 
 def generate_lookup_complexity_plots(lookup_complexity_df):
-    """Generate lookup complexity plots: hops vs log(N), verify O(log N) slope ~1."""
+    """Plots for cold lookup hop counts vs N. Uses operation=lookup (CSV from lookup_complexity_test.sh)."""
     plots = {}
     if lookup_complexity_df is None or len(lookup_complexity_df) == 0:
         return plots
     lc = lookup_complexity_df.copy()
-    lc = lc[lc['operation'] == 'get']
-    if len(lc) == 0:
+    lc_plot = lc[lc['operation'] == 'lookup'].copy()
+    if len(lc_plot) == 0:
+        lc_plot = lc[lc['operation'] == 'get'].copy()
+    if len(lc_plot) == 0:
         return plots
-    agg = lc.groupby(['system', 'node_count'])['hops'].agg(['mean', 'std', 'count']).reset_index()
+    agg = lc_plot.groupby(['system', 'node_count'])['hops'].agg(['mean', 'std', 'count']).reset_index()
     agg['log_N'] = np.log10(agg['node_count'].clip(lower=1))
     fig, ax = plt.subplots(figsize=(10, 6))
     for system in agg['system'].unique():
@@ -678,8 +690,12 @@ def generate_lookup_complexity_plots(lookup_complexity_df):
         ax.plot(sub['node_count'], sub['mean'], 'o-', label=f'{system}{slope_str}', linewidth=2, markersize=8)
     ax.set_xscale('log')
     ax.set_xlabel('Node Count (N)', fontsize=12)
-    ax.set_ylabel('Mean Hops (get)', fontsize=12)
-    ax.set_title('Lookup Complexity: Hops vs N — slope ~1 in hops vs log10(N) verifies O(log N)', fontsize=14, fontweight='bold')
+    ax.set_ylabel('Mean hops (cold lookup)', fontsize=12)
+    ax.set_title(
+        'Cold lookup: mean DHT query-event hops vs N (ideal O(log N) often not visible; see report text)',
+        fontsize=12,
+        fontweight='bold',
+    )
     ax.legend(fontsize=9)
     ax.grid(True, alpha=0.3)
     plots['lookup_complexity_hops_vs_n'] = plot_to_base64(fig)
@@ -693,8 +709,8 @@ def generate_lookup_complexity_plots(lookup_complexity_df):
             slope_str = f' slope={slope:.2f}'
         ax2.plot(sub['log_N'], sub['mean'], 'o-', label=f'{system}{slope_str}', linewidth=2, markersize=8)
     ax2.set_xlabel('log10(N)', fontsize=12)
-    ax2.set_ylabel('Mean Hops (get)', fontsize=12)
-    ax2.set_title('Lookup Complexity: Hops vs log10(N) — slope ~1 verifies O(log N)', fontsize=14, fontweight='bold')
+    ax2.set_ylabel('Mean hops (cold lookup)', fontsize=12)
+    ax2.set_title('Cold lookup: hops vs log10(N) (slope ~1 is textbook ideal, not guaranteed here)', fontsize=12, fontweight='bold')
     ax2.legend(fontsize=9)
     ax2.grid(True, alpha=0.3)
     plots['lookup_complexity_log_n'] = plot_to_base64(fig2)
@@ -720,7 +736,7 @@ def generate_lookup_complexity_plots(lookup_complexity_df):
     ax3.set_yscale('log')
     ax3.set_xlabel('Node Count N (log scale)', fontsize=12)
     ax3.set_ylabel('Mean Hops (log scale)', fontsize=12)
-    ax3.set_title('Log-Log: O(log N) vs O(N) — data follows flat O(log N) fit; O(N) would slope up', fontsize=14, fontweight='bold')
+    ax3.set_title('Log-log: compare to O(N) reference; flat hops vs N is common when measurement is noisy', fontsize=12, fontweight='bold')
     ax3.legend(fontsize=9)
     ax3.grid(True, alpha=0.3)
     ax3.set_ylim(bottom=0.5)
@@ -808,6 +824,10 @@ def generate_statistics_tables(upload_df, download_df, hops_df=None, resource_df
         upload_df_clean['latency_ms'] = pd.to_numeric(upload_df_clean['latency_ms'], errors='coerce')
         upload_df_clean = upload_df_clean.dropna(subset=['latency_ms'])
         
+        if len(upload_df_clean) > 0:
+            if 'batch_size' in upload_df_clean.columns:
+                upload_df_clean['batch_size'] = pd.to_numeric(upload_df_clean['batch_size'], errors='coerce').fillna(1).astype(int)
+                upload_df_clean = upload_df_clean[upload_df_clean['batch_size'].isin([1, 5])].copy()
         if len(upload_df_clean) > 0:
             # Derive throughput: batch (total_bytes/total_batch_s) when available
             if 'total_batch_ms' in upload_df_clean.columns and 'batch_size' in upload_df_clean.columns:
@@ -1157,6 +1177,8 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
     if upload_df is not None and len(upload_df) > 0:
         html_content += """
     <h2>Upload Latency Analysis</h2>
+    <p><strong>Note:</strong> These charts are <em>wall-clock upload latency</em> (ms) and throughput, not DHT hop counts.
+    Hop counts from routing appear under <em>Network Hops</em> and <em>Lookup Complexity</em>. Do not infer routing depth from upload time alone.</p>
 """
         if 'upload_stats' in tables:
             html_content += f"""
@@ -1268,7 +1290,7 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
     if hops_df is not None and len(hops_df) > 0 and 'network_hops_stats' in tables:
         html_content += """
     <h2>Network Hops Analysis</h2>
-    <p>DHT lookup hop count per operation (system, operation, payload_size, hops). vn-IPFS reports hops; Swarm does not expose this metric.</p>
+    <p>DHT <em>hop count</em> (query events) per operation — not upload/download latency. vn-IPFS reports hops; Swarm does not expose this metric.</p>
 """
         html_content += f"""
     <h3>Network Hops: Statistics by System, Operation, Payload Size</h3>
@@ -1375,8 +1397,11 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
 """
     if lookup_complexity_df is not None and len(lookup_complexity_df) > 0 and 'lookup_complexity' in tables:
         html_content += """
-    <h2>Lookup Complexity (O(log N) Verification)</h2>
-    <p>DHT lookup hops vs node count. Slope ~1 in hops vs log10(N) verifies O(log N). vn-IPFS reports hops; Swarm does not.</p>
+    <h2>Lookup Complexity (cold DHT lookup)</h2>
+    <p>Rows use <code>operation=lookup</code> from <code>lookup_complexity_test.sh</code> (one-off container, fresh DHT).
+    <code>network_hops</code> counts <code>routing.SendingQuery</code> events during the lookup path, not wall-clock alone.
+    Real runs often show <strong>flat, noisy, or N/A</strong> hops vs N (token sync timing, retries, small-N saturation).
+    Classical Kademlia expects O(log N) hop count in a stable table; that relationship is <strong>not automatically validated</strong> by these plots.</p>
 """
         html_content += f"""
     <h3>Lookup Complexity: system, node_count, operation, hops (mean/median)</h3>
@@ -1385,7 +1410,7 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
         if 'lookup_complexity_log_n' in plots:
             html_content += f"""
     <div class="plot-container">
-        <h3>Hops vs log10(N) — slope ~1 verifies O(log N)</h3>
+        <h3>Hops vs log10(N) (cold lookup)</h3>
         <img src="data:image/png;base64,{plots['lookup_complexity_log_n']}" alt="Lookup Complexity Hops vs log N">
     </div>
 """
@@ -1399,8 +1424,8 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
         if 'lookup_complexity_loglog' in plots:
             html_content += f"""
     <div class="plot-container">
-        <h3>Log-Log: O(log N) vs O(N) reference</h3>
-        <img src="data:image/png;base64,{plots['lookup_complexity_loglog']}" alt="Log-Log O(log N) vs O(N)">
+        <h3>Log-log hops vs N vs O(N) reference line</h3>
+        <img src="data:image/png;base64,{plots['lookup_complexity_loglog']}" alt="Log-Log hops vs N">
     </div>
 """
     if routing_overhead_df is not None and len(routing_overhead_df) > 0 and 'routing_overhead' in tables:

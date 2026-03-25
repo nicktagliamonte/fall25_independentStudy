@@ -22,7 +22,7 @@ export RUN_ID ERROR_LOG_DIR
 mkdir -p "$ERROR_LOG_DIR"
 
 OUR_API=""
-SWARM_API="http://127.0.0.1:8500"
+SWARM_API="${SWARM_API:-http://127.0.0.1:8500}"
 PAYLOAD_SIZE=65536
 REPLICATION_COUNT=1
 OUTPUT_FILE="storage_efficiency_results.csv"

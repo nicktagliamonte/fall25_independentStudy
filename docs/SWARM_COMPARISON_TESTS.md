@@ -38,6 +38,7 @@ scripts/
 │   └── swarm/          # Swarm/Bee v0.5.8 Docker setup
 ├── tests/swarm_comparison/
 │   ├── run_comparison.sh         # Main orchestrator
+│   ├── run_single_comparison.sh  # One test × one N × I iterations → test_results/matrix/…
 │   ├── upload_test.sh            # Upload latency test
 │   ├── download_test.sh          # Download latency test
 │   ├── partition_recovery_test.sh # Partition recovery (manual/sudo; optional CI skip)
@@ -95,7 +96,7 @@ The main orchestrator starts both systems, runs tests, and aggregates results:
 
 ```bash
 ./scripts/tests/swarm_comparison/run_comparison.sh \
-  --nodes 10,20,40 \
+  --nodes 10,50,100 \
   --payload-sizes 1024,10240,102400,1048576 \
   --iterations 5
 ```
@@ -115,12 +116,12 @@ This:
 **What it tests**:
 - Upload latency across payload sizes (1KB–1MB)
 - Download latency (TTFB, total time)
-- Scaling across node counts (e.g. 10, 20, 40)
+- Scaling across node counts (allowed values: 10, 50, 100, 500)
 
 **Usage**:
 ```bash
 ./scripts/tests/swarm_comparison/run_comparison.sh \
-  --nodes 10,20,40 \
+  --nodes 10,50,100 \
   --payload-sizes 1024,10240,102400,1048576 \
   --iterations 5 \
   --output-dir ./test_results
@@ -132,7 +133,18 @@ This:
 
 **Purpose**: Measure upload latency for various payload sizes
 
-**Equivalence**: Both systems return after the first successful store (time to first copy). vn-IPFS replicates to peers asynchronously; Swarm does chunk replication in the background. Latency is measured from request start until response, so both are comparable.
+**Time to first durable local accept (methodology)**  
+Both systems are compared on wall-clock time from the start of the HTTP request until the response completes, after the uploader’s node has accepted and stored the payload locally. vn-IPFS does not wait for DHT token publication or peer replication before responding. Swarm’s `POST /bzz:/` is treated the same way (local accept). This is the apples-to-apples definition for upload latency in the comparison suite.
+
+**Equivalence**
+
+- **Semantics**: First successful local store only; token DHT sync and replication run asynchronously on vn-IPFS (see `docs/API.md` PUT).
+- **Client shape (fair comparison)**  
+  - **Swarm**: `curl` from the host with raw body, `Content-Type: application/octet-stream`.  
+  - **vn-IPFS (required for comparable numbers)**: Bootstrap must expose the control API on the host. In `scripts/docker/vnipfs-compose.template.yml`, `SNG40_CONTROL_LISTEN=0.0.0.0:9400` and `ports: "9400:9400"` are set so `upload_test.sh` can probe `http://127.0.0.1:9400/health` and use **direct host `curl`** (no `docker cp` / `docker exec` inside the timed window).  
+  - When the direct path is used, vn-IPFS upload uses **`POST /put` with `Content-Type: application/octet-stream`** and `--data-binary @file`, matching Swarm’s encoding and payload size on the wire.  
+  - If port 9400 is not reachable from the host, the script falls back to JSON+base64 via `docker exec`; those numbers are **not** comparable to Swarm and should be flagged in logs.
+  - While a bootstrap container is detected, the script **polls** `http://127.0.0.1:9400/health` for up to **`SNG40_UPLOAD_DIRECT_WAIT_SEC`** seconds (default **120**) so the **first** `upload_test` invocation (e.g. `batch_size=1`) uses the same direct path as later batches. Before each payload size, one **discarded** warmup upload per system runs unless **`SNG40_UPLOAD_WARMUP=0`**, to reduce cold-start skew on the first recorded iteration (especially Swarm). After **timed** vn-IPFS iterations for that size, when **`batch_size ≥ 5`**, another **discarded** Swarm-only batch runs so the first **recorded** Swarm batch is less likely to spike after cluster load (large N).
 
 **Usage** (typically invoked by `run_comparison.sh`; can run standalone if nodes are up):
 ```bash
@@ -151,6 +163,23 @@ This:
 ```
 
 **Output**: CSV with columns: `system,payload_size,iteration,ttfb_ms,total_ms`
+
+### Lookup Complexity Test (`lookup_complexity_test.sh`)
+
+**Purpose**: Record DHT-related **hop counts** for cold token lookup vs cluster size label `N` (not upload latency).
+
+**Method**: PUT on bootstrap, then **`lookup-key`** in a one-off container (fresh DHT) bootstrapped to the same network. CSV rows use `operation=put` (hops usually 0) and `operation=lookup` (cold path). `network_hops` counts `routing.SendingQuery` events (same idea as `GET /lookup` on a running node).
+
+**Interpreting hops vs N**: Measured points are often **flat, noisy, or `N/A`** when the cold lookup fails retries, token propagation lags, or the routing table is still converging. **Wall-clock upload latency** (`upload_*.csv`) is a different quantity; do not use it as a proxy for routing depth. Analysis plots (`swarm_comparison_analyze.py`) use **`operation=lookup`** only for hop-vs-N figures.
+
+**Diagnostics**: Set **`SNG40_LOG_LOOKUP_PATHS=1`** on nodes / in the one-off `lookup-key` process to log DHT routing-table size (lookup-key) and hop/latency summaries (`control /lookup` and lookup-key after GetToken).
+
+**Usage**:
+```bash
+./scripts/tests/swarm_comparison/lookup_complexity_test.sh --node-count 50 --iterations 10 --output lookup_complexity_results.csv
+```
+
+**Output**: CSV with columns: `system,node_count,operation,hops,lookup_type`
 
 ### Storage Efficiency Test (`storage_efficiency_test.sh`)
 
@@ -216,13 +245,87 @@ OUTPUT_FILE=./results/partition_recovery_results.csv ./scripts/tests/swarm_compa
 ### Test Configuration
 
 Use `--help` on each script for options. Main orchestrator options:
-- `--nodes 10,20,40`
+- `--nodes 10,50,100` (comma-separated; each must be 10, 50, 100, or 500)
 - `--payload-sizes 1024,10240,102400,1048576`
 - `--iterations 5`
 - `--output-dir <dir>`
+- `--tests <name>` or `--tests name1,name2,...` (default: full suite). Run `./scripts/tests/swarm_comparison/run_comparison.sh --tests list` for names.
+- `--skip-start` — assume vn-IPFS and Swarm are already running at the single `--nodes` value; skips compose startup and implies `--skip-cleanup`. Use for rerunning one test against a warm cluster.
 - `--skip-cleanup` (leave containers running after tests)
 
+### Per-test × node-count matrix (structured reruns)
+
+**Goal**: One directory per cell — one logical test, one `N`, fixed iteration count — so failures are isolated and logs do not overwrite a full-suite run.
+
+**Recommended order** (example: 10 iterations per cell; repeat the sequence for each `N`):
+
+1. `upload`
+2. `download_cold`
+3. `download_warm`
+4. `lookup_latency`
+5. `lookup_complexity`
+6. `replication`
+7. `replication_distribution`
+8. `repair_time`
+9. `network_hops`
+10. `routing_overhead`
+11. `storage_efficiency`
+12. `concurrent`
+
+Use **`N ∈ {10, 50, 100}`** routinely; add **`500`** only when the host has enough CPU, RAM, and disk.
+
+**Wrapper (default layout)** — writes to `test_results/matrix/<test>_n<N>_i<I>/`:
+
+```bash
+./scripts/tests/swarm_comparison/run_single_comparison.sh --test upload --nodes 10 --iterations 10
+./scripts/tests/swarm_comparison/run_single_comparison.sh --test download_cold --nodes 10 --iterations 10
+# … same pattern for other test names; then repeat for --nodes 50 and 100
+```
+
+**Direct orchestrator** (same semantics, custom output dir):
+
+```bash
+./scripts/tests/swarm_comparison/run_comparison.sh \
+  --nodes 10 --iterations 10 --tests upload --output-dir ./test_results/matrix/upload_n10_i10
+```
+
+**Warm cluster, single test** (no `docker compose up` in the orchestrator; you must already have both stacks at the target `N`):
+
+```bash
+./scripts/tests/swarm_comparison/run_single_comparison.sh \
+  --test upload --nodes 10 --iterations 5 --skip-start
+```
+
+**Full matrix loop** (illustrative; long-running):
+
+```bash
+MATRIX_TESTS=(
+  upload download_cold download_warm lookup_latency lookup_complexity
+  replication replication_distribution repair_time network_hops
+  routing_overhead storage_efficiency concurrent
+)
+for N in 10 50 100; do
+  for T in "${MATRIX_TESTS[@]}"; do
+    ./scripts/tests/swarm_comparison/run_single_comparison.sh --test "$T" --nodes "$N" --iterations 10
+  done
+done
+```
+
+**Note**: `network_hops`, `routing_overhead`, `storage_efficiency`, and `concurrent` are scheduled on the **last** node count in a multi-`N` `run_comparison.sh` invocation. For `run_single_comparison.sh` there is only one `N`, so that `N` is always “last” and those tests run as expected.
+
+### Large N (50 / 100): cost, partial CSVs, timeouts
+
+- **Using partial uploads anyway**: The suite default is **`batch_size` 1 and 5** only (10 and 20 were dropped: slow and noisy at larger N). For any run, only plot strata that **completed** with full iterations and state `N` and `batch_size` in the text. Legacy dirs with `batch10`/`batch20` CSVs should not be mixed into paper figures without an explicit rationale.
+- **Defaults**: With `--test-timeout` unset, the orchestrator uses **5400s** per sub-step when max `N` is **50**, and **7200s** when max `N` is **≥100** (same 7200 for 500). Raise further with `--test-timeout` if a single `upload_test.sh` still hits 124.
+- **Harness**: After timed vn-IPFS uploads for each payload size, the upload script runs an extra **discarded Swarm-only batch** when `batch_size ≥ 5` to reduce a huge first Swarm batch latency after cluster load.
+
 ## Interpreting Results
+
+### DHT hop count vs upload latency (do not conflate)
+
+- **Upload / download CSVs** report **milliseconds** (end-to-end HTTP and local work). They are **not** DHT hop counts.
+- **`network_hops_results.csv`**, **`lookup_complexity_results.csv`** (`operation=lookup`), and optional `network_hops` columns on some GET responses report **abstract query-event counts**, not ms.
+- **Ideal Kademlia** suggests **O(log N)** hop count for lookups in a stable, large table. **Observed** comparison runs may not show that slope: small `N`, churn, token DHT mode, and one-off cold lookup variance dominate. Treat O(log N) as **theoretical reference**, not an automatic pass/fail on the plots.
 
 ### CSV File Format
 

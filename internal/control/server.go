@@ -7,6 +7,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -359,6 +361,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		cancel2()
 		<-done
 		latencyMs := time.Since(start).Milliseconds()
+		if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
+			log.Printf("control /lookup: hops=%d latency_ms=%d token_err=%v", int(hops), latencyMs, err)
+		}
 		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			_, _ = w.Write([]byte(err.Error()))
@@ -652,19 +657,43 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	})
 
 	// Put endpoint
+	// Synchronous (included in upload latency): JSON decode or raw body read, PutBlock (local blockstore),
+	// in-memory routing table Set. Asynchronous (not included): Key→provider datastore mapping,
+	// SyncTokenOnPut (DHT), ReplicateToNPeers.
+	const maxPutBodyBytes = 64 << 20
 	mux.HandleFunc("/put", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		var req PutRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
-			return
+		var blockData []byte
+		var err error
+		ct := strings.ToLower(strings.TrimSpace(r.Header.Get("Content-Type")))
+		if strings.HasPrefix(ct, "application/octet-stream") {
+			limited := io.LimitReader(r.Body, maxPutBodyBytes+1)
+			blockData, err = io.ReadAll(limited)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+			if len(blockData) > maxPutBodyBytes {
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				_, _ = w.Write([]byte("body too large"))
+				return
+			}
+		} else {
+			var req PutRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+			blockData = []byte(req.Data)
 		}
-		blockData := []byte(req.Data)
+		t0 := time.Now()
 		key, c, err := stack.PutBlock(r.Context(), blockData)
+		t1 := time.Now()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(err.Error()))
@@ -672,6 +701,10 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		if h != nil {
 			stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+		}
+		t2 := time.Now()
+		if os.Getenv("SNG40_LOG_PUT_PHASES") == "1" {
+			log.Printf("put phases: putblock=%v routing_table+mapping=%v (token+replicate async)", t1.Sub(t0), t2.Sub(t1))
 		}
 		putHops := 0
 		// multihash_hex must be 64 hex chars (Key) for /replication/status and /get

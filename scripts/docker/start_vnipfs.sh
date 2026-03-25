@@ -19,67 +19,15 @@ fi
 echo "Starting $N vn-IPFS Docker nodes..."
 
 COMPOSE_FILE="$ROOT_DIR/docker-compose.vnipfs.yml"
-TEMPLATE="$ROOT_DIR/scripts/docker/vnipfs-compose.template.yml"
-
-if [[ ! -f "$TEMPLATE" ]]; then
-  echo "Error: Template not found: $TEMPLATE" >&2
-  exit 1
-fi
 
 # Stop existing vnipfs containers
-if docker-compose -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "Up"; then
+if [[ -f "$COMPOSE_FILE" ]] && docker-compose -f "$COMPOSE_FILE" ps 2>/dev/null | grep -q "Up"; then
   echo "Stopping existing vn-IPFS containers..."
   docker-compose -f "$COMPOSE_FILE" stop >/dev/null 2>&1 || true
   docker-compose -f "$COMPOSE_FILE" rm -f >/dev/null 2>&1 || true
 fi
 
-# Generate docker-compose.vnipfs.yml
-cp "$TEMPLATE" "$COMPOSE_FILE"
-NETWORKS_LINE=$(grep -n "^networks:" "$COMPOSE_FILE" | cut -d: -f1)
-head -n $((NETWORKS_LINE - 1)) "$COMPOSE_FILE" > "$COMPOSE_FILE.tmp"
-
-for i in $(seq 2 "$N"); do
-  IP_LAST=$((9 + i))
-  cat >> "$COMPOSE_FILE.tmp" <<EOF
-  node${i}:
-    build: .
-    container_name: fall25-node${i}
-    hostname: node${i}
-    command: run
-      --listen /ip4/172.20.0.${IP_LAST}/tcp/4001
-      --listen /ip4/172.20.0.${IP_LAST}/udp/4002/quic-v1
-      --key /app/keys/node${i}.key
-      --store /app/data/node${i}
-      --min-outbound 4
-      --control /app/logs/node${i}.json
-      --log /app/logs/node${i}.log
-    volumes:
-      - node${i}-data:/app/data
-      - node${i}-keys:/app/keys
-      - node${i}-logs:/app/logs
-    networks:
-      node-network:
-        ipv4_address: 172.20.0.${IP_LAST}
-    depends_on:
-      bootstrap:
-        condition: service_healthy
-    environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
-EOF
-done
-
-tail -n +$NETWORKS_LINE "$COMPOSE_FILE" >> "$COMPOSE_FILE.tmp"
-mv "$COMPOSE_FILE.tmp" "$COMPOSE_FILE"
-
-echo "volumes:" >> "$COMPOSE_FILE"
-echo "  bootstrap-data:" >> "$COMPOSE_FILE"
-echo "  bootstrap-keys:" >> "$COMPOSE_FILE"
-echo "  bootstrap-logs:" >> "$COMPOSE_FILE"
-for i in $(seq 2 "$N"); do
-  echo "  node${i}-data:" >> "$COMPOSE_FILE"
-  echo "  node${i}-keys:" >> "$COMPOSE_FILE"
-  echo "  node${i}-logs:" >> "$COMPOSE_FILE"
-done
+"$ROOT_DIR/scripts/docker/gen_vnipfs_compose.sh" "$N"
 
 echo "Building Docker image..."
 if ! docker-compose -f "$COMPOSE_FILE" build --progress=plain 2>&1 | tee /tmp/docker_build_vnipfs.log; then

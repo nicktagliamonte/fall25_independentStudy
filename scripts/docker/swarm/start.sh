@@ -103,6 +103,11 @@ fi
 
 mv "$COMPOSE_FILE.tmp" "$COMPOSE_FILE"
 
+"$ROOT_DIR/scripts/docker/swarm/verify_generated_ips.sh" "$COMPOSE_FILE" || {
+  echo "ERROR: generated compose has invalid ipv4_address values" >&2
+  exit 1
+}
+
 # Build the image first
 echo "Building Swarm Docker image..."
 if ! docker build -t swarm-node:latest scripts/docker/swarm/; then

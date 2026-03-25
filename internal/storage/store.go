@@ -700,6 +700,20 @@ func PutRawBlockIndexed(ctx context.Context, d ds.Batching, bsvc *bserv.BlockSer
 	return key, c, nil
 }
 
+// putBlockIndexBatch writes manifest (CID), key index, and Key→CID mapping for one batch commit.
+func putBlockIndexBatch(ctx context.Context, batch ds.Batch, k Key, c cid.Cid) error {
+	if batch == nil || k.IsZero() || !c.Defined() {
+		return nil
+	}
+	if err := batch.Put(ctx, ds.NewKey(manifestIndexNS+c.String()), []byte{1}); err != nil {
+		return err
+	}
+	if err := batch.Put(ctx, ds.NewKey(keyIndexNS+k.String()), []byte{1}); err != nil {
+		return err
+	}
+	return batch.Put(ctx, ds.NewKey(keyToCIDNS+k.String()), []byte(c.String()))
+}
+
 func putRawBlockIndexedInner(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, data []byte, key Key) (cid.Cid, error) {
 	// Store block in IPFS blockstore (generates CID)
 	c, err := PutRawBlock(ctx, bsvc, data)
@@ -707,13 +721,16 @@ func putRawBlockIndexedInner(ctx context.Context, d ds.Batching, bsvc *bserv.Blo
 		return cid.Cid{}, err
 	}
 
-	// Index by CID (for IPFS compatibility)
+	if batch, berr := d.Batch(ctx); berr == nil {
+		if err := putBlockIndexBatch(ctx, batch, key, c); err == nil {
+			if err := batch.Commit(ctx); err == nil {
+				return c, nil
+			}
+		}
+	}
+
 	_ = IndexCID(ctx, d, c)
-
-	// Index by Key (primary identifier)
 	_ = IndexKey(ctx, d, key)
-
-	// Store Key -> CID mapping (for lookup by Key)
 	_ = StoreKeyToCIDMapping(ctx, d, key, c)
 
 	return c, nil
@@ -744,8 +761,16 @@ func (s *Stack) updateRoutingTableOnPut(k Key, providerID peer.ID, repVector *Re
 		rv = *repVector
 	}
 	s.RoutingTable.Set(k, providerID, rv, c)
-	// Store Key → ProviderID mapping separately from data
-	_ = StoreKeyToProviderIDMapping(context.Background(), s.Datastore, k, providerID)
+	if asyncTokenSync {
+		d := s.Datastore
+		pid := providerID
+		kk := k
+		go func() {
+			_ = StoreKeyToProviderIDMapping(context.Background(), d, kk, pid)
+		}()
+	} else {
+		_ = StoreKeyToProviderIDMapping(context.Background(), s.Datastore, k, providerID)
+	}
 
 	// Auto-sync token on Put operations (use TokenStore when set, else DHT)
 	if s.Host != nil {

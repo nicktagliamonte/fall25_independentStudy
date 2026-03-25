@@ -2,9 +2,11 @@
 set -euo pipefail
 
 # Purpose: Upload latency test comparing our system vs Swarm v0.5.8
+# Env: SNG40_UPLOAD_DIRECT_WAIT_SEC (default 120) — seconds to poll 127.0.0.1:9400/health when using a bootstrap container.
+#      SNG40_UPLOAD_WARMUP=0 — skip warmup rounds below (initial + post-our Swarm flush).
 # Usage: ./scripts/tests/swarm_comparison/upload_test.sh [options]
 #   --our-api <addr>     Our system API address (default: read from bootstrap.json)
-#   --swarm-api <addr>   Swarm API address (default: http://172.20.0.10:8500)
+#   --swarm-api <addr>   Swarm API address (default: host loopback + published 8500 from swarm-bootstrap)
 #   --iterations <n>     Number of iterations per size (default: 10)
 #   --batch-size <n>     Files per iteration (default: 1 = single file)
 #   --output <file>      Output CSV file (default: upload_latency_results.csv)
@@ -17,6 +19,7 @@ source "$ROOT_DIR/scripts/utils/error_handler.sh"
 
 # Source Swarm API functions
 source "$SCRIPT_DIR/api.sh"
+source "$SCRIPT_DIR/swarm_publish_url.sh"
 
 # Initialize error logging
 RUN_ID="${RUN_ID:-$(date +%s)}"
@@ -26,7 +29,8 @@ mkdir -p "$ERROR_LOG_DIR"
 
 # Default values
 OUR_API=""
-SWARM_API="http://127.0.0.1:8500"
+SWARM_API="${SWARM_API:-}"
+SWARM_API_USER_SET=0
 ITERATIONS=10
 OUTPUT_FILE="upload_latency_results.csv"
 PAYLOAD_SIZES=(1024 10240 102400 1048576)  # 1KB, 10KB, 100KB, 1MB
@@ -41,6 +45,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --swarm-api)
       SWARM_API="$2"
+      SWARM_API_USER_SET=1
       shift 2
       ;;
     --iterations)
@@ -59,7 +64,7 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [options]"
       echo "Options:"
       echo "  --our-api <addr>     Our system API address"
-      echo "  --swarm-api <addr>   Swarm API address (default: http://172.20.0.10:8500)"
+      echo "  --swarm-api <addr>   Swarm API (default: 127.0.0.1 + docker-published 8500)"
       echo "  --iterations <n>     Iterations per size (default: 10)"
       echo "  --output <file>      Output CSV file (default: upload_latency_results.csv)"
       exit 0
@@ -71,11 +76,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$SWARM_API_USER_SET" -eq 0 ]]; then
+  SWARM_API="${SWARM_API:-$(swarm_publish_base_url)}"
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Determine our system API address and container
@@ -158,11 +168,33 @@ if ! check_required_tools bc jq; then
   exit 1
 fi
 
-# Detect direct API (port 9400 exposed for fair comparison with Swarm - no docker exec overhead)
+# Host-mapped control port 9400: same client shape as Swarm (host curl, octet-stream). Without it,
+# uploads fall back to docker exec + JSON/base64 (much slower, not comparable to Swarm).
+# When a bootstrap container is in use, poll until the port is up — the first batch_size in a suite
+# often ran before publish completed.
 OUR_API_DIRECT=""
-if curl -sf -m 3 http://127.0.0.1:9400/health >/dev/null 2>&1; then
-  OUR_API_DIRECT="http://127.0.0.1:9400"
-  echo "Using direct API (127.0.0.1:9400) for fair latency measurement"
+wait_direct_max="${SNG40_UPLOAD_DIRECT_WAIT_SEC:-120}"
+if [[ -n "$OUR_CONTAINER" ]]; then
+  echo "Waiting for host control API http://127.0.0.1:9400/health (up to ${wait_direct_max}s)..."
+  for ((w = 0; w < wait_direct_max; w++)); do
+    if curl -sf -m 3 http://127.0.0.1:9400/health >/dev/null 2>&1; then
+      OUR_API_DIRECT="http://127.0.0.1:9400"
+      echo -e "${GREEN}Using direct API (127.0.0.1:9400) for fair latency measurement${NC}"
+      break
+    fi
+    if ((w % 10 == 9)); then
+      echo "  ... still waiting ($((w + 1))s / ${wait_direct_max}s)"
+    fi
+    sleep 1
+  done
+  if [[ -z "$OUR_API_DIRECT" ]]; then
+    echo -e "${YELLOW}Warning: 127.0.0.1:9400 did not become ready in ${wait_direct_max}s; using container JSON path — not comparable to Swarm host uploads.${NC}" >&2
+  fi
+else
+  if curl -sf -m 3 http://127.0.0.1:9400/health >/dev/null 2>&1; then
+    OUR_API_DIRECT="http://127.0.0.1:9400"
+    echo "Using direct API (127.0.0.1:9400) for fair latency measurement"
+  fi
 fi
 
 # Verify API endpoints are accessible
@@ -215,6 +247,31 @@ echo "system,payload_size,batch_size,iteration,latency_ms,total_batch_ms" > "$OU
 NETWORK_BYTES_FILE="$(dirname "$OUTPUT_FILE")/upload_network_bytes.csv"
 [[ -f "$NETWORK_BYTES_FILE" ]] || echo "system,payload_size,batch_size,bytes_transferred" > "$NETWORK_BYTES_FILE"
 
+# Body to resp_path; stdout is curl %{time_total} in seconds (matches Swarm path below).
+our_direct_octet_put() {
+  local base="${1%/}"
+  local file_path="$2"
+  local resp_path="$3"
+  curl -sSf -m 120 -X POST \
+    -H "Content-Type: application/octet-stream" \
+    --data-binary @"$file_path" \
+    -o "$resp_path" \
+    -w '%{time_total}' \
+    "${base}/put"
+}
+
+swarm_direct_octet_put() {
+  local base="${1%/}"
+  local file_path="$2"
+  local resp_path="$3"
+  curl -sSf -m 120 -X POST \
+    -H "Content-Type: application/octet-stream" \
+    --data-binary "@$file_path" \
+    -o "$resp_path" \
+    -w '%{time_total}' \
+    "${base}/bzz:/"
+}
+
 # Function to generate test file of specified size
 generate_test_file() {
   local size=$1
@@ -224,61 +281,69 @@ generate_test_file() {
   dd if=/dev/urandom of="$output" bs=1 count="$size" 2>/dev/null
 }
 
+# JSON PUT inside container; stdout time_total; body at /tmp/put_resp_<rid>.json
+our_container_json_put_timed() {
+  local rid="$1"
+  docker exec "$OUR_CONTAINER" curl -sSf -m 120 -X POST \
+    -H "Content-Type: application/json" \
+    -d "@/tmp/put_payload_${rid}.json" \
+    -o "/tmp/put_resp_${rid}.json" \
+    -w '%{time_total}' \
+    "http://${OUR_API_ADDR}/put"
+}
+
 # Function to upload to our system and measure latency
 upload_our_system() {
   local file_path="$1"
   
-  # Read file and base64 encode
-  local data_b64=$(base64 -w 0 < "$file_path" 2>/dev/null || base64 < "$file_path" | tr -d '\n')
   local json_payload="$TEMP_DIR/put_payload_$$.json"
-  echo "{\"data\":\"$data_b64\"}" > "$json_payload"
-  
-  local start_time=$(date +%s.%N)
   local response=""
+  local latency=""
+  local rid=$$
   
   if [[ -n "$OUR_API_DIRECT" ]]; then
-    # Direct curl (matches Swarm - no docker exec/cp overhead)
-    if ! response=$(curl -sSf -m 30 -X POST \
-      -H "Content-Type: application/json" \
-      -d @"$json_payload" \
-      "$OUR_API_DIRECT/put" 2>&1); then
-      log_error "Direct upload failed" "url: $OUR_API_DIRECT/put"
-      rm -f "$json_payload"
+    local resp_tmp="$TEMP_DIR/our_put_${rid}_$RANDOM.json"
+    local http_sec=""
+    if ! http_sec=$(retry_with_backoff 3 2 10 our_direct_octet_put "$OUR_API_DIRECT" "$file_path" "$resp_tmp" 2>&1); then
+      log_error "Direct upload failed after retries" "url: $OUR_API_DIRECT/put"
+      rm -f "$resp_tmp"
       echo "ERROR"
       return 1
     fi
+    http_sec=$(echo "$http_sec" | tr -d ' \n\r')
+    response=$(cat "$resp_tmp")
+    rm -f "$resp_tmp"
+    latency=$(echo "scale=2; $http_sec * 1000" | bc -l)
   elif [[ -n "$OUR_CONTAINER" && -n "$OUR_API_ADDR" ]]; then
-    # Fallback: docker exec (control port not exposed)
-    local api_url="http://$OUR_API_ADDR/put"
+    local data_b64=$(base64 -w 0 < "$file_path" 2>/dev/null || base64 < "$file_path" | tr -d '\n')
+    echo "{\"data\":\"$data_b64\"}" > "$json_payload"
     if ! retry_with_backoff 3 1 10 \
-      docker cp "$json_payload" "${OUR_CONTAINER}:/tmp/put_payload_$$.json" >/dev/null 2>&1; then
+      docker cp "$json_payload" "${OUR_CONTAINER}:/tmp/put_payload_${rid}.json" >/dev/null 2>&1; then
       log_error "Failed to copy payload to container" "container: $OUR_CONTAINER"
       rm -f "$json_payload"
       echo "ERROR"
       return 1
     fi
-    if ! response=$(with_timeout 30 docker exec "$OUR_CONTAINER" curl -sSf -X POST \
-      -H "Content-Type: application/json" \
-      -d @/tmp/put_payload_$$.json \
-      "$api_url" 2>&1); then
-      log_error "Upload request failed" "container: $OUR_CONTAINER, url: $api_url"
-      docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_$$.json" >/dev/null 2>&1 || true
+    local http_sec=""
+    if ! http_sec=$(retry_with_backoff 3 2 10 our_container_json_put_timed "$rid" 2>&1); then
+      log_error "Upload request failed" "container: $OUR_CONTAINER"
+      docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_${rid}.json" "/tmp/put_resp_${rid}.json" >/dev/null 2>&1 || true
       rm -f "$json_payload"
       echo "ERROR"
       return 1
     fi
-    docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_$$.json" >/dev/null 2>&1 || true
+    http_sec=$(echo "$http_sec" | tr -d ' \n\r')
+    response=$(docker exec "$OUR_CONTAINER" cat "/tmp/put_resp_${rid}.json" 2>/dev/null || echo "")
+    docker exec "$OUR_CONTAINER" rm -f "/tmp/put_payload_${rid}.json" "/tmp/put_resp_${rid}.json" >/dev/null 2>&1 || true
+    rm -f "$json_payload"
+    latency=$(echo "scale=2; $http_sec * 1000" | bc -l)
   else
     echo "ERROR: No API endpoint (set OUR_API_DIRECT or OUR_CONTAINER+OUR_API_ADDR)" >&2
     rm -f "$json_payload"
     return 1
   fi
   
-  rm -f "$json_payload"
-  local end_time=$(date +%s.%N)
-  
-  # Calculate latency in milliseconds
-  local latency=$(echo "scale=2; ($end_time - $start_time) * 1000" | bc -l)
+  rm -f "$json_payload" 2>/dev/null || true
   
   # Check if upload succeeded
   if echo "$response" | jq -e '.cid' >/dev/null 2>&1; then
@@ -299,34 +364,30 @@ upload_our_system() {
 # Function to upload to Swarm and measure latency
 upload_swarm() {
   local file_path="$1"
-  
-  # Measure upload time
-  local start_time=$(date +%s.%N)
-  
-  # Retry upload with backoff
-  local hash=""
-  if ! hash=$(retry_with_backoff 3 2 10 upload_file "$SWARM_API" "$file_path" 2>&1); then
+  local body_tmp="$TEMP_DIR/swarm_put_$$_$RANDOM.bin"
+  local http_sec=""
+  if ! http_sec=$(retry_with_backoff 3 2 10 swarm_direct_octet_put "$SWARM_API" "$file_path" "$body_tmp" 2>&1); then
     log_error "Swarm upload failed after retries" "api: $SWARM_API, file: $file_path"
-    local end_time=$(date +%s.%N)
-    local latency=$(echo "scale=2; ($end_time - $start_time) * 1000" | bc -l)
+    rm -f "$body_tmp"
     echo "ERROR"
     return 1
   fi
-  
-  local end_time=$(date +%s.%N)
-  
-  # Calculate latency in milliseconds
-  local latency=$(echo "scale=2; ($end_time - $start_time) * 1000" | bc -l)
-  
-  # Check if upload succeeded
+  http_sec=$(echo "$http_sec" | tr -d ' \n\r')
+  local hash
+  hash=$(tr -d '\n\r' < "$body_tmp")
+  rm -f "$body_tmp"
+  if [[ "$hash" =~ ^[a-fA-F0-9]{64,}$ ]]; then
+    hash="${hash:0:64}"
+  fi
+  local latency
+  latency=$(echo "scale=2; $http_sec * 1000" | bc -l)
   if [[ -n "$hash" && "$hash" != "ERROR"* && ${#hash} -ge 64 ]]; then
     echo "$latency"
     return 0
-  else
-    log_error "Swarm upload returned invalid hash" "hash: $hash"
-    echo "ERROR"
-    return 1
   fi
+  log_error "Swarm upload returned invalid hash" "hash: $hash"
+  echo "ERROR"
+  return 1
 }
 
 # Function to calculate statistics
@@ -381,6 +442,25 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   test_file="$TEMP_DIR/test_${size}.bin"
   echo "  Generating test file..."
   generate_test_file "$size" "$test_file"
+
+  # One discarded batch per system per payload size (connection pools, Bee cold paths). Set SNG40_UPLOAD_WARMUP=0 to skip.
+  if [[ "${SNG40_UPLOAD_WARMUP:-1}" != "0" ]]; then
+    echo -e "  ${CYAN}Warmup (discarded, not written to CSV)${NC}"
+    if [[ $BATCH_SIZE -eq 1 ]]; then
+      upload_our_system "$test_file" >/dev/null 2>&1 || true
+    else
+      for _ in $(seq 1 $BATCH_SIZE); do
+        upload_our_system "$test_file" >/dev/null 2>&1 || true
+      done
+    fi
+    if [[ $BATCH_SIZE -eq 1 ]]; then
+      upload_swarm "$test_file" >/dev/null 2>&1 || true
+    else
+      for _ in $(seq 1 $BATCH_SIZE); do
+        upload_swarm "$test_file" >/dev/null 2>&1 || true
+      done
+    fi
+  fi
   
   # Test our system
   echo -e "\n  ${GREEN}Testing our system...${NC}"
@@ -438,6 +518,14 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   bytes_our_delta=$((bytes_our_after - bytes_our_before))
   echo "our_system,$size,$BATCH_SIZE,$bytes_our_delta" >> "$NETWORK_BYTES_FILE"
   echo -e "    ${BLUE}Network bytes (our_system): $bytes_our_delta${NC}"
+
+  # After our_system load, Bee’s first timed Swarm batch can stall (especially batch_size≥5 at large N).
+  if [[ "${SNG40_UPLOAD_WARMUP:-1}" != "0" && "$BATCH_SIZE" -ge 5 ]]; then
+    echo -e "  ${CYAN}Swarm post-our warmup (discarded, not written to CSV)${NC}"
+    for _ in $(seq 1 "$BATCH_SIZE"); do
+      upload_swarm "$test_file" >/dev/null 2>&1 || true
+    done
+  fi
 
   # Test Swarm
   echo -e "\n  ${GREEN}Testing Swarm...${NC}"

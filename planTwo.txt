@@ -549,7 +549,7 @@ to demonstrate performance advantages with catchy, graphable results.
             2. [x] Loop: upload N files sequentially (or in parallel with xargs -P), measure
                total wall time; output batch_total_ms and per-file avg.
             3. [x] CSV columns: system,payload_size,batch_size,iteration,latency_ms,total_batch_ms.
-            4. [x] Run batch tests (e.g. batch_size 5, 10, 20); aggregate in run_comparison.
+            4. [x] Run batch tests (batch_size 1, 5 by default; 10/20 removed); aggregate in run_comparison.
             5. [x] Add batch throughput (total_bytes / total_batch_s) to analysis and reports.
 
         B. [x] Download latency (cold start vs warm cache)
@@ -747,9 +747,107 @@ to demonstrate performance advantages with catchy, graphable results.
     [x] 4. Fix HandleDirectFetchStream: bufio ReadString('\n') for key.
     [x] 5. GetBlock: use TokenStore when set, else DHT for GetToken (consistent with SyncTokenOnPut).
 
+9.3.4 Test Suite Hardening, Fairness, and Per-Test Matrix Runs
+    -------------------------------------------------------------
+    Context: Full comparison runs (e.g. N=10/50/100, multiple iterations) show uneven results:
+    upload latency for vn-IPFS much worse than Swarm at N=50 than at N=10; some tests skip or
+    produce sparse CSVs at larger N; lookup_complexity does not exhibit clean O(log N) scaling.
+    Work splits into (A) measurement fairness vs Swarm, (B) root-cause missing runs at N=50+,
+    (C) scaling / lookup semantics, (D) structured re-run matrix, (E) audit of other metrics.
+
+    A. Upload latency fairness and “return at the right time”
+       [x] 1. Re-verify PUT path: first successful local store only; token sync and replication
+          async (UpdateRoutingTableOnPutAsync, background ReplicateToNPeers). Profile or log
+          server-side phases if 50-node gap persists.
+       [x] 2. Ensure upload_test uses direct host curl when SNG40_CONTROL_LISTEN + port 9400 map
+          is active (no docker cp/exec in the timed window). Document requirement in
+          docs/SWARM_COMPARISON_TESTS.md.
+       [x] 3. Compare payload encoding: Swarm POSTs raw octet-stream; vn-IPFS uses JSON+base64
+          (larger body, decode cost). Optional: add a raw-binary PUT path or document as known
+          asymmetry in reports.
+       [x] 4. If still unfair after (1)–(3), add explicit “time to first durable local accept”
+          definition in methodology and align both clients to same curl shape where possible.
+
+    B. Tests not running or incomplete at N=50 (and larger)
+       [x] 1. Inspect per-phase logs: our_startup_n50.log, swarm_startup_n50.log, upload_n50.log,
+          summary_report.txt; note first failure (timeout, compose error, health check, OOM).
+          Script: scripts/tests/swarm_comparison/inspect_comparison_logs.sh <results_dir>.
+       [x] 2. run_comparison: increase --test-timeout for N>=50 if uploads or cold downloads hit
+          default cap; ensure run_with_timeout does not silently truncate whole steps.
+          Implemented: auto per-test timeout 1800s (N>=50), 3600 (N>=100), 7200 (N>=500) unless
+          --test-timeout set; stderr banner on timeout (exit 124) and non-zero failures.
+       [x] 3. Swarm: confirm docker-compose.swarm.yml IP allocation after start.sh fix (no
+          invalid last octet); verify all swarm-node* services start and become healthy.
+          start.sh uses offset/256 and offset%256; scripts/docker/swarm/verify_generated_ips.sh
+          checks compose; start.sh runs it after generation.
+       [x] 4. vn-IPFS: confirm start_vnipfs.sh completes for N=50; disk/memory sufficient;
+          optional stagger or longer stabilization wait before first test.
+          run_comparison: longer wait_for_stabilization for N>=50/100/500; post-stabilize sleep
+          15/25/45s; C.2 verify cap 90/120/180s; lookup_complexity DHT prewait 35/45/60s.
+       [x] 5. Add a post-run validator script: for each expected (test_name, node_count) artifact,
+          assert CSV exists, non-header row count >= 1 (or documented SKIP), else fail CI / print
+          gap report.
+          scripts/tests/swarm_comparison/validate_comparison_artifacts.sh; run_comparison --validate.
+
+    C. Lookup complexity / “log N” scaling
+       [x] 1. Re-read lookup_complexity_results.csv and analysis: hops vs N may be flat, noisy,
+          or dominated by cold one-off lookup variance; document actual relationship.
+          Documented in docs/SWARM_COMPARISON_TESTS.md (lookup test + “do not conflate”); plots
+          fixed to use operation=lookup (was get, so figures were empty for real CSVs).
+       [x] 2. Separate “DHT hop count” from “wall-clock upload” in plots; upload inflation at
+          large N may have polluted narrative if conflated.
+          swarm_comparison_analyze.py: upload section note; network hops section clarified;
+          lookup plot titles disclaim ideal O(log N).
+       [x] 3. If hops do not scale as theory: instrument GetClosestPeers / GetToken paths;
+          check DHT mode, routing table size, and whether measurement window is long enough
+          after cluster stabilize.
+          SNG40_LOG_LOOKUP_PATHS=1: control /lookup logs hops+latency+err; lookup-key logs
+          rt_size and post-GetToken summary (hops from GetClosestPeers phase). run_comparison
+          already extends DHT prewait for large N.
+       [x] 4. Update docs/REPLICATION.md or comparison doc with honest scaling claim (measured
+          vs ideal O(log N)) once data is clean.
+          docs/REPLICATION.md added; docs/SWARM_COMPARISON_TESTS.md + docs/API.md /lookup note.
+
+    D. Per-test × per-node-count matrix (structured reruns)
+       Goal: isolate failures and reduce coupling; each cell is one test, one N, fixed iterations.
+       [x] 1. Add scripts/tests/swarm_comparison/run_single_comparison.sh (or extend
+          run_comparison.sh with --tests X --nodes Y --iterations Z --skip-start) so operators
+          can run e.g. upload only at N=10, 10 iterations, without full suite.
+          run_single_comparison.sh added; run_comparison.sh: --skip-start (single N, implies
+          --skip-cleanup); --tests/--nodes/--iterations already existed.
+       [x] 2. Recommended matrix order (example: 10 iterations each): upload @10 → cold download
+          @10 → warm download @10 → lookup_latency @10 → lookup_complexity @10 → replication
+          @10 → replication_distribution @10 → repair_time @10 → network_hops @10 →
+          routing_overhead @10 → storage_efficiency @10 → concurrent @10; repeat for N in
+          {50, 100} (and 500 if resources allow). Log each run to test_results/matrix/<test>_n<N>_i<I>/.
+          Documented in SWARM_COMPARISON_TESTS.md; lookup_latency wired in run_comparison.sh
+          (Step 4c) so suite order matches matrix.
+       [x] 3. Document the matrix in docs/SWARM_COMPARISON_TESTS.md with example commands.
+
+    E. Audit other result artifacts (fix or document)
+       Scan test_results/** for empty CSVs, all-zero columns, TIMEOUT, SKIP, N/A, single-system
+       rows only. Typical areas to check:
+       [ ] 1. download_*_cold / warm: missing rows or all errors at large N (DHT/token lag,
+          timeout); align wait-after-PUT with async token/replication.
+       [ ] 2. replication_results.csv / replication_distribution: time_to_R or N/M/F missing;
+          ensure simulate_distances=1 only where intended; replication test polls long enough.
+       [ ] 3. repair_time_results.csv: FAILED or 0s when repair path not exercised; document.
+       [ ] 4. network_hops_results.csv: zeros if cold lookup or port/bootstrap unavailable.
+       [ ] 5. routing_overhead / storage_efficiency: sparse when Swarm metrics unavailable;
+          document N/A semantics.
+       [ ] 6. concurrent_results.csv: partial matrix if --append or container detection fails.
+       [ ] 7. lookup_latency_n*.csv / upload_aggregated / download_aggregated: regenerate after
+          matrix runs; fix analysis if column names or node_count labels mismatch files.
+       [ ] 8. resource_usage_*.csv: correlate with host limits; flag runs where monitoring died.
+
 9.4 Results Analysis and Visualization
     ------------------------------------
     File: scripts/analysis/swarm_comparison_plots.py (new)
+
+    Upload latency / throughput figures: use **batch_size 1 and 5 only** (orchestrator default
+    is 1,5; batch 10/20 removed from the suite). Same filter in analysis HTML/plots vs legacy
+    CSVs. Applies at all N (e.g. N=10); do not graph batch 10/20 for the paper unless re-enabled
+    with --batch-sizes and justified.
     
     Tasks:
     [ ] Create comparison plots:

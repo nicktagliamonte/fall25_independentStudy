@@ -16,7 +16,7 @@ source "$SCRIPT_DIR/api.sh"
 source "$ROOT_DIR/scripts/utils/error_handler.sh" 2>/dev/null || true
 
 OUR_API=""
-SWARM_API="http://127.0.0.1:8500"
+SWARM_API="${SWARM_API:-http://127.0.0.1:8500}"
 OUTPUT_FILE="routing_overhead_results.csv"
 PAYLOAD_SIZE=10240
 

@@ -12,7 +12,10 @@ Stores a block. Key is derived from data (`SHA256(data)`). Token is synced to DH
 
 **Method:** `POST`
 
-**Request:**
+**Request (choose one):**
+
+1. **`Content-Type: application/octet-stream`** — body is raw bytes (same pattern as Swarm `POST /bzz:/`). Max body 64 MiB.
+2. **`Content-Type: application/json`** (default):
 ```json
 {
   "data": "<base64 or raw string>"
@@ -33,7 +36,9 @@ PUT returns immediately after the first successful store (local + routing table)
 
 **Key-based usage:** Use `multihash_hex` as the key for subsequent GET operations.
 
-**Errors:** `400` invalid request; `500` storage error (e.g. lock contention).
+**Errors:** `400` invalid request; `413` body too large; `500` storage error (e.g. lock contention).
+
+**Diagnostics:** Set `SNG40_LOG_PUT_PHASES=1` to log server-side durations for `PutBlock` vs routing-table + local mapping (token DHT + replication remain async).
 
 ---
 
@@ -71,6 +76,14 @@ CID lookup requires routing table entry; use key when available.
 `network_hops`: DHT lookup hop count (peers queried during GetToken). 0 when served from local store or gateway; omitted when unknown.
 
 **Errors:** `400` invalid key/cid, key or cid required, key not found in routing table; `404` block not found.
+
+---
+
+## POST /lookup (and GET /lookup?key=)
+
+Isolated **GetToken** only (no block fetch). Returns lookup wall-clock and `network_hops` (count of `routing.SendingQuery` events during the query). Used by comparison tests; not the same metric as PUT latency.
+
+**Diagnostics:** `SNG40_LOG_LOOKUP_PATHS=1` logs hop count, latency, and token error (if any) per request.
 
 ---
 
@@ -153,3 +166,4 @@ Returns disk usage for the node's persistent blockstore directory (when started 
 | /neighbors     | GET    | DHT neighbors              |
 | /id            | GET    | Peer ID                    |
 | /events        | GET    | Event stream (SSE)         |
+| /lookup        | GET/POST | Token lookup only (hops + ms) |

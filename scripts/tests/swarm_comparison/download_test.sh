@@ -17,7 +17,7 @@ source "$SCRIPT_DIR/api.sh"
 
 # Default values
 OUR_API=""
-SWARM_API="http://127.0.0.1:8500"
+SWARM_API="${SWARM_API:-http://127.0.0.1:8500}"
 ITERATIONS=10
 CACHE_MODE="cold"
 OUTPUT_FILE="download_latency_results.csv"

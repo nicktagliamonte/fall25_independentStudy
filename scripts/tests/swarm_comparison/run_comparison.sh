@@ -2,22 +2,25 @@
 set -euo pipefail
 
 # Purpose: Test orchestration for vn-IPFS vs Swarm comparison.
-# Starts both networks sequentially (vn-IPFS then Swarm), waits for health, runs identical tests, collects metrics, shuts down cleanly.
+# By default starts both networks (vn-IPFS then Swarm), waits for health, runs tests, collects metrics, and tears down; --skip-start assumes stacks already up at N.
 # Usage: ./scripts/tests/swarm_comparison/run_comparison.sh [options]
 #   --nodes <list>        Node counts: 10, 50, 100, 500 (default: 10,50)
 #   --payload-sizes <list> Comma-separated payload sizes in bytes (default: 1024,10240,102400,1048576)
 #   --iterations <n>      Iterations per test (default: 5)
-#   --batch-sizes <list>  Comma-separated batch sizes for upload (default: 1,5,10,20)
+#   --batch-sizes <list>  Comma-separated batch sizes for upload (default: 1,5)
 #   --output-dir <dir>    Output directory for results (default: ./test_results_<timestamp>)
-#   --test-timeout <sec>  Per-test timeout in seconds (default: 600)
-#   --tests <list>       Comma-separated test names to run (default: all). Use --tests list to print available tests.
+#   --test-timeout <sec>  Per-test timeout in seconds (default: 600; auto 5400/7200/7200s for max N 50/100/500 if unset)
+#   --tests <list>        Comma-separated test names (default: all). Use --tests list to print names.
+#   --skip-start          Stacks already at N; skip compose startup. Implies --skip-cleanup; --nodes must be one value.
 #   --skip-cleanup        Don't stop containers after tests (useful for debugging)
+#   --validate            After completion, run validate_comparison_artifacts.sh on OUTPUT_DIR (exit non-zero if gaps)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Source error handler
 source "$ROOT_DIR/scripts/utils/error_handler.sh"
+source "$SCRIPT_DIR/swarm_publish_url.sh"
 
 # Initialize error logging
 RUN_ID="${RUN_ID:-$(date +%s)}"
@@ -30,11 +33,14 @@ VALID_NODE_COUNTS="10 50 100 500"
 NODES="10,50"
 PAYLOAD_SIZES="1024,10240,102400,1048576"  # 1KB, 10KB, 100KB, 1MB
 ITERATIONS=5
-BATCH_SIZES="1,5,10,20"
+BATCH_SIZES="1,5"
 OUTPUT_DIR=""
 TEST_TIMEOUT_SEC=600
+TEST_TIMEOUT_USER_SET=0
 SKIP_CLEANUP=false
-TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
+RUN_VALIDATE=false
+TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,lookup_latency,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
+SKIP_START=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -61,11 +67,20 @@ while [[ $# -gt 0 ]]; do
       ;;
     --test-timeout)
       TEST_TIMEOUT_SEC="$2"
+      TEST_TIMEOUT_USER_SET=1
       shift 2
       ;;
     --tests)
       TESTS="$2"
       shift 2
+      ;;
+    --validate)
+      RUN_VALIDATE=true
+      shift
+      ;;
+    --skip-start)
+      SKIP_START=true
+      shift
       ;;
     --skip-cleanup)
       SKIP_CLEANUP=true
@@ -77,10 +92,12 @@ while [[ $# -gt 0 ]]; do
       echo "  --nodes <list>        Node counts: 10, 50, 100, or 500 (default: 10,50)"
       echo "  --payload-sizes <list> Comma-separated payload sizes in bytes (default: 1024,10240,102400,1048576)"
       echo "  --iterations <n>      Iterations per test (default: 5)"
-      echo "  --batch-sizes <list>  Batch sizes for upload test (default: 1,5,10,20)"
+      echo "  --batch-sizes <list>  Batch sizes for upload test (default: 1,5)"
       echo "  --output-dir <dir>    Output directory (default: ./test_results_<timestamp>)"
-      echo "  --test-timeout <sec>  Per-test timeout in seconds (default: 600)"
+      echo "  --test-timeout <sec>  Per-test timeout (default: 600; auto 5400/7200/7200s for max N 50/100/500 unless set)"
       echo "  --tests <list>       Comma-separated test names (default: all). Use --tests list to print available tests."
+      echo "  --skip-start         Clusters already at N; skip startup/teardown prep (implies --skip-cleanup; --nodes must be a single count)"
+      echo "  --validate            Run artifact validator on OUTPUT_DIR at end (non-zero if CSVs missing/empty)"
       echo "  --skip-cleanup        Don't stop containers after tests"
       exit 0
       ;;
@@ -97,7 +114,7 @@ TESTS="${TESTS// /}"
 # Handle --tests list
 if [[ "$TESTS" == "list" ]]; then
   echo "Available tests (use --tests <name> or --tests <name1,name2,...>):"
-  echo "  upload, download_cold, download_warm, lookup_complexity,"
+  echo "  upload, download_cold, download_warm, lookup_latency, lookup_complexity,"
   echo "  replication, replication_distribution, repair_time, network_hops, routing_overhead,"
   echo "  storage_efficiency, concurrent"
   echo ""
@@ -145,6 +162,28 @@ for nc in "${NODE_COUNTS[@]}"; do
   fi
 done
 
+if [[ "$SKIP_START" == "true" ]]; then
+  if [[ "${#NODE_COUNTS[@]}" -ne 1 ]]; then
+    echo "Error: --skip-start requires exactly one node count, e.g. --nodes 10 (got: ${NODE_COUNTS[*]})" >&2
+    exit 1
+  fi
+  SKIP_CLEANUP=true
+fi
+
+max_node_count=0
+for nc in "${NODE_COUNTS[@]}"; do
+  [[ "$nc" -gt "$max_node_count" ]] && max_node_count=$nc
+done
+if [[ "$TEST_TIMEOUT_USER_SET" -eq 0 ]]; then
+  if [[ "$max_node_count" -ge 500 ]]; then
+    TEST_TIMEOUT_SEC=7200
+  elif [[ "$max_node_count" -ge 100 ]]; then
+    TEST_TIMEOUT_SEC=7200
+  elif [[ "$max_node_count" -ge 50 ]]; then
+    TEST_TIMEOUT_SEC=5400
+  fi
+fi
+
 echo "=========================================="
 echo "Swarm Comparison Test Suite"
 echo "=========================================="
@@ -152,21 +191,37 @@ echo "Node counts: ${NODE_COUNTS[*]}"
 echo "Payload sizes: ${PAYLOAD_ARRAY[*]} bytes"
 echo "Batch sizes (upload): ${BATCH_SIZES_ARRAY[*]}"
 echo "Iterations per test: $ITERATIONS"
+echo "Per-test timeout: ${TEST_TIMEOUT_SEC}s$([[ "$TEST_TIMEOUT_USER_SET" -eq 1 ]] && echo ' (explicit)' || echo ' (default or auto: 5400/7200/7200s for max N 50/100/500)')"
 [[ -n "$TESTS" ]] && echo "Tests (filtered): $TESTS"
+[[ "$SKIP_START" == "true" ]] && echo "Skip start: assuming stacks already up at N=${NODE_COUNTS[0]} (no compose startup; cleanup disabled)"
 echo "Output directory: $OUTPUT_DIR"
 echo ""
 
-# Run command with per-test timeout; falls back to plain run if timeout unavailable
+# Run command with per-test timeout; falls back to plain run if timeout unavailable.
+# Exit 124 from timeout is always printed to stderr so steps are not silently truncated.
 run_with_timeout() {
+  local ret=0
   if command -v timeout >/dev/null 2>&1 && [[ -n "${TEST_TIMEOUT_SEC:-}" && "$TEST_TIMEOUT_SEC" -gt 0 ]]; then
-    if ! timeout "$TEST_TIMEOUT_SEC" "$@"; then
-      local ret=$?
-      [[ $ret -eq 124 ]] && echo -e "${YELLOW}  (Test timed out after ${TEST_TIMEOUT_SEC}s)${NC}" >&2
+    echo -e "${CYAN}  [timeout cap ${TEST_TIMEOUT_SEC}s]${NC} $*" >&2
+    timeout "$TEST_TIMEOUT_SEC" "$@"
+    ret=$?
+    if [[ $ret -ne 0 ]]; then
+      if [[ $ret -eq 124 ]]; then
+        echo -e "${RED}  <<< TIMEOUT after ${TEST_TIMEOUT_SEC}s (exit 124) — step did not finish: $* >>>${NC}" >&2
+      else
+        echo -e "${RED}  <<< command failed (exit $ret): $* >>>${NC}" >&2
+      fi
       return $ret
     fi
   else
     "$@"
+    ret=$?
+    if [[ $ret -ne 0 ]]; then
+      echo -e "${RED}  <<< command failed (exit $ret): $* >>>${NC}" >&2
+      return $ret
+    fi
   fi
+  return 0
 }
 
 # Function to cleanup containers
@@ -225,9 +280,19 @@ wait_for_stabilization() {
   local nodes="$2"
   local max_wait=90
   [[ "$system" == "swarm" ]] && max_wait=120
+  if [[ "$nodes" -ge 500 ]]; then
+    max_wait=300
+    [[ "$system" == "swarm" ]] && max_wait=360
+  elif [[ "$nodes" -ge 100 ]]; then
+    max_wait=210
+    [[ "$system" == "swarm" ]] && max_wait=240
+  elif [[ "$nodes" -ge 50 ]]; then
+    max_wait=150
+    [[ "$system" == "swarm" ]] && max_wait=180
+  fi
   local check_interval=2
 
-  echo -e "  ${CYAN}Waiting for $system to stabilize (max ${max_wait}s)...${NC}"
+  echo -e "  ${CYAN}Waiting for $system to stabilize (N=$nodes, max ${max_wait}s)...${NC}"
 
   if [[ "$system" == "our_system" ]]; then
     local compose=$(get_vnipfs_compose)
@@ -244,8 +309,10 @@ wait_for_stabilization() {
       sleep $check_interval
     done
   elif [[ "$system" == "swarm" ]]; then
+    local swarm_base="${SWARM_API:-$(swarm_publish_base_url)}"
+    swarm_base="${swarm_base%/}"
     for i in $(seq 1 $max_wait); do
-      if curl -sf "http://127.0.0.1:8500/" >/dev/null 2>&1; then
+      if curl -sf "${swarm_base}/" >/dev/null 2>&1; then
         local running_nodes=$(docker-compose -f "$ROOT_DIR/docker-compose.swarm.yml" ps --services 2>/dev/null | grep -E '^(swarm-bootstrap|swarm-node)' | wc -l)
         if [[ $running_nodes -ge $nodes ]]; then
           echo "    $system ready after ${i}s"
@@ -272,11 +339,17 @@ run_upload_test() {
   for batch_size in "${BATCH_SIZES_ARRAY[@]}"; do
     local output_file="$OUTPUT_DIR/upload_n${node_count}_batch${batch_size}.csv"
     echo -e "  Batch size $batch_size..."
+    set +e
     run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/upload_test.sh" \
       --iterations "$ITERATIONS" \
       --batch-size "$batch_size" \
       --output "$output_file" \
       2>&1 | tee -a "$OUTPUT_DIR/upload_n${node_count}.log" | sed 's/^/    /'
+    local upload_ps0="${PIPESTATUS[0]}"
+    set -e
+    if [[ "$upload_ps0" -ne 0 ]]; then
+      echo -e "  ${YELLOW}batch_size=$batch_size: upload step exited $upload_ps0 (124=timeout); CSV may be partial — use complete rows or re-run this batch${NC}"
+    fi
     if [[ -f "$output_file" ]]; then
       echo -e "  ${GREEN}✓ batch_size=$batch_size: $output_file${NC}"
       any_ok=true
@@ -605,7 +678,7 @@ generate_summary_report() {
 # Trap: ensure cleanup on exit
 trap cleanup_containers EXIT
 
-# Start vn-IPFS (use start_vnipfs.sh for 10,50,100,500; else start.sh)
+# Start vn-IPFS: start_vnipfs.sh runs gen_vnipfs_compose.sh for N in 10,50,100,500 (rewrites docker-compose.vnipfs.yml); other N uses start.sh → docker-compose.yml.
 start_vnipfs() {
   local n="$1"
   if [[ " $VALID_NODE_COUNTS " =~ " $n " ]]; then
@@ -625,61 +698,91 @@ for node_count in "${NODE_COUNTS[@]}"; do
   echo "Testing with $node_count nodes"
   echo "=========================================="
 
-  ensure_clean_state
-
-  # Step 1: Start networks sequentially (reduces memory/CPU contention during startup)
   # When only running lookup_complexity, skip Swarm to reduce resource contention for cold lookup
   SKIP_SWARM=false
   if [[ "$TESTS" == "lookup_complexity" ]]; then
     SKIP_SWARM=true
   fi
 
-  echo -e "\n${BLUE}Step 1: Starting vn-IPFS...${NC}"
-  if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
-    echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+  if [[ "$SKIP_START" != "true" ]]; then
+    ensure_clean_state
+
+    echo -e "\n${BLUE}Step 1: Starting vn-IPFS...${NC}"
+    if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
+      echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+    else
+      echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+    fi
+
+    if [[ "$SKIP_SWARM" != "true" ]]; then
+      echo -e "\n${BLUE}Step 1b: Starting Swarm...${NC}"
+      if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
+        echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+      else
+        echo "1" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+      fi
+    else
+      echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+    fi
+
+    VNIPFS_OK=$(cat "$OUTPUT_DIR/.vnipfs_${node_count}.ok" 2>/dev/null || echo "1")
+    SWARM_OK=$(cat "$OUTPUT_DIR/.swarm_${node_count}.ok" 2>/dev/null || echo "1")
+    rm -f "$OUTPUT_DIR/.vnipfs_${node_count}.ok" "$OUTPUT_DIR/.swarm_${node_count}.ok"
+
+    if [[ "$VNIPFS_OK" != "0" ]]; then
+      echo -e "${RED}vn-IPFS failed to start. Log: $OUTPUT_DIR/our_startup_n${node_count}.log${NC}" >&2
+      cleanup_containers
+      continue
+    fi
+    if [[ "$SWARM_OK" != "0" ]]; then
+      echo -e "${RED}Swarm failed to start. Log: $OUTPUT_DIR/swarm_startup_n${node_count}.log${NC}" >&2
+      cleanup_containers
+      continue
+    fi
+
+    [[ "$SKIP_SWARM" == "true" ]] && echo -e "  ${GREEN}vn-IPFS started (Swarm skipped for lookup_complexity-only run)${NC}" || echo -e "  ${GREEN}Both networks started (sequential)${NC}"
   else
-    echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+    echo -e "\n${CYAN}--skip-start: skipping ensure_clean_state and compose startup (N=$node_count)${NC}"
   fi
 
   if [[ "$SKIP_SWARM" != "true" ]]; then
-    echo -e "\n${BLUE}Step 1b: Starting Swarm...${NC}"
-    if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
-      echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
-    else
-      echo "1" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
-    fi
-  else
-    echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
+    SWARM_API="$(swarm_publish_base_url)"
+    export SWARM_API
   fi
-
-  VNIPFS_OK=$(cat "$OUTPUT_DIR/.vnipfs_${node_count}.ok" 2>/dev/null || echo "1")
-  SWARM_OK=$(cat "$OUTPUT_DIR/.swarm_${node_count}.ok" 2>/dev/null || echo "1")
-  rm -f "$OUTPUT_DIR/.vnipfs_${node_count}.ok" "$OUTPUT_DIR/.swarm_${node_count}.ok"
-
-  if [[ "$VNIPFS_OK" != "0" ]]; then
-    echo -e "${RED}vn-IPFS failed to start. Log: $OUTPUT_DIR/our_startup_n${node_count}.log${NC}" >&2
-    cleanup_containers
-    continue
-  fi
-  if [[ "$SWARM_OK" != "0" ]]; then
-    echo -e "${RED}Swarm failed to start. Log: $OUTPUT_DIR/swarm_startup_n${node_count}.log${NC}" >&2
-    cleanup_containers
-    continue
-  fi
-
-  [[ "$SKIP_SWARM" == "true" ]] && echo -e "  ${GREEN}vn-IPFS started (Swarm skipped for lookup_complexity-only run)${NC}" || echo -e "  ${GREEN}Both networks started (sequential)${NC}"
 
   # Step 2: Wait for both to be healthy (skip swarm wait when Swarm was not started)
   echo -e "\n${BLUE}Step 2: Waiting for both systems to be healthy...${NC}"
   wait_for_stabilization "our_system" "$node_count"
   [[ "$SKIP_SWARM" != "true" ]] && wait_for_stabilization "swarm" "$node_count"
 
+  post_stabilize_sleep=0
+  if [[ "$node_count" -ge 500 ]]; then
+    post_stabilize_sleep=45
+  elif [[ "$node_count" -ge 100 ]]; then
+    post_stabilize_sleep=25
+  elif [[ "$node_count" -ge 50 ]]; then
+    post_stabilize_sleep=15
+  fi
+  if [[ "$post_stabilize_sleep" -gt 0 ]]; then
+    echo -e "  ${CYAN}Extra post-stabilization wait: ${post_stabilize_sleep}s (large cluster)${NC}"
+    sleep "$post_stabilize_sleep"
+  fi
+
   # C.2 verification: PUT on node A, /replication/status returns replica_count>=1 within 5s
-  # Use 45s cap. Pass compose file for consistency.
+  # Scale cap with N (large clusters need longer for first replication signal).
   echo -e "\n${BLUE}Step 2b: C.2 verification (replication integration)...${NC}"
   vnipfs_compose=$(get_vnipfs_compose)
+  c2_sec=45
+  if [[ "$node_count" -ge 500 ]]; then
+    c2_sec=180
+  elif [[ "$node_count" -ge 100 ]]; then
+    c2_sec=120
+  elif [[ "$node_count" -ge 50 ]]; then
+    c2_sec=90
+  fi
   if command -v timeout >/dev/null 2>&1; then
-    timeout 45 "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
+    echo -e "  ${CYAN}C.2 verify cap: ${c2_sec}s${NC}"
+    timeout "$c2_sec" "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
       2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors or timed out, continuing...${NC}"; true; }
   else
     "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
@@ -716,10 +819,23 @@ for node_count in "${NODE_COUNTS[@]}"; do
     run_download_test "$node_count" "warm" || echo -e "${YELLOW}Download test (warm) had errors, continuing...${NC}"
   fi
 
+  if should_run_test "lookup_latency"; then
+    echo -e "\n${BLUE}Step 4c: Running lookup latency test...${NC}"
+    run_lookup_latency_test "$node_count" || echo -e "${YELLOW}Lookup latency test had errors, continuing...${NC}"
+  fi
+
   if should_run_test "lookup_complexity"; then
     echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
-    echo -e "  ${CYAN}Waiting 20s for DHT to stabilize before cold lookup...${NC}"
-    sleep 20
+    dht_prewait=20
+    if [[ "$node_count" -ge 500 ]]; then
+      dht_prewait=60
+    elif [[ "$node_count" -ge 100 ]]; then
+      dht_prewait=45
+    elif [[ "$node_count" -ge 50 ]]; then
+      dht_prewait=35
+    fi
+    echo -e "  ${CYAN}Waiting ${dht_prewait}s for DHT to stabilize before cold lookup...${NC}"
+    sleep "$dht_prewait"
     run_lookup_complexity_test "$node_count" || echo -e "${YELLOW}Lookup complexity test had errors, continuing...${NC}"
   fi
 
@@ -806,3 +922,14 @@ echo ""
 cleanup_containers
 
 echo -e "${GREEN}All tests complete!${NC}"
+
+if [[ "$RUN_VALIDATE" == "true" ]]; then
+  echo -e "\n${BLUE}Running artifact validation...${NC}"
+  val_args=(--dir "$OUTPUT_DIR" --nodes "$NODES" --batch-sizes "$BATCH_SIZES")
+  [[ -n "$TESTS" ]] && val_args+=(--tests "$TESTS")
+  if ! "$ROOT_DIR/scripts/tests/swarm_comparison/validate_comparison_artifacts.sh" "${val_args[@]}"; then
+    echo -e "${RED}Artifact validation reported gaps (see above).${NC}" >&2
+    exit 1
+  fi
+  echo -e "${GREEN}Artifact validation passed.${NC}"
+fi
