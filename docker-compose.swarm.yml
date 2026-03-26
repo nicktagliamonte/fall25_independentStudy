@@ -1355,6 +1355,1356 @@ services:
     depends_on:
       swarm-bootstrap:
         condition: service_healthy
+  swarm-node50:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node50
+    hostname: swarm-node50
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node50-data:/app/data
+      - swarm-node50-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.250
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node51:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node51
+    hostname: swarm-node51
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node51-data:/app/data
+      - swarm-node51-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.251
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node52:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node52
+    hostname: swarm-node52
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node52-data:/app/data
+      - swarm-node52-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.252
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node53:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node53
+    hostname: swarm-node53
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node53-data:/app/data
+      - swarm-node53-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.253
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node54:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node54
+    hostname: swarm-node54
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node54-data:/app/data
+      - swarm-node54-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.254
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node55:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node55
+    hostname: swarm-node55
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node55-data:/app/data
+      - swarm-node55-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.0.255
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node56:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node56
+    hostname: swarm-node56
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node56-data:/app/data
+      - swarm-node56-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.0
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node57:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node57
+    hostname: swarm-node57
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node57-data:/app/data
+      - swarm-node57-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.1
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node58:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node58
+    hostname: swarm-node58
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node58-data:/app/data
+      - swarm-node58-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.2
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node59:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node59
+    hostname: swarm-node59
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node59-data:/app/data
+      - swarm-node59-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.3
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node60:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node60
+    hostname: swarm-node60
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node60-data:/app/data
+      - swarm-node60-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.4
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node61:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node61
+    hostname: swarm-node61
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node61-data:/app/data
+      - swarm-node61-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.5
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node62:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node62
+    hostname: swarm-node62
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node62-data:/app/data
+      - swarm-node62-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.6
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node63:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node63
+    hostname: swarm-node63
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node63-data:/app/data
+      - swarm-node63-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.7
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node64:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node64
+    hostname: swarm-node64
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node64-data:/app/data
+      - swarm-node64-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.8
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node65:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node65
+    hostname: swarm-node65
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node65-data:/app/data
+      - swarm-node65-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.9
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node66:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node66
+    hostname: swarm-node66
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node66-data:/app/data
+      - swarm-node66-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.10
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node67:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node67
+    hostname: swarm-node67
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node67-data:/app/data
+      - swarm-node67-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.11
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node68:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node68
+    hostname: swarm-node68
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node68-data:/app/data
+      - swarm-node68-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.12
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node69:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node69
+    hostname: swarm-node69
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node69-data:/app/data
+      - swarm-node69-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.13
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node70:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node70
+    hostname: swarm-node70
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node70-data:/app/data
+      - swarm-node70-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.14
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node71:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node71
+    hostname: swarm-node71
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node71-data:/app/data
+      - swarm-node71-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.15
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node72:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node72
+    hostname: swarm-node72
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node72-data:/app/data
+      - swarm-node72-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.16
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node73:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node73
+    hostname: swarm-node73
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node73-data:/app/data
+      - swarm-node73-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.17
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node74:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node74
+    hostname: swarm-node74
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node74-data:/app/data
+      - swarm-node74-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.18
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node75:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node75
+    hostname: swarm-node75
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node75-data:/app/data
+      - swarm-node75-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.19
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node76:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node76
+    hostname: swarm-node76
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node76-data:/app/data
+      - swarm-node76-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.20
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node77:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node77
+    hostname: swarm-node77
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node77-data:/app/data
+      - swarm-node77-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.21
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node78:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node78
+    hostname: swarm-node78
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node78-data:/app/data
+      - swarm-node78-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.22
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node79:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node79
+    hostname: swarm-node79
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node79-data:/app/data
+      - swarm-node79-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.23
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node80:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node80
+    hostname: swarm-node80
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node80-data:/app/data
+      - swarm-node80-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.24
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node81:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node81
+    hostname: swarm-node81
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node81-data:/app/data
+      - swarm-node81-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.25
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node82:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node82
+    hostname: swarm-node82
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node82-data:/app/data
+      - swarm-node82-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.26
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node83:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node83
+    hostname: swarm-node83
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node83-data:/app/data
+      - swarm-node83-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.27
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node84:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node84
+    hostname: swarm-node84
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node84-data:/app/data
+      - swarm-node84-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.28
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node85:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node85
+    hostname: swarm-node85
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node85-data:/app/data
+      - swarm-node85-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.29
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node86:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node86
+    hostname: swarm-node86
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node86-data:/app/data
+      - swarm-node86-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.30
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node87:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node87
+    hostname: swarm-node87
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node87-data:/app/data
+      - swarm-node87-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.31
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node88:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node88
+    hostname: swarm-node88
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node88-data:/app/data
+      - swarm-node88-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.32
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node89:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node89
+    hostname: swarm-node89
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node89-data:/app/data
+      - swarm-node89-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.33
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node90:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node90
+    hostname: swarm-node90
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node90-data:/app/data
+      - swarm-node90-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.34
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node91:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node91
+    hostname: swarm-node91
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node91-data:/app/data
+      - swarm-node91-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.35
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node92:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node92
+    hostname: swarm-node92
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node92-data:/app/data
+      - swarm-node92-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.36
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node93:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node93
+    hostname: swarm-node93
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node93-data:/app/data
+      - swarm-node93-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.37
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node94:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node94
+    hostname: swarm-node94
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node94-data:/app/data
+      - swarm-node94-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.38
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node95:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node95
+    hostname: swarm-node95
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node95-data:/app/data
+      - swarm-node95-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.39
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node96:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node96
+    hostname: swarm-node96
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node96-data:/app/data
+      - swarm-node96-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.40
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node97:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node97
+    hostname: swarm-node97
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node97-data:/app/data
+      - swarm-node97-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.41
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node98:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node98
+    hostname: swarm-node98
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node98-data:/app/data
+      - swarm-node98-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.42
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
+  swarm-node99:
+    build: scripts/docker/swarm
+    image: swarm-node:latest
+    container_name: swarm-node99
+    hostname: swarm-node99
+    environment:
+      - SWARM_DATA_DIR=/app/data
+      - SWARM_HTTP_ADDR=0.0.0.0:8500
+      - SWARM_HTTP_PORT=8500
+      - SWARM_VERBOSITY=4
+      - SWARM_PASSWORD=swarm-test-password
+      - SWARM_BOOTNODE=enode://2ae48fd4e8f84f042623d54080c54498067bc88b9c563a4b5f41efcc9caa5fca8a9de97cde04d0da920b1d704e4da82588aaf860edfafd439224772927c68796@172.20.0.200:30399
+    volumes:
+      - swarm-node99-data:/app/data
+      - swarm-node99-logs:/app/logs
+    networks:
+      node-network:
+        ipv4_address: 172.20.1.43
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8500/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      swarm-bootstrap:
+        condition: service_healthy
 networks:
   node-network:
     name: fall25_independentstudy_node-network
@@ -1461,3 +2811,103 @@ volumes:
   swarm-node48-logs:
   swarm-node49-data:
   swarm-node49-logs:
+  swarm-node50-data:
+  swarm-node50-logs:
+  swarm-node51-data:
+  swarm-node51-logs:
+  swarm-node52-data:
+  swarm-node52-logs:
+  swarm-node53-data:
+  swarm-node53-logs:
+  swarm-node54-data:
+  swarm-node54-logs:
+  swarm-node55-data:
+  swarm-node55-logs:
+  swarm-node56-data:
+  swarm-node56-logs:
+  swarm-node57-data:
+  swarm-node57-logs:
+  swarm-node58-data:
+  swarm-node58-logs:
+  swarm-node59-data:
+  swarm-node59-logs:
+  swarm-node60-data:
+  swarm-node60-logs:
+  swarm-node61-data:
+  swarm-node61-logs:
+  swarm-node62-data:
+  swarm-node62-logs:
+  swarm-node63-data:
+  swarm-node63-logs:
+  swarm-node64-data:
+  swarm-node64-logs:
+  swarm-node65-data:
+  swarm-node65-logs:
+  swarm-node66-data:
+  swarm-node66-logs:
+  swarm-node67-data:
+  swarm-node67-logs:
+  swarm-node68-data:
+  swarm-node68-logs:
+  swarm-node69-data:
+  swarm-node69-logs:
+  swarm-node70-data:
+  swarm-node70-logs:
+  swarm-node71-data:
+  swarm-node71-logs:
+  swarm-node72-data:
+  swarm-node72-logs:
+  swarm-node73-data:
+  swarm-node73-logs:
+  swarm-node74-data:
+  swarm-node74-logs:
+  swarm-node75-data:
+  swarm-node75-logs:
+  swarm-node76-data:
+  swarm-node76-logs:
+  swarm-node77-data:
+  swarm-node77-logs:
+  swarm-node78-data:
+  swarm-node78-logs:
+  swarm-node79-data:
+  swarm-node79-logs:
+  swarm-node80-data:
+  swarm-node80-logs:
+  swarm-node81-data:
+  swarm-node81-logs:
+  swarm-node82-data:
+  swarm-node82-logs:
+  swarm-node83-data:
+  swarm-node83-logs:
+  swarm-node84-data:
+  swarm-node84-logs:
+  swarm-node85-data:
+  swarm-node85-logs:
+  swarm-node86-data:
+  swarm-node86-logs:
+  swarm-node87-data:
+  swarm-node87-logs:
+  swarm-node88-data:
+  swarm-node88-logs:
+  swarm-node89-data:
+  swarm-node89-logs:
+  swarm-node90-data:
+  swarm-node90-logs:
+  swarm-node91-data:
+  swarm-node91-logs:
+  swarm-node92-data:
+  swarm-node92-logs:
+  swarm-node93-data:
+  swarm-node93-logs:
+  swarm-node94-data:
+  swarm-node94-logs:
+  swarm-node95-data:
+  swarm-node95-logs:
+  swarm-node96-data:
+  swarm-node96-logs:
+  swarm-node97-data:
+  swarm-node97-logs:
+  swarm-node98-data:
+  swarm-node98-logs:
+  swarm-node99-data:
+  swarm-node99-logs:
