@@ -11,6 +11,7 @@ NODES="10"
 ITERATIONS="10"
 MATRIX_ROOT="$ROOT_DIR/test_results/matrix"
 SKIP_START=false
+SYSTEM_MODE="both"
 EXTRA=()
 
 usage() {
@@ -21,6 +22,7 @@ Options:
   --test <name>       Single test (required). Same names as run_comparison.sh --tests list.
   --nodes <n>         One node count: 10, 50, 100, or 500 (default: 10)
   --iterations <i>    Iterations per test (default: 10)
+  --system <mode>     both | vnipfs | swarm — start only that stack (default: both). Aliases: ours→vnipfs.
   --matrix-root <dir> Parent directory for per-cell dirs (default: <repo>/test_results/matrix)
   --skip-start        Passed through: clusters already running at N
   --help              This help
@@ -29,6 +31,8 @@ After --, remaining arguments are appended to run_comparison.sh (e.g. -- --valid
 
 Example:
   $0 --test upload --nodes 10 --iterations 10
+  $0 --test upload --nodes 100 --iterations 10 --system vnipfs
+  $0 --test download_cold --nodes 50 --iterations 10 --system swarm
   $0 --test lookup_complexity --nodes 50 --iterations 10 --skip-start
 EOF
 }
@@ -54,6 +58,10 @@ while [[ $# -gt 0 ]]; do
     --skip-start)
       SKIP_START=true
       shift
+      ;;
+    --system)
+      SYSTEM_MODE="$2"
+      shift 2
       ;;
     --help)
       usage
@@ -94,7 +102,23 @@ if [[ "$MATRIX_ROOT" != /* ]]; then
   MATRIX_ROOT="${ROOT_DIR}/${MATRIX_ROOT#./}"
 fi
 
-OUT="${MATRIX_ROOT}/${TEST}_n${N}_i${ITERATIONS}"
+case "${SYSTEM_MODE,,}" in
+  both)
+    OUT_SUFFIX=""
+    ;;
+  vnipfs|vn-ipfs|ours|our|vn)
+    OUT_SUFFIX="_vnipfs"
+    ;;
+  swarm|bee)
+    OUT_SUFFIX="_swarm"
+    ;;
+  *)
+    echo "Error: --system must be both, vnipfs, or swarm (got: $SYSTEM_MODE)" >&2
+    exit 1
+    ;;
+esac
+
+OUT="${MATRIX_ROOT}/${TEST}_n${N}_i${ITERATIONS}${OUT_SUFFIX}"
 mkdir -p "$OUT"
 
 RC_ARGS=(
@@ -102,6 +126,7 @@ RC_ARGS=(
   --iterations "$ITERATIONS"
   --tests "$TEST"
   --output-dir "$OUT"
+  --system "$SYSTEM_MODE"
 )
 [[ "$SKIP_START" == "true" ]] && RC_ARGS+=(--skip-start)
 

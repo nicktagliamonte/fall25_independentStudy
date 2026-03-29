@@ -32,6 +32,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -39,7 +42,7 @@ NC='\033[0m'
 
 OUR_CONTAINER=""
 OUR_API_ADDR=""
-if [[ -z "$OUR_API" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ -z "$OUR_API" ]]; then
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
     OUR_CONTAINER="fall25-bootstrap"
     OUR_API_ADDR=$(docker exec "$OUR_CONTAINER" jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
@@ -57,9 +60,13 @@ if [[ -z "$OUR_API" ]]; then
     exit 1
   fi
   OUR_API="http://$OUR_API_ADDR"
-else
+elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
   [[ "$OUR_API" =~ ^[a-zA-Z0-9_-]+$ ]] && OUR_CONTAINER="$OUR_API" && OUR_API_ADDR=$(docker exec "$OUR_CONTAINER" jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
   [[ -n "$OUR_API_ADDR" && "$OUR_API_ADDR" != "null" ]] && OUR_API="http://$OUR_API_ADDR"
+else
+  OUR_API=""
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
 fi
 
 echo "Lookup latency test (isolated: token routing vs provider discovery)"
@@ -74,6 +81,7 @@ trap "rm -rf $TEMP_DIR" EXIT
 echo "system,iteration,lookup_latency_ms,network_hops,lookup_type" > "$OUTPUT_FILE"
 
 # --- vn-IPFS: isolated token lookup via /lookup ---
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 echo -e "${GREEN}Our system (token routing, isolated lookup)...${NC}"
 dd if=/dev/urandom of="$TEMP_DIR/p.bin" bs=1 count="$PAYLOAD_SIZE" 2>/dev/null
 data_b64=$(base64 -w 0 < "$TEMP_DIR/p.bin" 2>/dev/null || base64 < "$TEMP_DIR/p.bin" | tr -d '\n')
@@ -100,9 +108,14 @@ else
     fi
   done
 fi
+else
+  echo -e "${YELLOW}Skipping vn-IPFS lookup (Swarm-only run)${NC}"
+fi
 
 # --- Swarm: TTFB as lookup proxy (discovery happens before first byte) ---
+if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
 echo -e "\n${GREEN}Swarm (provider discovery, TTFB as lookup proxy)...${NC}"
+[[ -f "$TEMP_DIR/p.bin" ]] || dd if=/dev/urandom of="$TEMP_DIR/p.bin" bs=1 count="$PAYLOAD_SIZE" 2>/dev/null
 SWARM_HASH=$(upload_file "$SWARM_API" "$TEMP_DIR/p.bin" 2>/dev/null || echo "")
 if [[ -z "$SWARM_HASH" || ${#SWARM_HASH} -lt 64 ]]; then
   echo -e "${RED}Swarm upload failed${NC}"
@@ -118,6 +131,9 @@ else
       echo "swarm,$i,FAILED,N/A,cid" >> "$OUTPUT_FILE"
     fi
   done
+fi
+else
+  echo -e "${YELLOW}Skipping Swarm lookup (vn-IPFS-only run)${NC}"
 fi
 
 echo ""

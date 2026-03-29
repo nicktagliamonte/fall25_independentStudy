@@ -37,6 +37,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+if [[ "${CMP_INCLUDE_OUR:-1}" != "1" ]]; then
+  echo "lookup_complexity is vn-IPFS only; skipping."
+  exit 0
+fi
+
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 

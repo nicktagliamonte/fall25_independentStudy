@@ -44,6 +44,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$SYSTEM_FILTER" && -n "${SWARM_COMPARISON_SYSTEM:-}" ]]; then
+  case "${SWARM_COMPARISON_SYSTEM,,}" in
+    vnipfs|vn-ipfs|ours|our|vn) SYSTEM_FILTER="our_system" ;;
+    swarm|bee) SYSTEM_FILTER="swarm" ;;
+  esac
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

@@ -1029,6 +1029,8 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		})
 	})
 
+	registerNamespaceHandlers(mux, stack, h, repairProtocol)
+
 	listenAddr := "127.0.0.1:0"
 	if a := os.Getenv("SNG40_CONTROL_LISTEN"); a != "" {
 		listenAddr = a

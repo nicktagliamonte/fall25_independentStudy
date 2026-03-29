@@ -3,7 +3,9 @@ set -euo pipefail
 
 # Purpose: Test orchestration for vn-IPFS vs Swarm comparison.
 # By default starts both networks (vn-IPFS then Swarm), waits for health, runs tests, collects metrics, and tears down; --skip-start assumes stacks already up at N.
+# Use --system vnipfs or --system swarm to start only one stack (half the memory vs both).
 # Usage: ./scripts/tests/swarm_comparison/run_comparison.sh [options]
+#   --system <both|vnipfs|swarm>  Which stack(s) to start and test (default: both). Aliases: ours→vnipfs.
 #   --nodes <list>        Node counts: 10, 50, 100, 500 (default: 10,50)
 #   --payload-sizes <list> Comma-separated payload sizes in bytes (default: 1024,10240,102400,1048576)
 #   --iterations <n>      Iterations per test (default: 5)
@@ -41,10 +43,15 @@ SKIP_CLEANUP=false
 RUN_VALIDATE=false
 TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,lookup_latency,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
 SKIP_START=false
+SYSTEM_MODE="both"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --system)
+      SYSTEM_MODE="$2"
+      shift 2
+      ;;
     --nodes)
       NODES="$2"
       shift 2
@@ -96,6 +103,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --output-dir <dir>    Output directory (default: ./test_results_<timestamp>)"
       echo "  --test-timeout <sec>  Per-test timeout (default: 600; auto 5400/7200/7200s for max N 50/100/500 unless set)"
       echo "  --tests <list>       Comma-separated test names (default: all). Use --tests list to print available tests."
+      echo "  --system <both|vnipfs|swarm>  Start and test only vn-IPFS, only Swarm, or both (default: both)"
       echo "  --skip-start         Clusters already at N; skip startup/teardown prep (implies --skip-cleanup; --nodes must be a single count)"
       echo "  --validate            Run artifact validator on OUTPUT_DIR at end (non-zero if CSVs missing/empty)"
       echo "  --skip-cleanup        Don't stop containers after tests"
@@ -110,6 +118,26 @@ done
 
 # Normalize TESTS (strip spaces for matching)
 TESTS="${TESTS// /}"
+
+case "${SYSTEM_MODE,,}" in
+  both)
+    RUN_VNIPFS=true
+    RUN_SWARM=true
+    ;;
+  vnipfs|vn-ipfs|ours|our|vn)
+    RUN_VNIPFS=true
+    RUN_SWARM=false
+    ;;
+  swarm|bee)
+    RUN_VNIPFS=false
+    RUN_SWARM=true
+    ;;
+  *)
+    echo "Error: --system must be both, vnipfs, or swarm (got: $SYSTEM_MODE)" >&2
+    exit 1
+    ;;
+esac
+export SWARM_COMPARISON_SYSTEM="$SYSTEM_MODE"
 
 # Handle --tests list
 if [[ "$TESTS" == "list" ]]; then
@@ -187,6 +215,7 @@ fi
 echo "=========================================="
 echo "Swarm Comparison Test Suite"
 echo "=========================================="
+echo "System mode: $SYSTEM_MODE (vn-IPFS: $RUN_VNIPFS, Swarm: $RUN_SWARM)"
 echo "Node counts: ${NODE_COUNTS[*]}"
 echo "Payload sizes: ${PAYLOAD_ARRAY[*]} bytes"
 echo "Batch sizes (upload): ${BATCH_SIZES_ARRAY[*]}"
@@ -699,22 +728,27 @@ for node_count in "${NODE_COUNTS[@]}"; do
   echo "=========================================="
 
   # When only running lookup_complexity, skip Swarm to reduce resource contention for cold lookup
-  SKIP_SWARM=false
+  START_VNIPFS="$RUN_VNIPFS"
+  START_SWARM="$RUN_SWARM"
   if [[ "$TESTS" == "lookup_complexity" ]]; then
-    SKIP_SWARM=true
+    START_SWARM=false
   fi
 
   if [[ "$SKIP_START" != "true" ]]; then
     ensure_clean_state
 
-    echo -e "\n${BLUE}Step 1: Starting vn-IPFS...${NC}"
-    if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
-      echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+    if [[ "$START_VNIPFS" == "true" ]]; then
+      echo -e "\n${BLUE}Step 1: Starting vn-IPFS...${NC}"
+      if start_vnipfs "$node_count" >>"$OUTPUT_DIR/our_startup_n${node_count}.log" 2>&1; then
+        echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+      else
+        echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+      fi
     else
-      echo "1" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
+      echo "0" >"$OUTPUT_DIR/.vnipfs_${node_count}.ok"
     fi
 
-    if [[ "$SKIP_SWARM" != "true" ]]; then
+    if [[ "$START_SWARM" == "true" ]]; then
       echo -e "\n${BLUE}Step 1b: Starting Swarm...${NC}"
       if "$ROOT_DIR/scripts/docker/swarm/start.sh" "$node_count" >>"$OUTPUT_DIR/swarm_startup_n${node_count}.log" 2>&1; then
         echo "0" >"$OUTPUT_DIR/.swarm_${node_count}.ok"
@@ -729,31 +763,41 @@ for node_count in "${NODE_COUNTS[@]}"; do
     SWARM_OK=$(cat "$OUTPUT_DIR/.swarm_${node_count}.ok" 2>/dev/null || echo "1")
     rm -f "$OUTPUT_DIR/.vnipfs_${node_count}.ok" "$OUTPUT_DIR/.swarm_${node_count}.ok"
 
-    if [[ "$VNIPFS_OK" != "0" ]]; then
+    if [[ "$START_VNIPFS" == "true" ]] && [[ "$VNIPFS_OK" != "0" ]]; then
       echo -e "${RED}vn-IPFS failed to start. Log: $OUTPUT_DIR/our_startup_n${node_count}.log${NC}" >&2
       cleanup_containers
       continue
     fi
-    if [[ "$SWARM_OK" != "0" ]]; then
+    if [[ "$START_SWARM" == "true" ]] && [[ "$SWARM_OK" != "0" ]]; then
       echo -e "${RED}Swarm failed to start. Log: $OUTPUT_DIR/swarm_startup_n${node_count}.log${NC}" >&2
       cleanup_containers
       continue
     fi
 
-    [[ "$SKIP_SWARM" == "true" ]] && echo -e "  ${GREEN}vn-IPFS started (Swarm skipped for lookup_complexity-only run)${NC}" || echo -e "  ${GREEN}Both networks started (sequential)${NC}"
+    if [[ "$START_VNIPFS" == "true" ]] && [[ "$START_SWARM" == "true" ]]; then
+      echo -e "  ${GREEN}Both networks started (sequential)${NC}"
+    elif [[ "$START_VNIPFS" == "true" ]]; then
+      echo -e "  ${GREEN}vn-IPFS started (Swarm not selected or skipped for lookup_complexity-only)${NC}"
+    else
+      echo -e "  ${GREEN}Swarm started (vn-IPFS not selected)${NC}"
+    fi
   else
     echo -e "\n${CYAN}--skip-start: skipping ensure_clean_state and compose startup (N=$node_count)${NC}"
   fi
 
-  if [[ "$SKIP_SWARM" != "true" ]]; then
+  if [[ "$START_SWARM" == "true" ]]; then
     SWARM_API="$(swarm_publish_base_url)"
     export SWARM_API
   fi
 
-  # Step 2: Wait for both to be healthy (skip swarm wait when Swarm was not started)
-  echo -e "\n${BLUE}Step 2: Waiting for both systems to be healthy...${NC}"
-  wait_for_stabilization "our_system" "$node_count"
-  [[ "$SKIP_SWARM" != "true" ]] && wait_for_stabilization "swarm" "$node_count"
+  # Step 2: Wait for selected stack(s) to be healthy
+  echo -e "\n${BLUE}Step 2: Waiting for selected system(s) to be healthy...${NC}"
+  if [[ "$START_VNIPFS" == "true" ]]; then
+    wait_for_stabilization "our_system" "$node_count"
+  fi
+  if [[ "$START_SWARM" == "true" ]]; then
+    wait_for_stabilization "swarm" "$node_count"
+  fi
 
   post_stabilize_sleep=0
   if [[ "$node_count" -ge 500 ]]; then
@@ -770,23 +814,27 @@ for node_count in "${NODE_COUNTS[@]}"; do
 
   # C.2 verification: PUT on node A, /replication/status returns replica_count>=1 within 5s
   # Scale cap with N (large clusters need longer for first replication signal).
-  echo -e "\n${BLUE}Step 2b: C.2 verification (replication integration)...${NC}"
-  vnipfs_compose=$(get_vnipfs_compose)
-  c2_sec=45
-  if [[ "$node_count" -ge 500 ]]; then
-    c2_sec=180
-  elif [[ "$node_count" -ge 100 ]]; then
-    c2_sec=120
-  elif [[ "$node_count" -ge 50 ]]; then
-    c2_sec=90
-  fi
-  if command -v timeout >/dev/null 2>&1; then
-    echo -e "  ${CYAN}C.2 verify cap: ${c2_sec}s${NC}"
-    timeout "$c2_sec" "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
-      2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors or timed out, continuing...${NC}"; true; }
+  if [[ "$START_VNIPFS" == "true" ]]; then
+    echo -e "\n${BLUE}Step 2b: C.2 verification (replication integration)...${NC}"
+    vnipfs_compose=$(get_vnipfs_compose)
+    c2_sec=45
+    if [[ "$node_count" -ge 500 ]]; then
+      c2_sec=180
+    elif [[ "$node_count" -ge 100 ]]; then
+      c2_sec=120
+    elif [[ "$node_count" -ge 50 ]]; then
+      c2_sec=90
+    fi
+    if command -v timeout >/dev/null 2>&1; then
+      echo -e "  ${CYAN}C.2 verify cap: ${c2_sec}s${NC}"
+      timeout "$c2_sec" "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
+        2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors or timed out, continuing...${NC}"; true; }
+    else
+      "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
+        2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors, continuing...${NC}"; true; }
+    fi
   else
-    "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
-      2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors, continuing...${NC}"; true; }
+    echo -e "\n${CYAN}Step 2b: Skipping C.2 (vn-IPFS not running)${NC}"
   fi
 
   # Spawn resource monitor before upload/download tests (samples fall25-* and swarm-* each interval)
@@ -824,7 +872,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
     run_lookup_latency_test "$node_count" || echo -e "${YELLOW}Lookup latency test had errors, continuing...${NC}"
   fi
 
-  if should_run_test "lookup_complexity"; then
+  if should_run_test "lookup_complexity" && [[ "$RUN_VNIPFS" == "true" ]]; then
     echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
     dht_prewait=20
     if [[ "$node_count" -ge 500 ]]; then
@@ -837,27 +885,37 @@ for node_count in "${NODE_COUNTS[@]}"; do
     echo -e "  ${CYAN}Waiting ${dht_prewait}s for DHT to stabilize before cold lookup...${NC}"
     sleep "$dht_prewait"
     run_lookup_complexity_test "$node_count" || echo -e "${YELLOW}Lookup complexity test had errors, continuing...${NC}"
+  elif should_run_test "lookup_complexity" && [[ "$RUN_VNIPFS" != "true" ]]; then
+    echo -e "\n${CYAN}Skipping lookup_complexity (vn-IPFS only; use --system vnipfs)${NC}"
   fi
 
-  if should_run_test "replication"; then
+  if should_run_test "replication" && [[ "$RUN_VNIPFS" == "true" ]]; then
     echo -e "\n${BLUE}Step 5e: Running replication speed test (time to R replicas)...${NC}"
     run_replication_test "$node_count" || echo -e "${YELLOW}Replication test had errors, continuing...${NC}"
+  elif should_run_test "replication" && [[ "$RUN_VNIPFS" != "true" ]]; then
+    echo -e "\n${CYAN}Skipping replication (vn-IPFS only benchmark)${NC}"
   fi
 
-  if should_run_test "replication_distribution"; then
+  if should_run_test "replication_distribution" && [[ "$RUN_VNIPFS" == "true" ]]; then
     echo -e "\n${BLUE}Step 5f: Running replication distribution test (N/M/F)...${NC}"
     run_replication_distribution_test "$node_count" || echo -e "${YELLOW}Replication distribution test had errors, continuing...${NC}"
+  elif should_run_test "replication_distribution" && [[ "$RUN_VNIPFS" != "true" ]]; then
+    echo -e "\n${CYAN}Skipping replication_distribution (vn-IPFS N/M/F metrics)${NC}"
   fi
 
-  if should_run_test "repair_time"; then
+  if should_run_test "repair_time" && [[ "$RUN_VNIPFS" == "true" ]]; then
     echo -e "\n${BLUE}Step 5g: Running repair time test (after node failure)...${NC}"
     run_repair_time_test "$node_count" || echo -e "${YELLOW}Repair time test had errors, continuing...${NC}"
+  elif should_run_test "repair_time" && [[ "$RUN_VNIPFS" != "true" ]]; then
+    echo -e "\n${CYAN}Skipping repair_time (vn-IPFS only)${NC}"
   fi
 
   if [[ "$node_count" == "${NODE_COUNTS[-1]}" ]]; then
-    if should_run_test "network_hops"; then
+    if should_run_test "network_hops" && [[ "$RUN_VNIPFS" == "true" ]]; then
       echo -e "\n${BLUE}Step 6: Running network hops test...${NC}"
       run_network_hops_test || echo -e "${YELLOW}Network hops test had errors, continuing...${NC}"
+    elif should_run_test "network_hops" && [[ "$RUN_VNIPFS" != "true" ]]; then
+      echo -e "\n${CYAN}Skipping network_hops (vn-IPFS only)${NC}"
     fi
     if should_run_test "routing_overhead"; then
       echo -e "\n${BLUE}Step 6b: Running routing overhead test (token vs provider announce)...${NC}"

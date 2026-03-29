@@ -4,6 +4,8 @@
 
 vn-IPFS uses a key-based token stored in the DHT (`TokenNamespace` + key hash) with provider locations. PUT triggers local persistence first; token sync and peer replication can proceed asynchronously (see `docs/API.md`).
 
+**Directory blocks:** Namespace directories are stored as ordinary blocks (see `docs/NAMESPACE.md`). Each directory key is announced and replicated like any other put; path resolution walks directory keys to child keys using the same Get/token path.
+
 ## Lookup hop count vs ideal O(log N)
 
 - **Theory (Kademlia-style)**: In a mature table with many peers, iterative lookups often visit **O(log N)** peers in expectation.

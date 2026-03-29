@@ -42,6 +42,66 @@ PUT returns immediately after the first successful store (local + routing table)
 
 ---
 
+## Namespace (first-class directories)
+
+Directory blocks are JSON (`kind: "vnipfs-directory-v1"`) stored via the same `PutBlock` pipeline as opaque bytes; each mutating call returns a **new** `dir_key` (copy-on-write). See `docs/NAMESPACE.md` for semantics.
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/namespace/mkdir` | POST | Create an empty directory block |
+| `/namespace/link` | POST | Add or replace `name` → `child_key` under `dir_key` |
+| `/namespace/unlink` | POST | Remove `name` from `dir_key` (404 if missing) |
+| `/namespace/rename` | POST | Move `old_name` → `new_name` within `dir_key` |
+| `/namespace/ls` | POST | List `names` and `entries` for `dir_key` |
+| `/namespace/resolve` | POST | Resolve `path` from `root_key` (uses `GetBlock` per segment) |
+
+**POST /namespace/mkdir**
+
+Request body may be `{}`. Response:
+```json
+{ "dir_key": "<64 hex>", "cid": "<cid>" }
+```
+
+**POST /namespace/link**
+
+```json
+{ "dir_key": "<64 hex>", "name": "<single segment>", "child_key": "<64 hex>" }
+```
+
+Response: `{ "dir_key": "<new dir key>", "cid": "<cid>" }`.
+
+**POST /namespace/unlink**
+
+```json
+{ "dir_key": "<64 hex>", "name": "<segment>" }
+```
+
+**POST /namespace/rename**
+
+```json
+{ "dir_key": "<64 hex>", "old_name": "<segment>", "new_name": "<segment>" }
+```
+
+**POST /namespace/ls**
+
+```json
+{ "dir_key": "<64 hex>" }
+```
+
+Response includes `names` (sorted) and `entries` (name → child key).
+
+**POST /namespace/resolve**
+
+```json
+{ "root_key": "<64 hex>", "path": "a/b/c" }
+```
+
+Response: `{ "key": "<64 hex>" }` — key of the final object (file or directory). Empty `path` returns `root_key`. Nested trees require updating parent `link` calls after child directories change (copy-on-write).
+
+**Errors:** `400` validation; `404` missing directory or resolve path; `500` storage errors.
+
+---
+
 ## POST /get
 
 Fetches a block by key. Prefer `key` over `cid`. Resolves via local store, then token routing (GetToken → DirectFetch), then stack fallback.

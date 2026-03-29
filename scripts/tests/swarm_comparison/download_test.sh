@@ -63,11 +63,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Check for required tools
@@ -85,6 +89,7 @@ fi
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 if [[ -z "$OUR_API" ]]; then
   # Try to find bootstrap container and read control address
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
@@ -138,11 +143,16 @@ else
     fi
   fi
 fi
+else
+  OUR_API=""
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
+fi
 
 echo "=========================================="
 echo "Download Latency Test"
 echo "=========================================="
-echo "Our System API: $OUR_API (container: $OUR_CONTAINER)"
+echo "Our System API: ${OUR_API:-(skipped)} (container: ${OUR_CONTAINER:-none})"
 echo "Swarm API: $SWARM_API"
 echo "Iterations per size: $ITERATIONS"
 echo "Cache mode: $CACHE_MODE"
@@ -153,13 +163,13 @@ echo ""
 echo "Verifying API endpoints..."
 
 # Check our system API (via docker exec if needed)
-if [[ -n "$OUR_CONTAINER" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ -n "$OUR_CONTAINER" ]]; then
   if docker exec "$OUR_CONTAINER" curl -sSf -m 5 "http://$OUR_API_ADDR/health" >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Our system API is accessible${NC}"
   else
     echo -e "${YELLOW}Warning: Our system API may not be accessible${NC}"
   fi
-else
+elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
   if curl -sSf -m 5 "$OUR_API/health" >/dev/null 2>&1; then
     echo -e "${GREEN}✓ Our system API is accessible${NC}"
   else
@@ -168,7 +178,9 @@ else
 fi
 
 # Check Swarm API
-if curl -sSf -m 5 "$SWARM_API/" >/dev/null 2>&1; then
+if [[ "${CMP_INCLUDE_SWARM:-1}" != "1" ]]; then
+  echo -e "${CYAN}Swarm API check skipped (vn-IPFS-only run)${NC}"
+elif curl -sSf -m 5 "$SWARM_API/" >/dev/null 2>&1; then
   echo -e "${GREEN}✓ Swarm API is accessible${NC}"
 else
   echo -e "${YELLOW}Warning: Swarm API ($SWARM_API) may not be accessible${NC}"
@@ -415,10 +427,11 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   echo "  Generating test file..."
   generate_test_file "$size" "$test_file"
   
-  # Upload to both systems first
-  echo -e "\n  ${GREEN}Uploading to both systems...${NC}"
+  # Upload to selected system(s)
+  echo -e "\n  ${GREEN}Uploading to selected system(s)...${NC}"
   
-  # Upload to our system
+  OUR_KEY=""
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
   echo "    Uploading to our system..."
   OUR_KEY=$(upload_our_system_get_key "$test_file" 2>&1)
   if [[ $? -ne 0 || -z "$OUR_KEY" ]]; then
@@ -427,8 +440,10 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   else
     echo "    Uploaded key: ${OUR_KEY:0:16}..."
   fi
+  fi
   
-  # Upload to Swarm
+  SWARM_HASH=""
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
   echo "    Uploading to Swarm..."
   SWARM_HASH=$(upload_file "$SWARM_API" "$test_file" 2>&1)
   if [[ $? -ne 0 || -z "$SWARM_HASH" || "$SWARM_HASH" == "ERROR"* ]]; then
@@ -437,9 +452,18 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   else
     echo "    Uploaded hash: $SWARM_HASH"
   fi
+  fi
   
-  if [[ -z "$OUR_KEY" && -z "$SWARM_HASH" ]]; then
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]] && [[ -z "$OUR_KEY" && -z "$SWARM_HASH" ]]; then
     echo -e "    ${RED}Both uploads failed, skipping this size${NC}"
+    continue
+  fi
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ "${CMP_INCLUDE_SWARM:-1}" != "1" ]] && [[ -z "$OUR_KEY" ]]; then
+    echo -e "    ${RED}Our upload failed, skipping this size${NC}"
+    continue
+  fi
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]] && [[ "${CMP_INCLUDE_OUR:-1}" != "1" ]] && [[ -z "$SWARM_HASH" ]]; then
+    echo -e "    ${RED}Swarm upload failed, skipping this size${NC}"
     continue
   fi
   
@@ -447,11 +471,12 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   sleep 2
   
   # Test our system downloads
-  echo -e "\n  ${GREEN}Testing our system downloads...${NC}"
   our_ttfb=()
   our_total=()
   our_failures=0
   
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
+  echo -e "\n  ${GREEN}Testing our system downloads...${NC}"
   if [[ -n "$OUR_KEY" ]]; then
     for i in $(seq 1 $ITERATIONS); do
       echo -n "    Iteration $i/$ITERATIONS... "
@@ -476,13 +501,15 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   else
     echo "    Skipping our system (upload failed)"
   fi
+  fi
   
   # Test Swarm downloads
-  echo -e "\n  ${GREEN}Testing Swarm downloads...${NC}"
   swarm_ttfb=()
   swarm_total=()
   swarm_failures=0
   
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
+  echo -e "\n  ${GREEN}Testing Swarm downloads...${NC}"
   if [[ -n "$SWARM_HASH" ]]; then
     for i in $(seq 1 $ITERATIONS); do
       echo -n "    Iteration $i/$ITERATIONS... "
@@ -506,11 +533,12 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   else
     echo "    Skipping (upload failed)"
   fi
+  fi
   
   # Print statistics
   echo -e "\n  ${BLUE}Statistics for $size_label:${NC}"
   
-  if [[ ${#our_ttfb[@]} -gt 0 ]]; then
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ ${#our_ttfb[@]} -gt 0 ]]; then
     our_ttfb_stats=$(calculate_stats "${our_ttfb[@]}")
     our_total_stats=$(calculate_stats "${our_total[@]}")
     IFS=',' read -r ttfb_min ttfb_max ttfb_avg ttfb_p50 ttfb_p90 ttfb_p99 <<< "$our_ttfb_stats"
@@ -532,11 +560,13 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     if [[ $our_failures -gt 0 ]]; then
       echo "      Failures: $our_failures/$ITERATIONS"
     fi
-  else
+  elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
     echo -e "    ${RED}Our System: All iterations failed${NC}"
+  else
+    echo -e "    ${CYAN}Our System: not run${NC}"
   fi
   
-  if [[ ${#swarm_ttfb[@]} -gt 0 ]]; then
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]] && [[ ${#swarm_ttfb[@]} -gt 0 ]]; then
     swarm_ttfb_stats=$(calculate_stats "${swarm_ttfb[@]}")
     swarm_total_stats=$(calculate_stats "${swarm_total[@]}")
     IFS=',' read -r ttfb_min ttfb_max ttfb_avg ttfb_p50 ttfb_p90 ttfb_p99 <<< "$swarm_ttfb_stats"
@@ -558,8 +588,10 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     if [[ $swarm_failures -gt 0 ]]; then
       echo "      Failures: $swarm_failures/$ITERATIONS"
     fi
-  else
+  elif [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
     echo -e "    ${RED}Swarm: All iterations failed${NC}"
+  else
+    echo -e "    ${CYAN}Swarm: not run${NC}"
   fi
 done
 

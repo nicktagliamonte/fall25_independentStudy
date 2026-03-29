@@ -52,6 +52,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+if [[ "${CMP_INCLUDE_OUR:-1}" != "1" ]]; then
+  echo "replication_distribution is vn-IPFS only; skipping (SWARM_COMPARISON_SYSTEM selects Swarm only)."
+  exit 0
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'

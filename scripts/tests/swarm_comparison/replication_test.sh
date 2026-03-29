@@ -57,6 +57,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -66,6 +69,7 @@ NC='\033[0m'
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 if [[ -z "$OUR_API" ]]; then
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
     OUR_CONTAINER="fall25-bootstrap"
@@ -97,6 +101,11 @@ fi
 if [[ -z "$OUR_CONTAINER" ]] || [[ "$OUR_CONTAINER" == "bootstrap" ]]; then
   resolved=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-bootstrap$|bootstrap' | head -1)
   [[ -n "$resolved" ]] && OUR_CONTAINER="$resolved"
+fi
+else
+  OUR_API=""
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
 fi
 
 if [[ -z "$NODE_COUNT" ]]; then
@@ -143,6 +152,7 @@ bytes_before=0
 
 # --- Our system ---
 # Timer starts at PUT so we measure actual replication time (not time from first poll)
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 echo -e "${GREEN}Our system: put and poll /replication/status until R >= $REPLICAS_TARGET${NC}"
 data_b64=$(base64 -w 0 < "$TEMP_DIR/payload.bin" 2>/dev/null || base64 < "$TEMP_DIR/payload.bin" | tr -d '\n')
 payload_file="$TEMP_DIR/put_req.json"
@@ -235,13 +245,18 @@ else
     exit 1
   fi
 fi
+else
+  echo -e "${YELLOW}Skipping our replication block (not selected)${NC}"
+fi
 
 # --- Swarm (skipped: Swarm v0.5.8 does not replicate chunks out-of-band; test would hang) ---
+if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
 echo -e "\n${YELLOW}Swarm: skipped (no OOB replication; benchmark our system only)${NC}"
 if [[ "$RECORD_OVERHEAD" == "true" ]]; then
   echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,SKIP," >> "$OUTPUT_FILE"
 else
   echo "swarm,$PAYLOAD_SIZE,$NODE_COUNT,$REPLICAS_TARGET,SKIP" >> "$OUTPUT_FILE"
+fi
 fi
 
 echo ""

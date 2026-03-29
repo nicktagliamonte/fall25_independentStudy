@@ -569,3 +569,18 @@
       lookup_type column added to download_test.sh, lookup_complexity_test.sh; side-by-side table in report
     - docs/SWARM_COMPARISON_TESTS.md: equivalent operations table; semantic equivalence (key K = content hash);
       key_lookup_vs_cid_test.sh reference
+
+32. Phase 10 – Folders and namespace (first-class directories) [DONE]
+    - docs/NAMESPACE.md: directory block model (kind vnipfs-directory-v1, name→child key), COW vs CRDT,
+      Put/Get/provider/DHT relationship, tombstones on unlink, replication policy, ACL at policy root (future)
+    - docs/REPLICATION.md: pointer that directory blocks use the same token/replication path as other puts
+    - docs/API.md: /namespace/mkdir, /link, /unlink, /rename, /ls, /resolve; nested trees require parent
+      relinks after child COW updates
+    - internal/directory/directory.go: Encode/Decode, AddLink/RemoveLink/Clone, List (sorted), ResolvePath
+      (stack.GetBlock-style loader); internal/directory/directory_test.go: roundtrip, validation, nested
+      resolve, COW unlink, concurrent List readers
+    - internal/control/namespace.go: HTTP handlers; putNamespaceBlock mirrors /put (PutBlock,
+      UpdateRoutingTableOnPutAsync, ReplicateToNPeers with ReplicationFactorR); resolve uses stack.GetBlock
+    - internal/control/server.go: registerNamespaceHandlers before listen
+    - internal/control/namespace_test.go: mkdir, nested path with parent relinks, resolve, rename+relink,
+      unlink+relink, resolve failure after unlink

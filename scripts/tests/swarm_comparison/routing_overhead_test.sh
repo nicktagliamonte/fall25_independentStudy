@@ -38,6 +38,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -46,7 +49,7 @@ NC='\033[0m'
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 
-if [[ -z "$OUR_API" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ -z "$OUR_API" ]]; then
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
     OUR_CONTAINER="fall25-bootstrap"
     OUR_API_ADDR=$(docker exec "$OUR_CONTAINER" jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
@@ -66,15 +69,19 @@ if [[ -z "$OUR_API" ]]; then
     exit 1
   fi
   OUR_API="http://$OUR_API_ADDR"
-else
+elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
   if [[ "$OUR_API" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     OUR_CONTAINER="$OUR_API"
     OUR_API_ADDR=$(docker exec "$OUR_CONTAINER" jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
     [[ -n "$OUR_API_ADDR" && "$OUR_API_ADDR" != "null" ]] && OUR_API="http://$OUR_API_ADDR"
   fi
+else
+  OUR_API=""
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
 fi
 
-echo "Routing overhead test: our=$OUR_API swarm=$SWARM_API"
+echo "Routing overhead test: our=${OUR_API:-(skipped)} swarm=$SWARM_API"
 echo "  Output: $OUTPUT_FILE"
 echo ""
 
@@ -155,6 +162,7 @@ generate_test_file "$test_file" "$PAYLOAD_SIZE"
 echo "system,operation,message_count,overhead_type" > "$OUTPUT_FILE"
 
 # --- Our system (token-based lookup; no provider announce) ---
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 echo -e "${GREEN}Our system (token_lookup)...${NC}"
 
 m0=$(get_our_metrics)
@@ -190,8 +198,12 @@ else
   echo "our_system,get,$get_delta,token_lookup" >> "$OUTPUT_FILE"
   echo "  put: $put_delta msgs (token_lookup), get: $get_delta msgs (token_lookup)"
 fi
+else
+  echo -e "${YELLOW}Skipping our system (Swarm-only run)${NC}"
+fi
 
 # --- Swarm (provider announcements + retrieval) ---
+if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
 echo -e "\n${GREEN}Swarm (provider_announce + retrieval)...${NC}"
 
 swarm_before=$(get_swarm_metrics_raw)
@@ -213,6 +225,9 @@ else
   echo "swarm,put,N/A,provider_announce" >> "$OUTPUT_FILE"
   echo "swarm,get,N/A,retrieval" >> "$OUTPUT_FILE"
   echo -e "  ${YELLOW}Swarm /metrics not available (v0.5.8 may not expose Prometheus metrics)${NC}"
+fi
+else
+  echo -e "${YELLOW}Skipping Swarm (vn-IPFS-only run)${NC}"
 fi
 
 echo ""

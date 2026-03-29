@@ -937,16 +937,16 @@ under a root policy.
 10.1 Model and documentation
      ------------------------
      Tasks:
-     [ ] Add docs/NAMESPACE.md (or extend docs/REPLICATION.md): directory entry schema (name → child
+     [x] Add docs/NAMESPACE.md (or extend docs/REPLICATION.md): directory entry schema (name → child
          key/CID), single-writer or CRDT choice for concurrent edits, link to token/DHT publication.
-     [ ] Define how directory keys relate to Put/Get and provider records (directory CID vs entry keys).
+     [x] Define how directory keys relate to Put/Get and provider records (directory CID vs entry keys).
 
 10.2 API and implementation
      ------------------------
      Tasks:
-     [ ] APIs: create directory, add link, remove link, list children, resolve path → object key.
-     [ ] Replicate directory objects with same R as policy for user roots; tombstones on unlink.
-     [ ] Tests: mkdir, nested path, rename semantics (copy-on-write or update), concurrent readers.
+     [x] APIs: create directory, add link, remove link, list children, resolve path → object key.
+     [x] Replicate directory objects with same R as policy for user roots; tombstones on unlink.
+     [x] Tests: mkdir, nested path, rename semantics (copy-on-write or update), concurrent readers.
 
 ================================================================================
 PHASE 11: ACCOUNTS, IDENTITY, AND ACCESS CONTROL

@@ -47,6 +47,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -55,6 +58,7 @@ NC='\033[0m'
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 if [[ -z "$OUR_API" ]]; then
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
     OUR_CONTAINER="fall25-bootstrap"
@@ -75,17 +79,21 @@ if [[ -z "$OUR_API" ]]; then
     exit 1
   fi
   OUR_API="http://$OUR_API_ADDR"
-fi
-
+else
 if [[ "$OUR_API" =~ ^[a-zA-Z0-9_-]+$ ]]; then
   OUR_CONTAINER="$OUR_API"
   OUR_API_ADDR=$(docker exec "$OUR_CONTAINER" jq -r '.addr // .Addr' /app/logs/bootstrap.json 2>/dev/null || echo "")
   [[ -n "$OUR_API_ADDR" && "$OUR_API_ADDR" != "null" ]] && OUR_API="http://$OUR_API_ADDR"
 fi
+fi
+fi
 
-if [[ -z "$OUR_CONTAINER" ]] || [[ "$OUR_CONTAINER" == "bootstrap" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && ([[ -z "$OUR_CONTAINER" ]] || [[ "$OUR_CONTAINER" == "bootstrap" ]]); then
   resolved=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-bootstrap$|bootstrap' | head -1)
   [[ -n "$resolved" ]] && OUR_CONTAINER="$resolved" || OUR_CONTAINER="fall25-bootstrap"
+elif [[ "${CMP_INCLUDE_OUR:-1}" != "1" ]]; then
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
 fi
 
 TEMP_DIR=$(mktemp -d)
@@ -130,6 +138,7 @@ echo ""
 echo "system,payload_size,nodes,disk_bytes,efficiency_ratio" > "$OUTPUT_FILE"
 
 # --- Our system ---
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 echo -e "${GREEN}Our system...${NC}"
 OUR_CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-' || true))
 OUR_NODES=${#OUR_CONTAINERS[@]}
@@ -163,8 +172,10 @@ else
   echo -e "${YELLOW}No our-system containers found, skipping${NC}"
   echo "our_system,$PAYLOAD_SIZE,0,," >> "$OUTPUT_FILE"
 fi
+fi
 
 # --- Swarm ---
+if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
 echo -e "\n${GREEN}Swarm...${NC}"
 SWARM_CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^swarm-' || true))
 SWARM_NODES=${#SWARM_CONTAINERS[@]}
@@ -193,6 +204,7 @@ if [[ $SWARM_NODES -gt 0 ]]; then
 else
   echo -e "${YELLOW}No Swarm containers found, skipping${NC}"
   echo "swarm,$PAYLOAD_SIZE,0,," >> "$OUTPUT_FILE"
+fi
 fi
 
 echo ""

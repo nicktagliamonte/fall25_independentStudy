@@ -76,6 +76,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 if [[ "$SWARM_API_USER_SET" -eq 0 ]]; then
   SWARM_API="${SWARM_API:-$(swarm_publish_base_url)}"
 fi
@@ -446,26 +449,34 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   # One discarded batch per system per payload size (connection pools, Bee cold paths). Set SNG40_UPLOAD_WARMUP=0 to skip.
   if [[ "${SNG40_UPLOAD_WARMUP:-1}" != "0" ]]; then
     echo -e "  ${CYAN}Warmup (discarded, not written to CSV)${NC}"
-    if [[ $BATCH_SIZE -eq 1 ]]; then
-      upload_our_system "$test_file" >/dev/null 2>&1 || true
-    else
-      for _ in $(seq 1 $BATCH_SIZE); do
+    if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
+      if [[ $BATCH_SIZE -eq 1 ]]; then
         upload_our_system "$test_file" >/dev/null 2>&1 || true
-      done
+      else
+        for _ in $(seq 1 $BATCH_SIZE); do
+          upload_our_system "$test_file" >/dev/null 2>&1 || true
+        done
+      fi
     fi
-    if [[ $BATCH_SIZE -eq 1 ]]; then
-      upload_swarm "$test_file" >/dev/null 2>&1 || true
-    else
-      for _ in $(seq 1 $BATCH_SIZE); do
+    if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
+      if [[ $BATCH_SIZE -eq 1 ]]; then
         upload_swarm "$test_file" >/dev/null 2>&1 || true
-      done
+      else
+        for _ in $(seq 1 $BATCH_SIZE); do
+          upload_swarm "$test_file" >/dev/null 2>&1 || true
+        done
+      fi
     fi
   fi
   
   # Test our system
-  echo -e "\n  ${GREEN}Testing our system...${NC}"
   our_latencies=()
   our_failures=0
+  swarm_latencies=()
+  swarm_failures=0
+
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
+  echo -e "\n  ${GREEN}Testing our system...${NC}"
   bytes_our_before=$(get_network_bytes_for_pattern '^fall25-|^bootstrap$|^node[0-9]+$') || bytes_our_before=0
 
   for i in $(seq 1 $ITERATIONS); do
@@ -520,17 +531,19 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   echo -e "    ${BLUE}Network bytes (our_system): $bytes_our_delta${NC}"
 
   # After our_system load, Bee’s first timed Swarm batch can stall (especially batch_size≥5 at large N).
-  if [[ "${SNG40_UPLOAD_WARMUP:-1}" != "0" && "$BATCH_SIZE" -ge 5 ]]; then
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" && "${CMP_INCLUDE_OUR:-1}" == "1" && "${SNG40_UPLOAD_WARMUP:-1}" != "0" && "$BATCH_SIZE" -ge 5 ]]; then
     echo -e "  ${CYAN}Swarm post-our warmup (discarded, not written to CSV)${NC}"
     for _ in $(seq 1 "$BATCH_SIZE"); do
       upload_swarm "$test_file" >/dev/null 2>&1 || true
     done
   fi
+  else
+    echo -e "\n  ${CYAN}Skipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)${NC}"
+  fi
 
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
   # Test Swarm
   echo -e "\n  ${GREEN}Testing Swarm...${NC}"
-  swarm_latencies=()
-  swarm_failures=0
   bytes_swarm_before=$(get_network_bytes_for_pattern '^swarm-') || bytes_swarm_before=0
 
   for i in $(seq 1 $ITERATIONS); do
@@ -569,11 +582,14 @@ for size in "${PAYLOAD_SIZES[@]}"; do
   bytes_swarm_delta=$((bytes_swarm_after - bytes_swarm_before))
   echo "swarm,$size,$BATCH_SIZE,$bytes_swarm_delta" >> "$NETWORK_BYTES_FILE"
   echo -e "    ${BLUE}Network bytes (swarm): $bytes_swarm_delta${NC}"
+  else
+    echo -e "\n  ${CYAN}Skipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)${NC}"
+  fi
 
   # Print statistics
   echo -e "\n  ${BLUE}Statistics for $size_label:${NC}"
   
-  if [[ ${#our_latencies[@]} -gt 0 ]]; then
+  if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ ${#our_latencies[@]} -gt 0 ]]; then
     our_stats=$(calculate_stats "${our_latencies[@]}")
     IFS=',' read -r our_min our_max our_avg our_p50 our_p90 our_p99 <<< "$our_stats"
     echo -e "    ${GREEN}Our System:${NC}"
@@ -586,11 +602,13 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     if [[ $our_failures -gt 0 ]]; then
       echo "      Failures: $our_failures/$ITERATIONS"
     fi
-  else
+  elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
     echo -e "    ${RED}Our System: All iterations failed${NC}"
+  else
+    echo -e "    ${CYAN}Our System: not run${NC}"
   fi
   
-  if [[ ${#swarm_latencies[@]} -gt 0 ]]; then
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]] && [[ ${#swarm_latencies[@]} -gt 0 ]]; then
     swarm_stats=$(calculate_stats "${swarm_latencies[@]}")
     IFS=',' read -r swarm_min swarm_max swarm_avg swarm_p50 swarm_p90 swarm_p99 <<< "$swarm_stats"
     echo -e "    ${GREEN}Swarm:${NC}"
@@ -603,8 +621,10 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     if [[ $swarm_failures -gt 0 ]]; then
       echo "      Failures: $swarm_failures/$ITERATIONS"
     fi
-  else
+  elif [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
     echo -e "    ${RED}Swarm: All iterations failed${NC}"
+  else
+    echo -e "    ${CYAN}Swarm: not run${NC}"
   fi
 done
 
