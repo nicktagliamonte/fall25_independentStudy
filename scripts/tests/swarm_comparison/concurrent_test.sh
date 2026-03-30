@@ -51,6 +51,9 @@ if [[ -z "$SYSTEM_FILTER" && -n "${SWARM_COMPARISON_SYSTEM:-}" ]]; then
   esac
 fi
 
+source "$SCRIPT_DIR/comparison_system_env.sh"
+cmp_resolve_system_flags
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -60,6 +63,7 @@ NC='\033[0m'
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 if [[ -z "$OUR_API" ]]; then
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
     OUR_CONTAINER="fall25-bootstrap"
@@ -91,6 +95,11 @@ fi
 if [[ -z "$OUR_CONTAINER" ]] || [[ "$OUR_CONTAINER" == "bootstrap" ]]; then
   resolved=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-bootstrap$|bootstrap' | head -1)
   [[ -n "$resolved" ]] && OUR_CONTAINER="$resolved"
+fi
+else
+  OUR_API=""
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
 fi
 
 TEMP_DIR=$(mktemp -d)
@@ -248,7 +257,7 @@ echo "  Concurrent writes: $CONCURRENT_WRITES, reads: $CONCURRENT_READS"
 echo "  Payload size: $PAYLOAD_SIZE bytes"
 echo ""
 
-if [[ -z "$SYSTEM_FILTER" || "$SYSTEM_FILTER" == "our_system" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && ([[ -z "$SYSTEM_FILTER" ]] || [[ "$SYSTEM_FILTER" == "our_system" ]]); then
   echo -e "${GREEN}Our system ($CONCURRENT_WRITES w / $CONCURRENT_READS r)...${NC}"
   result=$(run_concurrent_our_system "$CONCURRENT_WRITES" "$CONCURRENT_READS" 2>/dev/null || echo "0|N/A")
   thr=$(echo "$result" | cut -d'|' -f1)
@@ -257,7 +266,7 @@ if [[ -z "$SYSTEM_FILTER" || "$SYSTEM_FILTER" == "our_system" ]]; then
   echo "our_system,$CONCURRENT_WRITES,$CONCURRENT_READS,$thr,$p99" >> "$OUTPUT_FILE"
 fi
 
-if [[ -z "$SYSTEM_FILTER" || "$SYSTEM_FILTER" == "swarm" ]]; then
+if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]] && ([[ -z "$SYSTEM_FILTER" ]] || [[ "$SYSTEM_FILTER" == "swarm" ]]); then
   echo -e "${GREEN}Swarm ($CONCURRENT_WRITES w / $CONCURRENT_READS r)...${NC}"
   result=$(run_concurrent_swarm "$CONCURRENT_WRITES" "$CONCURRENT_READS" 2>/dev/null || echo "0|N/A")
   thr=$(echo "$result" | cut -d'|' -f1)

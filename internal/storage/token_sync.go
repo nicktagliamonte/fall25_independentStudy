@@ -5,6 +5,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,6 +28,18 @@ func pickRoutableAddr(addrs []multiaddr.Multiaddr) multiaddr.Multiaddr {
 		return a
 	}
 	return nil
+}
+
+// isTokenAbsent reports whether err means no token record exists yet (vs transient DHT failure).
+func isTokenAbsent(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, routing.ErrNotFound) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "token not found")
 }
 
 // SyncTokenOnPut creates or updates a token when data is stored locally.
@@ -61,14 +74,30 @@ func SyncTokenOnPut(ctx context.Context, dht routing.ValueStore, h host.Host, ke
 		RTT:        0, // Unknown RTT for local storage
 	}
 
-	// Try to get existing token first
-	_, err := GetToken(ctx, dht, key)
+	// Read existing token; retry transient DHT errors (large clusters: first read may race propagation).
+	var err error
+	for attempt := 0; attempt < 5; attempt++ {
+		ctxGet, cancel := context.WithTimeout(ctx, 20*time.Second)
+		_, err = GetToken(ctxGet, dht, key)
+		cancel()
+		if err == nil {
+			break
+		}
+		if isTokenAbsent(err) {
+			break
+		}
+		if attempt < 4 {
+			time.Sleep(time.Duration(100*(1<<attempt)) * time.Millisecond)
+		}
+	}
 	if sink != nil {
 		sink.AddLookupMessagesOut(1)
 		sink.AddLookupMessagesIn(1)
 	}
 	if err != nil {
-		// Token doesn't exist - create new token
+		if !isTokenAbsent(err) {
+			return fmt.Errorf("sync token on put: get token: %w", err)
+		}
 		token := Token{
 			Key:       key,
 			Locations: []Location{location},

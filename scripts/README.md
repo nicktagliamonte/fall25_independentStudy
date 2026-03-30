@@ -44,7 +44,7 @@ Compares our distributed storage system vs Ethereum Swarm (Bee v0.5.8) on upload
 
 | Script | Purpose |
 |--------|---------|
-| `run_comparison.sh` | Main orchestrator. Starts both systems, runs upload/download tests across node counts, aggregates results. |
+| `run_comparison.sh` | Main orchestrator. Starts both systems, runs upload/download tests across node counts, aggregates results. Default suite skips `lookup_latency` (optional; often uninformative on LAN). |
 | `upload_test.sh` | Upload latency test (our system vs Swarm). |
 | `download_test.sh` | Download latency test (our system vs Swarm). |
 | `test_api.sh [addr]` | Quick Swarm API validation. |
@@ -97,3 +97,4 @@ The following were removed as obsolete or redundant:
 - **net/**: profiles.sh – used by removed partition_merge.
 - **plots/**: Standalone plot scripts (throughput, propagation, scaling, etc.) – swarm_comparison_analyze.py generates plots.
 - **swarm/**: Moved api.sh and test_api.sh into tests/swarm_comparison/.
+- **inspect_comparison_logs.sh**, **partition_recovery_test.sh**: Removed (ad-hoc log grep; manual partition test not in `run_comparison.sh`). Optional `partition_recovery_results.csv` in analysis is legacy if present.

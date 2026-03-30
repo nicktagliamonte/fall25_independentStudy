@@ -1,18 +1,27 @@
-# Purpose: Docker image for running distributed node instances
+# syntax=docker/dockerfile:1
+# Purpose: Docker image for running distributed node instances (BuildKit: cache mounts, GOPROXY).
 
 FROM golang:1.26-alpine AS builder
+
+ARG GOPROXY=https://proxy.golang.org,direct
+ARG GOSUMDB=sum.golang.org
+ENV GOPROXY=${GOPROXY} GOSUMDB=${GOSUMDB}
 
 WORKDIR /build
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    sh -c 'set -e; for _ in 1 2 3 4 5; do go mod download && exit 0; sleep 20; done; exit 1'
 
 # Copy source code
 COPY . .
 
 # Build the binary
-RUN go build -o bin/node ./cmd/node
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -o bin/node ./cmd/node
 
 # Runtime stage
 FROM alpine:latest

@@ -771,7 +771,7 @@ to demonstrate performance advantages with catchy, graphable results.
     B. Tests not running or incomplete at N=50 (and larger)
        [x] 1. Inspect per-phase logs: our_startup_n50.log, swarm_startup_n50.log, upload_n50.log,
           summary_report.txt; note first failure (timeout, compose error, health check, OOM).
-          Script: scripts/tests/swarm_comparison/inspect_comparison_logs.sh <results_dir>.
+          (inspect_comparison_logs.sh removed; use grep on <results_dir>/*_startup*.log)
        [x] 2. run_comparison: increase --test-timeout for N>=50 if uploads or cold downloads hit
           default cap; ensure run_with_timeout does not silently truncate whole steps.
           Implemented: auto per-test timeout 1800s (N>=50), 3600 (N>=100), 7200 (N>=500) unless

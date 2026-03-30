@@ -146,7 +146,8 @@ cold_lookup_req() {
   img=$(docker inspect "$PUT_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || echo "")
   [[ -z "$img" ]] && img=$(docker inspect "$PUT_CONTAINER" --format '{{.Image}}' 2>/dev/null || echo "")
   [[ -z "$img" ]] && return 1
-  docker run --rm --network "$net" "$img" lookup-key --bootstrap "$bootstrap_ma" --key "$key" --timeout 180s 2>/dev/null || echo "{}"
+  # lookup-key --timeout caps each cold run; orchestrator raises overall cap (many iterations × docker run).
+  docker run --rm --network "$net" "$img" lookup-key --bootstrap "$bootstrap_ma" --key "$key" --timeout 150s 2>/dev/null || echo "{}"
 }
 
 [[ -n "$write_header" ]] && echo "system,node_count,operation,hops,lookup_type" > "$OUTPUT_FILE"
@@ -168,7 +169,14 @@ echo "Output: $OUTPUT_FILE"
 echo ""
 
 # Cold start: allow DHT to stabilize before first cold lookup (critical for run_comparison cold runs)
-[[ -n "$BOOTSTRAP_MA" ]] && echo "  Waiting 25s for DHT to stabilize before cold lookup..." && sleep 25
+if [[ -n "$BOOTSTRAP_MA" ]]; then
+  echo "  Waiting 25s for DHT to stabilize before cold lookup..."
+  sleep 25
+  if [[ "${NODE_COUNT:-0}" -ge 50 ]]; then
+    echo "  Extra 15s pre-wait (large N)..."
+    sleep 15
+  fi
+fi
 
 for i in $(seq 1 "$ITERATIONS"); do
   test_file="$TEMP_DIR/test_$$.bin"
@@ -187,7 +195,7 @@ for i in $(seq 1 "$ITERATIONS"); do
     lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
     found=$(echo "$lookup_resp" | jq -r '.found // false' 2>/dev/null || echo "false")
     for retry in 1 2 3; do
-      if [[ "$lookup_hops" != "0" && -n "$lookup_hops" ]] || [[ "$found" == "true" ]]; then
+      if [[ -n "$lookup_hops" && "$lookup_hops" != "null" ]] || [[ "$found" == "true" ]]; then
         break
       fi
       sleep $((5 * retry + 5))
@@ -195,7 +203,7 @@ for i in $(seq 1 "$ITERATIONS"); do
       lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
       found=$(echo "$lookup_resp" | jq -r '.found // false' 2>/dev/null || echo "false")
     done
-    if [[ "$lookup_hops" == "0" || -z "$lookup_hops" ]] && [[ "$found" != "true" ]]; then
+    if [[ -z "$lookup_hops" || "$lookup_hops" == "null" ]]; then
       lookup_hops="N/A"
     fi
   else

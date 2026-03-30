@@ -266,7 +266,10 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 	}
 	replicated := 0
 	for _, pid := range peers {
-		if err := rp.replicateToPeer(ctx, c, pid, blockData); err != nil {
+		peerCtx, cancelPeer := context.WithTimeout(ctx, 60*time.Second)
+		err := rp.replicateToPeer(peerCtx, c, pid, blockData)
+		cancelPeer()
+		if err != nil {
 			continue
 		}
 		replicated++
@@ -456,6 +459,11 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 				targetAddr = pickRoutableAddr(addrs)
 				if targetAddr == nil {
 					targetAddr = addrs[0]
+				}
+			}
+			if targetAddr == nil {
+				if sc := stream.Conn(); sc != nil {
+					targetAddr = sc.RemoteMultiaddr()
 				}
 			}
 			if targetAddr != nil {

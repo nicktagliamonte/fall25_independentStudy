@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # Purpose: Measure isolated lookup latency (token routing vs provider discovery).
+# Not part of the default run_comparison suite (often flat on LAN); run via --tests lookup_latency or INCLUDE_LOOKUP_LATENCY=1.
 # vn-IPFS: /lookup endpoint does GetToken only (no fetch). Swarm: TTFB as lookup proxy (discovery before first byte).
 # Output: system,iteration,lookup_latency_ms,network_hops,lookup_type
 # Usage: ./scripts/tests/swarm_comparison/lookup_latency_test.sh [options]

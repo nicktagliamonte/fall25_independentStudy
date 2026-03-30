@@ -397,13 +397,13 @@ EOF
 
 EOF
 
-  # Download results: prefer aggregated, then cold/warm files
+  # Download results: prefer aggregated, then download_n*_warm.csv
   download_agg_file="$RESULTS_DIR/download_aggregated.csv"
   download_file=""
   if [[ -f "$download_agg_file" ]]; then
     download_file="$download_agg_file"
   else
-    for f in "$RESULTS_DIR"/download_n*_cold.csv "$RESULTS_DIR"/download_n*_warm.csv \
+    for f in "$RESULTS_DIR"/download_n*_warm.csv \
              "$OUR_SYSTEM_DIR"/*download*.csv "$SWARM_DIR"/*download*.csv \
              "$COMPARISON_DIR"/*download*.csv "$RESULTS_DIR"/*download*.csv; do
       if [[ -f "$f" ]]; then
@@ -497,59 +497,6 @@ EOF
           }
         }
       ' "$download_file" | sort
-    fi
-
-    # Cold vs Warm comparison (when cache_mode present)
-    if [[ "$has_cache_mode" == "true" ]]; then
-      cat <<EOF
-
-#### Cold vs Warm Cache Comparison
-
-Cold: content not in local cache (DHT lookup + fetch). Warm: content in cache (prime get + measured get).
-
-| System | Payload Size | Cold TTFB (ms) | Warm TTFB (ms) | Cold Total (ms) | Warm Total (ms) | Speedup (cold→warm) |
-|--------|--------------|----------------|----------------|-----------------|-----------------|---------------------|
-EOF
-      awk -F',' '
-        NR == 1 { next }
-        NF >= 6 && $5 != "ERROR" && $6 != "ERROR" && $5 != "" && $6 != "" {
-          sys = $1
-          payload = $2
-          cache = $4
-          ttfb = $5
-          total = $6
-          key = sys "," payload "," cache
-          ttfb_sum[key] += ttfb
-          total_sum[key] += total
-          count[key]++
-          payload_val[key] = payload
-          cache_val[key] = cache
-        }
-        END {
-          for (key in count) {
-            split(key, parts, ",")
-            sys = parts[1]
-            payload = payload_val[key]
-            cache = cache_val[key]
-            cold_key = sys "," payload ",cold"
-            warm_key = sys "," payload ",warm"
-            if (!(cold_key in count) || !(warm_key in count)) continue
-            n_cold = count[cold_key]
-            n_warm = count[warm_key]
-            mean_ttfb_cold = ttfb_sum[cold_key] / n_cold
-            mean_ttfb_warm = ttfb_sum[warm_key] / n_warm
-            mean_total_cold = total_sum[cold_key] / n_cold
-            mean_total_warm = total_sum[warm_key] / n_warm
-            speedup = (mean_total_warm > 0) ? mean_total_cold / mean_total_warm : 0
-            if (payload >= 1048576) payload_str = sprintf("%.1f MB", payload / 1048576)
-            else if (payload >= 1024) payload_str = sprintf("%.1f KB", payload / 1024)
-            else payload_str = sprintf("%d B", payload)
-            printf "| %s | %s | %.2f | %.2f | %.2f | %.2f | %.2fx |\n",
-              sys, payload_str, mean_ttfb_cold, mean_ttfb_warm,
-              mean_total_cold, mean_total_warm, speedup
-          }
-        }
-      ' "$download_file" | sort -t'|' -k2 -k1
     fi
 
     cat <<EOF
@@ -765,16 +712,13 @@ EOF
           }
         }
       ' "$upload_agg" > "$RESULTS_DIR/.upload_scale"
-      # Download: mean total_ms per (system, node_count), cold only if cache_mode present
+      # Download: mean total_ms per (system, node_count) from aggregated rows (cache_mode warm or legacy cold)
       awk -F',' '
         NR==1 { next }
-        NF>=7 && $7 != "" && $7 != "ERROR" && $7 ~ /^[0-9.]/ {
-          cold = (NF>=7 && $5=="cold") ? 1 : (NF<7 ? 1 : 0)
-          if (cold) {
+        NF>=8 && $7 != "" && $7 != "ERROR" && $7 ~ /^[0-9.]/ && ($5=="warm" || $5=="cold") {
             key = $1 "," $2
             sum[key] += $7
             n[key]++
-          }
         }
         NF>=6 && NF<7 && $6 != "" && $6 != "ERROR" && $6 ~ /^[0-9.]/ {
           key = $1 "," $2

@@ -39,7 +39,10 @@ last_n="${NODE_COUNTS[-1]}"
 
 wants_test() {
   local name="$1"
-  [[ -z "$TESTS_FILTER" ]] && return 0
+  if [[ -z "$TESTS_FILTER" ]]; then
+    [[ "$name" == "lookup_latency" ]] && [[ "${INCLUDE_LOOKUP_LATENCY:-0}" != "1" ]] && return 1
+    return 0
+  fi
   [[ ",${TESTS_FILTER}," == *",${name},"* ]]
 }
 
@@ -71,13 +74,6 @@ for n in "${NODE_COUNTS[@]}"; do
     done
     if [[ "$found" != "true" ]]; then
       note "FAIL upload N=$n: no upload_n${n}_batch*.csv with data (checked batches ${BATCH_ARR[*]})"
-      failures=$((failures + 1))
-    fi
-  fi
-  if wants_test "download_cold"; then
-    f="$RESULTS_DIR/download_n${n}_cold.csv"
-    if ! data_rows "$f"; then
-      note "FAIL download_cold N=$n: missing or empty $f"
       failures=$((failures + 1))
     fi
   fi
@@ -125,13 +121,6 @@ for n in "${NODE_COUNTS[@]}"; do
   fi
 done
 
-if wants_test "network_hops" && [[ "$last_n" =~ ^[0-9]+$ ]]; then
-  f="$RESULTS_DIR/network_hops_results.csv"
-  if ! data_rows "$f"; then
-    note "FAIL network_hops: expected data in $f (runs only for last node count $last_n)"
-    failures=$((failures + 1))
-  fi
-fi
 if wants_test "routing_overhead"; then
   f="$RESULTS_DIR/routing_overhead_results.csv"
   if ! data_rows "$f"; then

@@ -224,7 +224,7 @@ func putNamespaceBlock(ctx context.Context, stack *mystore.Stack, h host.Host, r
 	}
 	if repairProtocol != nil && h != nil && len(data) > 0 {
 		go func() {
-			ctxRepair, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
 			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, data, ReplicationFactorR)
 		}()

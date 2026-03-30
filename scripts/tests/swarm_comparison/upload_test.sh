@@ -80,7 +80,11 @@ source "$SCRIPT_DIR/comparison_system_env.sh"
 cmp_resolve_system_flags
 
 if [[ "$SWARM_API_USER_SET" -eq 0 ]]; then
-  SWARM_API="${SWARM_API:-$(swarm_publish_base_url)}"
+  if [[ "${CMP_INCLUDE_SWARM:-1}" == "1" ]]; then
+    SWARM_API="${SWARM_API:-$(swarm_publish_base_url)}"
+  else
+    SWARM_API="${SWARM_API:-}"
+  fi
 fi
 
 # Colors for output
@@ -95,6 +99,7 @@ NC='\033[0m' # No Color
 OUR_CONTAINER=""
 OUR_API_ADDR=""
 
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
 if [[ -z "$OUR_API" ]]; then
   # Try to find bootstrap container and read control address
   if docker ps --format '{{.Names}}' | grep -q "^fall25-bootstrap$"; then
@@ -151,11 +156,16 @@ else
     fi
   fi
 fi
+else
+  OUR_API=""
+  OUR_CONTAINER=""
+  OUR_API_ADDR=""
+fi
 
 echo "=========================================="
 echo "Upload Latency Test"
 echo "=========================================="
-echo "Our System API: $OUR_API"
+echo "Our System API: ${OUR_API:-(skipped)}"
 echo "Swarm API: $SWARM_API"
 echo "Iterations per size: $ITERATIONS"
 echo "Batch size: $BATCH_SIZE"
@@ -177,7 +187,7 @@ fi
 # often ran before publish completed.
 OUR_API_DIRECT=""
 wait_direct_max="${SNG40_UPLOAD_DIRECT_WAIT_SEC:-120}"
-if [[ -n "$OUR_CONTAINER" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ -n "$OUR_CONTAINER" ]]; then
   echo "Waiting for host control API http://127.0.0.1:9400/health (up to ${wait_direct_max}s)..."
   for ((w = 0; w < wait_direct_max; w++)); do
     if curl -sf -m 3 http://127.0.0.1:9400/health >/dev/null 2>&1; then
@@ -193,7 +203,7 @@ if [[ -n "$OUR_CONTAINER" ]]; then
   if [[ -z "$OUR_API_DIRECT" ]]; then
     echo -e "${YELLOW}Warning: 127.0.0.1:9400 did not become ready in ${wait_direct_max}s; using container JSON path — not comparable to Swarm host uploads.${NC}" >&2
   fi
-else
+elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
   if curl -sf -m 3 http://127.0.0.1:9400/health >/dev/null 2>&1; then
     OUR_API_DIRECT="http://127.0.0.1:9400"
     echo "Using direct API (127.0.0.1:9400) for fair latency measurement"
@@ -204,14 +214,14 @@ fi
 echo "Verifying API endpoints..."
 
 # Check our system API (via docker exec if needed)
-if [[ -n "$OUR_CONTAINER" ]]; then
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]] && [[ -n "$OUR_CONTAINER" ]]; then
   if check_api_endpoint_container "$OUR_CONTAINER" "http://$OUR_API_ADDR/health" 5 3; then
     echo -e "${GREEN}✓ Our system API is accessible${NC}"
   else
     log_error "Our system API not accessible" "container: $OUR_CONTAINER, addr: $OUR_API_ADDR"
     echo -e "${YELLOW}Warning: Our system API may not be accessible${NC}"
   fi
-else
+elif [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
   if check_api_endpoint "$OUR_API/health" 5 3; then
     echo -e "${GREEN}✓ Our system API is accessible${NC}"
   else
@@ -221,7 +231,9 @@ else
 fi
 
 # Check Swarm API
-if check_api_endpoint "$SWARM_API/" 5 3; then
+if [[ "${CMP_INCLUDE_SWARM:-1}" != "1" ]]; then
+  echo -e "${CYAN}Swarm API check skipped (vn-IPFS-only run)${NC}"
+elif check_api_endpoint "$SWARM_API/" 5 3; then
   echo -e "${GREEN}✓ Swarm API is accessible${NC}"
 else
   log_error "Swarm API not accessible" "url: $SWARM_API"
@@ -519,7 +531,7 @@ for size in "${PAYLOAD_SIZES[@]}"; do
       echo "total=$(printf "%.2f" "$total_batch_ms") ms, per-file avg=$(printf "%.2f" "$per_file_avg") ms${hops:+ hops=$hops}"
       echo "our_system,$size,$BATCH_SIZE,$i,$per_file_avg,$total_batch_ms" >> "$OUTPUT_FILE"
     else
-      ((our_failures++))
+      our_failures=$((our_failures + 1))
       echo "FAILED"
       echo "our_system,$size,$BATCH_SIZE,$i,ERROR,ERROR" >> "$OUTPUT_FILE"
     fi
@@ -572,7 +584,7 @@ for size in "${PAYLOAD_SIZES[@]}"; do
       echo "total=$(printf "%.2f" "$total_batch_ms") ms, per-file avg=$(printf "%.2f" "$per_file_avg") ms"
       echo "swarm,$size,$BATCH_SIZE,$i,$per_file_avg,$total_batch_ms" >> "$OUTPUT_FILE"
     else
-      ((swarm_failures++))
+      swarm_failures=$((swarm_failures + 1))
       echo "FAILED"
       echo "swarm,$size,$BATCH_SIZE,$i,ERROR,ERROR" >> "$OUTPUT_FILE"
     fi

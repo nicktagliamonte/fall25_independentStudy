@@ -1,38 +1,45 @@
-# Purpose: Docker image for Ethereum Swarm node (v0.5.8)
+# syntax=docker/dockerfile:1
+# Purpose: Docker image for Ethereum Swarm node (v0.5.8). Builder stays on golang:1.14-alpine
+# because Swarm v0.5.8 does not build under Go 1.16+ module semantics. Runtime uses a current
+# Alpine (3.21) with retried apk to mitigate transient dl-cdn DNS failures.
 
 FROM golang:1.14-alpine AS builder
 
 WORKDIR /build
 
-# Install build dependencies
-RUN apk add --no-cache git make gcc musl-dev linux-headers
+RUN set -e; \
+  for _ in 1 2 3 4 5 6; do \
+    apk add --no-cache git make gcc musl-dev linux-headers && break; \
+    sleep 15; \
+  done
 
-# Clone Swarm v0.5.8 repository
-RUN git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git
+RUN set -e; \
+  for _ in 1 2 3 4 5; do \
+    git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git && break; \
+    sleep 15; \
+  done
 
 WORKDIR /build/swarm
 
-# Build Swarm binary
 RUN make swarm
 
-# Runtime stage
-FROM alpine:latest
+FROM alpine:3.21
 
-RUN apk --no-cache add ca-certificates curl jq
+RUN set -e; \
+  for _ in 1 2 3 4 5 6; do \
+    apk add --no-cache ca-certificates curl jq && break; \
+    sleep 15; \
+  done
 
 WORKDIR /app
 
-# Copy Swarm binary from builder
 COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
 RUN chmod +x /app/swarm
 
-# Create directories for Swarm data
 RUN mkdir -p /app/data /app/logs
 
-# Expose Swarm API port (default 8500) and P2P port (default 30399)
 EXPOSE 8500 30399
 
-# Copy entrypoint script
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 

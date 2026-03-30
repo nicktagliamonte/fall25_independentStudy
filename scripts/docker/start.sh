@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+source "$ROOT_DIR/scripts/docker/docker_build_env.sh"
+
 N="${1:-4}"
 
 if [[ ! "$N" =~ ^[0-9]+$ ]] || [[ "$N" -lt 2 ]]; then
@@ -96,7 +98,7 @@ EOF
 done
 
 # Build the image first (skip if already exists and up to date)
-echo "Building Docker image..."
+echo "Building Docker image (COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
 if ! docker-compose build --progress=plain 2>&1 | tee /tmp/docker_build.log; then
   echo "ERROR: Docker build failed. Check /tmp/docker_build.log for details" >&2
   exit 1

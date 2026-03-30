@@ -95,10 +95,10 @@ def load_data(results_dir):
     if download_agg_file.exists():
         download_df = pd.read_csv(download_agg_file)
         if 'cache_mode' not in download_df.columns:
-            download_df['cache_mode'] = 'cold'
+            download_df['cache_mode'] = 'warm'
         print(f"Loaded aggregated download data: {len(download_df)} rows")
     else:
-        # Load individual files (download_n10_cold.csv, download_n10_warm.csv, etc.)
+        # Load individual files (download_n10_warm.csv, etc.)
         download_files = sorted(results_path.glob("download_n*.csv"))
         if download_files:
             download_dfs = []
@@ -109,7 +109,7 @@ def load_data(results_dir):
                     node_count = int(stem_part.split('_')[0]) if stem_part.split('_')[0].isdigit() else 0
                     df['node_count'] = node_count
                 if 'cache_mode' not in df.columns:
-                    df['cache_mode'] = 'cold' if '_cold' in f.stem else 'warm'
+                    df['cache_mode'] = 'warm'
                 download_dfs.append(df)
             if download_dfs:
                 download_df = pd.concat(download_dfs, ignore_index=True)
@@ -464,7 +464,7 @@ def generate_upload_plots(upload_df):
     return plots
 
 def generate_download_plots(download_df):
-    """Generate download latency comparison plots (cold vs warm cache)"""
+    """Generate download latency comparison plots (cache_mode in CSV, typically warm)."""
     plots = {}
     
     if download_df is None or len(download_df) == 0:
@@ -480,7 +480,7 @@ def generate_download_plots(download_df):
     download_df = download_df.dropna(subset=['ttfb_ms', 'total_ms'])
     
     if 'cache_mode' not in download_df.columns:
-        download_df['cache_mode'] = 'cold'
+        download_df['cache_mode'] = 'warm'
     
     if len(download_df) == 0:
         return plots
@@ -499,10 +499,10 @@ def generate_download_plots(download_df):
     plt.xticks(rotation=45, ha='right')
     plots['download_ttfb_box'] = plot_to_base64(fig)
     
-    # 2. Box plot: TTFB by cache_mode (cold vs warm)
+    # 2. Box plot: TTFB by cache_mode (usually single mode: warm)
     fig, ax = plt.subplots(figsize=(12, 6))
     sns.boxplot(data=download_df, x='cache_mode', y='ttfb_ms', hue='system', ax=ax)
-    ax.set_title('Download TTFB: Cold vs Warm Cache', fontsize=14, fontweight='bold')
+    ax.set_title('Download TTFB by Cache Mode', fontsize=14, fontweight='bold')
     ax.set_xlabel('Cache Mode', fontsize=12)
     ax.set_ylabel('TTFB (ms)', fontsize=12)
     ax.legend(title='System', fontsize=10)
@@ -533,7 +533,7 @@ def generate_download_plots(download_df):
                        label=f'{system} ({cm})', linewidth=2, markersize=8)
     ax.set_xlabel('Payload Size (bytes)', fontsize=12)
     ax.set_ylabel('Mean TTFB (ms)', fontsize=12)
-    ax.set_title('Download TTFB: Cold vs Warm by Payload Size', fontsize=14, fontweight='bold')
+    ax.set_title('Download TTFB by Payload Size and Cache Mode', fontsize=14, fontweight='bold')
     ax.legend(fontsize=9)
     ax.set_xscale('log')
     ax.grid(True, alpha=0.3)
@@ -901,7 +901,7 @@ def generate_statistics_tables(upload_df, download_df, hops_df=None, resource_df
         download_df_clean['total_ms'] = pd.to_numeric(download_df_clean['total_ms'], errors='coerce')
         download_df_clean = download_df_clean.dropna(subset=['ttfb_ms', 'total_ms'])
         if 'cache_mode' not in download_df_clean.columns:
-            download_df_clean['cache_mode'] = 'cold'
+            download_df_clean['cache_mode'] = 'warm'
         
         if len(download_df_clean) > 0:
             # TTFB statistics (group by system, payload_size, cache_mode)
@@ -1059,8 +1059,8 @@ def generate_statistics_tables(upload_df, download_df, hops_df=None, resource_df
             dd['total_ms'] = dd['ttfb_ms']
         dd['total_ms'] = pd.to_numeric(dd['total_ms'], errors='coerce')
         dd = dd.dropna(subset=['total_ms'])
-        cache_col = dd['cache_mode'] if 'cache_mode' in dd.columns else pd.Series(['cold'] * len(dd))
-        our_dl = dd[(dd['system'] == 'our_system') & (cache_col == 'cold')]
+        cache_col = dd['cache_mode'] if 'cache_mode' in dd.columns else pd.Series(['warm'] * len(dd))
+        our_dl = dd[(dd['system'] == 'our_system') & (cache_col.isin(['warm', 'cold']))]
         ll = lookup_latency_df
         if 'system' in lookup_latency_df.columns:
             ll = lookup_latency_df[lookup_latency_df['system'] == 'our_system']
@@ -1257,7 +1257,7 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
             html_content += f"""
     <div class="plot-container">
         <h3>Cold vs Warm Cache: TTFB Comparison</h3>
-        <img src="data:image/png;base64,{plots['download_ttfb_cold_warm']}" alt="Download TTFB Cold vs Warm">
+        <img src="data:image/png;base64,{plots['download_ttfb_cold_warm']}" alt="Download TTFB by cache mode">
     </div>
 """
         if 'download_total_box' in plots:

@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
+source "$ROOT_DIR/scripts/docker/docker_build_env.sh"
+
 VALID_COUNTS="10 50 100 500"
 N="${1:-10}"
 
@@ -29,7 +31,7 @@ fi
 
 "$ROOT_DIR/scripts/docker/gen_vnipfs_compose.sh" "$N"
 
-echo "Building Docker image..."
+echo "Building Docker image (COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
 if ! docker-compose -f "$COMPOSE_FILE" build --progress=plain 2>&1 | tee /tmp/docker_build_vnipfs.log; then
   echo "ERROR: Docker build failed. Check /tmp/docker_build_vnipfs.log" >&2
   exit 1

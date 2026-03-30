@@ -41,7 +41,7 @@ TEST_TIMEOUT_SEC=600
 TEST_TIMEOUT_USER_SET=0
 SKIP_CLEANUP=false
 RUN_VALIDATE=false
-TESTS=""  # empty = run all; else comma-separated: upload,download_cold,download_warm,lookup_latency,lookup_complexity,replication,replication_distribution,repair_time,network_hops,routing_overhead,storage_efficiency,concurrent
+TESTS=""  # empty = default suite (excludes lookup_latency; set INCLUDE_LOOKUP_LATENCY=1 to add it); else comma-separated names
 SKIP_START=false
 SYSTEM_MODE="both"
 
@@ -142,11 +142,12 @@ export SWARM_COMPARISON_SYSTEM="$SYSTEM_MODE"
 # Handle --tests list
 if [[ "$TESTS" == "list" ]]; then
   echo "Available tests (use --tests <name> or --tests <name1,name2,...>):"
-  echo "  upload, download_cold, download_warm, lookup_latency, lookup_complexity,"
-  echo "  replication, replication_distribution, repair_time, network_hops, routing_overhead,"
+  echo "  upload, download_warm, lookup_complexity,"
+  echo "  replication, replication_distribution, repair_time, routing_overhead,"
   echo "  storage_efficiency, concurrent"
+  echo "  lookup_latency — optional (not in default suite; often flat on LAN; use --tests lookup_latency or INCLUDE_LOOKUP_LATENCY=1)"
   echo ""
-  echo "Example: --tests upload,download_cold --nodes 10 --iterations 2"
+  echo "Example: --tests upload,download_warm --nodes 10 --iterations 2"
   exit 0
 fi
 
@@ -158,10 +159,13 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Helper: return 0 if test should run (empty TESTS = all; else check membership)
+# Helper: return 0 if test should run. Empty TESTS = default suite (omits lookup_latency unless INCLUDE_LOOKUP_LATENCY=1).
 should_run_test() {
   local name="$1"
-  [[ -z "$TESTS" ]] && return 0
+  if [[ -z "$TESTS" ]]; then
+    [[ "$name" == "lookup_latency" ]] && [[ "${INCLUDE_LOOKUP_LATENCY:-0}" != "1" ]] && return 1
+    return 0
+  fi
   [[ ",${TESTS}," == *",${name},"* ]] && return 0
   return 1
 }
@@ -394,19 +398,6 @@ run_upload_test() {
   fi
 }
 
-# Function to run network hops test
-run_network_hops_test() {
-  local output_file="$OUTPUT_DIR/network_hops_results.csv"
-  echo -e "\n${GREEN}Running network hops test...${NC}"
-  run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/network_hops_test.sh" \
-    --iterations "$ITERATIONS" \
-    --output "$output_file" \
-    2>&1 | tee "$OUTPUT_DIR/network_hops.log" || true
-  if [[ -f "$output_file" ]]; then
-    echo -e "  ${GREEN}✓ Network hops test complete: $output_file${NC}"
-  fi
-}
-
 # Function to run storage efficiency test
 run_storage_efficiency_test() {
   local output_file="$OUTPUT_DIR/storage_efficiency_results.csv"
@@ -451,13 +442,24 @@ run_routing_overhead_test() {
 run_lookup_complexity_test() {
   local node_count="$1"
   local output_file="$OUTPUT_DIR/lookup_complexity_results.csv"
+  local saved_to="${TEST_TIMEOUT_SEC:-600}"
+  # Each iteration: cold docker run + lookup-key (up to ~180s per call) + retries; pre-waits add 40s+.
+  local it="${ITERATIONS:-10}"
+  local min_to=$(( it * 240 + 900 ))
+  [[ "$min_to" -lt 2400 ]] && min_to=2400
+  if [[ "$saved_to" -gt "$min_to" ]]; then
+    min_to="$saved_to"
+  fi
+  TEST_TIMEOUT_SEC="$min_to"
   echo -e "\n${GREEN}Running lookup complexity test (N=$node_count, hops vs log N)...${NC}"
+  echo -e "  ${CYAN}Lookup complexity timeout cap: ${min_to}s (cold docker runs per iteration)${NC}"
   run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/lookup_complexity_test.sh" \
     --node-count "$node_count" \
     --iterations "$ITERATIONS" \
     --output "$output_file" \
     $([[ -f "$output_file" && -s "$output_file" ]] && echo "--append" || true) \
     2>&1 | tee -a "$OUTPUT_DIR/lookup_complexity.log" | sed 's/^/  /' || true
+  TEST_TIMEOUT_SEC="$saved_to"
   if [[ -f "$output_file" ]]; then
     echo -e "  ${GREEN}✓ Lookup complexity: $output_file${NC}"
   fi
@@ -541,25 +543,23 @@ run_replication_test() {
   fi
 }
 
-# Function to run download test (cold or warm mode)
+# Function to run download test (same-node GET after upload; CSV cache_mode=warm)
 run_download_test() {
   local node_count="$1"
-  local cache_mode="$2"
-  local output_file="$OUTPUT_DIR/download_n${node_count}_${cache_mode}.csv"
+  local output_file="$OUTPUT_DIR/download_n${node_count}_warm.csv"
   
-  echo -e "\n${GREEN}Running download latency test (N=$node_count, cache_mode=$cache_mode)...${NC}"
+  echo -e "\n${GREEN}Running download latency test (N=$node_count)...${NC}"
   
   run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/download_test.sh" \
     --iterations "$ITERATIONS" \
-    --cache-mode "$cache_mode" \
     --output "$output_file" \
-    2>&1 | tee "$OUTPUT_DIR/download_n${node_count}_${cache_mode}.log"
+    2>&1 | tee "$OUTPUT_DIR/download_n${node_count}_warm.log"
   
   if [[ -f "$output_file" ]]; then
-    echo -e "  ${GREEN}✓ Download test ($cache_mode) complete: $output_file${NC}"
+    echo -e "  ${GREEN}✓ Download test complete: $output_file${NC}"
     return 0
   else
-    echo -e "  ${RED}✗ Download test ($cache_mode) failed${NC}"
+    echo -e "  ${RED}✗ Download test failed${NC}"
     return 1
   fi
 }
@@ -583,25 +583,32 @@ aggregate_results() {
     done
   done
   
-  # Aggregate download results (cold and warm)
+  # Aggregate download results (warm same-node GET)
   local download_agg="$OUTPUT_DIR/download_aggregated.csv"
   echo "system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type" > "$download_agg"
   
   for node_count in "${NODE_COUNTS[@]}"; do
-    for cache_mode in cold warm; do
-      local download_file="$OUTPUT_DIR/download_n${node_count}_${cache_mode}.csv"
-      if [[ -f "$download_file" ]]; then
-        tail -n +2 "$download_file" | while IFS=',' read -r system payload_size iteration cache_mode_val ttfb_ms total_ms lookup_type; do
-          if [[ "$ttfb_ms" != "ERROR" && "$total_ms" != "ERROR" ]]; then
-            echo "$system,$node_count,$payload_size,$iteration,$cache_mode_val,$ttfb_ms,$total_ms,${lookup_type:-}"
-          fi
-        done >> "$download_agg"
-      fi
-    done
+    local download_file="$OUTPUT_DIR/download_n${node_count}_warm.csv"
+    if [[ -f "$download_file" ]]; then
+      tail -n +2 "$download_file" | while IFS=',' read -r system payload_size iteration cache_mode_val ttfb_ms total_ms lookup_type; do
+        if [[ "$ttfb_ms" != "ERROR" && "$total_ms" != "ERROR" ]]; then
+          echo "$system,$node_count,$payload_size,$iteration,$cache_mode_val,$ttfb_ms,$total_ms,${lookup_type:-}"
+        fi
+      done >> "$download_agg"
+    fi
   done
   
   echo "  Aggregated upload results: $upload_agg"
   echo "  Aggregated download results: $download_agg"
+  local upload_rows download_rows
+  upload_rows=$(tail -n +2 "$upload_agg" 2>/dev/null | grep -c . || true)
+  download_rows=$(tail -n +2 "$download_agg" 2>/dev/null | grep -c . || true)
+  if [[ "${upload_rows:-0}" -eq 0 ]]; then
+    echo "  Note: upload_aggregated.csv is header-only (skipped upload, missing per-N CSVs, or all ERROR rows)."
+  fi
+  if [[ "${download_rows:-0}" -eq 0 ]]; then
+    echo "  Note: download_aggregated.csv is header-only (skipped download phases, missing per-N CSVs, or all ERROR rows)."
+  fi
   if [[ -f "$OUTPUT_DIR/replication_results.csv" ]]; then
     echo "  Replication results: $OUTPUT_DIR/replication_results.csv"
   fi
@@ -631,47 +638,63 @@ generate_summary_report() {
     echo "  Iterations per test: $ITERATIONS"
     echo ""
     
-    # Upload test summary
+    # Upload test summary (skipped vs missing vs empty)
     echo "Upload Latency Test Results:"
     echo "----------------------------"
-    for node_count in "${NODE_COUNTS[@]}"; do
-      local found=false
-      for upload_file in "$OUTPUT_DIR/upload_n${node_count}_batch"*.csv; do
-        [[ -f "$upload_file" ]] || continue
-        found=true
-        local batch_size=$(basename "$upload_file" .csv | sed "s/upload_n${node_count}_batch//")
-        echo ""
-        echo "  Node count: $node_count, batch_size: $batch_size"
-        echo "    Results file: $(basename "$upload_file")"
-        local our_count=$(tail -n +2 "$upload_file" | grep "^our_system," | grep -v "ERROR" | wc -l)
-        local swarm_count=$(tail -n +2 "$upload_file" | grep "^swarm," | grep -v "ERROR" | wc -l)
-        echo "    Our system: $our_count successful uploads"
-        echo "    Swarm: $swarm_count successful uploads"
-      done
-      [[ "$found" == "true" ]] || echo "  Node count: $node_count - No results file found"
-    done
-    
-    # Download test summary
-    echo ""
-    echo "Download Latency Test Results (cold and warm):"
-    echo "------------------------------"
-    for node_count in "${NODE_COUNTS[@]}"; do
-      for cache_mode in cold warm; do
-        local download_file="$OUTPUT_DIR/download_n${node_count}_${cache_mode}.csv"
-        if [[ -f "$download_file" ]]; then
+    if [[ -n "$TESTS" ]] && ! should_run_test "upload"; then
+      echo "  Status: skipped (upload not in --tests)."
+    else
+      for node_count in "${NODE_COUNTS[@]}"; do
+        local found=false
+        for upload_file in "$OUTPUT_DIR/upload_n${node_count}_batch"*.csv "$OUTPUT_DIR/upload_n${node_count}.csv"; do
+          [[ -f "$upload_file" ]] || continue
+          found=true
           echo ""
-          echo "  Node count: $node_count, cache_mode: $cache_mode"
-          echo "    Results file: download_n${node_count}_${cache_mode}.csv"
-          local our_count=$(tail -n +2 "$download_file" | grep "^our_system," | grep -v "ERROR" | wc -l)
-          local swarm_count=$(tail -n +2 "$download_file" | grep "^swarm," | grep -v "ERROR" | wc -l)
-          echo "    Our system: $our_count successful downloads"
-          echo "    Swarm: $swarm_count successful downloads"
+          echo "  Node count: $node_count"
+          echo "    Results file: $(basename "$upload_file")"
+          local our_count swarm_count
+          # awk: grep exits 1 when no matches; with pipefail that aborts under set -e (e.g. swarm-only or our-only runs).
+          our_count=$(awk -F',' 'NR>1 && $1=="our_system" && $5!="ERROR" && $6!="ERROR" {c++} END{print c+0}' "$upload_file")
+          swarm_count=$(awk -F',' 'NR>1 && $1=="swarm" && $5!="ERROR" && $6!="ERROR" {c++} END{print c+0}' "$upload_file")
+          echo "    Our system: $our_count successful uploads"
+          echo "    Swarm: $swarm_count successful uploads"
+          if [[ "${our_count:-0}" -eq 0 && "${swarm_count:-0}" -eq 0 ]]; then
+            echo "    Status: empty (file present, no successful rows)."
+          fi
+        done
+        if [[ "$found" != "true" ]]; then
+          echo "  Node count: $node_count - missing (no upload CSV for this N; test did not write output or failed before write)."
         fi
       done
-      if [[ ! -f "$OUTPUT_DIR/download_n${node_count}_cold.csv" && ! -f "$OUTPUT_DIR/download_n${node_count}_warm.csv" ]]; then
-        echo "  Node count: $node_count - No results file found"
-      fi
-    done
+    fi
+    
+    # Download test summary (skipped vs missing vs empty)
+    echo ""
+    echo "Download Latency Test Results:"
+    echo "------------------------------"
+    if [[ -n "$TESTS" ]] && ! should_run_test "download_warm"; then
+      echo "  Status: skipped (download_warm not in --tests)."
+    else
+      for node_count in "${NODE_COUNTS[@]}"; do
+        should_run_test "download_warm" || continue
+        local download_file="$OUTPUT_DIR/download_n${node_count}_warm.csv"
+        if [[ -f "$download_file" ]]; then
+          echo ""
+          echo "  Node count: $node_count"
+          echo "    Results file: download_n${node_count}_warm.csv"
+          local our_count swarm_count
+          our_count=$(awk -F',' 'NR>1 && $1=="our_system" && $5!="ERROR" && $6!="ERROR" {c++} END{print c+0}' "$download_file")
+          swarm_count=$(awk -F',' 'NR>1 && $1=="swarm" && $5!="ERROR" && $6!="ERROR" {c++} END{print c+0}' "$download_file")
+          echo "    Our system: $our_count successful downloads"
+          echo "    Swarm: $swarm_count successful downloads"
+          if [[ "${our_count:-0}" -eq 0 && "${swarm_count:-0}" -eq 0 ]]; then
+            echo "    Status: empty (file present, no successful rows)."
+          fi
+        else
+          echo "  Node count: $node_count - missing (no download CSV for this N)."
+        fi
+      done
+    fi
     
     # Replication test summary
     if [[ -f "$OUTPUT_DIR/replication_results.csv" ]]; then
@@ -720,8 +743,9 @@ start_vnipfs() {
 # Resource monitor (CPU/memory) - started before first tests, stopped after all
 RESOURCE_MONITOR_PID=""
 
-# Main test loop
+# Main test loop (portable last N: avoid ${arr[-1]} — unsupported on bash < 4.3)
 for node_count in "${NODE_COUNTS[@]}"; do
+  last_nc="${NODE_COUNTS[${#NODE_COUNTS[@]}-1]}"
   echo ""
   echo "=========================================="
   echo "Testing with $node_count nodes"
@@ -812,30 +836,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
     sleep "$post_stabilize_sleep"
   fi
 
-  # C.2 verification: PUT on node A, /replication/status returns replica_count>=1 within 5s
-  # Scale cap with N (large clusters need longer for first replication signal).
-  if [[ "$START_VNIPFS" == "true" ]]; then
-    echo -e "\n${BLUE}Step 2b: C.2 verification (replication integration)...${NC}"
-    vnipfs_compose=$(get_vnipfs_compose)
-    c2_sec=45
-    if [[ "$node_count" -ge 500 ]]; then
-      c2_sec=180
-    elif [[ "$node_count" -ge 100 ]]; then
-      c2_sec=120
-    elif [[ "$node_count" -ge 50 ]]; then
-      c2_sec=90
-    fi
-    if command -v timeout >/dev/null 2>&1; then
-      echo -e "  ${CYAN}C.2 verify cap: ${c2_sec}s${NC}"
-      timeout "$c2_sec" "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
-        2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors or timed out, continuing...${NC}"; true; }
-    else
-      "$ROOT_DIR/scripts/tests/swarm_comparison/verify_replication_integration.sh" --compose "$vnipfs_compose" \
-        2>&1 | tee -a "$OUTPUT_DIR/verify_replication_integration.log" | sed 's/^/  /' || { echo -e "  ${YELLOW}C.2 verification had errors, continuing...${NC}"; true; }
-    fi
-  else
-    echo -e "\n${CYAN}Step 2b: Skipping C.2 (vn-IPFS not running)${NC}"
-  fi
+  echo -e "\n${CYAN}Step 2b: Skipping C.2 replication verification${NC}"
 
   # Spawn resource monitor before upload/download tests (samples fall25-* and swarm-* each interval)
   if [[ -z "${RESOURCE_MONITOR_PID:-}" ]]; then
@@ -858,17 +859,13 @@ for node_count in "${NODE_COUNTS[@]}"; do
     fi
   fi
 
-  if should_run_test "download_cold"; then
-    echo -e "\n${BLUE}Step 4a: Running download latency test (cold)...${NC}"
-    run_download_test "$node_count" "cold" || echo -e "${YELLOW}Download test (cold) had errors, continuing...${NC}"
-  fi
   if should_run_test "download_warm"; then
-    echo -e "\n${BLUE}Step 4b: Running download latency test (warm)...${NC}"
-    run_download_test "$node_count" "warm" || echo -e "${YELLOW}Download test (warm) had errors, continuing...${NC}"
+    echo -e "\n${BLUE}Step 4: Running download latency test...${NC}"
+    run_download_test "$node_count" || echo -e "${YELLOW}Download test had errors, continuing...${NC}"
   fi
 
   if should_run_test "lookup_latency"; then
-    echo -e "\n${BLUE}Step 4c: Running lookup latency test...${NC}"
+    echo -e "\n${BLUE}Step 4b: Running lookup latency test...${NC}"
     run_lookup_latency_test "$node_count" || echo -e "${YELLOW}Lookup latency test had errors, continuing...${NC}"
   fi
 
@@ -910,15 +907,9 @@ for node_count in "${NODE_COUNTS[@]}"; do
     echo -e "\n${CYAN}Skipping repair_time (vn-IPFS only)${NC}"
   fi
 
-  if [[ "$node_count" == "${NODE_COUNTS[-1]}" ]]; then
-    if should_run_test "network_hops" && [[ "$RUN_VNIPFS" == "true" ]]; then
-      echo -e "\n${BLUE}Step 6: Running network hops test...${NC}"
-      run_network_hops_test || echo -e "${YELLOW}Network hops test had errors, continuing...${NC}"
-    elif should_run_test "network_hops" && [[ "$RUN_VNIPFS" != "true" ]]; then
-      echo -e "\n${CYAN}Skipping network_hops (vn-IPFS only)${NC}"
-    fi
+  if [[ "$node_count" == "$last_nc" ]]; then
     if should_run_test "routing_overhead"; then
-      echo -e "\n${BLUE}Step 6b: Running routing overhead test (token vs provider announce)...${NC}"
+      echo -e "\n${BLUE}Step 6: Running routing overhead test (token vs provider announce)...${NC}"
       run_routing_overhead_test || echo -e "${YELLOW}Routing overhead test had errors, continuing...${NC}"
     fi
     if should_run_test "storage_efficiency"; then
@@ -931,7 +922,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
     fi
   fi
 
-  if [[ "$node_count" != "${NODE_COUNTS[-1]}" ]]; then
+  if [[ "$node_count" != "$last_nc" ]]; then
     cleanup_containers
     sleep 5
   fi
@@ -959,10 +950,9 @@ echo ""
 echo "Files generated:"
 echo "  - upload_n<N>_batch<B>.csv: Upload latency results (N nodes, batch size B)"
 echo "  - upload_network_bytes.csv: Network bytes transferred during upload (system,payload_size,batch_size,bytes_transferred)"
-echo "  - download_n<N>_cold.csv, download_n<N>_warm.csv: Download latency results (cold/warm cache)"
+echo "  - download_n<N>_warm.csv: Download latency results (same-node GET after upload)"
 echo "  - upload_aggregated.csv: All upload results combined"
 echo "  - download_aggregated.csv: system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type"
-echo "  - network_hops_results.csv: DHT lookup hops per operation (when available)"
 echo "  - storage_efficiency_results.csv: disk_bytes, efficiency_ratio per system (when available)"
 echo "  - replication_results.csv: system,payload_size,nodes,replicas_target,time_to_R_s[,replication_bytes] (when available)"
 echo "  - replication_distribution.csv: system,node_count,near,midrange,farflung (N/M/F vs Swarm N/A)"

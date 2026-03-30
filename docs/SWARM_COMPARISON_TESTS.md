@@ -39,9 +39,10 @@ scripts/
 ├── tests/swarm_comparison/
 │   ├── run_comparison.sh         # Main orchestrator
 │   ├── run_single_comparison.sh  # One test × one N × I iterations → test_results/matrix/…
+│   ├── run_overnight_comparison_sequence.sh  # Matrix over N × system (calls run_single_comparison)
+│   ├── validate_comparison_artifacts.sh       # Post-run CSV checks (--validate on run_comparison)
 │   ├── upload_test.sh            # Upload latency test
 │   ├── download_test.sh          # Download latency test
-│   ├── partition_recovery_test.sh # Partition recovery (manual/sudo; optional CI skip)
 │   ├── test_api.sh               # Swarm API validation
 │   └── api.sh                    # Swarm HTTP API helpers
 ├── analysis/
@@ -204,23 +205,6 @@ Both systems are compared on wall-clock time from the start of the HTTP request 
 ./scripts/tests/swarm_comparison/test_api.sh [api_address]
 ```
 
-### Partition Recovery Test (`partition_recovery_test.sh`)
-
-**Purpose**: Simulate network partition, measure time from reconnect until content is available on previously partitioned nodes.
-
-**Requirements**: Manual execution; network partition uses `docker network disconnect` which typically requires Docker permissions. Use `sudo` if needed.
-
-**Usage**:
-```bash
-./scripts/tests/swarm_comparison/partition_recovery_test.sh run our_system
-./scripts/tests/swarm_comparison/partition_recovery_test.sh run swarm
-OUTPUT_FILE=./results/partition_recovery_results.csv ./scripts/tests/swarm_comparison/partition_recovery_test.sh run our_system
-```
-
-**Output**: CSV with columns: `system,node_count,partition_size,recovery_time_s`
-
-**CI**: Optional skip — partition recovery is not run by default in CI; it requires manual/sudo for network operations. Add to CI only if the runner has Docker network modify privileges.
-
 ## Running Tests
 
 ### Basic Test Execution
@@ -260,17 +244,16 @@ Use `--help` on each script for options. Main orchestrator options:
 **Recommended order** (example: 10 iterations per cell; repeat the sequence for each `N`):
 
 1. `upload`
-2. `download_cold`
-3. `download_warm`
-4. `lookup_latency`
-5. `lookup_complexity`
-6. `replication`
-7. `replication_distribution`
-8. `repair_time`
-9. `network_hops`
-10. `routing_overhead`
-11. `storage_efficiency`
-12. `concurrent`
+2. `download_warm`
+3. `lookup_complexity`
+4. `replication`
+5. `replication_distribution`
+6. `repair_time`
+7. `routing_overhead`
+8. `storage_efficiency`
+9. `concurrent`
+
+(`lookup_latency` is intentionally **not** in the default orchestrator or overnight sequence: on a typical Docker LAN it is often flat and not worth paper space. Run explicitly with `--tests lookup_latency` or `INCLUDE_LOOKUP_LATENCY=1` if needed.)
 
 Use **`N ∈ {10, 50, 100}`** routinely; add **`500`** only when the host has enough CPU, RAM, and disk.
 
@@ -278,7 +261,7 @@ Use **`N ∈ {10, 50, 100}`** routinely; add **`500`** only when the host has en
 
 ```bash
 ./scripts/tests/swarm_comparison/run_single_comparison.sh --test upload --nodes 10 --iterations 10
-./scripts/tests/swarm_comparison/run_single_comparison.sh --test download_cold --nodes 10 --iterations 10
+./scripts/tests/swarm_comparison/run_single_comparison.sh --test download_warm --nodes 10 --iterations 10
 # … same pattern for other test names; then repeat for --nodes 50 and 100
 ```
 
@@ -300,8 +283,8 @@ Use **`N ∈ {10, 50, 100}`** routinely; add **`500`** only when the host has en
 
 ```bash
 MATRIX_TESTS=(
-  upload download_cold download_warm lookup_latency lookup_complexity
-  replication replication_distribution repair_time network_hops
+  upload download_warm lookup_complexity
+  replication replication_distribution repair_time
   routing_overhead storage_efficiency concurrent
 )
 for N in 10 50 100; do
@@ -311,7 +294,7 @@ for N in 10 50 100; do
 done
 ```
 
-**Note**: `network_hops`, `routing_overhead`, `storage_efficiency`, and `concurrent` are scheduled on the **last** node count in a multi-`N` `run_comparison.sh` invocation. For `run_single_comparison.sh` there is only one `N`, so that `N` is always “last” and those tests run as expected.
+**Note**: `routing_overhead`, `storage_efficiency`, and `concurrent` are scheduled on the **last** node count in a multi-`N` `run_comparison.sh` invocation. For `run_single_comparison.sh` there is only one `N`, so that `N` is always “last” and those tests run as expected.
 
 ### Large N (50 / 100): cost, partial CSVs, timeouts
 
@@ -324,7 +307,7 @@ done
 ### DHT hop count vs upload latency (do not conflate)
 
 - **Upload / download CSVs** report **milliseconds** (end-to-end HTTP and local work). They are **not** DHT hop counts.
-- **`network_hops_results.csv`**, **`lookup_complexity_results.csv`** (`operation=lookup`), and optional `network_hops` columns on some GET responses report **abstract query-event counts**, not ms.
+- **`lookup_complexity_results.csv`** (`operation=lookup`) and optional `network_hops` fields on some GET responses report **abstract query-event counts**, not ms.
 - **Ideal Kademlia** suggests **O(log N)** hop count for lookups in a stable, large table. **Observed** comparison runs may not show that slope: small `N`, churn, token DHT mode, and one-off cold lookup variance dominate. Treat O(log N) as **theoretical reference**, not an automatic pass/fail on the plots.
 
 ### CSV File Format
@@ -568,8 +551,6 @@ If you encounter issues not covered here:
 ## Advanced Usage
 
 ### Integration with CI/CD
-
-**Partition recovery test**: Requires manual/sudo for network partition (e.g. `docker network disconnect`). Optional CI skip — omit partition recovery in automated runs unless the runner has Docker network modify privileges.
 
 Example CI/CD integration:
 

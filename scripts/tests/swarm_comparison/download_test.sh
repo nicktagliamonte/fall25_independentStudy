@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Purpose: Download latency test comparing our system vs Swarm v0.5.8
+# Purpose: Download latency test comparing our system vs Swarm v0.5.8.
+# Same-node GET after upload (cache_mode=warm in CSV) for stable LAN measurements.
 # Usage: ./scripts/tests/swarm_comparison/download_test.sh [options]
 #   --our-api <container> Our system container name (default: auto-detect bootstrap)
 #   --swarm-api <addr>   Swarm API address (default: http://127.0.0.1:8500)
 #   --iterations <n>     Number of iterations per size (default: 10)
-#   --cache-mode <mode>  cold|warm (default: cold)
 #   --output <file>      Output CSV file (default: download_latency_results.csv)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,7 +19,6 @@ source "$SCRIPT_DIR/api.sh"
 OUR_API=""
 SWARM_API="${SWARM_API:-http://127.0.0.1:8500}"
 ITERATIONS=10
-CACHE_MODE="cold"
 OUTPUT_FILE="download_latency_results.csv"
 PAYLOAD_SIZES=(1024 10240 102400 1048576)  # 1KB, 10KB, 100KB, 1MB
 
@@ -38,10 +37,6 @@ while [[ $# -gt 0 ]]; do
       ITERATIONS="$2"
       shift 2
       ;;
-    --cache-mode)
-      CACHE_MODE="$2"
-      shift 2
-      ;;
     --output)
       OUTPUT_FILE="$2"
       shift 2
@@ -52,7 +47,6 @@ while [[ $# -gt 0 ]]; do
       echo "  --our-api <container> Our system container name (default: auto-detect)"
       echo "  --swarm-api <addr>   Swarm API address (default: http://127.0.0.1:8500)"
       echo "  --iterations <n>     Iterations per size (default: 10)"
-      echo "  --cache-mode <mode>  cold|warm (default: cold)"
       echo "  --output <file>      Output CSV file (default: download_latency_results.csv)"
       exit 0
       ;;
@@ -155,7 +149,7 @@ echo "=========================================="
 echo "Our System API: ${OUR_API:-(skipped)} (container: ${OUR_CONTAINER:-none})"
 echo "Swarm API: $SWARM_API"
 echo "Iterations per size: $ITERATIONS"
-echo "Cache mode: $CACHE_MODE"
+echo "GET path: same node as upload (warm)"
 echo "Output file: $OUTPUT_FILE"
 echo ""
 
@@ -248,8 +242,7 @@ get_provider_info() {
   echo "$peer_id|$addrs"
 }
 
-# Function to download from our system and measure latency
-# Uses GET_CONTAINER/GET_API_ADDR (cold: different node; warm: same as upload)
+# Function to download from our system and measure latency (GET from upload/bootstrap node)
 download_our_system() {
   local key="$1"
   local peer_id="$2"
@@ -262,7 +255,7 @@ download_our_system() {
   fi
   
   local get_req="$TEMP_DIR/get_req_$$.json"
-  echo "{\"key\":\"$key\",\"timeout\":\"30s\"}" > "$get_req"
+  echo "{\"key\":\"$key\",\"timeout\":\"${GET_JSON_TIMEOUT:-30s}\"}" > "$get_req"
   
   # Measure download time
   local start_time=$(date +%s.%N)
@@ -270,7 +263,7 @@ download_our_system() {
   # Copy request to getter container and execute curl inside it
   docker cp "$get_req" "${GET_CONTAINER}:/tmp/get_req_$$.json" >/dev/null 2>&1
   
-  local curl_output=$(docker exec "$GET_CONTAINER" curl -sSf -m 35 -w "\n%{time_starttransfer}\n%{time_total}" -X POST \
+  local curl_output=$(docker exec "$GET_CONTAINER" curl -sSf -m "${GET_CURL_MAX_SEC:-35}" -w "\n%{time_starttransfer}\n%{time_total}" -X POST \
     -H "Content-Type: application/json" \
     -d @/tmp/get_req_$$.json \
     "http://$GET_API_ADDR/get" 2>&1)
@@ -376,26 +369,11 @@ calculate_stats() {
   printf "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f" "$min" "$max" "$avg" "$p50" "$p90" "$p99"
 }
 
-# Resolve getter container for cold vs warm
 GET_CONTAINER="$OUR_CONTAINER"
 GET_API_ADDR="$OUR_API_ADDR"
-if [[ "$CACHE_MODE" == "cold" ]]; then
-  for c in $(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^fall25-node' | head -5); do
-    if [[ "$c" != "$OUR_CONTAINER" ]]; then
-      ctrl_path="/app/logs/$(echo "$c" | sed 's/^fall25-//').json"
-      addr=$(docker exec "$c" jq -r '.addr // .Addr' "$ctrl_path" 2>/dev/null || echo "")
-      if [[ -n "$addr" && "$addr" != "null" ]]; then
-        GET_CONTAINER="$c"
-        GET_API_ADDR="$addr"
-        echo "Cold mode: using $GET_CONTAINER for get (content not in local cache)"
-        break
-      fi
-    fi
-  done
-  if [[ "$GET_CONTAINER" == "$OUR_CONTAINER" ]]; then
-    echo -e "${YELLOW}Cold mode: no other node found, falling back to upload node (may be warm)${NC}"
-  fi
-fi
+
+GET_CURL_MAX_SEC="${SNG40_GET_CURL_MAX_SEC:-75}"
+GET_JSON_TIMEOUT="${SNG40_GET_JSON_TIMEOUT:-60s}"
 
 # Get provider info for our system (needed for /get requests)
 echo "Getting provider info for our system..."
@@ -467,8 +445,9 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     continue
   fi
   
-  # Wait a moment for content to propagate
-  sleep 2
+  rep_wait=2
+  echo "  Waiting ${rep_wait}s before downloads..."
+  sleep "$rep_wait"
   
   # Test our system downloads
   our_ttfb=()
@@ -481,21 +460,22 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     for i in $(seq 1 $ITERATIONS); do
       echo -n "    Iteration $i/$ITERATIONS... "
       output_file="$TEMP_DIR/our_download_${size}_${i}.bin"
-      if [[ "$CACHE_MODE" == "warm" ]]; then
-        download_our_system "$OUR_KEY" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$TEMP_DIR/our_prime_$$.bin" >/dev/null 2>&1 || true
-      fi
+      download_our_system "$OUR_KEY" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$TEMP_DIR/our_prime_$$.bin" >/dev/null 2>&1 || true
+      set +e
       result=$(download_our_system "$OUR_KEY" "$PROVIDER_PEER_ID" "$PROVIDER_ADDR" "$output_file" 2>&1)
-      if [[ $? -eq 0 ]]; then
+      our_dl_rc=$?
+      set -e
+      if [[ "$our_dl_rc" -eq 0 ]]; then
         IFS='|' read -r ttfb total hops <<< "$result"
         hops=${hops:-}
         our_ttfb+=("$ttfb")
         our_total+=("$total")
         echo "TTFB: $(printf "%.2f" "$ttfb") ms, Total: $(printf "%.2f" "$total") ms${hops:+ hops=$hops}"
-        echo "our_system,$size,$i,$CACHE_MODE,$ttfb,$total,key" >> "$OUTPUT_FILE"
+        echo "our_system,$size,$i,warm,$ttfb,$total,key" >> "$OUTPUT_FILE"
       else
-        ((our_failures++))
+        our_failures=$((our_failures + 1))
         echo "FAILED"
-        echo "our_system,$size,$i,$CACHE_MODE,ERROR,ERROR,key" >> "$OUTPUT_FILE"
+        echo "our_system,$size,$i,warm,ERROR,ERROR,key" >> "$OUTPUT_FILE"
       fi
     done
   else
@@ -514,20 +494,21 @@ for size in "${PAYLOAD_SIZES[@]}"; do
     for i in $(seq 1 $ITERATIONS); do
       echo -n "    Iteration $i/$ITERATIONS... "
       output_file="$TEMP_DIR/swarm_download_${size}_${i}.bin"
-      if [[ "$CACHE_MODE" == "warm" ]]; then
-        download_swarm "$SWARM_HASH" "$TEMP_DIR/swarm_prime_$$.bin" >/dev/null 2>&1 || true
-      fi
+      download_swarm "$SWARM_HASH" "$TEMP_DIR/swarm_prime_$$.bin" >/dev/null 2>&1 || true
+      set +e
       result=$(download_swarm "$SWARM_HASH" "$output_file" 2>&1)
-      if [[ $? -eq 0 ]]; then
+      swarm_dl_rc=$?
+      set -e
+      if [[ "$swarm_dl_rc" -eq 0 ]]; then
         IFS='|' read -r ttfb total <<< "$result"
         swarm_ttfb+=("$ttfb")
         swarm_total+=("$total")
         echo "TTFB: $(printf "%.2f" "$ttfb") ms, Total: $(printf "%.2f" "$total") ms"
-        echo "swarm,$size,$i,$CACHE_MODE,$ttfb,$total,cid" >> "$OUTPUT_FILE"
+        echo "swarm,$size,$i,warm,$ttfb,$total,cid" >> "$OUTPUT_FILE"
       else
-        ((swarm_failures++))
+        swarm_failures=$((swarm_failures + 1))
         echo "FAILED"
-        echo "swarm,$size,$i,$CACHE_MODE,ERROR,ERROR,cid" >> "$OUTPUT_FILE"
+        echo "swarm,$size,$i,warm,ERROR,ERROR,cid" >> "$OUTPUT_FILE"
       fi
     done
   else

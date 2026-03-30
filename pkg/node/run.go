@@ -1439,7 +1439,7 @@ func Run() error {
 }
 
 // runLookupKey runs a one-off DHT lookup from a fresh node (cold lookup).
-// The new node has no local DHT state, so GetValue must traverse the DHT and reports non-zero hops.
+// The new node has no local token state, so GetToken traverses the DHT; hop count uses the same path as /lookup.
 func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -1497,7 +1497,11 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 		log.Printf("lookup-key: dht_rt_size=%d", d.RoutingTable().Size())
 	}
 
-	evCtx, evCh := routing.RegisterForQueryEvents(ctx)
+	// Match control /lookup: count routing.SendingQuery during GetToken (same path as HTTP /lookup).
+	// GetClosestPeers was a different DHT walk and often reported 0 hops while GetToken succeeded.
+	ctxLookup, cancelLookup := context.WithTimeout(ctx, timeout)
+	defer cancelLookup()
+	evCtx, evCh := routing.RegisterForQueryEvents(ctxLookup)
 	evCtx2, cancel2 := context.WithCancel(evCtx)
 	defer cancel2()
 	var hops int32
@@ -1510,19 +1514,19 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 			}
 		}
 	}()
-	dhtKey := mystore.TokenNamespace + key.String()
-	_, _ = d.GetClosestPeers(evCtx2, dhtKey)
+	start := time.Now()
+	_, err = mystore.GetToken(evCtx2, routing.ValueStore(d), key)
 	cancel2()
 	<-done
-
-	_, err = mystore.GetToken(ctx, routing.ValueStore(d), key)
+	latencyMs := time.Since(start).Milliseconds()
 	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
-		log.Printf("lookup-key: network_hops=%d (query events in GetClosestPeers phase) found=%v", int(hops), err == nil)
+		log.Printf("lookup-key: network_hops=%d lookup_latency_ms=%d found=%v err=%v", int(hops), latencyMs, err == nil, err)
 	}
 
 	out := map[string]interface{}{
-		"network_hops": int(hops),
-		"found":        err == nil,
+		"network_hops":      int(hops),
+		"lookup_latency_ms": latencyMs,
+		"found":             err == nil,
 	}
 	if err != nil {
 		out["error"] = err.Error()

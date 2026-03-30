@@ -715,9 +715,11 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(resp)
 
 		// Replicate asynchronously (matches Swarm: return after first copy; replication is background).
+		// Budget is per-run (not test timeout): large clusters need time to pick connected peers and
+		// complete sequential transfers; a short deadline caused replica_count=1 at higher N.
 		if repairProtocol != nil && h != nil && len(blockData) > 0 {
 			go func() {
-				ctxRepair, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 				defer cancel()
 				_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, blockData, 6)
 			}()
@@ -948,58 +950,65 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			metrics.SetProviderDiscoveryLatencyNs(time.Since(start).Nanoseconds())
 		}
 
-		// Store fetched block locally when fetched from remote (per newReqs: token syncs with data)
-		// Fetcher becomes a replica; SyncTokenOnPut adds this peer to token Locations
-		if fetchedFromRemote && stack != nil && len(b) > 0 {
-			ctxStore, cancelStore := context.WithTimeout(context.Background(), 10*time.Second)
-			_, _, _ = stack.PutBlock(ctxStore, b)
-			cancelStore()
-		}
-
-		// Get CID for announcement (if available); verify key state with replication vector
-		c, err := mystore.GetCIDFromKey(r.Context(), stack.Datastore, key)
-		if err == nil && c.Defined() {
-			tokenStore := stack.TokenStore
-			if tokenStore == nil && stack.DHT != nil {
-				tokenStore = stack.DHT
-			}
-			if stack.RoutingTable != nil && tokenStore != nil && h != nil {
-				ctxVerify, cancelVerify := context.WithTimeout(r.Context(), 5*time.Second)
-				verification, verifyErr := mystore.VerifyKeyStateWithRepVector(
-					ctxVerify,
-					key,
-					stack.RoutingTable,
-					tokenStore,
-					h.ID(),
-					nil, // RTT measurer (nil = use 0, unknown distance)
-					ReplicationFactorR,
-					nil, // RTT thresholds (nil = use defaults)
-				)
-				cancelVerify()
-				if verifyErr == nil && verification != nil && !verification.IsSynchronized {
-					// Replica state not synchronized - trigger automatic repair
-					if repairProtocol != nil && len(b) > 0 {
-						// Trigger repair asynchronously (don't block response)
-						go func() {
-							ctxRepair, cancelRepair := context.WithTimeout(context.Background(), 30*time.Second)
-							defer cancelRepair()
-							repairResult, repairErr := repairProtocol.TriggerRepair(ctxRepair, key, verification, b)
-							if repairErr != nil {
-								// Repair failed - could log or handle error
-								_ = repairErr
-							} else if repairResult != nil && repairResult.TotalReplicasCreated > 0 {
-								// Repair succeeded - replicas created
-								_ = repairResult
-							}
-						}()
-					}
-				}
-			}
-		}
-
 		resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b), NetworkHops: networkHops}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(&resp)
+		if err := json.NewEncoder(w).Encode(&resp); err != nil {
+			return
+		}
+
+		// Post-response: persist replica, verify replication vector, repair — must not delay first byte
+		// (curl time_starttransfer and clients otherwise include PutBlock + VerifyKeyStateWithRepVector).
+		keyCopy := key
+		bCopy := append([]byte(nil), b...)
+		fetched := fetchedFromRemote
+		stackRef := stack
+		hostRef := h
+		repairRef := repairProtocol
+		go func() {
+			if fetched && stackRef != nil && len(bCopy) > 0 {
+				ctxStore, cancelStore := context.WithTimeout(context.Background(), 10*time.Second)
+				_, _, _ = stackRef.PutBlock(ctxStore, bCopy)
+				cancelStore()
+			}
+			if stackRef == nil {
+				return
+			}
+			c, err := mystore.GetCIDFromKey(context.Background(), stackRef.Datastore, keyCopy)
+			if err != nil || !c.Defined() {
+				return
+			}
+			tokenStore := stackRef.TokenStore
+			if tokenStore == nil && stackRef.DHT != nil {
+				tokenStore = stackRef.DHT
+			}
+			rt := stackRef.RoutingTable
+			if rt == nil || tokenStore == nil || hostRef == nil {
+				return
+			}
+			ctxVerify, cancelVerify := context.WithTimeout(context.Background(), 5*time.Second)
+			verification, verifyErr := mystore.VerifyKeyStateWithRepVector(
+				ctxVerify,
+				keyCopy,
+				rt,
+				tokenStore,
+				hostRef.ID(),
+				nil,
+				ReplicationFactorR,
+				nil,
+			)
+			cancelVerify()
+			if verifyErr != nil || verification == nil || verification.IsSynchronized {
+				return
+			}
+			if repairRef != nil && len(bCopy) > 0 {
+				repairB := append([]byte(nil), bCopy...)
+				go func() {
+					ctxRepair, cancelRepair := context.WithTimeout(context.Background(), 30*time.Second)
+					defer cancelRepair()
+					_, _ = repairRef.TriggerRepair(ctxRepair, keyCopy, verification, repairB)
+				}()
+			}
+		}()
 	})
 
 	// Snapshot endpoint: returns local indexed Keys/CIDs (Key-based storage; CID for compatibility)

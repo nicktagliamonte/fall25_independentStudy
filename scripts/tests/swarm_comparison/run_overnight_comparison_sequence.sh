@@ -7,7 +7,8 @@ set -euo pipefail
 
 # Run from repo root:
 #   ./scripts/tests/swarm_comparison/run_overnight_comparison_sequence.sh 2>&1 | tee overnight_matrix.log
-# Stops on first non-zero exit (set -e). To continue after failures, run with: bash -c 'set +e; source ./scripts/...'
+# Stops on first failing run_comparison (set -e). To keep going after a bad cell:
+#   CONTINUE_ON_ERROR=1 ./scripts/tests/swarm_comparison/run_overnight_comparison_sequence.sh 2>&1 | tee overnight_matrix.log
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -20,15 +21,14 @@ NODE_COUNTS=(10 50 100)
 SYSTEMS=(vnipfs swarm)
 
 # Order: lighter / structural tests first; upload last per cell (heaviest).
+# download_warm: same-node GET latency only (graphable).
+# lookup_latency omitted (often uninformative on LAN; use --tests lookup_latency manually if needed).
 TESTS=(
-  download_cold
   download_warm
-  lookup_latency
   lookup_complexity
   replication
   replication_distribution
   repair_time
-  network_hops
   routing_overhead
   storage_efficiency
   concurrent
@@ -39,7 +39,7 @@ TESTS=(
 skip_for_swarm() {
   local t="$1"
   case "$t" in
-    lookup_complexity|repair_time|replication|replication_distribution|network_hops) return 0 ;;
+    lookup_complexity|repair_time|replication|replication_distribution) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -60,7 +60,14 @@ for N in "${NODE_COUNTS[@]}"; do
         continue
       fi
       stamp "run_single_comparison.sh --test $T --nodes $N --iterations $ITERATIONS --system $SYSTEM"
+      set +e
       "$SCRIPT_DIR/run_single_comparison.sh" --test "$T" --nodes "$N" --iterations "$ITERATIONS" --system "$SYSTEM"
+      rc=$?
+      set -e
+      if [[ "$rc" -ne 0 ]]; then
+        stamp "run_single_comparison failed (exit $rc) test=$T N=$N system=$SYSTEM"
+        [[ "${CONTINUE_ON_ERROR:-0}" == "1" ]] || exit "$rc"
+      fi
     done
     docker_prune_block
   done

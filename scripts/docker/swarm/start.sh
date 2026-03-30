@@ -8,6 +8,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 cd "$ROOT_DIR"
 
+source "$ROOT_DIR/scripts/docker/docker_build_env.sh"
+
 VALID_COUNTS="10 50 100 500"
 N="${1:-10}"
 
@@ -108,9 +110,13 @@ mv "$COMPOSE_FILE.tmp" "$COMPOSE_FILE"
   exit 1
 }
 
+echo "Pre-pulling Swarm Dockerfile bases (best-effort; warms cache, reduces apk/git flakes)..."
+docker pull golang:1.14-alpine 2>/dev/null || true
+docker pull alpine:3.21 2>/dev/null || true
+
 # Build the image first
-echo "Building Swarm Docker image..."
-if ! docker build -t swarm-node:latest scripts/docker/swarm/; then
+echo "Building Swarm Docker image (DOCKER_BUILDKIT=${DOCKER_BUILDKIT})..."
+if ! docker build --progress=plain -t swarm-node:latest scripts/docker/swarm/; then
   echo "ERROR: Docker build failed" >&2
   exit 1
 fi

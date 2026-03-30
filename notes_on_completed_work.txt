@@ -554,10 +554,10 @@
     - run_comparison.sh: start both networks in parallel; wait for health; run tests; aggregate results; cleanup
       Parameterized --nodes 10|50|100|500, --payload-sizes, --iterations, --batch-sizes; OUTPUT_DIR; resource monitor
     - Test scripts: upload_test.sh (single + batch), download_test.sh (cold/warm), message_count_test.sh,
-      network_hops_test.sh, storage_efficiency_test.sh, replication_test.sh, partition_recovery_test.sh,
+      storage_efficiency_test.sh, replication_test.sh,
       lookup_complexity_test.sh, concurrent_test.sh, routing_overhead_test.sh, key_lookup_vs_cid_test.sh
     - Output CSVs: upload_aggregated, download_aggregated (with cache_mode, lookup_type), message_counts,
-      network_hops_results, storage_efficiency_results, replication_results, partition_recovery,
+      storage_efficiency_results, replication_results, partition_recovery,
       lookup_complexity, concurrent_results, key_lookup_vs_cid_aggregated
     - Metrics: latency (p50/p95/p99), throughput MB/s, message counts, network hops, CPU/memory (resource_usage.csv),
       storage efficiency ratio
