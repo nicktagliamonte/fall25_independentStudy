@@ -31,8 +31,8 @@ fi
 
 "$ROOT_DIR/scripts/docker/gen_vnipfs_compose.sh" "$N"
 
-echo "Building Docker image (COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
-if ! docker-compose -f "$COMPOSE_FILE" build --progress=plain 2>&1 | tee /tmp/docker_build_vnipfs.log; then
+echo "Building Docker image once (bootstrap only; peers use image fall25_independentstudy-bootstrap:latest; COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
+if ! docker-compose -f "$COMPOSE_FILE" build --progress=plain bootstrap 2>&1 | tee /tmp/docker_build_vnipfs.log; then
   echo "ERROR: Docker build failed. Check /tmp/docker_build_vnipfs.log" >&2
   exit 1
 fi

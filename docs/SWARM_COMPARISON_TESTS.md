@@ -169,7 +169,7 @@ Both systems are compared on wall-clock time from the start of the HTTP request 
 
 **Purpose**: Record DHT-related **hop counts** for cold token lookup vs cluster size label `N` (not upload latency).
 
-**Method**: PUT on bootstrap, then **`lookup-key`** in a one-off container (fresh DHT) bootstrapped to the same network. CSV rows use `operation=put` (hops usually 0) and `operation=lookup` (cold path). `network_hops` counts `routing.SendingQuery` events (same idea as `GET /lookup` on a running node).
+**Method**: PUT on bootstrap, then **`lookup-key`** in a one-off container (fresh DHT) bootstrapped via **`/ip4/<bootstrap_container_ip>/tcp/4001/p2p/<peer>`** (falls back to `/dns4/<name>/...` if IP missing). CSV records **`operation=lookup` only** (put is local; `/put` reports 0 hops by API design and is not a routing-depth signal). Each row includes **`network_hops`** and **`lookup_latency_ms`** from the `lookup-key` JSON (same `routing.SendingQuery` counter as `POST /lookup`).
 
 **Interpreting hops vs N**: Measured points are often **flat, noisy, or `N/A`** when the cold lookup fails retries, token propagation lags, or the routing table is still converging. **Wall-clock upload latency** (`upload_*.csv`) is a different quantity; do not use it as a proxy for routing depth. Analysis plots (`swarm_comparison_analyze.py`) use **`operation=lookup`** only for hop-vs-N figures.
 
@@ -180,7 +180,7 @@ Both systems are compared on wall-clock time from the start of the HTTP request 
 ./scripts/tests/swarm_comparison/lookup_complexity_test.sh --node-count 50 --iterations 10 --output lookup_complexity_results.csv
 ```
 
-**Output**: CSV with columns: `system,node_count,operation,hops,lookup_type`
+**Output**: CSV with columns: `system,node_count,operation,hops,lookup_latency_ms,lookup_type`
 
 ### Storage Efficiency Test (`storage_efficiency_test.sh`)
 

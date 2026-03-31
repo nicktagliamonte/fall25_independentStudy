@@ -30,7 +30,7 @@ for i in $(seq 2 "$N"); do
   IP_LAST=$((9 + i))
   cat >> "$COMPOSE_FILE.tmp" <<EOF
   node${i}:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node${i}
     hostname: node${i}
     command: run

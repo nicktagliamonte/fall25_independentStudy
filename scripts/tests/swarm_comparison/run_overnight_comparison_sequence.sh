@@ -4,6 +4,7 @@ set -euo pipefail
 # Purpose: Run the swarm comparison matrix split by system — for each node count, run each test
 # against vn-IPFS only, then Swarm only (half the containers vs starting both stacks at once).
 # Prunes Docker build cache and unused data between (node_count, system) blocks to limit disk/RAM.
+# vn-IPFS image is built once per start (see start_vnipfs.sh: build bootstrap only); full rebuilds after prune must succeed.
 
 # Run from repo root:
 #   ./scripts/tests/swarm_comparison/run_overnight_comparison_sequence.sh 2>&1 | tee overnight_matrix.log

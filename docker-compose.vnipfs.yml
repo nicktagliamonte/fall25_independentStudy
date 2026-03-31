@@ -5,7 +5,11 @@ version: '3.8'
 
 services:
   bootstrap:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-bootstrap
     hostname: bootstrap
     command: run
@@ -35,7 +39,7 @@ services:
       start_period: 10s
 
   node2:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node2
     hostname: node2
     command: run
@@ -59,7 +63,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node3:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node3
     hostname: node3
     command: run
@@ -83,7 +87,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node4:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node4
     hostname: node4
     command: run
@@ -107,7 +111,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node5:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node5
     hostname: node5
     command: run
@@ -131,7 +135,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node6:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node6
     hostname: node6
     command: run
@@ -155,7 +159,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node7:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node7
     hostname: node7
     command: run
@@ -179,7 +183,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node8:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node8
     hostname: node8
     command: run
@@ -203,7 +207,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node9:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node9
     hostname: node9
     command: run
@@ -227,7 +231,7 @@ services:
     environment:
       - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
   node10:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node10
     hostname: node10
     command: run

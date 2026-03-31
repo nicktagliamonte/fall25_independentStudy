@@ -375,19 +375,24 @@ GET_API_ADDR="$OUR_API_ADDR"
 GET_CURL_MAX_SEC="${SNG40_GET_CURL_MAX_SEC:-75}"
 GET_JSON_TIMEOUT="${SNG40_GET_JSON_TIMEOUT:-60s}"
 
-# Get provider info for our system (needed for /get requests)
-echo "Getting provider info for our system..."
-PROVIDER_INFO=$(get_provider_info)
-if [[ $? -ne 0 ]]; then
-  echo -e "${RED}Error: Could not get provider info${NC}" >&2
-  exit 1
+PROVIDER_PEER_ID=""
+PROVIDER_ADDR=""
+if [[ "${CMP_INCLUDE_OUR:-1}" == "1" ]]; then
+  echo "Getting provider info for our system..."
+  PROVIDER_INFO=$(get_provider_info)
+  if [[ $? -ne 0 ]]; then
+    echo -e "${RED}Error: Could not get provider info${NC}" >&2
+    exit 1
+  fi
+  PROVIDER_PEER_ID=$(echo "$PROVIDER_INFO" | cut -d'|' -f1)
+  PROVIDER_ADDR=$(echo "$PROVIDER_INFO" | cut -d'|' -f2)
+  echo "  Peer ID: $PROVIDER_PEER_ID"
+  echo "  Address: $PROVIDER_ADDR"
+  echo ""
+else
+  echo "Skipping provider info (vn-IPFS not selected; Swarm-only download)."
+  echo ""
 fi
-
-PROVIDER_PEER_ID=$(echo "$PROVIDER_INFO" | cut -d'|' -f1)
-PROVIDER_ADDR=$(echo "$PROVIDER_INFO" | cut -d'|' -f2)
-echo "  Peer ID: $PROVIDER_PEER_ID"
-echo "  Address: $PROVIDER_ADDR"
-echo ""
 
 # Test each payload size
 for size in "${PAYLOAD_SIZES[@]}"; do

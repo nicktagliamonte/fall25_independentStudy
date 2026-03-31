@@ -50,7 +50,7 @@ for i in $(seq 2 "$N"); do
   IP_LAST=$((9 + i))
   cat >> "$COMPOSE_FILE.tmp" <<EOF
   node${i}:
-    build: .
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node${i}
     hostname: node${i}
     command: run
@@ -97,9 +97,9 @@ for i in $(seq 2 "$N"); do
 EOF
 done
 
-# Build the image first (skip if already exists and up to date)
-echo "Building Docker image (COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
-if ! docker-compose build --progress=plain 2>&1 | tee /tmp/docker_build.log; then
+# One build: bootstrap defines the image; peer services use image: fall25_independentstudy-bootstrap:latest
+echo "Building Docker image (bootstrap only; COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
+if ! docker-compose build --progress=plain bootstrap 2>&1 | tee /tmp/docker_build.log; then
   echo "ERROR: Docker build failed. Check /tmp/docker_build.log for details" >&2
   exit 1
 fi

@@ -443,7 +443,7 @@ run_lookup_complexity_test() {
   local node_count="$1"
   local output_file="$OUTPUT_DIR/lookup_complexity_results.csv"
   local saved_to="${TEST_TIMEOUT_SEC:-600}"
-  # Each iteration: cold docker run + lookup-key (up to ~180s per call) + retries; pre-waits add 40s+.
+  # Each iteration: cold docker run + lookup-key (timeout per call) + short retries; pre-waits are minimal.
   local it="${ITERATIONS:-10}"
   local min_to=$(( it * 240 + 900 ))
   [[ "$min_to" -lt 2400 ]] && min_to=2400
@@ -823,16 +823,17 @@ for node_count in "${NODE_COUNTS[@]}"; do
     wait_for_stabilization "swarm" "$node_count"
   fi
 
+  # Light touch: Step 2 already waited for health; long sleeps stack with per-test waits (e.g. lookup).
   post_stabilize_sleep=0
   if [[ "$node_count" -ge 500 ]]; then
-    post_stabilize_sleep=45
+    post_stabilize_sleep=8
   elif [[ "$node_count" -ge 100 ]]; then
-    post_stabilize_sleep=25
+    post_stabilize_sleep=5
   elif [[ "$node_count" -ge 50 ]]; then
-    post_stabilize_sleep=15
+    post_stabilize_sleep=3
   fi
   if [[ "$post_stabilize_sleep" -gt 0 ]]; then
-    echo -e "  ${CYAN}Extra post-stabilization wait: ${post_stabilize_sleep}s (large cluster)${NC}"
+    echo -e "  ${CYAN}Brief post-stabilization: ${post_stabilize_sleep}s${NC}"
     sleep "$post_stabilize_sleep"
   fi
 
@@ -871,15 +872,16 @@ for node_count in "${NODE_COUNTS[@]}"; do
 
   if should_run_test "lookup_complexity" && [[ "$RUN_VNIPFS" == "true" ]]; then
     echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
-    dht_prewait=20
+    # Cluster is already healthy; cold lookup uses a fresh one-off node (lookup-key). Short buffer only.
+    dht_prewait=3
     if [[ "$node_count" -ge 500 ]]; then
-      dht_prewait=60
+      dht_prewait=12
     elif [[ "$node_count" -ge 100 ]]; then
-      dht_prewait=45
+      dht_prewait=8
     elif [[ "$node_count" -ge 50 ]]; then
-      dht_prewait=35
+      dht_prewait=5
     fi
-    echo -e "  ${CYAN}Waiting ${dht_prewait}s for DHT to stabilize before cold lookup...${NC}"
+    echo -e "  ${CYAN}Brief wait before cold lookup: ${dht_prewait}s${NC}"
     sleep "$dht_prewait"
     run_lookup_complexity_test "$node_count" || echo -e "${YELLOW}Lookup complexity test had errors, continuing...${NC}"
   elif should_run_test "lookup_complexity" && [[ "$RUN_VNIPFS" != "true" ]]; then
@@ -959,7 +961,7 @@ echo "  - replication_distribution.csv: system,node_count,near,midrange,farflung
 echo "  - repair_time_results.csv: system,node_count,repair_time_s (when available)"
 echo "  - concurrent_results.csv: system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms (when available)"
 echo "  - lookup_latency_n<N>.csv: isolated lookup latency (token vs TTFB proxy)"
-echo "  - lookup_complexity_results.csv: system,node_count,operation,hops (O(log N) regression)"
+echo "  - lookup_complexity_results.csv: system,node_count,operation,hops,lookup_latency_ms,lookup_type (cold lookup-key)"
 echo "  - routing_overhead_results.csv: system,operation,message_count,overhead_type (token vs provider announce)"
 echo "  - resource_usage.csv: CPU/memory samples during tests (when available)"
 echo "  - resource_usage_upload_n<N>.csv: CPU/memory during upload phase only, per node count"

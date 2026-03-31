@@ -5,7 +5,11 @@ version: '3.8'
 
 services:
   bootstrap:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-bootstrap
     hostname: bootstrap
     command: run

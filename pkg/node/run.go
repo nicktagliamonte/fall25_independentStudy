@@ -1459,16 +1459,30 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 		return fmt.Errorf("parse bootstrap: %w", err)
 	}
 
-	h, err := myhost.NewHost(ctx, []string{"/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1"})
+	// TCP-only avoids QUIC UDP buffer issues in short-lived docker runs; DHT uses the same token prefix as peers.
+	h, err := myhost.NewHost(ctx, []string{"/ip4/0.0.0.0/tcp/0"})
 	if err != nil {
 		return err
 	}
 	defer h.Close()
 
+	// Cluster peers use InstallHandshakeGate: non-handshake streams are reset until SNG40 handshake completes.
+	// Respond to the bootstrap node's post-connect handshake so DHT streams are allowed.
+	requireSNG40 := os.Getenv("SNG40_ENV") == "true"
+	tokenSNG40 := os.Getenv("SNG40_TOKEN")
+	pubsSNG40 := os.Getenv("SNG40_CA_PUBS")
+	policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, 30*time.Second)
+	stopAntiReplay := myhost.EnableAntiReplay(ctx, &policyBase)
+	defer stopAntiReplay()
+	_ = myhost.EnableAttackMitigation(ctx, &policyBase)
+	localHS := myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
+	myhost.RegisterHandshake(h, localHS, policyBase)
+
 	if err := h.Connect(ctx, *info); err != nil {
 		return fmt.Errorf("connect to bootstrap: %w", err)
 	}
-	time.Sleep(3 * time.Second)
+	// Allow bootstrap's Connected-handshake goroutine to finish before DHT dials.
+	time.Sleep(4 * time.Second)
 
 	dhtCfg := myhost.DHTConfig{
 		Mode:           myhost.DHTModeServer,
@@ -1481,17 +1495,17 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 	}
 	defer d.Close()
 
-	deadline := time.Now().Add(90 * time.Second)
+	deadline := time.Now().Add(45 * time.Second)
 	for d.RoutingTable().Size() == 0 && time.Now().Before(deadline) {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("context cancelled before DHT bootstrap")
 		default:
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 	if d.RoutingTable().Size() == 0 {
-		return fmt.Errorf("DHT routing table empty after 90s (bootstrap may have failed)")
+		return fmt.Errorf("DHT routing table empty after 45s (bootstrap may have failed)")
 	}
 	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
 		log.Printf("lookup-key: dht_rt_size=%d", d.RoutingTable().Size())
