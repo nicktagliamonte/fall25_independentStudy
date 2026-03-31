@@ -22,10 +22,10 @@ NODE_COUNTS=(10 50 100)
 SYSTEMS=(vnipfs swarm)
 
 # Order: lighter / structural tests first; upload last per cell (heaviest).
-# download_warm: same-node GET latency only (graphable).
+# download_warm_raw: same-node GET latency with raw stream mode for vn-IPFS (graphable).
 # lookup_latency omitted (often uninformative on LAN; use --tests lookup_latency manually if needed).
 TESTS=(
-  download_warm
+  download_warm_raw
   lookup_complexity
   replication
   replication_distribution

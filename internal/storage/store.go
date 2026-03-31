@@ -68,16 +68,16 @@ type KeyedBlock struct {
 }
 
 type Stack struct {
-	Datastore       ds.Batching
-	Blockstore      bstore.Blockstore
-	Bitswap         *bitswap.Bitswap
-	BlockSvc        *bserv.BlockService
-	DHT             *kaddht.IpfsDHT
-	Router          routing.ContentRouting
-	Host            host.Host
-	ProviderRecords *LocalProviderRecords
-	OnAnnounce      func()
-	AnnounceQueue   *AnnounceQueue
+	Datastore          ds.Batching
+	Blockstore         bstore.Blockstore
+	Bitswap            *bitswap.Bitswap
+	BlockSvc           *bserv.BlockService
+	DHT                *kaddht.IpfsDHT
+	Router             routing.ContentRouting
+	Host               host.Host
+	ProviderRecords    *LocalProviderRecords
+	OnAnnounce         func()
+	AnnounceQueue      *AnnounceQueue
 	RoutingTable       *RoutingTable
 	KeyLockManager     *KeyLockManager  // when set, PutBlock/DeleteBlock acquire locks
 	PutLockRetryConfig *LockRetryConfig // optional; when set, PutBlock uses this for lock retry
@@ -398,8 +398,8 @@ func HandleDirectFetchStream(stream network.Stream, stack *Stack) error {
 		return fmt.Errorf("parse key: %w", err)
 	}
 
-	// Get block by key from local blockstore
-	blockData, err := GetBlockByKey(ctx, stack.Datastore, stack.BlockSvc, key)
+	// Resolve payload by key from local storage (single-block or chunk-indexed).
+	blockData, err := ResolvePayloadByKeyLocal(ctx, stack.Datastore, stack.BlockSvc, key)
 	if err != nil {
 		_, _ = stream.Write([]byte(fmt.Sprintf("ERROR: get block: %v\n", err)))
 		return fmt.Errorf("get block: %w", err)

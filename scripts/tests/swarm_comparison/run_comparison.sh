@@ -142,12 +142,12 @@ export SWARM_COMPARISON_SYSTEM="$SYSTEM_MODE"
 # Handle --tests list
 if [[ "$TESTS" == "list" ]]; then
   echo "Available tests (use --tests <name> or --tests <name1,name2,...>):"
-  echo "  upload, download_warm, lookup_complexity,"
+  echo "  upload, download_warm_raw, lookup_complexity,"
   echo "  replication, replication_distribution, repair_time, routing_overhead,"
   echo "  storage_efficiency, concurrent"
   echo "  lookup_latency — optional (not in default suite; often flat on LAN; use --tests lookup_latency or INCLUDE_LOOKUP_LATENCY=1)"
   echo ""
-  echo "Example: --tests upload,download_warm --nodes 10 --iterations 2"
+  echo "Example: --tests upload,download_warm_raw --nodes 10 --iterations 2"
   exit 0
 fi
 
@@ -543,17 +543,17 @@ run_replication_test() {
   fi
 }
 
-# Function to run download test (same-node GET after upload; CSV cache_mode=warm)
+# Function to run download test (same-node GET after upload; raw stream mode for our system)
 run_download_test() {
   local node_count="$1"
-  local output_file="$OUTPUT_DIR/download_n${node_count}_warm.csv"
+  local output_file="$OUTPUT_DIR/download_n${node_count}_warm_raw.csv"
   
-  echo -e "\n${GREEN}Running download latency test (N=$node_count)...${NC}"
+  echo -e "\n${GREEN}Running download latency test (N=$node_count, raw stream mode)...${NC}"
   
   run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/download_test.sh" \
     --iterations "$ITERATIONS" \
     --output "$output_file" \
-    2>&1 | tee "$OUTPUT_DIR/download_n${node_count}_warm.log"
+    2>&1 | tee "$OUTPUT_DIR/download_n${node_count}_warm_raw.log"
   
   if [[ -f "$output_file" ]]; then
     echo -e "  ${GREEN}✓ Download test complete: $output_file${NC}"
@@ -583,12 +583,12 @@ aggregate_results() {
     done
   done
   
-  # Aggregate download results (warm same-node GET)
+  # Aggregate download results (warm same-node GET, raw stream mode for vn-IPFS)
   local download_agg="$OUTPUT_DIR/download_aggregated.csv"
   echo "system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type" > "$download_agg"
   
   for node_count in "${NODE_COUNTS[@]}"; do
-    local download_file="$OUTPUT_DIR/download_n${node_count}_warm.csv"
+    local download_file="$OUTPUT_DIR/download_n${node_count}_warm_raw.csv"
     if [[ -f "$download_file" ]]; then
       tail -n +2 "$download_file" | while IFS=',' read -r system payload_size iteration cache_mode_val ttfb_ms total_ms lookup_type; do
         if [[ "$ttfb_ms" != "ERROR" && "$total_ms" != "ERROR" ]]; then
@@ -672,16 +672,17 @@ generate_summary_report() {
     echo ""
     echo "Download Latency Test Results:"
     echo "------------------------------"
-    if [[ -n "$TESTS" ]] && ! should_run_test "download_warm"; then
-      echo "  Status: skipped (download_warm not in --tests)."
+    if [[ -n "$TESTS" ]] && ! should_run_test "download_warm_raw"; then
+      echo "  Status: skipped (download_warm_raw not in --tests)."
     else
       for node_count in "${NODE_COUNTS[@]}"; do
-        should_run_test "download_warm" || continue
-        local download_file="$OUTPUT_DIR/download_n${node_count}_warm.csv"
+        should_run_test "download_warm_raw" || continue
+        local download_file="$OUTPUT_DIR/download_n${node_count}_warm_raw.csv"
+        local download_basename="download_n${node_count}_warm_raw.csv"
         if [[ -f "$download_file" ]]; then
           echo ""
           echo "  Node count: $node_count"
-          echo "    Results file: download_n${node_count}_warm.csv"
+          echo "    Results file: ${download_basename}"
           local our_count swarm_count
           our_count=$(awk -F',' 'NR>1 && $1=="our_system" && $5!="ERROR" && $6!="ERROR" {c++} END{print c+0}' "$download_file")
           swarm_count=$(awk -F',' 'NR>1 && $1=="swarm" && $5!="ERROR" && $6!="ERROR" {c++} END{print c+0}' "$download_file")
@@ -860,8 +861,8 @@ for node_count in "${NODE_COUNTS[@]}"; do
     fi
   fi
 
-  if should_run_test "download_warm"; then
-    echo -e "\n${BLUE}Step 4: Running download latency test...${NC}"
+  if should_run_test "download_warm_raw"; then
+    echo -e "\n${BLUE}Step 4: Running download latency test (warm raw stream semantics)...${NC}"
     run_download_test "$node_count" || echo -e "${YELLOW}Download test had errors, continuing...${NC}"
   fi
 
@@ -952,7 +953,7 @@ echo ""
 echo "Files generated:"
 echo "  - upload_n<N>_batch<B>.csv: Upload latency results (N nodes, batch size B)"
 echo "  - upload_network_bytes.csv: Network bytes transferred during upload (system,payload_size,batch_size,bytes_transferred)"
-echo "  - download_n<N>_warm.csv: Download latency results (same-node GET after upload)"
+echo "  - download_n<N>_warm_raw.csv: Download latency results (same-node GET after upload; raw stream mode for vn-IPFS)"
 echo "  - upload_aggregated.csv: All upload results combined"
 echo "  - download_aggregated.csv: system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type"
 echo "  - storage_efficiency_results.csv: disk_bytes, efficiency_ratio per system (when available)"

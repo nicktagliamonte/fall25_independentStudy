@@ -77,10 +77,10 @@ for n in "${NODE_COUNTS[@]}"; do
       failures=$((failures + 1))
     fi
   fi
-  if wants_test "download_warm"; then
-    f="$RESULTS_DIR/download_n${n}_warm.csv"
+  if wants_test "download_warm_raw"; then
+    f="$RESULTS_DIR/download_n${n}_warm_raw.csv"
     if ! data_rows "$f"; then
-      note "FAIL download_warm N=$n: missing or empty $f"
+      note "FAIL download_warm_raw N=$n: missing or empty $f"
       failures=$((failures + 1))
     fi
   fi

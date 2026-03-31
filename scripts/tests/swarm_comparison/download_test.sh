@@ -149,7 +149,7 @@ echo "=========================================="
 echo "Our System API: ${OUR_API:-(skipped)} (container: ${OUR_CONTAINER:-none})"
 echo "Swarm API: $SWARM_API"
 echo "Iterations per size: $ITERATIONS"
-echo "GET path: same node as upload (warm)"
+echo "GET path: same node as upload (warm, raw stream mode for our system)"
 echo "Output file: $OUTPUT_FILE"
 echo ""
 
@@ -256,48 +256,52 @@ download_our_system() {
   
   local get_req="$TEMP_DIR/get_req_$$.json"
   echo "{\"key\":\"$key\",\"timeout\":\"${GET_JSON_TIMEOUT:-30s}\"}" > "$get_req"
-  
-  # Measure download time
-  local start_time=$(date +%s.%N)
-  
-  # Copy request to getter container and execute curl inside it
+
+  # Copy request to getter container and execute curl inside it.
+  # Request raw streaming mode so time_starttransfer reflects first-byte flush semantics.
   docker cp "$get_req" "${GET_CONTAINER}:/tmp/get_req_$$.json" >/dev/null 2>&1
-  
+
+  local remote_body="/tmp/get_body_$$.bin"
+  local remote_headers="/tmp/get_headers_$$.txt"
   local curl_output=$(docker exec "$GET_CONTAINER" curl -sSf -m "${GET_CURL_MAX_SEC:-35}" -w "\n%{time_starttransfer}\n%{time_total}" -X POST \
     -H "Content-Type: application/json" \
+    -H "Accept: application/octet-stream" \
     -d @/tmp/get_req_$$.json \
-    "http://$GET_API_ADDR/get" 2>&1)
-  
-  docker exec "$GET_CONTAINER" rm -f "/tmp/get_req_$$.json" >/dev/null 2>&1 || true
-  rm -f "$get_req"
-  
-  local end_time=$(date +%s.%N)
-  
-  # Parse curl output (response body, then time_starttransfer, then time_total)
-  local response_body=$(echo "$curl_output" | head -n -2)
+    -D "$remote_headers" \
+    -o "$remote_body" \
+    "http://$GET_API_ADDR/get?format=raw" 2>&1)
+
+  docker cp "${GET_CONTAINER}:${remote_body}" "$output_path" >/dev/null 2>&1 || true
+  local header_local="$TEMP_DIR/get_headers_${$}.txt"
+  docker cp "${GET_CONTAINER}:${remote_headers}" "$header_local" >/dev/null 2>&1 || true
+  local hops=""
+  if [[ -f "$header_local" ]]; then
+    hops=$(awk 'BEGIN{IGNORECASE=1} /^X-Network-Hops:/ {gsub("\r","",$2); print $2; exit}' "$header_local")
+  fi
+
+  docker exec "$GET_CONTAINER" rm -f "/tmp/get_req_$$.json" "$remote_body" "$remote_headers" >/dev/null 2>&1 || true
+  rm -f "$get_req" "$header_local"
+
+  # Parse curl output (time_starttransfer then time_total)
   local ttfb_curl=$(echo "$curl_output" | tail -n 2 | head -n 1)
   local total_curl=$(echo "$curl_output" | tail -n 1)
-  
+
   # Calculate times in milliseconds
   local ttfb_ms=$(echo "scale=2; $ttfb_curl * 1000" | bc -l)
   local total_ms=$(echo "scale=2; $total_curl * 1000" | bc -l)
-  
+
   # Check if download succeeded
-  local data_b64=$(echo "$response_body" | jq -r '.data_b64' 2>/dev/null || echo "")
-  
-  if [[ -n "$data_b64" && "$data_b64" != "null" ]]; then
-    local hops=$(echo "$response_body" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
-    echo "$data_b64" | base64 -d > "$output_path" 2>/dev/null || echo "$data_b64" | base64 -D > "$output_path" 2>/dev/null
+  if [[ -f "$output_path" && -s "$output_path" ]]; then
     if [[ -n "$hops" && "$hops" != "null" ]]; then
       echo "$ttfb_ms|$total_ms|$hops"
     else
       echo "$ttfb_ms|$total_ms|"
     fi
     return 0
-  else
-    echo "ERROR: Failed to download. Response: $response_body" >&2
-    return 1
   fi
+
+  echo "ERROR: Failed to download key $key in raw mode" >&2
+  return 1
 }
 
 # Function to download from Swarm and measure latency

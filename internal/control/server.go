@@ -12,8 +12,8 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sort"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -63,6 +63,14 @@ type GetResponse struct {
 	Bytes       int    `json:"bytes"`
 	DataB64     string `json:"data_b64"`
 	NetworkHops *int   `json:"network_hops,omitempty"`
+}
+
+func wantsRawGetResponse(r *http.Request) bool {
+	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("format")), "raw") {
+		return true
+	}
+	accept := strings.ToLower(r.Header.Get("Accept"))
+	return strings.Contains(accept, "application/octet-stream")
 }
 
 type DeleteRequest struct {
@@ -692,7 +700,38 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			blockData = []byte(req.Data)
 		}
 		t0 := time.Now()
-		key, c, err := stack.PutBlock(r.Context(), blockData)
+		var key mystore.Key
+		var c cid.Cid
+		if len(blockData) > mystore.DefaultContentChunkSize {
+			key = mystore.KeyFromData(blockData)
+			chunks := mystore.SplitPayloadChunks(blockData, mystore.DefaultContentChunkSize)
+			chunkKeys := make([]string, 0, len(chunks))
+			for i := range chunks {
+				chunkKey, chunkCID, putErr := mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, chunks[i], nil)
+				if putErr != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					_, _ = w.Write([]byte(putErr.Error()))
+					return
+				}
+				if !c.Defined() {
+					c = chunkCID
+				}
+				chunkKeys = append(chunkKeys, chunkKey.String())
+			}
+			idx := mystore.ChunkIndex{
+				Version:    1,
+				ChunkSize:  mystore.DefaultContentChunkSize,
+				TotalBytes: len(blockData),
+				ChunkKeys:  chunkKeys,
+			}
+			if idxErr := mystore.StoreChunkIndex(r.Context(), stack.Datastore, key, idx); idxErr != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(idxErr.Error()))
+				return
+			}
+		} else {
+			key, c, err = stack.PutBlock(r.Context(), blockData)
+		}
 		t1 := time.Now()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -906,6 +945,32 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 
 		ctxFetch, cancel := context.WithTimeout(r.Context(), d)
 		defer cancel()
+		rawResponse := wantsRawGetResponse(r)
+		if rawResponse {
+			if idx, idxErr := mystore.GetChunkIndex(ctxFetch, stack.Datastore, key); idxErr == nil && idx != nil {
+				zeroHops := 0
+				w.Header().Set("Content-Type", "application/octet-stream")
+				w.Header().Set("Content-Length", strconv.Itoa(idx.TotalBytes))
+				w.Header().Set("X-Network-Hops", strconv.Itoa(zeroHops))
+				w.WriteHeader(http.StatusOK)
+				flusher, _ := w.(http.Flusher)
+				for i := range idx.ChunkKeys {
+					chunkKey, perr := mystore.ParseKey(idx.ChunkKeys[i])
+					if perr != nil {
+						return
+					}
+					chunkData, gerr := mystore.GetBlockByKey(ctxFetch, stack.Datastore, stack.BlockSvc, chunkKey)
+					if gerr != nil || chunkData == nil {
+						return
+					}
+					_, _ = w.Write(chunkData)
+					if i == 0 && flusher != nil {
+						flusher.Flush()
+					}
+				}
+				return
+			}
+		}
 		start := time.Now()
 		var b []byte
 		var err error
@@ -916,7 +981,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		// - Local: GetBlockByKey hit → networkHops = &zeroHops (correct; no DHT lookup)
 		// - Gateway: Query hit, fetchBlockFromToken success → networkHops = &zeroHops (gateway path; DHT hops not tracked)
 		// - stack.GetBlock: DHT GetToken + DirectFetch → networkHops = &hops from GetBlock return (DHT lookup hops)
-		if localData, localErr := mystore.GetBlockByKey(ctxFetch, stack.Datastore, stack.BlockSvc, key); localErr == nil && localData != nil {
+		if localData, localErr := mystore.ResolvePayloadByKeyLocal(ctxFetch, stack.Datastore, stack.BlockSvc, key); localErr == nil && localData != nil {
 			b = localData
 			networkHops = &zeroHops
 		} else if gateway != nil {
@@ -950,10 +1015,33 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			metrics.SetProviderDiscoveryLatencyNs(time.Since(start).Nanoseconds())
 		}
 
-		resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b), NetworkHops: networkHops}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(&resp); err != nil {
-			return
+		if rawResponse {
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Length", strconv.Itoa(len(b)))
+			if networkHops != nil {
+				w.Header().Set("X-Network-Hops", strconv.Itoa(*networkHops))
+			}
+			w.WriteHeader(http.StatusOK)
+			flusher, _ := w.(http.Flusher)
+			firstBytes := len(b)
+			if firstBytes > mystore.DefaultContentChunkSize {
+				firstBytes = mystore.DefaultContentChunkSize
+			}
+			if firstBytes > 0 {
+				_, _ = w.Write(b[:firstBytes])
+				if flusher != nil {
+					flusher.Flush()
+				}
+			}
+			if firstBytes < len(b) {
+				_, _ = w.Write(b[firstBytes:])
+			}
+		} else {
+			resp := GetResponse{Bytes: len(b), DataB64: base64.StdEncoding.EncodeToString(b), NetworkHops: networkHops}
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(&resp); err != nil {
+				return
+			}
 		}
 
 		// Post-response: persist replica, verify replication vector, repair — must not delay first byte

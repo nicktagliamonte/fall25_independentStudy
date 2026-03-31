@@ -9,6 +9,7 @@ Control server HTTP API. Base URL: `http://127.0.0.1:<port>` (port from daemon c
 ## PUT /put
 
 Stores a block. Key is derived from data (`SHA256(data)`). Token is synced to DHT for discovery.
+Payloads larger than 4 KiB are stored as fixed 4 KiB content chunks with a per-key chunk index.
 
 **Method:** `POST`
 
@@ -105,6 +106,7 @@ Response: `{ "key": "<64 hex>" }` — key of the final object (file or directory
 ## POST /get
 
 Fetches a block by key. Prefer `key` over `cid`. Resolves via local store, then token routing (GetToken → DirectFetch), then stack fallback.
+For chunk-indexed payloads, GET reassembles bytes in key order before key validation (`SHA256(data) == key`).
 
 **Method:** `POST`
 
@@ -134,6 +136,14 @@ CID lookup requires routing table entry; use key when available.
 }
 ```
 `network_hops`: DHT lookup hop count (peers queried during GetToken). 0 when served from local store or gateway; omitted when unknown.
+
+**Early-response streaming mode (raw bytes):**
+
+- Add query parameter `format=raw`, or send `Accept: application/octet-stream`.
+- Response body is raw bytes (`Content-Type: application/octet-stream`), with:
+  - `Content-Length: <bytes>`
+  - `X-Network-Hops: <count>`
+- On local chunk-index hits, the server flushes the first 4 KiB chunk immediately, then streams remaining chunks.
 
 **Errors:** `400` invalid key/cid, key or cid required, key not found in routing table; `404` block not found.
 

@@ -32,7 +32,7 @@ After --, remaining arguments are appended to run_comparison.sh (e.g. -- --valid
 Example:
   $0 --test upload --nodes 10 --iterations 10
   $0 --test upload --nodes 100 --iterations 10 --system vnipfs
-  $0 --test download_warm --nodes 50 --iterations 10 --system swarm
+  $0 --test download_warm_raw --nodes 50 --iterations 10 --system swarm
   $0 --test lookup_complexity --nodes 50 --iterations 10 --skip-start
 EOF
 }
@@ -91,7 +91,7 @@ fi
 N="${NC_ARR[0]}"
 
 case ",$TEST," in
-  *,upload,*|*,download_warm,*|*,lookup_latency,*|*,lookup_complexity,*|*,replication,*|*,replication_distribution,*|*,repair_time,*|*,routing_overhead,*|*,storage_efficiency,*|*,concurrent,*) ;;
+  *,upload,*|*,download_warm_raw,*|*,lookup_latency,*|*,lookup_complexity,*|*,replication,*|*,replication_distribution,*|*,repair_time,*|*,routing_overhead,*|*,storage_efficiency,*|*,concurrent,*) ;;
   *)
     echo "Error: unknown test '$TEST'. Run: run_comparison.sh --tests list" >&2
     exit 1
