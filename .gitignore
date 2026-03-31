@@ -2,3 +2,6 @@ artifacts*/
 docs_for_update/
 bin/node
 test_results*/
+*.log
+Dockerfile
+docker-compose.*.yml
