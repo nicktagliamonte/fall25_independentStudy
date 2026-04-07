@@ -7,15 +7,19 @@ FROM golang:1.14-alpine AS builder
 
 WORKDIR /build
 
+RUN sed -i 's/dl-cdn.alpinelinux.org/dl-5.alpinelinux.org/g' /etc/apk/repositories
+
 RUN set -e; \
-  for _ in 1 2 3 4 5 6; do \
-    apk add --no-cache git make gcc musl-dev linux-headers && break; \
+  for i in 1 2 3 4 5 6; do \
+    if apk add --no-cache git make gcc musl-dev linux-headers; then break; fi; \
+    if [ $i -eq 6 ]; then exit 1; fi; \
     sleep 15; \
   done
 
 RUN set -e; \
-  for _ in 1 2 3 4 5; do \
-    git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git && break; \
+  for i in 1 2 3 4 5 6; do \
+    if git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git; then break; fi; \
+    if [ $i -eq 6 ]; then exit 1; fi; \
     sleep 15; \
   done
 
@@ -25,9 +29,13 @@ RUN make swarm
 
 FROM alpine:3.21
 
+# Workaround for transient dl-cdn DNS issues
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.edge.kernel.org/g' /etc/apk/repositories
+
 RUN set -e; \
-  for _ in 1 2 3 4 5 6; do \
-    apk add --no-cache ca-certificates curl jq && break; \
+  for i in 1 2 3 4 5 6; do \
+    if apk add --no-cache ca-certificates curl jq; then break; fi; \
+    if [ $i -eq 6 ]; then exit 1; fi; \
     sleep 15; \
   done
 
