@@ -17,7 +17,7 @@ cd "$ROOT_DIR"
 
 stamp() { echo "=== $(date -Iseconds) === $*"; }
 
-ITERATIONS="${ITERATIONS:-10}"
+ITERATIONS="${ITERATIONS:-50}"
 NODE_COUNTS=(10 50 100)
 SYSTEMS=(vnipfs swarm)
 

@@ -443,9 +443,9 @@ run_lookup_complexity_test() {
   local node_count="$1"
   local output_file="$OUTPUT_DIR/lookup_complexity_results.csv"
   local saved_to="${TEST_TIMEOUT_SEC:-600}"
-  # Each iteration: cold docker run + lookup-key (timeout per call) + short retries; pre-waits are minimal.
+  # Each iteration: cold docker run (outer cap ~420s) + lookup-key (GetToken budget separate inside binary) + retries.
   local it="${ITERATIONS:-10}"
-  local min_to=$(( it * 240 + 900 ))
+  local min_to=$(( it * 480 + 900 ))
   [[ "$min_to" -lt 2400 ]] && min_to=2400
   if [[ "$saved_to" -gt "$min_to" ]]; then
     min_to="$saved_to"

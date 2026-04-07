@@ -4,6 +4,7 @@ set -euo pipefail
 # Purpose: O(log N) lookup complexity verification — cold DHT lookup hop count (same counter as /lookup).
 # Put path is local (API reports 0 hops by design); we record cold lookup-key only, not put.
 # Output: system,node_count,operation,hops,lookup_latency_ms,lookup_type (CSV)
+# Cold docker run uses the compose node-network and SNG40_* env from PUT_CONTAINER.
 # Usage: ./scripts/tests/swarm_comparison/lookup_complexity_test.sh [options]
 #   --our-api <container>   Our system container (default: auto-detect bootstrap)
 #   --node-count <n>        Node count for CSV label (default: from running containers)
@@ -111,6 +112,18 @@ fi
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf $TEMP_DIR" EXIT
 
+# Prefer the compose "node-network" attachment so docker run shares the same L2 as the cluster.
+compose_network_for_container() {
+  local c="$1"
+  local n
+  for n in $(docker inspect "$c" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null); do
+    [[ "$n" == *node-network* ]] && { echo "$n"; return; }
+  done
+  n=$(docker inspect "$c" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' 2>/dev/null | awk '{print $1}')
+  [[ -n "$n" ]] && { echo "$n"; return; }
+  echo "fall25_independentstudy_node-network"
+}
+
 write_header="true"
 [[ "$APPEND" == "true" ]] && [[ -f "$OUTPUT_FILE" ]] && [[ -s "$OUTPUT_FILE" ]] && write_header=""
 
@@ -143,17 +156,20 @@ cold_lookup_req() {
   local key="$1"
   local bootstrap_ma="$2"
   local net
-  net=$(docker inspect "$PUT_CONTAINER" --format '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null | head -1)
-  [[ -z "$net" ]] && net="fall25_independentstudy_node-network"
+  net=$(compose_network_for_container "$PUT_CONTAINER")
   local img
   img=$(docker inspect "$PUT_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || echo "")
   [[ -z "$img" ]] && img=$(docker inspect "$PUT_CONTAINER" --format '{{.Image}}' 2>/dev/null || echo "")
   [[ -z "$img" ]] && return 1
   local errf="$TEMP_DIR/cold_lookup_err_$$"
+  local env_args=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && env_args+=(-e "$line")
+  done < <(docker inspect "$PUT_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep '^SNG40' || true)
   # JSON on stdout only; stderr has Go logs. Prefer /ip4/... bootstrap so one-off container reaches bootstrap without DNS flakiness.
-  # Hard wall-clock cap so a wedged lookup-key cannot block the whole matrix run.
+  # Wall-clock cap: connect+DHT bootstrap + GetToken (lookup-key budgets are separate inside the binary).
   local out
-  out=$(timeout -k 10 180 docker run --rm --network "$net" "$img" lookup-key \
+  out=$(timeout -k 10 420 docker run --rm --network "$net" "${env_args[@]}" "$img" lookup-key \
     --bootstrap "$bootstrap_ma" --key "$key" --timeout 120s 2>"$errf") || true
   if [[ -z "$out" || "$out" != *'{'* ]]; then
     echo "cold lookup-key: empty or non-JSON stdout (bootstrap=${bootstrap_ma:0:48}...)" >&2

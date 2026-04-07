@@ -1422,7 +1422,7 @@ func Run() error {
 		var timeoutStr string
 		fs.StringVar(&bootstrapAddr, "bootstrap", "", "bootstrap peer multiaddr (e.g. /ip4/172.20.0.10/tcp/4001/p2p/...)")
 		fs.StringVar(&keyHex, "key", "", "key (64 hex chars) to lookup")
-		fs.StringVar(&timeoutStr, "timeout", "30s", "lookup timeout")
+		fs.StringVar(&timeoutStr, "timeout", "30s", "max duration for GetToken lookup only (connect and DHT bootstrap use separate budgets)")
 		_ = fs.Parse(os.Args[2:])
 		if bootstrapAddr == "" || keyHex == "" {
 			return fmt.Errorf("lookup-key: --bootstrap and --key are required")
@@ -1440,10 +1440,11 @@ func Run() error {
 
 // runLookupKey runs a one-off DHT lookup from a fresh node (cold lookup).
 // The new node has no local token state, so GetToken traverses the DHT; hop count uses the same path as /lookup.
-func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+func runLookupKey(bootstrapAddr, keyHex string, lookupTimeout time.Duration) error {
+	ctxBg := context.Background()
+	if lookupTimeout < 5*time.Second {
+		lookupTimeout = 30 * time.Second
+	}
 
 	key, err := mystore.ParseKey(keyHex)
 	if err != nil {
@@ -1460,7 +1461,7 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 	}
 
 	// TCP-only avoids QUIC UDP buffer issues in short-lived docker runs; DHT uses the same token prefix as peers.
-	h, err := myhost.NewHost(ctx, []string{"/ip4/0.0.0.0/tcp/0"})
+	h, err := myhost.NewHost(ctxBg, []string{"/ip4/0.0.0.0/tcp/0"})
 	if err != nil {
 		return err
 	}
@@ -1472,13 +1473,15 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 	tokenSNG40 := os.Getenv("SNG40_TOKEN")
 	pubsSNG40 := os.Getenv("SNG40_CA_PUBS")
 	policyBase := getHandshakePolicyFromEnv(requireSNG40, pubsSNG40, tokenSNG40, 30*time.Second)
-	stopAntiReplay := myhost.EnableAntiReplay(ctx, &policyBase)
+	stopAntiReplay := myhost.EnableAntiReplay(ctxBg, &policyBase)
 	defer stopAntiReplay()
-	_ = myhost.EnableAttackMitigation(ctx, &policyBase)
+	_ = myhost.EnableAttackMitigation(ctxBg, &policyBase)
 	localHS := myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
 	myhost.RegisterHandshake(h, localHS, policyBase)
 
-	if err := h.Connect(ctx, *info); err != nil {
+	ctxConn, cancelConn := context.WithTimeout(ctxBg, 45*time.Second)
+	defer cancelConn()
+	if err := h.Connect(ctxConn, *info); err != nil {
 		return fmt.Errorf("connect to bootstrap: %w", err)
 	}
 	// Allow bootstrap's Connected-handshake goroutine to finish before DHT dials.
@@ -1489,23 +1492,23 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 		UseTokenDHT:    true,
 		BootstrapPeers: []peer.AddrInfo{*info},
 	}
-	d, err := myhost.NewDHT(ctx, h, dhtCfg)
+	ctxBootstrap, cancelBootstrap := context.WithTimeout(ctxBg, 2*time.Minute)
+	defer cancelBootstrap()
+	d, err := myhost.NewDHT(ctxBootstrap, h, dhtCfg)
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
 	}
 	defer d.Close()
 
-	deadline := time.Now().Add(45 * time.Second)
-	for d.RoutingTable().Size() == 0 && time.Now().Before(deadline) {
+	rtWait, cancelRT := context.WithTimeout(ctxBg, 90*time.Second)
+	defer cancelRT()
+	for d.RoutingTable().Size() == 0 {
 		select {
-		case <-ctx.Done():
-			return fmt.Errorf("context cancelled before DHT bootstrap")
+		case <-rtWait.Done():
+			return fmt.Errorf("DHT routing table empty after 90s (bootstrap may have failed)")
 		default:
 			time.Sleep(200 * time.Millisecond)
 		}
-	}
-	if d.RoutingTable().Size() == 0 {
-		return fmt.Errorf("DHT routing table empty after 45s (bootstrap may have failed)")
 	}
 	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
 		log.Printf("lookup-key: dht_rt_size=%d", d.RoutingTable().Size())
@@ -1513,7 +1516,7 @@ func runLookupKey(bootstrapAddr, keyHex string, timeout time.Duration) error {
 
 	// Match control /lookup: count routing.SendingQuery during GetToken (same path as HTTP /lookup).
 	// GetClosestPeers was a different DHT walk and often reported 0 hops while GetToken succeeded.
-	ctxLookup, cancelLookup := context.WithTimeout(ctx, timeout)
+	ctxLookup, cancelLookup := context.WithTimeout(ctxBg, lookupTimeout)
 	defer cancelLookup()
 	evCtx, evCh := routing.RegisterForQueryEvents(ctxLookup)
 	evCtx2, cancel2 := context.WithCancel(evCtx)
