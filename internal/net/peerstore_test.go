@@ -90,3 +90,34 @@ func TestPeerStoreScoring(t *testing.T) {
 		t.Fatalf("expected at least 1 removed")
 	}
 }
+
+func TestPeerStoreCountKnownPeersWithAddrs(t *testing.T) {
+	mem := newMemDS()
+	ps, err := NewPeerStore(mem)
+	if err != nil {
+		t.Fatal(err)
+	}
+	privA, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pidA, _ := peer.IDFromPrivateKey(privA)
+	privB, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pidB, _ := peer.IDFromPrivateKey(privB)
+	a, _ := ma.NewMultiaddr("/ip4/10.0.0.1/tcp/4001")
+	if err := ps.Upsert(pidA, []ma.Multiaddr{a}, 0, "seed"); err != nil {
+		t.Fatal(err)
+	}
+	if err := ps.Upsert(pidB, []ma.Multiaddr{}, 0, "seed"); err != nil {
+		t.Fatal(err)
+	}
+	if n := ps.CountKnownPeersWithAddrs(pidA); n != 0 {
+		t.Fatalf("exclude self: got %d want 0", n)
+	}
+	privC, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pidC, _ := peer.IDFromPrivateKey(privC)
+	c, _ := ma.NewMultiaddr("/ip4/10.0.0.3/tcp/4001")
+	if err := ps.Upsert(pidC, []ma.Multiaddr{c}, 0, "seed"); err != nil {
+		t.Fatal(err)
+	}
+	if n := ps.CountKnownPeersWithAddrs(pidA); n != 1 {
+		t.Fatalf("got %d want 1 (B has no addrs)", n)
+	}
+}

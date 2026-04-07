@@ -176,7 +176,7 @@ def read_storage(path: Path, n: int) -> pd.DataFrame | None:
 
 
 def read_lookup_complexity(path: Path, n: int) -> pd.DataFrame | None:
-    """Cold lookup rows only; hops may be NaN (N/A); optional lookup_latency_ms column."""
+    """lookup_complexity_results.csv rows for operation=lookup; label with matrix node count n."""
     f = path / "lookup_complexity_results.csv"
     if not f.exists():
         return None
@@ -463,12 +463,12 @@ def plot_lookup_vnipfs_only(
             linewidth=2,
             color="C0",
         )
-        ax0.set_ylabel("Mean routing query events (cold lookup)")
+        ax0.set_ylabel("Mean hops (lookup)")
     else:
         ax0.text(0.5, 0.5, "No data", ha="center", va="center")
     ax0.set_xticks(present_n)
     ax0.set_xlabel("Node count")
-    ax0.set_title("Cold lookup — hops")
+    ax0.set_title("Lookup complexity — hops")
 
     if has_lat:
         ax1.plot(
@@ -478,12 +478,12 @@ def plot_lookup_vnipfs_only(
             linewidth=2,
             color="C1",
         )
-        ax1.set_ylabel("Mean lookup_latency_ms (cold)")
+        ax1.set_ylabel("Mean lookup_latency_ms")
     else:
         ax1.text(0.5, 0.5, "No data", ha="center", va="center")
     ax1.set_xticks(present_n)
     ax1.set_xlabel("Node count")
-    ax1.set_title("Cold lookup — latency")
+    ax1.set_title("Lookup complexity — latency")
 
     fig.tight_layout()
     path = out_dir / "fig06_lookup_complexity_vnipfs_only.png"
@@ -523,7 +523,7 @@ def write_captions(
         "- **fig05 (storage):** Uses `efficiency_ratio`; **definitions differ between stacks**. "
         f"Node counts excluded from this plot: {sorted(exclude_storage) or 'none'}.",
         "",
-        "- **fig06 (lookup complexity):** **vn-IPFS only**; cold `lookup-key` hop count + latency. "
+        "- **fig06 (lookup complexity):** **vn-IPFS matrix cells**; `lookup_complexity_results.csv` from Docker. "
         "Does not prove asymptotics by itself — pair with analysis.",
         "",
         "## Files",

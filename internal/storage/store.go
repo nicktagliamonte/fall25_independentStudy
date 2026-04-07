@@ -224,7 +224,11 @@ func (s *Stack) GetBlock(ctx context.Context, k Key) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("token store or DHT required for token-based routing")
 	}
 
-	evCtx, evCh := routing.RegisterForQueryEvents(ctx)
+	// RegisterForQueryEvents ties channel lifetime to its ctx; cancel that ctx after GetToken
+	// so the hop-count goroutine exits before DirectFetch (otherwise channel closes only when ctx ends).
+	ctxToken, cancelToken := context.WithCancel(ctx)
+	defer cancelToken()
+	evCtx, evCh := routing.RegisterForQueryEvents(ctxToken)
 	evCtx, cancel := context.WithCancel(evCtx)
 	defer cancel()
 	var hops int32
@@ -239,6 +243,7 @@ func (s *Stack) GetBlock(ctx context.Context, k Key) ([]byte, int, error) {
 	}()
 	token, err := GetToken(evCtx, tokenStore, k)
 	cancel()
+	cancelToken()
 	<-done
 	if s.MessageSink != nil {
 		s.MessageSink.AddLookupMessagesOut(1)

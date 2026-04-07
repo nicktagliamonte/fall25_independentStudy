@@ -247,6 +247,28 @@ func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude m
 	return infos, retMeta
 }
 
+// CountKnownPeersWithAddrs returns how many distinct peers (excluding exclude) have at least one address and are not expired.
+func (ps *PeerStore) CountKnownPeersWithAddrs(exclude peer.ID) int {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+	now := time.Now().Unix()
+	ex := exclude.String()
+	n := 0
+	for id, r := range ps.byID {
+		if id == ex {
+			continue
+		}
+		if r.ExpireAtUnix != 0 && r.ExpireAtUnix <= now {
+			continue
+		}
+		if len(r.Addrs) == 0 {
+			continue
+		}
+		n++
+	}
+	return n
+}
+
 // Remove deletes a peer from the store. Used when AddressBucketStore evicts due to Sybil limits.
 func (ps *PeerStore) Remove(pid peer.ID) error {
 	ps.mu.Lock()

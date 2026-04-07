@@ -367,6 +367,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		start := time.Now()
 		_, err = mystore.GetToken(evCtx2, tokenStore, key)
 		cancel2()
+		cancel()
 		<-done
 		latencyMs := time.Since(start).Milliseconds()
 		if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {

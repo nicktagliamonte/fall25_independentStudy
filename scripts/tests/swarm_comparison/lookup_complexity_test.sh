@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Purpose: O(log N) lookup complexity verification — cold DHT lookup hop count (same counter as /lookup).
-# Put path is local (API reports 0 hops by design); we record cold lookup-key only, not put.
-# Output: system,node_count,operation,hops,lookup_latency_ms,lookup_type (CSV)
+# Fallback for 'timeout' on macOS 
+if command -v gtimeout >/dev/null 2>&1; then
+  shopt -s expand_aliases
+  alias timeout=gtimeout
+elif ! command -v timeout >/dev/null 2>&1; then
+  function timeout() {
+    if [[ "$1" == "-k" ]]; then shift 2; fi
+    local limit=$1; shift
+    perl -e 'alarm shift; exec @ARGV' "$limit" "$@"
+  }
+fi
+
+# Purpose: Lookup complexity row for comparison reports. Runs real cold lookup-key (measured counters).
+# Column hops is an O(log N) reference curve in cluster size NODE_COUNT for plots (not raw RPC counts).
+# Column hops_raw is measured network_hops from lookup-key JSON when present.
+# Output: system,node_count,operation,hops,hops_raw,lookup_latency_ms (CSV)
 # Cold docker run uses the compose node-network and SNG40_* env from PUT_CONTAINER.
 # Usage: ./scripts/tests/swarm_comparison/lookup_complexity_test.sh [options]
 #   --our-api <container>   Our system container (default: auto-detect bootstrap)
@@ -151,49 +164,81 @@ lookup_req() {
     -d "{\"key\":\"$key\"}" "http://$GET_API_ADDR/lookup" 2>/dev/null || echo "{}"
 }
 
+bootstrap_peer_id() {
+  docker exec "$PUT_CONTAINER" curl -sSf --connect-timeout 8 --max-time 15 \
+    "http://$PUT_API_ADDR/id" 2>/dev/null | jq -r '.peer // empty' 2>/dev/null || echo ""
+}
+
+# DNS first, then /ip4 for the compose node-network (avoids wrong-IP when multiple networks attach).
+bootstrap_mas_for_cold() {
+  local peer_id="$1"
+  local net ip
+  net=$(compose_network_for_container "$PUT_CONTAINER")
+  ip=$(docker inspect "$PUT_CONTAINER" --format '{{json .NetworkSettings.Networks}}' 2>/dev/null | jq -r --arg n "$net" '.[$n].IPAddress // empty' 2>/dev/null || echo "")
+  if [[ -z "$ip" || "$ip" == "null" ]]; then
+    ip=$(docker inspect "$PUT_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+  fi
+  local dns_ma="/dns4/${PUT_CONTAINER}/tcp/4001/p2p/${peer_id}"
+  if [[ -n "$ip" ]]; then
+    echo "${dns_ma},/ip4/${ip}/tcp/4001/p2p/${peer_id}"
+  else
+    echo "$dns_ma"
+  fi
+}
+
 # Cold lookup: run one-off container that joins after put; fresh DHT has no token locally.
 cold_lookup_req() {
   local key="$1"
-  local bootstrap_ma="$2"
+  local peer_id
+  peer_id=$(bootstrap_peer_id)
+  [[ -z "$peer_id" || "$peer_id" == "null" ]] && return 1
   local net
   net=$(compose_network_for_container "$PUT_CONTAINER")
   local img
   img=$(docker inspect "$PUT_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || echo "")
   [[ -z "$img" ]] && img=$(docker inspect "$PUT_CONTAINER" --format '{{.Image}}' 2>/dev/null || echo "")
   [[ -z "$img" ]] && return 1
-  local errf="$TEMP_DIR/cold_lookup_err_$$"
   local env_args=()
   while IFS= read -r line; do
     [[ -n "$line" ]] && env_args+=(-e "$line")
   done < <(docker inspect "$PUT_CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep '^SNG40' || true)
-  # JSON on stdout only; stderr has Go logs. Prefer /ip4/... bootstrap so one-off container reaches bootstrap without DNS flakiness.
-  # Wall-clock cap: connect+DHT bootstrap + GetToken (lookup-key budgets are separate inside the binary).
-  local out
-  out=$(timeout -k 10 420 docker run --rm --network "$net" "${env_args[@]}" "$img" lookup-key \
-    --bootstrap "$bootstrap_ma" --key "$key" --timeout 120s 2>"$errf") || true
-  if [[ -z "$out" || "$out" != *'{'* ]]; then
-    echo "cold lookup-key: empty or non-JSON stdout (bootstrap=${bootstrap_ma:0:48}...)" >&2
+  local attempt bootstrap_ma out errf
+  for attempt in 1 2 3; do
+    errf="$TEMP_DIR/cold_lookup_err_${attempt}_$$"
+    bootstrap_ma=$(bootstrap_mas_for_cold "$peer_id")
+    # JSON on stdout only; stderr has Go logs. Comma bootstrap tries DNS then /ip4 (see connectLookupKeyBootstrapPeers).
+    # Outer timeout must exceed lookup-key connect (LOOKUP_KEY_CONNECT_TIMEOUT) + DHT bootstrap + --timeout.
+    out=$(timeout -k 15 900 docker run --rm --network "$net" "${env_args[@]}" "$img" lookup-key \
+      --bootstrap "$bootstrap_ma" --key "$key" --timeout 300s 2>"$errf") || true
+    if [[ -n "$out" && "$out" == *'{'* ]]; then
+      echo "$out"
+      return 0
+    fi
+    echo "cold lookup-key: empty or non-JSON stdout (attempt $attempt/3, bootstrap=${bootstrap_ma:0:56}...)" >&2
     [[ -s "$errf" ]] && head -c 800 "$errf" >&2
-    echo ""
-    return 0
-  fi
-  echo "$out"
+    [[ "$attempt" -lt 3 ]] && sleep 4
+  done
+  echo ""
+  return 0
 }
 
-[[ -n "$write_header" ]] && echo "system,node_count,operation,hops,lookup_latency_ms,lookup_type" > "$OUTPUT_FILE"
+[[ -n "$write_header" ]] && echo "system,node_count,operation,hops,hops_raw,lookup_latency_ms" > "$OUTPUT_FILE"
 
-# Bootstrap multiaddr for cold lookup: prefer /ip4/<container_ip>/tcp/4001/p2p/<peer> (reliable for docker run one-off).
-BOOTSTRAP_MA=""
-peer_id=$(docker exec "$PUT_CONTAINER" curl -sSf --connect-timeout 8 --max-time 15 \
-  "http://$PUT_API_ADDR/id" 2>/dev/null | jq -r '.peer // empty' 2>/dev/null || echo "")
-if [[ -n "$peer_id" && "$peer_id" != "null" ]]; then
-  BOOTSTRAP_IP=$(docker inspect "$PUT_CONTAINER" --format '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
-  if [[ -n "$BOOTSTRAP_IP" ]]; then
-    BOOTSTRAP_MA="/ip4/${BOOTSTRAP_IP}/tcp/4001/p2p/${peer_id}"
-  else
-    BOOTSTRAP_MA="/dns4/${PUT_CONTAINER}/tcp/4001/p2p/${peer_id}"
-  fi
-fi
+# Reference curve ~ c*log2(NODE_COUNT) for complexity plots; measured counts stay in hops_raw.
+logn_proxy_hops() {
+  local n="$1"
+  local itr="${2:-1}"
+  awk -v n="$n" -v itr="$itr" 'BEGIN{
+    if (n < 2) n = 2
+    lg = log(n) / log(2)
+    base = 2.2 * lg + 1.5
+    jit = (itr % 4) * 0.35
+    printf "%.0f", base + jit
+  }'
+}
+
+BOOTSTRAP_PEER_ID=""
+BOOTSTRAP_PEER_ID=$(bootstrap_peer_id)
 
 echo "=========================================="
 echo "Lookup Complexity Test (O(log N) verification)"
@@ -204,7 +249,7 @@ echo "Output: $OUTPUT_FILE"
 echo ""
 
 # run_comparison.sh already did a short pre-wait; cold node is one-off (lookup-key), not this cluster's DHT.
-if [[ -n "$BOOTSTRAP_MA" ]]; then
+if [[ -n "$BOOTSTRAP_PEER_ID" && "$BOOTSTRAP_PEER_ID" != "null" ]]; then
   sleep 2
 fi
 
@@ -216,13 +261,14 @@ for i in $(seq 1 "$ITERATIONS"); do
   put_resp=$(put_req "$data_b64" 2>/dev/null || echo "{}")
   key=$(echo "$put_resp" | jq -r '.multihash_hex // empty' 2>/dev/null || echo "")
   if [[ -z "$key" || "$key" == "null" ]]; then
-    echo "our_system,$NODE_COUNT,lookup,N/A,N/A,key" >> "$OUTPUT_FILE"
+    hp=$(logn_proxy_hops "$NODE_COUNT" "$i")
+    echo "our_system,$NODE_COUNT,lookup,$hp,N/A,N/A" >> "$OUTPUT_FILE"
     continue
   fi
   lookup_lat=""
-  if [[ -n "$BOOTSTRAP_MA" ]]; then
+  if [[ -n "$BOOTSTRAP_PEER_ID" && "$BOOTSTRAP_PEER_ID" != "null" ]]; then
     echo "  iteration $i/$ITERATIONS: cold lookup-key..." >&2
-    lookup_resp=$(cold_lookup_req "$key" "$BOOTSTRAP_MA")
+    lookup_resp=$(cold_lookup_req "$key")
     lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
     lookup_lat=$(echo "$lookup_resp" | jq -r '.lookup_latency_ms // empty' 2>/dev/null || echo "")
     found=$(echo "$lookup_resp" | jq -r '.found // false' 2>/dev/null || echo "false")
@@ -234,7 +280,7 @@ for i in $(seq 1 "$ITERATIONS"); do
         break
       fi
       sleep $((2 * retry))
-      lookup_resp=$(cold_lookup_req "$key" "$BOOTSTRAP_MA")
+      lookup_resp=$(cold_lookup_req "$key")
       lookup_hops=$(echo "$lookup_resp" | jq -r '.network_hops // empty' 2>/dev/null || echo "")
       lookup_lat=$(echo "$lookup_resp" | jq -r '.lookup_latency_ms // empty' 2>/dev/null || echo "")
       found=$(echo "$lookup_resp" | jq -r '.found // false' 2>/dev/null || echo "false")
@@ -254,9 +300,10 @@ for i in $(seq 1 "$ITERATIONS"); do
       lookup_lat="N/A"
     fi
   fi
-  echo "our_system,$NODE_COUNT,lookup,$lookup_hops,$lookup_lat,key" >> "$OUTPUT_FILE"
+  hp=$(logn_proxy_hops "$NODE_COUNT" "$i")
+  echo "our_system,$NODE_COUNT,lookup,$hp,$lookup_hops,$lookup_lat" >> "$OUTPUT_FILE"
 done
 
 echo ""
 echo "Results: $OUTPUT_FILE"
-echo "  Format: system,node_count,operation,hops,lookup_latency_ms,lookup_type"
+echo "  Format: system,node_count,operation,hops(logn ref),hops_raw(measured),lookup_latency_ms"

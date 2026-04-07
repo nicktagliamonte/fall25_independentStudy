@@ -438,12 +438,11 @@ run_routing_overhead_test() {
   fi
 }
 
-# Function to run lookup complexity test (O(log N) verification; hops vs node count)
+# Function to run lookup complexity (Docker vn-IPFS: put + cold lookup-key, hops from JSON)
 run_lookup_complexity_test() {
   local node_count="$1"
   local output_file="$OUTPUT_DIR/lookup_complexity_results.csv"
   local saved_to="${TEST_TIMEOUT_SEC:-600}"
-  # Each iteration: cold docker run (outer cap ~420s) + lookup-key (GetToken budget separate inside binary) + retries.
   local it="${ITERATIONS:-10}"
   local min_to=$(( it * 480 + 900 ))
   [[ "$min_to" -lt 2400 ]] && min_to=2400
@@ -451,8 +450,8 @@ run_lookup_complexity_test() {
     min_to="$saved_to"
   fi
   TEST_TIMEOUT_SEC="$min_to"
-  echo -e "\n${GREEN}Running lookup complexity test (N=$node_count, hops vs log N)...${NC}"
-  echo -e "  ${CYAN}Lookup complexity timeout cap: ${min_to}s (cold docker runs per iteration)${NC}"
+  echo -e "\n${GREEN}Running lookup complexity (N=$node_count, Docker cold lookup) ...${NC}"
+  echo -e "  ${CYAN}timeout cap: ${min_to}s${NC}"
   run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/lookup_complexity_test.sh" \
     --node-count "$node_count" \
     --iterations "$ITERATIONS" \
@@ -752,7 +751,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
   echo "Testing with $node_count nodes"
   echo "=========================================="
 
-  # When only running lookup_complexity, skip Swarm to reduce resource contention for cold lookup
+  # When only running lookup_complexity, skip Swarm to reduce contention
   START_VNIPFS="$RUN_VNIPFS"
   START_SWARM="$RUN_SWARM"
   if [[ "$TESTS" == "lookup_complexity" ]]; then
@@ -802,7 +801,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
     if [[ "$START_VNIPFS" == "true" ]] && [[ "$START_SWARM" == "true" ]]; then
       echo -e "  ${GREEN}Both networks started (sequential)${NC}"
     elif [[ "$START_VNIPFS" == "true" ]]; then
-      echo -e "  ${GREEN}vn-IPFS started (Swarm not selected or skipped for lookup_complexity-only)${NC}"
+      echo -e "  ${GREEN}vn-IPFS started (Swarm not selected or skipped)${NC}"
     else
       echo -e "  ${GREEN}Swarm started (vn-IPFS not selected)${NC}"
     fi
@@ -872,8 +871,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
   fi
 
   if should_run_test "lookup_complexity" && [[ "$RUN_VNIPFS" == "true" ]]; then
-    echo -e "\n${BLUE}Step 5d: Running lookup complexity test (O(log N))...${NC}"
-    # Cluster is already healthy; cold lookup uses a fresh one-off node (lookup-key). Short buffer only.
+    echo -e "\n${BLUE}Step 5d: Running lookup complexity (O(log N))...${NC}"
     dht_prewait=3
     if [[ "$node_count" -ge 500 ]]; then
       dht_prewait=12
@@ -962,7 +960,7 @@ echo "  - replication_distribution.csv: system,node_count,near,midrange,farflung
 echo "  - repair_time_results.csv: system,node_count,repair_time_s (when available)"
 echo "  - concurrent_results.csv: system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms (when available)"
 echo "  - lookup_latency_n<N>.csv: isolated lookup latency (token vs TTFB proxy)"
-echo "  - lookup_complexity_results.csv: system,node_count,operation,hops,lookup_latency_ms,lookup_type (cold lookup-key)"
+echo "  - lookup_complexity_results.csv: system,node_count,operation,hops,hops_raw,lookup_latency_ms"
 echo "  - routing_overhead_results.csv: system,operation,message_count,overhead_type (token vs provider announce)"
 echo "  - resource_usage.csv: CPU/memory samples during tests (when available)"
 echo "  - resource_usage_upload_n<N>.csv: CPU/memory during upload phase only, per node count"

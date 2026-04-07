@@ -165,22 +165,18 @@ Both systems are compared on wall-clock time from the start of the HTTP request 
 
 **Output**: CSV with columns: `system,payload_size,iteration,ttfb_ms,total_ms`
 
-### Lookup Complexity Test (`lookup_complexity_test.sh`)
+### Lookup Complexity (`lookup_complexity_test.sh`)
 
-**Purpose**: Record DHT-related **hop counts** for cold token lookup vs cluster size label `N` (not upload latency).
-
-**Method**: PUT on bootstrap, then **`lookup-key`** in a one-off container (fresh DHT) bootstrapped via **`/ip4/<bootstrap_container_ip>/tcp/4001/p2p/<peer>`** (falls back to `/dns4/<name>/...` if IP missing). CSV records **`operation=lookup` only** (put is local; `/put` reports 0 hops by API design and is not a routing-depth signal). Each row includes **`network_hops`** and **`lookup_latency_ms`** from the `lookup-key` JSON (same `routing.SendingQuery` counter as `POST /lookup`).
-
-**Interpreting hops vs N**: Measured points are often **flat, noisy, or `N/A`** when the cold lookup fails retries, token propagation lags, or the routing table is still converging. **Wall-clock upload latency** (`upload_*.csv`) is a different quantity; do not use it as a proxy for routing depth. Analysis plots (`swarm_comparison_analyze.py`) use **`operation=lookup`** only for hop-vs-N figures.
-
-**Diagnostics**: Set **`SNG40_LOG_LOOKUP_PATHS=1`** on nodes / in the one-off `lookup-key` process to log DHT routing-table size (lookup-key) and hop/latency summaries (`control /lookup` and lookup-key after GetToken).
+**Purpose**: Measure `network_hops` / latency from a **cold** `lookup-key` run against the **running vn-IPFS** stack (after `run_comparison.sh` starts Docker).
 
 **Usage**:
 ```bash
 ./scripts/tests/swarm_comparison/lookup_complexity_test.sh --node-count 50 --iterations 10 --output lookup_complexity_results.csv
 ```
 
-**Output**: CSV with columns: `system,node_count,operation,hops,lookup_latency_ms,lookup_type`
+Cold `lookup-key` passes **comma-separated** bootstrap multiaddrs (Docker DNS for the bootstrap container name, then `/ip4` on the compose **node-network**). The binary tries each dial until one succeeds (default connect budget **120s** per dial, overridable with `LOOKUP_KEY_CONNECT_TIMEOUT`); the `--timeout` flag applies to the **GetToken** phase only.
+
+**Output**: `system,node_count,operation,hops,hops_raw,lookup_latency_ms`
 
 ### Storage Efficiency Test (`storage_efficiency_test.sh`)
 

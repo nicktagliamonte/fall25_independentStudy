@@ -18,6 +18,8 @@ type Options struct {
 	BootstrapPeers   []string
 	DHTClientMode    bool // if true, DHT runs as client (query-only); default false = server
 	MinOutbound      int
+	// ClusterNodeCount, if > 0, caps MinOutbound at N-1 (network too small for the default target).
+	ClusterNodeCount int
 	PerIPDialLimit   int
 	DialTimeout      time.Duration
 

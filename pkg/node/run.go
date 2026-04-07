@@ -5,12 +5,14 @@ package node
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"bytes"
@@ -203,6 +205,7 @@ func Run() error {
 		var seedAddrs stringSlice
 		var seedFile string
 		var minOutbound int
+		var clusterNodes int
 		var dialTimeoutStr string
 		var staleAgeStr string
 		var maxFailures int
@@ -216,13 +219,21 @@ func Run() error {
 		fs.StringVar(&storePath, "store", "", "path to persistent blockstore (optional)")
 		fs.Var(&seedAddrs, "seed", "seed peer multiaddr (repeatable)")
 		fs.StringVar(&seedFile, "seed-file", "", "path to file with seed multiaddrs (one per line)")
-		fs.IntVar(&minOutbound, "min-outbound", 4, "target minimum outbound peer connections")
+		fs.IntVar(&minOutbound, "min-outbound", DefaultMinOutbound, "target minimum outbound peer connections (capped by --cluster-nodes or CLUSTER_NODE_COUNT or peerstore size)")
+		fs.IntVar(&clusterNodes, "cluster-nodes", 0, "expected cluster size; caps min-outbound at N-1 (0 uses CLUSTER_NODE_COUNT env or peerstore)")
 		fs.StringVar(&dialTimeoutStr, "dial-timeout", "10s", "dial timeout, e.g. 10s")
 		fs.StringVar(&staleAgeStr, "stale-age", "24h", "consider peers stale after this duration")
 		fs.IntVar(&maxFailures, "max-fail", 8, "evict peers after this many consecutive failures")
 		fs.IntVar(&maxKnown, "max-known", 5000, "soft cap on tracked peers in PeerStore")
 		fs.IntVar(&perIPDialLimit, "per-ip-dial-limit", 3, "maximum outbound dials per unique IP")
 		_ = fs.Parse(os.Args[2:])
+		if clusterNodes == 0 {
+			if v := os.Getenv("CLUSTER_NODE_COUNT"); v != "" {
+				if n, err := strconv.Atoi(v); err == nil && n > 0 {
+					clusterNodes = n
+				}
+			}
+		}
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
 				"/ip4/0.0.0.0/tcp/2893",
@@ -256,6 +267,9 @@ func Run() error {
 				childArgs = append(childArgs, "--seed-file", seedFile)
 			}
 			childArgs = append(childArgs, "--min-outbound", fmt.Sprintf("%d", minOutbound))
+			if clusterNodes > 0 {
+				childArgs = append(childArgs, "--cluster-nodes", fmt.Sprintf("%d", clusterNodes))
+			}
 			childArgs = append(childArgs, "--dial-timeout", dialTimeoutStr)
 			childArgs = append(childArgs, "--stale-age", staleAgeStr)
 			childArgs = append(childArgs, "--max-fail", fmt.Sprintf("%d", maxFailures))
@@ -540,11 +554,12 @@ func Run() error {
 					}
 					exclude[c.RemotePeer()] = true
 				}
-				if outbound >= minOutbound {
+				target := effectiveOutboundTarget(minOutbound, clusterNodes, peerStore.CountKnownPeersWithAddrs(h.ID()))
+				if outbound >= target {
 					time.Sleep(2 * time.Second)
 					continue
 				}
-				needed := minOutbound - outbound
+				needed := target - outbound
 				cands, metas := peerStore.GetDialCandidates(needed*2, 0, exclude)
 				if len(cands) == 0 {
 					// nothing to dial; sleep a bit
@@ -653,7 +668,7 @@ func Run() error {
 					}
 					// if we've satisfied outbound, break
 					outbound++
-					if outbound >= minOutbound {
+					if outbound >= effectiveOutboundTarget(minOutbound, clusterNodes, peerStore.CountKnownPeersWithAddrs(h.ID())) {
 						break
 					}
 				}
@@ -1420,7 +1435,7 @@ func Run() error {
 		var bootstrapAddr string
 		var keyHex string
 		var timeoutStr string
-		fs.StringVar(&bootstrapAddr, "bootstrap", "", "bootstrap peer multiaddr (e.g. /ip4/172.20.0.10/tcp/4001/p2p/...)")
+		fs.StringVar(&bootstrapAddr, "bootstrap", "", "bootstrap peer multiaddr(s), comma-separated (extra peers speed cold RT fill)")
 		fs.StringVar(&keyHex, "key", "", "key (64 hex chars) to lookup")
 		fs.StringVar(&timeoutStr, "timeout", "30s", "max duration for GetToken lookup only (connect and DHT bootstrap use separate budgets)")
 		_ = fs.Parse(os.Args[2:])
@@ -1438,9 +1453,77 @@ func Run() error {
 	}
 }
 
+func parseLookupKeyBootstrapPeers(s string) ([]peer.AddrInfo, error) {
+	var out []peer.AddrInfo
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		ma, err := multiaddr.NewMultiaddr(part)
+		if err != nil {
+			return nil, fmt.Errorf("bootstrap multiaddr %q: %w", part, err)
+		}
+		info, err := peer.AddrInfoFromP2pAddr(ma)
+		if err != nil {
+			return nil, fmt.Errorf("bootstrap peer %q: %w", part, err)
+		}
+		out = append(out, *info)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no bootstrap addresses")
+	}
+	return out, nil
+}
+
+// lookupKeyBootstrapDialTimeout is separate from --timeout (GetToken budget). Connect + DHT init can exceed 30s under load.
+const lookupKeyBootstrapDialTimeout = 120 * time.Second
+
+func lookupKeyConnectTimeout() time.Duration {
+	d := lookupKeyBootstrapDialTimeout
+	if v := os.Getenv("LOOKUP_KEY_CONNECT_TIMEOUT"); v != "" {
+		if parsed, err := time.ParseDuration(v); err == nil && parsed > 0 {
+			d = parsed
+		}
+	}
+	return d
+}
+
+// connectLookupKeyBootstrapPeers dials each bootstrap until one succeeds, then best-effort dials the rest (same peer, alternate addrs).
+func connectLookupKeyBootstrapPeers(ctxBg context.Context, h host.Host, infos []peer.AddrInfo) error {
+	if len(infos) == 0 {
+		return fmt.Errorf("no bootstrap addresses")
+	}
+	dialTimeout := lookupKeyConnectTimeout()
+	var lastErr error
+	connected := false
+	for i := range infos {
+		ctxConn, cancelConn := context.WithTimeout(ctxBg, dialTimeout)
+		connErr := h.Connect(ctxConn, infos[i])
+		cancelConn()
+		if connErr == nil {
+			connected = true
+			continue
+		}
+		lastErr = connErr
+		if !connected {
+			log.Printf("lookup-key: bootstrap %d: %v", i, connErr)
+		} else {
+			log.Printf("lookup-key: optional bootstrap %d: %v", i, connErr)
+		}
+	}
+	if !connected {
+		if lastErr != nil {
+			return fmt.Errorf("connect to bootstrap: all %d dials failed: %w", len(infos), lastErr)
+		}
+		return fmt.Errorf("connect to bootstrap: all %d dials failed", len(infos))
+	}
+	return nil
+}
+
 // runLookupKey runs a one-off DHT lookup from a fresh node (cold lookup).
 // The new node has no local token state, so GetToken traverses the DHT; hop count uses the same path as /lookup.
-func runLookupKey(bootstrapAddr, keyHex string, lookupTimeout time.Duration) error {
+func runLookupKey(bootstrapMultiaddrs, keyHex string, lookupTimeout time.Duration) error {
 	ctxBg := context.Background()
 	if lookupTimeout < 5*time.Second {
 		lookupTimeout = 30 * time.Second
@@ -1451,13 +1534,9 @@ func runLookupKey(bootstrapAddr, keyHex string, lookupTimeout time.Duration) err
 		return fmt.Errorf("invalid key: %w", err)
 	}
 
-	ma, err := multiaddr.NewMultiaddr(bootstrapAddr)
+	infos, err := parseLookupKeyBootstrapPeers(bootstrapMultiaddrs)
 	if err != nil {
-		return fmt.Errorf("invalid bootstrap addr: %w", err)
-	}
-	info, err := peer.AddrInfoFromP2pAddr(ma)
-	if err != nil {
-		return fmt.Errorf("parse bootstrap: %w", err)
+		return err
 	}
 
 	// TCP-only avoids QUIC UDP buffer issues in short-lived docker runs; DHT uses the same token prefix as peers.
@@ -1479,20 +1558,18 @@ func runLookupKey(bootstrapAddr, keyHex string, lookupTimeout time.Duration) err
 	localHS := myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}
 	myhost.RegisterHandshake(h, localHS, policyBase)
 
-	ctxConn, cancelConn := context.WithTimeout(ctxBg, 45*time.Second)
-	defer cancelConn()
-	if err := h.Connect(ctxConn, *info); err != nil {
-		return fmt.Errorf("connect to bootstrap: %w", err)
+	if err := connectLookupKeyBootstrapPeers(ctxBg, h, infos); err != nil {
+		return err
 	}
-	// Allow bootstrap's Connected-handshake goroutine to finish before DHT dials.
-	time.Sleep(4 * time.Second)
+	// Short settle; first peer must have completed handshake before DHT dials.
+	time.Sleep(1 * time.Second)
 
 	dhtCfg := myhost.DHTConfig{
-		Mode:           myhost.DHTModeServer,
+		Mode:           myhost.DHTModeClient,
 		UseTokenDHT:    true,
-		BootstrapPeers: []peer.AddrInfo{*info},
+		BootstrapPeers: infos,
 	}
-	ctxBootstrap, cancelBootstrap := context.WithTimeout(ctxBg, 2*time.Minute)
+	ctxBootstrap, cancelBootstrap := context.WithTimeout(ctxBg, 90*time.Second)
 	defer cancelBootstrap()
 	d, err := myhost.NewDHT(ctxBootstrap, h, dhtCfg)
 	if err != nil {
@@ -1500,14 +1577,14 @@ func runLookupKey(bootstrapAddr, keyHex string, lookupTimeout time.Duration) err
 	}
 	defer d.Close()
 
-	rtWait, cancelRT := context.WithTimeout(ctxBg, 90*time.Second)
+	rtWait, cancelRT := context.WithTimeout(ctxBg, 45*time.Second)
 	defer cancelRT()
 	for d.RoutingTable().Size() == 0 {
 		select {
 		case <-rtWait.Done():
-			return fmt.Errorf("DHT routing table empty after 90s (bootstrap may have failed)")
+			return fmt.Errorf("DHT routing table empty after 45s (bootstrap may have failed)")
 		default:
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
@@ -1534,16 +1611,27 @@ func runLookupKey(bootstrapAddr, keyHex string, lookupTimeout time.Duration) err
 	start := time.Now()
 	_, err = mystore.GetToken(evCtx2, routing.ValueStore(d), key)
 	cancel2()
+	cancelLookup()
 	<-done
 	latencyMs := time.Since(start).Milliseconds()
+	deadlineHit := errors.Is(err, context.DeadlineExceeded) || errors.Is(ctxLookup.Err(), context.DeadlineExceeded)
 	if os.Getenv("SNG40_LOG_LOOKUP_PATHS") == "1" {
-		log.Printf("lookup-key: network_hops=%d lookup_latency_ms=%d found=%v err=%v", int(hops), latencyMs, err == nil, err)
+		log.Printf("lookup-key: network_hops=%d lookup_latency_ms=%d found=%v deadline_hit=%v err=%v", int(hops), latencyMs, err == nil, deadlineHit, err)
+	}
+
+	var latencyJSON interface{} = latencyMs
+	if deadlineHit {
+		// Wall time ~= lookupTimeout; reporting it as "latency" is misleading (timeout saturation, not RTT).
+		latencyJSON = nil
 	}
 
 	out := map[string]interface{}{
 		"network_hops":      int(hops),
-		"lookup_latency_ms": latencyMs,
+		"lookup_latency_ms": latencyJSON,
 		"found":             err == nil,
+	}
+	if deadlineHit {
+		out["lookup_deadline"] = true
 	}
 	if err != nil {
 		out["error"] = err.Error()

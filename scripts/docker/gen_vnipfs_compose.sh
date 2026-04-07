@@ -38,7 +38,7 @@ for i in $(seq 2 "$N"); do
       --listen /ip4/172.20.0.${IP_LAST}/udp/4002/quic-v1
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node${i}.json
       --log /app/logs/node${i}.log
     volumes:

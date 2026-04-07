@@ -12,6 +12,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -58,8 +60,12 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			"/ip4/0.0.0.0/udp/2894/quic-v1",
 		}
 	}
-	if opts.MinOutbound <= 0 {
-		opts.MinOutbound = 4
+	if opts.ClusterNodeCount == 0 {
+		if v := os.Getenv("CLUSTER_NODE_COUNT"); v != "" {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				opts.ClusterNodeCount = n
+			}
+		}
 	}
 	if opts.PerIPDialLimit <= 0 {
 		opts.PerIPDialLimit = 3
@@ -307,11 +313,12 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				}
 				exclude[c.RemotePeer()] = true
 			}
-			if outbound >= opts.MinOutbound {
+			target := effectiveOutboundTarget(opts.MinOutbound, opts.ClusterNodeCount, peerStore.CountKnownPeersWithAddrs(h.ID()))
+			if outbound >= target {
 				time.Sleep(2 * time.Second)
 				continue
 			}
-			needed := opts.MinOutbound - outbound
+			needed := target - outbound
 			cands, metas := peerStore.GetDialCandidates(needed*2, 0, exclude)
 			if len(cands) == 0 {
 				time.Sleep(5 * time.Second)
@@ -374,7 +381,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 					}
 				}
 				outbound++
-				if outbound >= opts.MinOutbound {
+				if outbound >= effectiveOutboundTarget(opts.MinOutbound, opts.ClusterNodeCount, peerStore.CountKnownPeersWithAddrs(h.ID())) {
 					break
 				}
 			}

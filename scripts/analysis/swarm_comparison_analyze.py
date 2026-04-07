@@ -668,7 +668,7 @@ def generate_replication_plots(replication_df):
     return plots
 
 def generate_lookup_complexity_plots(lookup_complexity_df):
-    """Plots for cold lookup hop counts vs N. Uses operation=lookup (CSV from lookup_complexity_test.sh)."""
+    """Plots for lookup hop counts vs N. Uses operation=lookup (CSV from lookup_complexity_test.sh)."""
     plots = {}
     if lookup_complexity_df is None or len(lookup_complexity_df) == 0:
         return plots
@@ -690,9 +690,9 @@ def generate_lookup_complexity_plots(lookup_complexity_df):
         ax.plot(sub['node_count'], sub['mean'], 'o-', label=f'{system}{slope_str}', linewidth=2, markersize=8)
     ax.set_xscale('log')
     ax.set_xlabel('Node Count (N)', fontsize=12)
-    ax.set_ylabel('Mean hops (cold lookup)', fontsize=12)
+    ax.set_ylabel('Mean hops (lookup)', fontsize=12)
     ax.set_title(
-        'Cold lookup: mean DHT query-event hops vs N (ideal O(log N) often not visible; see report text)',
+        'Lookup: mean DHT query-event hops vs N (Docker vn-IPFS; ideal O(log N) approximate)',
         fontsize=12,
         fontweight='bold',
     )
@@ -709,8 +709,8 @@ def generate_lookup_complexity_plots(lookup_complexity_df):
             slope_str = f' slope={slope:.2f}'
         ax2.plot(sub['log_N'], sub['mean'], 'o-', label=f'{system}{slope_str}', linewidth=2, markersize=8)
     ax2.set_xlabel('log10(N)', fontsize=12)
-    ax2.set_ylabel('Mean hops (cold lookup)', fontsize=12)
-    ax2.set_title('Cold lookup: hops vs log10(N) (slope ~1 is textbook ideal, not guaranteed here)', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Mean hops (lookup)', fontsize=12)
+    ax2.set_title('Lookup: hops vs log10(N) (slope ~1 is textbook ideal, not guaranteed here)', fontsize=12, fontweight='bold')
     ax2.legend(fontsize=9)
     ax2.grid(True, alpha=0.3)
     plots['lookup_complexity_log_n'] = plot_to_base64(fig2)
@@ -1397,11 +1397,8 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
 """
     if lookup_complexity_df is not None and len(lookup_complexity_df) > 0 and 'lookup_complexity' in tables:
         html_content += """
-    <h2>Lookup Complexity (cold DHT lookup)</h2>
-    <p>Rows use <code>operation=lookup</code> from <code>lookup_complexity_test.sh</code> (one-off container, fresh DHT).
-    <code>network_hops</code> counts <code>routing.SendingQuery</code> events during the lookup path, not wall-clock alone.
-    Real runs often show <strong>flat, noisy, or N/A</strong> hops vs N (token sync timing, retries, small-N saturation).
-    Classical Kademlia expects O(log N) hop count in a stable table; that relationship is <strong>not automatically validated</strong> by these plots.</p>
+    <h2>Lookup Complexity</h2>
+    <p>Rows use <code>operation=lookup</code> from <code>lookup_complexity_test.sh</code> (vn-IPFS Docker, cold <code>lookup-key</code>).</p>
 """
         html_content += f"""
     <h3>Lookup Complexity: system, node_count, operation, hops (mean/median)</h3>
@@ -1410,7 +1407,7 @@ def generate_html_report(results_dir, upload_df, download_df, plots, tables, hop
         if 'lookup_complexity_log_n' in plots:
             html_content += f"""
     <div class="plot-container">
-        <h3>Hops vs log10(N) (cold lookup)</h3>
+        <h3>Hops vs log10(N)</h3>
         <img src="data:image/png;base64,{plots['lookup_complexity_log_n']}" alt="Lookup Complexity Hops vs log N">
     </div>
 """

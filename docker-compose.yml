@@ -13,7 +13,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/bootstrap.key
       --store /app/data/bootstrap
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/bootstrap.json
       --log /app/logs/bootstrap.log
     volumes:
@@ -39,7 +39,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node2.key
       --store /app/data/node2
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node2.json
       --log /app/logs/node2.log
     volumes:
@@ -63,7 +63,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node3.key
       --store /app/data/node3
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node3.json
       --log /app/logs/node3.log
     volumes:
@@ -87,7 +87,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node4.key
       --store /app/data/node4
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node4.json
       --log /app/logs/node4.log
     volumes:
@@ -111,7 +111,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node5.key
       --store /app/data/node5
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node5.json
       --log /app/logs/node5.log
     volumes:
@@ -135,7 +135,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node6.key
       --store /app/data/node6
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node6.json
       --log /app/logs/node6.log
     volumes:
@@ -159,7 +159,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node7.key
       --store /app/data/node7
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node7.json
       --log /app/logs/node7.log
     volumes:
@@ -183,7 +183,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node8.key
       --store /app/data/node8
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node8.json
       --log /app/logs/node8.log
     volumes:
@@ -207,7 +207,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node9.key
       --store /app/data/node9
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node9.json
       --log /app/logs/node9.log
     volumes:
@@ -231,7 +231,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node10.key
       --store /app/data/node10
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node10.json
       --log /app/logs/node10.log
     volumes:
@@ -255,7 +255,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node11.key
       --store /app/data/node11
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node11.json
       --log /app/logs/node11.log
     volumes:
@@ -279,7 +279,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node12.key
       --store /app/data/node12
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node12.json
       --log /app/logs/node12.log
     volumes:
@@ -303,7 +303,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node13.key
       --store /app/data/node13
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node13.json
       --log /app/logs/node13.log
     volumes:
@@ -327,7 +327,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node14.key
       --store /app/data/node14
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node14.json
       --log /app/logs/node14.log
     volumes:
@@ -351,7 +351,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node15.key
       --store /app/data/node15
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node15.json
       --log /app/logs/node15.log
     volumes:
@@ -375,7 +375,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node16.key
       --store /app/data/node16
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node16.json
       --log /app/logs/node16.log
     volumes:
@@ -399,7 +399,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node17.key
       --store /app/data/node17
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node17.json
       --log /app/logs/node17.log
     volumes:
@@ -423,7 +423,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node18.key
       --store /app/data/node18
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node18.json
       --log /app/logs/node18.log
     volumes:
@@ -447,7 +447,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node19.key
       --store /app/data/node19
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node19.json
       --log /app/logs/node19.log
     volumes:
@@ -471,7 +471,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node20.key
       --store /app/data/node20
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node20.json
       --log /app/logs/node20.log
     volumes:
@@ -495,7 +495,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node21.key
       --store /app/data/node21
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node21.json
       --log /app/logs/node21.log
     volumes:
@@ -519,7 +519,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node22.key
       --store /app/data/node22
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node22.json
       --log /app/logs/node22.log
     volumes:
@@ -543,7 +543,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node23.key
       --store /app/data/node23
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node23.json
       --log /app/logs/node23.log
     volumes:
@@ -567,7 +567,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node24.key
       --store /app/data/node24
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node24.json
       --log /app/logs/node24.log
     volumes:
@@ -591,7 +591,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node25.key
       --store /app/data/node25
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node25.json
       --log /app/logs/node25.log
     volumes:
@@ -615,7 +615,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node26.key
       --store /app/data/node26
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node26.json
       --log /app/logs/node26.log
     volumes:
@@ -639,7 +639,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node27.key
       --store /app/data/node27
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node27.json
       --log /app/logs/node27.log
     volumes:
@@ -663,7 +663,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node28.key
       --store /app/data/node28
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node28.json
       --log /app/logs/node28.log
     volumes:
@@ -687,7 +687,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node29.key
       --store /app/data/node29
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node29.json
       --log /app/logs/node29.log
     volumes:
@@ -711,7 +711,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node30.key
       --store /app/data/node30
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node30.json
       --log /app/logs/node30.log
     volumes:
@@ -735,7 +735,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node31.key
       --store /app/data/node31
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node31.json
       --log /app/logs/node31.log
     volumes:
@@ -759,7 +759,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node32.key
       --store /app/data/node32
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node32.json
       --log /app/logs/node32.log
     volumes:
@@ -783,7 +783,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node33.key
       --store /app/data/node33
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node33.json
       --log /app/logs/node33.log
     volumes:
@@ -807,7 +807,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node34.key
       --store /app/data/node34
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node34.json
       --log /app/logs/node34.log
     volumes:
@@ -831,7 +831,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node35.key
       --store /app/data/node35
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node35.json
       --log /app/logs/node35.log
     volumes:
@@ -855,7 +855,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node36.key
       --store /app/data/node36
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node36.json
       --log /app/logs/node36.log
     volumes:
@@ -879,7 +879,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node37.key
       --store /app/data/node37
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node37.json
       --log /app/logs/node37.log
     volumes:
@@ -903,7 +903,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node38.key
       --store /app/data/node38
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node38.json
       --log /app/logs/node38.log
     volumes:
@@ -927,7 +927,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node39.key
       --store /app/data/node39
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node39.json
       --log /app/logs/node39.log
     volumes:
@@ -951,7 +951,7 @@ services:
       --listen /ip4/0.0.0.0/udp/4002/quic-v1
       --key /app/keys/node40.key
       --store /app/data/node40
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/node40.json
       --log /app/logs/node40.log
     volumes:

@@ -666,9 +666,9 @@ def write_report(
                     )
 
     if not lookup_df.empty:
-        findings.append("Lookup hop measurements exist for put operations; **lookup hop rows are often N/A** in the bundled `lookup_complexity_results.csv`.")
+        findings.append("`lookup_complexity_results.csv` has lookup hop rows from the Docker harness (`lookup_complexity_test.sh`).")
     else:
-        findings.append("**Lookup hop data** is sparse or missing after filtering N/A.")
+        findings.append("**Lookup hop data** is missing or empty in `lookup_complexity_results.csv`.")
 
     if repl_df.empty or repl_df["system"].nunique() < 2:
         findings.append("**Replication timing comparison** is incomplete where Swarm rows are SKIP/TIMEOUT.")

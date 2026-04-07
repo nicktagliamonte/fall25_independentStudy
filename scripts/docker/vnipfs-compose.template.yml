@@ -17,7 +17,7 @@ services:
       --listen /ip4/172.20.0.10/udp/4002/quic-v1
       --key /app/keys/bootstrap.key
       --store /app/data/bootstrap
-      --min-outbound 4
+      --min-outbound 20
       --control /app/logs/bootstrap.json
       --log /app/logs/bootstrap.log
     environment:
