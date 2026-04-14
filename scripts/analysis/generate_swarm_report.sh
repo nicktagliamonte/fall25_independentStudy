@@ -102,8 +102,16 @@ calculate_stats() {
         exit
       }
       mean = sum / n
-      # Calculate median
-      asort(values)
+      # Calculate median with basic sort since BSD awk lacks asort
+      for (i=1; i<=n; i++) {
+        for (j=i+1; j<=n; j++) {
+          if (values[i] > values[j]) {
+            temp = values[i]
+            values[i] = values[j]
+            values[j] = temp
+          }
+        }
+      }
       if (n % 2 == 0) {
         median = (values[n/2] + values[n/2+1]) / 2
       } else {
@@ -186,7 +194,7 @@ EOF
   
   if [[ -n "$upload_file" && -f "$upload_file" ]]; then
     # Calculate stats for our system (latency_ms is column 4)
-    our_stats=$(grep "^our_system," "$upload_file" 2>/dev/null | awk -F',' '$4 != "ERROR" && $4 != "" {print $4}' | sort -n | awk '
+    our_stats=$(awk -F',' '$1=="our_system" && $4 != "ERROR" && $4 != "" {print $4}' "$upload_file" 2>/dev/null | sort -n | awk '
       {
         values[NR] = $1
         sum += $1
@@ -194,7 +202,6 @@ EOF
       END {
         if (NR > 0) {
           mean = sum / NR
-          asort(values)
           if (NR % 2 == 0) {
             median = (values[NR/2] + values[NR/2+1]) / 2
           } else {
@@ -208,7 +215,7 @@ EOF
     ')
     
     # Calculate stats for Swarm (latency_ms is column 4)
-    swarm_stats=$(grep "^swarm," "$upload_file" 2>/dev/null | awk -F',' '$4 != "ERROR" && $4 != "" {print $4}' | sort -n | awk '
+    swarm_stats=$(awk -F',' '$1=="swarm" && $4 != "ERROR" && $4 != "" {print $4}' "$upload_file" 2>/dev/null | sort -n | awk '
       {
         values[NR] = $1
         sum += $1
@@ -216,7 +223,6 @@ EOF
       END {
         if (NR > 0) {
           mean = sum / NR
-          asort(values)
           if (NR % 2 == 0) {
             median = (values[NR/2] + values[NR/2+1]) / 2
           } else {
@@ -303,7 +309,15 @@ EOF
           
           # Calculate other stats
           split(values[key], latencies, " ")
-          asort(latencies)
+          for (i=1; i<=n; i++) {
+            for (j=i+1; j<=n; j++) {
+              if (latencies[i]+0 > latencies[j]+0) {
+                temp = latencies[i]
+                latencies[i] = latencies[j]
+                latencies[j] = temp
+              }
+            }
+          }
           if (n % 2 == 0) {
             median = (latencies[n/2] + latencies[n/2+1]) / 2
           } else {
@@ -548,7 +562,13 @@ EOF
           n = count[key]
           mean = sum[key] / n
           split(values[key], h, " ")
-          asort(h)
+          for (i=1; i<=n; i++) {
+            for (j=i+1; j<=n; j++) {
+              if (h[i]+0 > h[j]+0) {
+                temp = h[i]; h[i] = h[j]; h[j] = temp
+              }
+            }
+          }
           if (n % 2 == 0) {
             median = (h[n/2] + h[n/2+1]) / 2
           } else {
@@ -611,7 +631,13 @@ EOF
           n = count[key]
           mean = sum[key] / n
           split(values[key], h, " ")
-          asort(h)
+          for (i=1; i<=n; i++) {
+            for (j=i+1; j<=n; j++) {
+              if (h[i]+0 > h[j]+0) {
+                temp = h[i]; h[i] = h[j]; h[j] = temp
+              }
+            }
+          }
           if (n % 2 == 0) {
             median = (h[n/2] + h[n/2+1]) / 2
           } else {
@@ -994,6 +1020,9 @@ vn-IPFS uses write locking; Swarm uses chunk push without locks. p99_ratio > 1 o
 |-------------|-------------|-----------|-----------|--------------|------------|------------|
 EOF
     python3 - "$concurrent_file" << 'PYEOF'
+import sys, csv
+from pathlib import Path
+p = Path(sys.argv[1])
 rows = list(csv.DictReader(p.open()))
 by_key = {}
 for r in rows:
@@ -1159,8 +1188,8 @@ EOF
 
   if [[ -n "$upload_file" && -f "$upload_file" ]]; then
     # Calculate overall comparison
-    our_overall=$(grep "^our_system," "$upload_file" 2>/dev/null | awk -F',' '{print $NF}' | grep -v "ERROR" | awk '{sum+=$1; n++} END {if(n>0) print sum/n; else print "N/A"}')
-    swarm_overall=$(grep "^swarm," "$upload_file" 2>/dev/null | awk -F',' '{print $NF}' | grep -v "ERROR" | awk '{sum+=$1; n++} END {if(n>0) print sum/n; else print "N/A"}')
+    our_overall=$(awk -F',' '$1=="our_system" && $NF != "ERROR" && $NF != "" {sum+=$NF; n++} END {if(n>0) print sum/n; else print "N/A"}' "$upload_file" 2>/dev/null)
+    swarm_overall=$(awk -F',' '$1=="swarm" && $NF != "ERROR" && $NF != "" {sum+=$NF; n++} END {if(n>0) print sum/n; else print "N/A"}' "$upload_file" 2>/dev/null)
     
     if [[ "$our_overall" != "N/A" && "$swarm_overall" != "N/A" ]]; then
       improvement=$(echo "scale=1; (($swarm_overall - $our_overall) / $swarm_overall) * 100" | bc -l 2>/dev/null || echo "0")

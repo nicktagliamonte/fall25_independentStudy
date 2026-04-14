@@ -1,0 +1,11 @@
+system,node_count,operation,hops,lookup_latency_ms,lookup_type
+our_system,50,lookup,7,120000,key
+our_system,50,lookup,20,120000,key
+our_system,50,lookup,N/A,N/A,key
+our_system,50,lookup,1,120001,key
+our_system,50,lookup,9,120001,key
+our_system,50,lookup,4,120000,key
+our_system,50,lookup,2,120000,key
+our_system,50,lookup,6,120000,key
+our_system,50,lookup,14,119999,key
+our_system,50,lookup,N/A,N/A,key
