@@ -19,7 +19,7 @@ if [ ! -f "$PASSWORD_FILE" ]; then
 fi
 
 # Parse HTTP_ADDR if provided (format: host:port or :port)
-if [[ "$HTTP_ADDR" == *:* ]]; then
+if [ "${HTTP_ADDR#*:}" != "$HTTP_ADDR" ]; then
   HTTP_HOST="${HTTP_ADDR%%:*}"
   HTTP_PORT="${HTTP_ADDR##*:}"
   # Handle :port format (empty host means bind to all interfaces)

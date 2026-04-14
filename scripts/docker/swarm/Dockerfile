@@ -38,3 +38,15 @@ RUN set -e; \
     if [ $i -eq 6 ]; then exit 1; fi; \
     sleep 15; \
   done
+
+WORKDIR /app
+
+COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
+COPY entrypoint.sh /app/entrypoint.sh
+
+RUN chmod +x /app/swarm /app/entrypoint.sh && \
+    mkdir -p /app/data /app/logs
+
+EXPOSE 8500 30399
+
+ENTRYPOINT ["/app/entrypoint.sh"]
