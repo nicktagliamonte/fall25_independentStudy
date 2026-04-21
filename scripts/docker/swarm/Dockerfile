@@ -38,3 +38,8 @@ RUN set -e; \
     if [ $i -eq 6 ]; then exit 1; fi; \
     sleep 15; \
   done
+
+COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /app/swarm /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]

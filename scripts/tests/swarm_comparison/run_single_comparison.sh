@@ -91,7 +91,7 @@ fi
 N="${NC_ARR[0]}"
 
 case ",$TEST," in
-  *,upload,*|*,download_warm_raw,*|*,lookup_latency,*|*,lookup_complexity,*|*,replication,*|*,replication_distribution,*|*,repair_time,*|*,routing_overhead,*|*,storage_efficiency,*|*,concurrent,*) ;;
+  *,upload,*|*,download_warm_raw,*|*,lookup_latency,*|*,lookup_complexity,*|*,catalog_growth,*|*,replication,*|*,replication_distribution,*|*,repair_time,*|*,routing_overhead,*|*,storage_efficiency,*|*,concurrent,*) ;;
   *)
     echo "Error: unknown test '$TEST'. Run: run_comparison.sh --tests list" >&2
     exit 1

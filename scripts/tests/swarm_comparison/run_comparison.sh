@@ -145,6 +145,7 @@ if [[ "$TESTS" == "list" ]]; then
   echo "  upload, download_warm_raw, lookup_complexity,"
   echo "  replication, replication_distribution, repair_time, routing_overhead,"
   echo "  storage_efficiency, concurrent"
+  echo "  catalog_growth — vn-IPFS + Swarm; upload+GET vs growing object count (not in default suite; --tests catalog_growth)"
   echo "  lookup_latency — optional (not in default suite; often flat on LAN; use --tests lookup_latency or INCLUDE_LOOKUP_LATENCY=1)"
   echo ""
   echo "Example: --tests upload,download_warm_raw --nodes 10 --iterations 2"
@@ -164,6 +165,7 @@ should_run_test() {
   local name="$1"
   if [[ -z "$TESTS" ]]; then
     [[ "$name" == "lookup_latency" ]] && [[ "${INCLUDE_LOOKUP_LATENCY:-0}" != "1" ]] && return 1
+    [[ "$name" == "catalog_growth" ]] && return 1
     return 0
   fi
   [[ ",${TESTS}," == *",${name},"* ]] && return 0
@@ -563,6 +565,41 @@ run_download_test() {
   fi
 }
 
+# Catalog growth: one row per object count. vn-IPFS (remote_only GET) and/or Swarm (GET from worker). Env: CATALOG_GROWTH_MAX_OBJECTS, CATALOG_GROWTH_PAYLOAD_BYTES.
+run_catalog_growth_test() {
+  local node_count="$1"
+  local output_file="$OUTPUT_DIR/catalog_growth_n${node_count}.csv"
+  local log_file="$OUTPUT_DIR/catalog_growth_n${node_count}.log"
+  echo -e "\n${GREEN}Running catalog growth test (N=$node_count label, CATALOG_GROWTH_MAX_OBJECTS=${CATALOG_GROWTH_MAX_OBJECTS:-256})...${NC}"
+  if [[ "$RUN_VNIPFS" == "true" ]]; then
+    run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/catalog_growth_test.sh" \
+      --node-count "$node_count" \
+      --max-files "${CATALOG_GROWTH_MAX_OBJECTS:-256}" \
+      --payload-size "${CATALOG_GROWTH_PAYLOAD_BYTES:-8192}" \
+      --output "$output_file" \
+      2>&1 | tee "$log_file" || echo -e "  ${YELLOW}vn-IPFS catalog growth had errors${NC}" | tee -a "$log_file"
+  fi
+  if [[ "$RUN_SWARM" == "true" ]]; then
+    local append_flag=()
+    if [[ -f "$output_file" ]]; then
+      append_flag=(--append)
+    fi
+    run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/catalog_growth_swarm_test.sh" \
+      --node-count "$node_count" \
+      --max-files "${CATALOG_GROWTH_MAX_OBJECTS:-256}" \
+      --payload-size "${CATALOG_GROWTH_PAYLOAD_BYTES:-8192}" \
+      --output "$output_file" \
+      "${append_flag[@]}" \
+      2>&1 | tee -a "$log_file" || echo -e "  ${YELLOW}Swarm catalog growth had errors${NC}" | tee -a "$log_file"
+  fi
+  if [[ -f "$output_file" ]]; then
+    echo -e "  ${GREEN}✓ Catalog growth: $output_file${NC}"
+    return 0
+  fi
+  echo -e "  ${RED}✗ Catalog growth test failed${NC}"
+  return 1
+}
+
 # Function to aggregate results
 aggregate_results() {
   echo -e "\n${BLUE}Aggregating results...${NC}"
@@ -865,6 +902,13 @@ for node_count in "${NODE_COUNTS[@]}"; do
     run_download_test "$node_count" || echo -e "${YELLOW}Download test had errors, continuing...${NC}"
   fi
 
+  if should_run_test "catalog_growth" && { [[ "$RUN_VNIPFS" == "true" ]] || [[ "$RUN_SWARM" == "true" ]]; }; then
+    echo -e "\n${BLUE}Step 4c: Running catalog growth test (latency vs objects on network)...${NC}"
+    run_catalog_growth_test "$node_count" || echo -e "${YELLOW}Catalog growth test had errors, continuing...${NC}"
+  elif should_run_test "catalog_growth"; then
+    echo -e "\n${CYAN}Skipping catalog_growth (no stack selected)${NC}"
+  fi
+
   if should_run_test "lookup_latency"; then
     echo -e "\n${BLUE}Step 4b: Running lookup latency test...${NC}"
     run_lookup_latency_test "$node_count" || echo -e "${YELLOW}Lookup latency test had errors, continuing...${NC}"
@@ -960,7 +1004,8 @@ echo "  - replication_distribution.csv: system,node_count,near,midrange,farflung
 echo "  - repair_time_results.csv: system,node_count,repair_time_s (when available)"
 echo "  - concurrent_results.csv: system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms (when available)"
 echo "  - lookup_latency_n<N>.csv: isolated lookup latency (token vs TTFB proxy)"
-echo "  - lookup_complexity_results.csv: system,node_count,operation,hops,hops_raw,lookup_latency_ms"
+  echo "  - lookup_complexity_results.csv: system,node_count,operation,hops,hops_raw,lookup_latency_ms"
+  echo "  - catalog_growth_n<N>.csv: system,node_count,files_on_network,payload_size,upload_ms,download_total_ms"
 echo "  - routing_overhead_results.csv: system,operation,message_count,overhead_type (token vs provider announce)"
 echo "  - resource_usage.csv: CPU/memory samples during tests (when available)"
 echo "  - resource_usage_upload_n<N>.csv: CPU/memory during upload phase only, per node count"

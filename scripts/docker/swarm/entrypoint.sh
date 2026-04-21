@@ -18,19 +18,20 @@ if [ ! -f "$PASSWORD_FILE" ]; then
   chmod 600 "$PASSWORD_FILE"
 fi
 
-# Parse HTTP_ADDR if provided (format: host:port or :port)
-if [[ "$HTTP_ADDR" == *:* ]]; then
-  HTTP_HOST="${HTTP_ADDR%%:*}"
-  HTTP_PORT="${HTTP_ADDR##*:}"
-  # Handle :port format (empty host means bind to all interfaces)
-  if [ -z "$HTTP_HOST" ]; then
+# Parse HTTP_ADDR if provided (format: host:port or :port). POSIX sh (Alpine ash).
+case "$HTTP_ADDR" in
+  *:*)
+    HTTP_HOST="${HTTP_ADDR%%:*}"
+    HTTP_PORT="${HTTP_ADDR##*:}"
+    if [ -z "$HTTP_HOST" ]; then
+      HTTP_HOST="0.0.0.0"
+    fi
+    ;;
+  *)
+    HTTP_PORT="$HTTP_ADDR"
     HTTP_HOST="0.0.0.0"
-  fi
-else
-  # Assume it's just a port number
-  HTTP_PORT="$HTTP_ADDR"
-  HTTP_HOST="0.0.0.0"
-fi
+    ;;
+esac
 
 # Build Swarm command
 CMD="/app/swarm"
@@ -68,6 +69,16 @@ fi
 
 # Disable NAT traversal in containers (no UPnP)
 CMD="$CMD --nat none"
+
+# Optional: enables bzz-pin DELETE for local eviction (catalog growth first-key mode).
+case "${SWARM_ENABLE_PINNING:-}" in
+  1|true|TRUE|yes|YES) CMD="$CMD --enable-pinning" ;;
+esac
+
+# Optional: in-memory chunk cache (default 10000). Set 0 for catalog benchmarks to reduce warm sub-ms repeats.
+if [ -n "${SWARM_STORE_CACHE_CAPACITY:-}" ]; then
+  CMD="$CMD --store.cache.size ${SWARM_STORE_CACHE_CAPACITY}"
+fi
 
 echo "Starting Swarm v0.5.8 node..."
 echo "Command: $CMD"

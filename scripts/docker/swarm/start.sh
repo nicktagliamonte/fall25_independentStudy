@@ -20,6 +20,9 @@ fi
 
 echo "Starting $N Swarm/Bee Docker nodes..."
 
+SWARM_PIN_VALUE="${SWARM_ENABLE_PINNING:-false}"
+SWARM_SCACHE_VALUE="${SWARM_STORE_CACHE_CAPACITY:-}"
+
 # Stop any existing Swarm containers first (use down to release resources; network is external)
 if docker-compose -f docker-compose.swarm.yml ps 2>/dev/null | grep -q "Up"; then
   echo "Stopping existing Swarm containers..."
@@ -70,6 +73,8 @@ for i in $(seq 1 $((N - 1))); do
       - SWARM_HTTP_PORT=8500
       - SWARM_VERBOSITY=4
       - SWARM_PASSWORD=swarm-test-password
+      - SWARM_ENABLE_PINNING=$SWARM_PIN_VALUE
+      - SWARM_STORE_CACHE_CAPACITY=$SWARM_SCACHE_VALUE
       - SWARM_BOOTNODE=enode://PLACEHOLDER_PEER_ID@172.20.0.200:30399
     volumes:
       - swarm-node${i}-data:/app/data
@@ -104,6 +109,13 @@ EOF
 fi
 
 mv "$COMPOSE_FILE.tmp" "$COMPOSE_FILE"
+
+# Normalize pinning + store cache env on bootstrap + workers (template + generated nodes).
+sed -i.bak \
+  -e "s/SWARM_ENABLE_PINNING=.*/SWARM_ENABLE_PINNING=$SWARM_PIN_VALUE/g" \
+  -e "s/SWARM_STORE_CACHE_CAPACITY=.*/SWARM_STORE_CACHE_CAPACITY=${SWARM_SCACHE_VALUE}/g" \
+  "$COMPOSE_FILE"
+rm -f "${COMPOSE_FILE}.bak"
 
 "$ROOT_DIR/scripts/docker/swarm/verify_generated_ips.sh" "$COMPOSE_FILE" || {
   echo "ERROR: generated compose has invalid ipv4_address values" >&2

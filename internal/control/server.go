@@ -32,6 +32,14 @@ import (
 
 // no persistent server struct is required
 
+// getRemoteOnlyQuery reports whether the client requested a network path for /get (skip local chunk
+// index, local payload resolution, and gateway shortcut so stack.GetBlock runs). This is largely
+// used in testing scripts to measure the network path.
+func getRemoteOnlyQuery(r *http.Request) bool {
+	v := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("remote_only")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
 // ReplicationFactorR is the enforced minimum replicas per file (Near 40%, Midrange 30%, Far 30%).
 const ReplicationFactorR = 7
 
@@ -947,7 +955,8 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		ctxFetch, cancel := context.WithTimeout(r.Context(), d)
 		defer cancel()
 		rawResponse := wantsRawGetResponse(r)
-		if rawResponse {
+		remoteOnly := getRemoteOnlyQuery(r)
+		if rawResponse && !remoteOnly {
 			if idx, idxErr := mystore.GetChunkIndex(ctxFetch, stack.Datastore, key); idxErr == nil && idx != nil {
 				zeroHops := 0
 				w.Header().Set("Content-Type", "application/octet-stream")
@@ -982,25 +991,31 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		// - Local: GetBlockByKey hit → networkHops = &zeroHops (correct; no DHT lookup)
 		// - Gateway: Query hit, fetchBlockFromToken success → networkHops = &zeroHops (gateway path; DHT hops not tracked)
 		// - stack.GetBlock: DHT GetToken + DirectFetch → networkHops = &hops from GetBlock return (DHT lookup hops)
-		if localData, localErr := mystore.ResolvePayloadByKeyLocal(ctxFetch, stack.Datastore, stack.BlockSvc, key); localErr == nil && localData != nil {
-			b = localData
-			networkHops = &zeroHops
-		} else if gateway != nil {
-			results, qErr := gateway.Query(ctxFetch, mygateway.Query{Pattern: key.String()})
-			if qErr == nil && len(results) > 0 {
-				var token mystore.Token
-				if token.Unmarshal(results[0].Value) == nil && token.Validate() == nil && len(token.Locations) > 0 {
-					b, err = fetchBlockFromToken(ctxFetch, stack, token, key)
-					if err == nil {
-						networkHops = &zeroHops
-						fetchedFromRemote = true
+		if !remoteOnly {
+			if localData, localErr := mystore.ResolvePayloadByKeyLocal(ctxFetch, stack.Datastore, stack.BlockSvc, key); localErr == nil && localData != nil {
+				b = localData
+				networkHops = &zeroHops
+			} else if gateway != nil {
+				results, qErr := gateway.Query(ctxFetch, mygateway.Query{Pattern: key.String()})
+				if qErr == nil && len(results) > 0 {
+					var token mystore.Token
+					if token.Unmarshal(results[0].Value) == nil && token.Validate() == nil && len(token.Locations) > 0 {
+						b, err = fetchBlockFromToken(ctxFetch, stack, token, key)
+						if err == nil {
+							networkHops = &zeroHops
+							fetchedFromRemote = true
+						}
 					}
 				}
 			}
 		}
 		if b == nil && err == nil {
 			var hops int
-			b, hops, err = stack.GetBlock(ctxFetch, key)
+			gctx := ctxFetch
+			if remoteOnly {
+				gctx = mystore.WithRemoteOnlyGet(ctxFetch)
+			}
+			b, hops, err = stack.GetBlock(gctx, key)
 			if err == nil {
 				networkHops = &hops
 				fetchedFromRemote = true

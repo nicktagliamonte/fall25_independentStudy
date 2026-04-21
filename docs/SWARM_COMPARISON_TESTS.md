@@ -165,6 +165,39 @@ Both systems are compared on wall-clock time from the start of the HTTP request 
 
 **Output**: CSV with columns: `system,payload_size,iteration,ttfb_ms,total_ms`
 
+### Catalog growth (`catalog_growth_test.sh`)
+
+**Purpose**: vn-IPFS only — measure **upload** latency for each successive object and **download** latency for a **fixed** first object as the **number of distinct objects on the network** grows (1 … **N**). Each row is one point on the x-axis “files on network.”
+
+**Method (vn-IPFS)**: PUT from bootstrap; GET (`format=raw&remote_only=1`) from a **worker** when available (last `fall25-node*` with a control addr), targeting the **first** object’s key. `remote_only` forces DHT token resolution plus peer fetch on that node (not a local replica read). **Download** latency defaults to **host wall time** (`date +%s%N` around the full `docker exec` + curl), aligned with Swarm catalog (`CATALOG_GROWTH_HOST_WALL_GET`, default **1**). Set **`CATALOG_GROWTH_HOST_WALL_GET=0`** for in-container `curl` `time_total` only (typically smaller ms).
+
+**Method (Swarm)**: `catalog_growth_swarm_test.sh` — **PUT** always on **swarm-bootstrap** (vn-IPFS parity; worker-only uploads see `no suitable peer` on other nodes in this mesh). Timed **GET**: `curl` **inside** the last healthy `swarm-node*` (or bootstrap if no workers) to **`http://127.0.0.1:8500`**. Swarm has no `remote_only`; the node may satisfy the hash from **local chunk store** after an earlier fetch. **`CATALOG_GROWTH_SWARM_FETCH`** (default **`latest`**) controls which hash is timed: **`latest`** = root just uploaded in that row (getter has not seen that hash yet, so no warm local chunk for that root — avoids sub-ms rows driven only by cache + Docker RTT). **`first`** = same fixed root as vn-IPFS for all rows; the script runs best-effort **`DELETE bzz-pin:/…`** and **`DELETE bzz:/…/`** before each GET to evict local state — enable pinning on the stack with **`SWARM_ENABLE_PINNING=true`** when running `scripts/docker/swarm/start.sh` (passed into compose) so `bzz-pin` DELETE is active; otherwise **`first`** may still warm-cache after the first successful fetch. Same CSV columns with `system=swarm`.
+
+**Sub-ms download column**: in-container **`curl` `time_total`** can sit below 1 ms on a warm path; **`CATALOG_GROWTH_SWARM_HOST_WALL_GET=1`** times **`docker exec` + GET on the host** (Linux **`date +%s%N`**). **`SWARM_STORE_CACHE_CAPACITY=0`** (compose + `entrypoint.sh` → `--store.cache.size`) disables Swarm’s default 10k in-memory chunk cache. **`run_swarm_catalog_benchmark.sh`** applies pinning, zero cache, **`first`**, host-wall GET, CSV + plot in one step (`SWARM_CATALOG_N`, `SWARM_CATALOG_FILES`, `SWARM_CATALOG_OUT_DIR`, `SWARM_CATALOG_PAYLOAD_BYTES` optional).
+
+**Combined run**: `run_comparison.sh --tests catalog_growth --system both` writes `catalog_growth_n<N>.csv` with vn-IPFS rows first, then Swarm rows (`--append`). Use `python3 scripts/analysis/catalog_growth_plot.py` for overlaid lines; `--system swarm` or `--system our_system` for one trace.
+
+**Node count**: Use a **meaningful** cluster size (e.g. **50**); the CSV `node_count` column labels the run (`--node-count` / `CATALOG_GROWTH_NODE_COUNT`).
+
+**Not in the default suite** — run with `--tests catalog_growth` (or `run_single_comparison.sh --test catalog_growth`). Tuning: **`CATALOG_GROWTH_MAX_OBJECTS`** (default **256**), **`CATALOG_GROWTH_PAYLOAD_BYTES`** (default **8192** bytes).
+
+**Usage**:
+```bash
+./scripts/tests/swarm_comparison/run_comparison.sh --tests catalog_growth --nodes 50 --system vnipfs --output-dir ./test_results/catalog_growth_run
+# one-shot: down -v, start N nodes, catalog CSV + plot (env: VN_CATALOG_N, VN_CATALOG_FILES, VN_CATALOG_OUT_DIR, …)
+./scripts/tests/swarm_comparison/run_vnipfs_catalog_benchmark.sh
+# or standalone:
+CATALOG_GROWTH_MAX_OBJECTS=200 ./scripts/tests/swarm_comparison/catalog_growth_test.sh --node-count 50 --max-files 200 --payload-size 8192 --output catalog_growth_results.csv
+```
+
+**Output**: `system,node_count,files_on_network,payload_size,upload_ms,download_total_ms`
+
+**Plot (errors and host-jitter spikes suppressed; linear interpolation; clean line chart)**:
+```bash
+python3 scripts/analysis/catalog_growth_plot.py test_results/catalog_growth_512/catalog_growth_n50.csv
+# writes catalog_growth_n50_latency.png beside the CSV; tune --window, --n-sigma, --min-abs-ms if needed
+```
+
 ### Lookup Complexity (`lookup_complexity_test.sh`)
 
 **Purpose**: Measure `network_hops` / latency from a **cold** `lookup-key` run against the **running vn-IPFS** stack (after `run_comparison.sh` starts Docker).

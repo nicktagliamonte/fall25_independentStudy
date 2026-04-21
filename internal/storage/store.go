@@ -35,6 +35,18 @@ import (
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 )
 
+type remoteOnlyGetKey struct{}
+
+// WithRemoteOnlyGet marks ctx so GetBlock skips the local blockstore and uses GetToken + DirectFetch.
+func WithRemoteOnlyGet(ctx context.Context) context.Context {
+	return context.WithValue(ctx, remoteOnlyGetKey{}, true)
+}
+
+func remoteOnlyGetFromContext(ctx context.Context) bool {
+	v, _ := ctx.Value(remoteOnlyGetKey{}).(bool)
+	return v
+}
+
 // gatherAddrsForPeer returns addresses for connecting to the provider.
 // Prefers location.Address if routable (not 0.0.0.0); falls back to peerstore (e.g. from DHT bootstrap).
 func gatherAddrsForPeer(h host.Host, loc Location) []multiaddr.Multiaddr {
@@ -211,9 +223,10 @@ func (s *Stack) GetBlock(ctx context.Context, k Key) ([]byte, int, error) {
 		return nil, 0, fmt.Errorf("key cannot be zero")
 	}
 
-	// Check local blockstore first (fast path)
-	if localData, err := GetBlockByKey(ctx, s.Datastore, s.BlockSvc, k); err == nil && localData != nil {
-		return localData, 0, nil
+	if !remoteOnlyGetFromContext(ctx) {
+		if localData, err := GetBlockByKey(ctx, s.Datastore, s.BlockSvc, k); err == nil && localData != nil {
+			return localData, 0, nil
+		}
 	}
 
 	tokenStore := s.TokenStore

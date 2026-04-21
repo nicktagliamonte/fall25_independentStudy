@@ -145,6 +145,10 @@ CID lookup requires routing table entry; use key when available.
   - `X-Network-Hops: <count>`
 - On local chunk-index hits, the server flushes the first 4 KiB chunk immediately, then streams remaining chunks.
 
+**Measurement / network path (`remote_only`):**
+
+- Query parameter `remote_only=1` (or `true` / `yes`) skips the local chunk index, local payload resolution, gateway shortcut, and the **local blockstore fast path inside `GetBlock`**. The handler resolves the key via DHT (`GetToken`) and fetches payload from a provider (`DirectFetch`), so wall-clock time reflects lookup + transfer comparable to a cold replica fetch. Default behavior (no flag) still prefers local replicas for speed.
+
 **Errors:** `400` invalid key/cid, key or cid required, key not found in routing table; `404` block not found.
 
 ---

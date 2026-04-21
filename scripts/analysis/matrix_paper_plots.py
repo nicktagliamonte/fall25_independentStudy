@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -187,6 +188,10 @@ def read_lookup_complexity(path: Path, n: int) -> pd.DataFrame | None:
     if df.empty:
         return None
     df["hops"] = pd.to_numeric(df["hops"], errors="coerce")
+    if "hops_raw" in df.columns:
+        df["hops_raw"] = pd.to_numeric(df["hops_raw"], errors="coerce")
+    else:
+        df["hops_raw"] = np.nan
     if "lookup_latency_ms" in df.columns:
         df["lookup_latency_ms"] = pd.to_numeric(df["lookup_latency_ms"], errors="coerce")
     else:
@@ -194,6 +199,96 @@ def read_lookup_complexity(path: Path, n: int) -> pd.DataFrame | None:
     df["node_count"] = n
     df["system"] = df["system"].map(relabel_system)
     return df
+
+
+def write_fig06_lookup_complexity_caption(
+    path: Path,
+    k_scale: float,
+    r_network: float,
+    k_factor: float,
+    k_ls: float,
+    k_net: float,
+    k_ref: float,
+    blend_w: float,
+) -> None:
+    """Human-readable definitions of k, r, and the log curve for fig06."""
+    ks = f"{k_scale:.6f}" if np.isfinite(k_scale) else "n/a"
+    kls_s = f"{k_ls:.6f}" if np.isfinite(k_ls) else "n/a"
+    rs = f"{r_network:.6f}" if np.isfinite(r_network) else "n/a"
+    kn = f"{k_net:.6f}" if np.isfinite(k_net) else "n/a"
+    kr = f"{k_ref:.6f}" if np.isfinite(k_ref) else "n/a"
+    kf_note = ""
+    if np.isfinite(k_factor) and abs(k_factor - 1.0) > 1e-9:
+        kf_note = (
+            f"\n\nThe plotted **k** is **{k_factor:g}×** the blended least-squares value "
+            f"(**k_ls = {k_ls:.6f}**) from **LOOKUP_PLOT_K_FACTOR**."
+        )
+    text = f"""# Lookup Complexity figure (fig06)
+
+## Smooth gray curve
+The line is **y = k·log₂(x)** evaluated on **400** samples with **x** spaced uniformly in **[10, 100]**.
+It is a segment of the continuous function **k·log₂(x)** for **x > 0**. There is **no** additive intercept and no affine “shift” from (0, 0) in the plot: the scalar **k** (optionally scaled by **LOOKUP_PLOT_K_FACTOR**, default **1**) is the only degree of freedom.
+
+## k
+Two proportional-to-log₂ scales are fit through the origin (same **Nᵢ** grid): **k_network** from mean **`hops_raw`**, **k_reference** from mean harness **`hops`**. With **w = LOOKUP_PLOT_K_BLEND_REF** in **[0, 1]** (default **0.5**), **k_ls = (1−w)·k_network + w·k_reference** when both are finite; otherwise the single finite estimate is used.
+
+Current **k_network = {kn}**, **k_reference = {kr}**, **w = {blend_w:g}**, blended **k_ls = {kls_s}**, plotted **k = {ks}** (after **LOOKUP_PLOT_K_FACTOR**).{kf_note}
+
+## r (value in legend: {rs})
+**r** is the **Pearson correlation coefficient** between **mean network hop counts** (CSV **`hops_raw`**, one mean per matrix **N**) and **log₂(N)**. It describes how nearly collinear those few (**N**, mean hops) points are with a straight line in the plane (**log₂ N**, hops). It is **not** a significance test, a confidence interval, or a proof of **O(log N)** routing.
+
+## Network hops (markers)
+Means of measured DHT hop counts from cold **lookup-key** (**`hops_raw`**) at each matrix **N**.
+"""
+    path.write_text(text, encoding="utf-8")
+
+
+def _log2_scale_through_origin(y: np.ndarray, logn: np.ndarray) -> float:
+    """Least-squares k minimizing Σ (yᵢ − k·lognᵢ)²; NaN if indeterminate."""
+    y = np.asarray(y, dtype=float)
+    logn = np.asarray(logn, dtype=float)
+    msk = np.isfinite(y) & np.isfinite(logn)
+    if msk.sum() >= 2:
+        lg, yy = logn[msk], y[msk]
+        den = float(np.dot(lg, lg))
+        if den > 0:
+            return float(np.dot(yy, lg) / den)
+    if msk.sum() == 1:
+        if float(logn[msk][0]) != 0.0:
+            return float(y[msk][0] / logn[msk][0])
+    return float("nan")
+
+
+def _lookup_plot_k_factor() -> float:
+    raw = os.environ.get("LOOKUP_PLOT_K_FACTOR", "1").strip() or "1"
+    try:
+        v = float(raw)
+    except ValueError:
+        return 1.0
+    return v if np.isfinite(v) and v > 0 else 1.0
+
+
+def _lookup_plot_k_blend_ref() -> float:
+    """Weight on k_reference in k_ls = (1-w)*k_network + w*k_reference; default 0.5."""
+    raw = os.environ.get("LOOKUP_PLOT_K_BLEND_REF", "0.5").strip() or "0.5"
+    try:
+        v = float(raw)
+    except ValueError:
+        return 0.5
+    return float(min(1.0, max(0.0, v)))
+
+
+def _pearson_r(x: np.ndarray, y: np.ndarray) -> float:
+    """Pearson r; NaN if fewer than two finite pairs."""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    m = np.isfinite(x) & np.isfinite(y)
+    if m.sum() < 2:
+        return float("nan")
+    x, y = x[m], y[m]
+    if np.std(x) < 1e-15 or np.std(y) < 1e-15:
+        return float("nan")
+    return float(np.corrcoef(x, y)[0, 1])
 
 
 def plot_download_warm(
@@ -448,48 +543,111 @@ def plot_lookup_vnipfs_only(
         return []
     df = pd.concat(rows, ignore_index=True)
     present_n = sorted(df["node_count"].unique())
-    hop_means = df.groupby("node_count")["hops"].mean()
-    lat_means = df.groupby("node_count")["lookup_latency_ms"].mean()
-    has_hops = hop_means.notna().any()
-    has_lat = lat_means.notna().any()
+    hop_ref_means = df.groupby("node_count")["hops"].mean()
+    hops_raw_means = df.groupby("node_count")["hops_raw"].mean()
+    has_network_hops = hops_raw_means.notna().any()
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-    ax0, ax1 = axes[0], axes[1]
-    if has_hops:
+    logn = np.log2(np.array(present_n, dtype=float))
+    net_vals = hops_raw_means.reindex(present_n).values.astype(float)
+    ref_vals = hop_ref_means.reindex(present_n).values.astype(float)
+    r_network = _pearson_r(logn, net_vals)
+
+    # k·log₂(x) on [10, 100]: blend network vs reference LS k (default w=0.5 splits the difference).
+    k_net = _log2_scale_through_origin(net_vals, logn)
+    k_ref = _log2_scale_through_origin(ref_vals, logn)
+    blend_w = _lookup_plot_k_blend_ref()
+    k_factor = _lookup_plot_k_factor()
+    if np.isfinite(k_net) and np.isfinite(k_ref):
+        k_ls = (1.0 - blend_w) * k_net + blend_w * k_ref
+    elif np.isfinite(k_net):
+        k_ls = k_net
+    elif np.isfinite(k_ref):
+        k_ls = k_ref
+    else:
+        k_ls = float("nan")
+    k_scale = k_ls * k_factor if np.isfinite(k_ls) else float("nan")
+
+    xs = np.linspace(10.0, 100.0, 400)
+    y_log = k_scale * np.log2(xs) if np.isfinite(k_scale) else None
+
+    alignment_path = out_dir / "lookup_complexity_log2_alignment.json"
+    alignment_path.write_text(
+        json.dumps(
+            {
+                "pearson_r_vs_log2_node_count": {
+                    "network_hops": float(r_network) if np.isfinite(r_network) else None,
+                },
+                "log2_curve_scale_k": float(k_scale) if np.isfinite(k_scale) else None,
+                "log2_scale_k_ls": float(k_ls) if np.isfinite(k_ls) else None,
+                "log2_scale_k_network": float(k_net) if np.isfinite(k_net) else None,
+                "log2_scale_k_reference": float(k_ref) if np.isfinite(k_ref) else None,
+                "lookup_plot_k_blend_ref": float(blend_w),
+                "lookup_plot_k_factor": float(k_factor),
+                "log2_at_10": float(k_scale * np.log2(10.0)) if np.isfinite(k_scale) else None,
+                "log2_at_100": float(k_scale * np.log2(100.0)) if np.isfinite(k_scale) else None,
+                "log2_curve": (
+                    "y = k·log₂(x) for x in [10, 100]; k = LOOKUP_PLOT_K_FACTOR × k_ls; "
+                    "k_ls = (1−w)·k_network + w·k_reference (w=LOOKUP_PLOT_K_BLEND_REF, default 0.5) "
+                    "when both LS scales are finite; else the available LS scale."
+                ),
+                "note": (
+                    "The plotted segment is part of the single continuous function k·log₂(x) on x>0; "
+                    "no additive intercept. See fig06_lookup_complexity_CAPTION.md."
+                ),
+                "node_counts": [int(x) for x in present_n],
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    fig, ax0 = plt.subplots(1, 1, figsize=(8, 4.5))
+    ax0.grid(False)
+    ax0.yaxis.grid(True, color="0.82", linestyle="-", linewidth=0.9, alpha=1.0)
+    ax0.set_axisbelow(True)
+    ax0.minorticks_off()
+
+    if y_log is not None:
         ax0.plot(
-            hop_means.index.astype(float),
-            hop_means.values,
-            marker="o",
+            xs,
+            y_log,
+            color="#666666",
+            linewidth=2.0,
+            linestyle="-",
+            alpha=0.95,
+            label=f"k·log₂(x), k={k_scale:.3f}",
+            zorder=1,
+        )
+    if has_network_hops:
+        ax0.plot(
+            hops_raw_means.index.astype(float),
+            hops_raw_means.values,
+            marker="^",
             linewidth=2,
             color="C0",
+            label=f"Network hops  r(log₂ N)={r_network:.3f}",
+            zorder=3,
         )
-        ax0.set_ylabel("Mean hops (lookup)")
-    else:
-        ax0.text(0.5, 0.5, "No data", ha="center", va="center")
+
+    if not has_network_hops and y_log is None:
+        ax0.text(0.5, 0.5, "No hop data", ha="center", va="center", transform=ax0.transAxes)
     ax0.set_xticks(present_n)
-    ax0.set_xlabel("Node count")
-    ax0.set_title("Lookup complexity — hops")
-
-    if has_lat:
-        ax1.plot(
-            lat_means.index.astype(float),
-            lat_means.values,
-            marker="s",
-            linewidth=2,
-            color="C1",
-        )
-        ax1.set_ylabel("Mean lookup_latency_ms")
-    else:
-        ax1.text(0.5, 0.5, "No data", ha="center", va="center")
-    ax1.set_xticks(present_n)
-    ax1.set_xlabel("Node count")
-    ax1.set_title("Lookup complexity — latency")
-
+    ax0.set_xlim(8.0, 102.0)
+    ax0.set_xlabel("Node count N")
+    ax0.set_ylabel("Mean hop count")
+    ax0.set_title("Lookup Complexity")
+    ax0.legend(loc="best", fontsize=9)
     fig.tight_layout()
     path = out_dir / "fig06_lookup_complexity_vnipfs_only.png"
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    return [str(path)]
+    cap_path = out_dir / "fig06_lookup_complexity_CAPTION.md"
+    write_fig06_lookup_complexity_caption(
+        cap_path, k_scale, r_network, k_factor, k_ls, k_net, k_ref, blend_w
+    )
+    written = [str(path), str(alignment_path), str(cap_path)]
+    return written
 
 
 def write_captions(
@@ -523,7 +681,9 @@ def write_captions(
         "- **fig05 (storage):** Uses `efficiency_ratio`; **definitions differ between stacks**. "
         f"Node counts excluded from this plot: {sorted(exclude_storage) or 'none'}.",
         "",
-        "- **fig06 (lookup complexity):** **vn-IPFS matrix cells**; `lookup_complexity_results.csv` from Docker. "
+        "- **fig06 (Lookup Complexity):** **vn-IPFS matrix cells**; `lookup_complexity_results.csv` from Docker. "
+        "**Network hops** (mean `hops_raw`) and **k·log₂(x)** on **x ∈ [10, 100]** (same y-axis, hop count). "
+        "Definitions of **k** and **r** are in `fig06_lookup_complexity_CAPTION.md`; coefficients also in `lookup_complexity_log2_alignment.json`. "
         "Does not prove asymptotics by itself — pair with analysis.",
         "",
         "## Files",
