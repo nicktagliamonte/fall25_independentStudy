@@ -28,8 +28,8 @@ case "$HTTP_ADDR" in
     fi
     ;;
   *)
-    HTTP_PORT="$HTTP_ADDR"
     HTTP_HOST="0.0.0.0"
+    HTTP_PORT="$HTTP_ADDR"
     ;;
 esac
 

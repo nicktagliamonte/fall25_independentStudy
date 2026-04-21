@@ -61,7 +61,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node3:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node3
@@ -85,7 +85,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node4:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node4
@@ -109,7 +109,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node5:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node5
@@ -133,7 +133,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node6:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node6
@@ -157,7 +157,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node7:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node7
@@ -181,7 +181,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node8:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node8
@@ -205,7 +205,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node9:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node9
@@ -229,7 +229,7 @@ services:
       bootstrap:
         condition: service_healthy
     environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWJuDkPAajCkeNn64vpr8PwK5fbhKLGPCbvhCDUrTPbhCB
+      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWHp3texktugupqdqVQNfpwEmUmAsnLvFNTECLPcSYrE2Q
   node10:
     image: fall25_independentstudy-bootstrap:latest
     container_name: fall25-node10

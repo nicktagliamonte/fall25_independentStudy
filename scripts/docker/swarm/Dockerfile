@@ -39,7 +39,14 @@ RUN set -e; \
     sleep 15; \
   done
 
+WORKDIR /app
+
 COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /app/swarm /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+COPY entrypoint.sh /app/entrypoint.sh
+
+RUN chmod +x /app/swarm /app/entrypoint.sh && \
+    mkdir -p /app/data /app/logs
+
+EXPOSE 8500 30399
+
+ENTRYPOINT ["/app/entrypoint.sh"]

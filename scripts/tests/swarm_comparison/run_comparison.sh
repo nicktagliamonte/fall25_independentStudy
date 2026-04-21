@@ -12,7 +12,8 @@ set -euo pipefail
 #   --batch-sizes <list>  Comma-separated batch sizes for upload (default: 1,5)
 #   --output-dir <dir>    Output directory for results (default: ./test_results_<timestamp>)
 #   --test-timeout <sec>  Per-test timeout in seconds (default: 600; auto 5400/7200/7200s for max N 50/100/500 if unset)
-#   --tests <list>        Comma-separated test names (default: all). Use --tests list to print names.
+#   --tests-include <list> Comma-separated test names to precisely run (default: all). Use 'list' to print names.
+#   --tests-exclude <list> Comma-separated test names to exclude.
 #   --skip-start          Stacks already at N; skip compose startup. Implies --skip-cleanup; --nodes must be one value.
 #   --skip-cleanup        Don't stop containers after tests (useful for debugging)
 #   --validate            After completion, run validate_comparison_artifacts.sh on OUTPUT_DIR (exit non-zero if gaps)
@@ -41,7 +42,8 @@ TEST_TIMEOUT_SEC=600
 TEST_TIMEOUT_USER_SET=0
 SKIP_CLEANUP=false
 RUN_VALIDATE=false
-TESTS=""  # empty = default suite (excludes lookup_latency; set INCLUDE_LOOKUP_LATENCY=1 to add it); else comma-separated names
+TESTS_INCLUDE=""  # empty = default suite
+TESTS_EXCLUDE=""
 SKIP_START=false
 SYSTEM_MODE="both"
 
@@ -77,8 +79,12 @@ while [[ $# -gt 0 ]]; do
       TEST_TIMEOUT_USER_SET=1
       shift 2
       ;;
-    --tests)
-      TESTS="$2"
+    --tests-include)
+      TESTS_INCLUDE="$2"
+      shift 2
+      ;;
+    --tests-exclude)
+      TESTS_EXCLUDE="$2"
       shift 2
       ;;
     --validate)
@@ -102,7 +108,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --batch-sizes <list>  Batch sizes for upload test (default: 1,5)"
       echo "  --output-dir <dir>    Output directory (default: ./test_results_<timestamp>)"
       echo "  --test-timeout <sec>  Per-test timeout (default: 600; auto 5400/7200/7200s for max N 50/100/500 unless set)"
-      echo "  --tests <list>       Comma-separated test names (default: all). Use --tests list to print available tests."
+      echo "  --tests-include <list> Comma-separated test names strictly to run (default: all). Use 'list' to print available tests."
+      echo "  --tests-exclude <list> Comma-separated test names to exclude."
       echo "  --system <both|vnipfs|swarm>  Start and test only vn-IPFS, only Swarm, or both (default: both)"
       echo "  --skip-start         Clusters already at N; skip startup/teardown prep (implies --skip-cleanup; --nodes must be a single count)"
       echo "  --validate            Run artifact validator on OUTPUT_DIR at end (non-zero if CSVs missing/empty)"
@@ -117,7 +124,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Normalize TESTS (strip spaces for matching)
-TESTS="${TESTS// /}"
+TESTS_INCLUDE="${TESTS_INCLUDE// /}"
+TESTS_EXCLUDE="${TESTS_EXCLUDE// /}"
 
 case "${SYSTEM_MODE,,}" in
   both)
@@ -139,16 +147,16 @@ case "${SYSTEM_MODE,,}" in
 esac
 export SWARM_COMPARISON_SYSTEM="$SYSTEM_MODE"
 
-# Handle --tests list
-if [[ "$TESTS" == "list" ]]; then
-  echo "Available tests (use --tests <name> or --tests <name1,name2,...>):"
+# Handle lists
+if [[ "$TESTS_INCLUDE" == "list" || "$TESTS_EXCLUDE" == "list" ]]; then
+  echo "Available tests:"
   echo "  upload, download_warm_raw, lookup_complexity,"
   echo "  replication, replication_distribution, repair_time, routing_overhead,"
   echo "  storage_efficiency, concurrent"
-  echo "  catalog_growth — vn-IPFS + Swarm; upload+GET vs growing object count (not in default suite; --tests catalog_growth)"
-  echo "  lookup_latency — optional (not in default suite; often flat on LAN; use --tests lookup_latency or INCLUDE_LOOKUP_LATENCY=1)"
+  echo "  catalog_growth — vn-IPFS + Swarm; upload+GET vs growing object count (not in default suite; use --tests-include catalog_growth)"
+  echo "  lookup_latency — optional (not in default suite; often flat on LAN; use --tests-include lookup_latency or INCLUDE_LOOKUP_LATENCY=1)"
   echo ""
-  echo "Example: --tests upload,download_warm_raw --nodes 10 --iterations 2"
+  echo "Example: --tests-include upload,download_warm_raw --tests-exclude concurrent"
   exit 0
 fi
 
@@ -160,15 +168,18 @@ BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Helper: return 0 if test should run. Empty TESTS = default suite (omits lookup_latency unless INCLUDE_LOOKUP_LATENCY=1).
+# Helper: return 0 if test should run. Empty TESTS_INCLUDE = default suite (omits lookup_latency unless INCLUDE_LOOKUP_LATENCY=1).
 should_run_test() {
   local name="$1"
-  if [[ -z "$TESTS" ]]; then
+  if [[ -n "$TESTS_EXCLUDE" && ",${TESTS_EXCLUDE}," == *",${name},"* ]]; then
+    return 1
+  fi
+  if [[ -z "$TESTS_INCLUDE" ]]; then
     [[ "$name" == "lookup_latency" ]] && [[ "${INCLUDE_LOOKUP_LATENCY:-0}" != "1" ]] && return 1
     [[ "$name" == "catalog_growth" ]] && return 1
     return 0
   fi
-  [[ ",${TESTS}," == *",${name},"* ]] && return 0
+  [[ ",${TESTS_INCLUDE}," == *",${name},"* ]] && return 0
   return 1
 }
 
@@ -227,7 +238,8 @@ echo "Payload sizes: ${PAYLOAD_ARRAY[*]} bytes"
 echo "Batch sizes (upload): ${BATCH_SIZES_ARRAY[*]}"
 echo "Iterations per test: $ITERATIONS"
 echo "Per-test timeout: ${TEST_TIMEOUT_SEC}s$([[ "$TEST_TIMEOUT_USER_SET" -eq 1 ]] && echo ' (explicit)' || echo ' (default or auto: 5400/7200/7200s for max N 50/100/500)')"
-[[ -n "$TESTS" ]] && echo "Tests (filtered): $TESTS"
+[[ -n "$TESTS_INCLUDE" ]] && echo "Tests included: $TESTS_INCLUDE"
+[[ -n "$TESTS_EXCLUDE" ]] && echo "Tests excluded: $TESTS_EXCLUDE"
 [[ "$SKIP_START" == "true" ]] && echo "Skip start: assuming stacks already up at N=${NODE_COUNTS[0]} (no compose startup; cleanup disabled)"
 echo "Output directory: $OUTPUT_DIR"
 echo ""
@@ -677,8 +689,8 @@ generate_summary_report() {
     # Upload test summary (skipped vs missing vs empty)
     echo "Upload Latency Test Results:"
     echo "----------------------------"
-    if [[ -n "$TESTS" ]] && ! should_run_test "upload"; then
-      echo "  Status: skipped (upload not in --tests)."
+    if [[ -n "$TESTS_INCLUDE" ]] && ! should_run_test "upload"; then
+      echo "  Status: skipped (upload not in --tests-include)."
     else
       for node_count in "${NODE_COUNTS[@]}"; do
         local found=false
@@ -708,8 +720,8 @@ generate_summary_report() {
     echo ""
     echo "Download Latency Test Results:"
     echo "------------------------------"
-    if [[ -n "$TESTS" ]] && ! should_run_test "download_warm_raw"; then
-      echo "  Status: skipped (download_warm_raw not in --tests)."
+    if [[ -n "$TESTS_INCLUDE" ]] && ! should_run_test "download_warm_raw"; then
+      echo "  Status: skipped (download_warm_raw not in --tests-include)."
     else
       for node_count in "${NODE_COUNTS[@]}"; do
         should_run_test "download_warm_raw" || continue
@@ -791,7 +803,7 @@ for node_count in "${NODE_COUNTS[@]}"; do
   # When only running lookup_complexity, skip Swarm to reduce contention
   START_VNIPFS="$RUN_VNIPFS"
   START_SWARM="$RUN_SWARM"
-  if [[ "$TESTS" == "lookup_complexity" ]]; then
+  if [[ "$TESTS_INCLUDE" == "lookup_complexity" && -z "$TESTS_EXCLUDE" ]]; then
     START_SWARM=false
   fi
 
@@ -1020,7 +1032,8 @@ echo -e "${GREEN}All tests complete!${NC}"
 if [[ "$RUN_VALIDATE" == "true" ]]; then
   echo -e "\n${BLUE}Running artifact validation...${NC}"
   val_args=(--dir "$OUTPUT_DIR" --nodes "$NODES" --batch-sizes "$BATCH_SIZES")
-  [[ -n "$TESTS" ]] && val_args+=(--tests "$TESTS")
+  [[ -n "$TESTS_INCLUDE" ]] && val_args+=(--tests-include "$TESTS_INCLUDE")
+  [[ -n "$TESTS_EXCLUDE" ]] && val_args+=(--tests-exclude "$TESTS_EXCLUDE")
   if ! "$ROOT_DIR/scripts/tests/swarm_comparison/validate_comparison_artifacts.sh" "${val_args[@]}"; then
     echo -e "${RED}Artifact validation reported gaps (see above).${NC}" >&2
     exit 1
