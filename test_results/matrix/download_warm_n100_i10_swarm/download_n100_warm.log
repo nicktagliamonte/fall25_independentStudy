@@ -1,0 +1,14 @@
+==========================================
+Download Latency Test
+==========================================
+Our System API: (skipped) (container: none)
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 10
+GET path: same node as upload (warm)
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_235900/download_n100_warm.csv
+
+Verifying API endpoints...
+[0;32m✓ Swarm API is accessible[0m
+Getting provider info for our system...
+ERROR: Could not get provider info
+[0;31m  <<< command failed (exit 1): /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/download_test.sh --iterations 10 --output /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_235900/download_n100_warm.csv >>>[0m

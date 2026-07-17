@@ -1,0 +1,1124 @@
+Starting 100 Swarm/Bee Docker nodes...
+verify_generated_ips: OK (/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml)
+Pre-pulling Swarm Dockerfile bases (best-effort; warms cache, reduces apk/git flakes)...
+1.14-alpine: Pulling from library/golang
+Digest: sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+Status: Image is up to date for golang:1.14-alpine
+docker.io/library/golang:1.14-alpine
+3.21: Pulling from library/alpine
+Digest: sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+Status: Image is up to date for alpine:3.21
+docker.io/library/alpine:3.21
+Building Swarm Docker image (DOCKER_BUILDKIT=1)...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.48kB done
+#1 DONE 0.0s
+
+#2 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 0.3s
+
+#4 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#4 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 0.0s done
+#4 CACHED
+
+#5 [auth] library/golang:pull token for registry-1.docker.io
+#5 DONE 0.0s
+
+#6 [auth] library/alpine:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/golang:1.14-alpine
+#7 DONE 0.1s
+
+#8 [internal] load metadata for docker.io/library/alpine:3.21
+#8 DONE 0.1s
+
+#9 [internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [stage-1 1/7] FROM docker.io/library/alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+#10 resolve docker.io/library/alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d done
+#10 DONE 0.0s
+
+#11 [builder 1/7] FROM docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+#11 resolve docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1 done
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 35B done
+#12 DONE 0.0s
+
+#13 [builder 4/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if apk add --no-cache git make gcc musl-dev linux-headers; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#13 CACHED
+
+#14 [stage-1 6/7] COPY entrypoint.sh /app/entrypoint.sh
+#14 CACHED
+
+#15 [stage-1 3/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if apk add --no-cache ca-certificates curl jq; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#15 CACHED
+
+#16 [builder 5/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#16 CACHED
+
+#17 [builder 6/7] WORKDIR /build/swarm
+#17 CACHED
+
+#18 [builder 2/7] WORKDIR /build
+#18 CACHED
+
+#19 [stage-1 5/7] COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
+#19 CACHED
+
+#20 [stage-1 4/7] WORKDIR /app
+#20 CACHED
+
+#21 [builder 3/7] RUN sed -i 's/dl-cdn.alpinelinux.org/dl-5.alpinelinux.org/g' /etc/apk/repositories
+#21 CACHED
+
+#22 [builder 7/7] RUN make swarm
+#22 CACHED
+
+#23 [stage-1 2/7] RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.edge.kernel.org/g' /etc/apk/repositories
+#23 CACHED
+
+#24 [stage-1 7/7] RUN chmod +x /app/swarm /app/entrypoint.sh &&     mkdir -p /app/data /app/logs
+#24 CACHED
+
+#25 exporting to image
+#25 exporting layers done
+#25 exporting manifest sha256:8c9455cf573d881790bb8c23d5187ab826b8348bf912c29b7fae6f2a0dfbe9a0 done
+#25 exporting config sha256:bf2a0df0a53f2b67a6dbd8a23948bd5075bcd130539e8679182927ed820156d0 done
+#25 exporting attestation manifest sha256:b55beee8b45f63a41fac74635df42886fbdad44f01434ccdd2f34df64f7c5e04
+#25 exporting attestation manifest sha256:b55beee8b45f63a41fac74635df42886fbdad44f01434ccdd2f34df64f7c5e04 done
+#25 exporting manifest list sha256:33b2f66f2b84be903e5ae2a9f8229ca79f4ad7ab078cfd74ed52f599910ec115 done
+#25 naming to docker.io/library/swarm-node:latest done
+#25 unpacking to docker.io/library/swarm-node:latest done
+#25 DONE 0.0s
+Starting bootstrap node...
+time="2026-04-28T14:35:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:28-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Recreate 
+ Container swarm-bootstrap Recreated 
+ Container swarm-bootstrap Starting 
+ Container swarm-bootstrap Started 
+Waiting for bootstrap node to be ready...
+  Attempt 1/30...
+Bootstrap node is ready!
+Bootnode enode: enode://9aa5c39ed1fc86e16c00a2afb9521d266802496125ff52f57392701f4e652f49a1ab04e1aea647ab76d3b636e9505beebeda6672d8433f95fd929070f1208e10@172.20.0.200:30399
+Starting 99 peer nodes...
+time="2026-04-28T14:35:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:32-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node1 Recreate 
+ Container swarm-node1 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node1 Starting 
+ Container swarm-node1 Started 
+time="2026-04-28T14:35:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:35-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node2 Recreate 
+ Container swarm-node2 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node2 Starting 
+ Container swarm-node2 Started 
+time="2026-04-28T14:35:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:37-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node3 Recreate 
+ Container swarm-node3 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node3 Starting 
+ Container swarm-node3 Started 
+time="2026-04-28T14:35:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:39-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node4 Recreate 
+ Container swarm-node4 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node4 Starting 
+ Container swarm-node4 Started 
+time="2026-04-28T14:35:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:40-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node5 Recreate 
+ Container swarm-node5 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node5 Starting 
+ Container swarm-node5 Started 
+time="2026-04-28T14:35:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:42-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node6 Recreate 
+ Container swarm-node6 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node6 Starting 
+ Container swarm-node6 Started 
+time="2026-04-28T14:35:44-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:44-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node7 Recreate 
+ Container swarm-node7 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node7 Starting 
+ Container swarm-node7 Started 
+time="2026-04-28T14:35:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:46-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node8 Recreate 
+ Container swarm-node8 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node8 Starting 
+ Container swarm-node8 Started 
+time="2026-04-28T14:35:48-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:48-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node9 Recreate 
+ Container swarm-node9 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node9 Starting 
+ Container swarm-node9 Started 
+time="2026-04-28T14:35:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:50-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node10 Recreate 
+ Container swarm-node10 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node10 Starting 
+ Container swarm-node10 Started 
+time="2026-04-28T14:35:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:51-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node11 Recreate 
+ Container swarm-node11 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node11 Starting 
+ Container swarm-node11 Started 
+time="2026-04-28T14:35:53-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:53-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node12 Recreate 
+ Container swarm-node12 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node12 Starting 
+ Container swarm-node12 Started 
+time="2026-04-28T14:35:55-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:55-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node13 Recreate 
+ Container swarm-node13 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node13 Starting 
+ Container swarm-node13 Started 
+time="2026-04-28T14:35:56-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:57-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node14 Recreate 
+ Container swarm-node14 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node14 Starting 
+ Container swarm-node14 Started 
+time="2026-04-28T14:35:58-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:35:58-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node15 Recreate 
+ Container swarm-node15 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node15 Starting 
+ Container swarm-node15 Started 
+time="2026-04-28T14:36:00-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:00-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node16 Recreate 
+ Container swarm-node16 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node16 Starting 
+ Container swarm-node16 Started 
+time="2026-04-28T14:36:02-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:02-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node17 Recreate 
+ Container swarm-node17 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node17 Starting 
+ Container swarm-node17 Started 
+time="2026-04-28T14:36:04-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:04-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node18 Recreate 
+ Container swarm-node18 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node18 Starting 
+ Container swarm-node18 Started 
+time="2026-04-28T14:36:05-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:06-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node19 Recreate 
+ Container swarm-node19 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node19 Starting 
+ Container swarm-node19 Started 
+time="2026-04-28T14:36:07-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:07-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node20 Recreate 
+ Container swarm-node20 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node20 Starting 
+ Container swarm-node20 Started 
+  Started swarm-node20...
+time="2026-04-28T14:36:09-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:09-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node21 Recreate 
+ Container swarm-node21 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node21 Starting 
+ Container swarm-node21 Started 
+time="2026-04-28T14:36:11-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:11-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node22 Recreate 
+ Container swarm-node22 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node22 Starting 
+ Container swarm-node22 Started 
+time="2026-04-28T14:36:12-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:13-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node23 Recreate 
+ Container swarm-node23 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node23 Starting 
+ Container swarm-node23 Started 
+time="2026-04-28T14:36:14-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:14-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node24 Recreate 
+ Container swarm-node24 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node24 Starting 
+ Container swarm-node24 Started 
+time="2026-04-28T14:36:16-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:16-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node25 Recreate 
+ Container swarm-node25 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node25 Starting 
+ Container swarm-node25 Started 
+time="2026-04-28T14:36:18-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:18-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node26 Recreate 
+ Container swarm-node26 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node26 Starting 
+ Container swarm-node26 Started 
+time="2026-04-28T14:36:20-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:20-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node27 Recreate 
+ Container swarm-node27 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node27 Starting 
+ Container swarm-node27 Started 
+time="2026-04-28T14:36:22-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:22-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node28 Recreate 
+ Container swarm-node28 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node28 Starting 
+ Container swarm-node28 Started 
+time="2026-04-28T14:36:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:23-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node29 Recreate 
+ Container swarm-node29 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node29 Starting 
+ Container swarm-node29 Started 
+time="2026-04-28T14:36:25-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:25-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node30 Recreate 
+ Container swarm-node30 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node30 Starting 
+ Container swarm-node30 Started 
+time="2026-04-28T14:36:27-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:27-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node31 Recreate 
+ Container swarm-node31 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node31 Starting 
+ Container swarm-node31 Started 
+time="2026-04-28T14:36:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:29-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node32 Recreate 
+ Container swarm-node32 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node32 Starting 
+ Container swarm-node32 Started 
+time="2026-04-28T14:36:30-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:31-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node33 Recreate 
+ Container swarm-node33 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node33 Starting 
+ Container swarm-node33 Started 
+time="2026-04-28T14:36:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:32-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node34 Recreate 
+ Container swarm-node34 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node34 Starting 
+ Container swarm-node34 Started 
+time="2026-04-28T14:36:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:34-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node35 Recreate 
+ Container swarm-node35 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node35 Starting 
+ Container swarm-node35 Started 
+time="2026-04-28T14:36:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:36-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node36 Recreate 
+ Container swarm-node36 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node36 Starting 
+ Container swarm-node36 Started 
+time="2026-04-28T14:36:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:38-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node37 Recreate 
+ Container swarm-node37 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node37 Starting 
+ Container swarm-node37 Started 
+time="2026-04-28T14:36:39-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:40-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node38 Recreate 
+ Container swarm-node38 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node38 Starting 
+ Container swarm-node38 Started 
+time="2026-04-28T14:36:41-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:41-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node39 Recreate 
+ Container swarm-node39 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node39 Starting 
+ Container swarm-node39 Started 
+time="2026-04-28T14:36:43-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:43-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node40 Recreate 
+ Container swarm-node40 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node40 Starting 
+ Container swarm-node40 Started 
+  Started swarm-node40...
+time="2026-04-28T14:36:45-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:45-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node41 Recreate 
+ Container swarm-node41 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node41 Starting 
+ Container swarm-node41 Started 
+time="2026-04-28T14:36:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:47-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node42 Recreate 
+ Container swarm-node42 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node42 Starting 
+ Container swarm-node42 Started 
+time="2026-04-28T14:36:48-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:48-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node43 Recreate 
+ Container swarm-node43 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node43 Starting 
+ Container swarm-node43 Started 
+time="2026-04-28T14:36:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:50-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node44 Recreate 
+ Container swarm-node44 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node44 Starting 
+ Container swarm-node44 Started 
+time="2026-04-28T14:36:52-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:52-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node45 Recreate 
+ Container swarm-node45 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node45 Starting 
+ Container swarm-node45 Started 
+time="2026-04-28T14:36:54-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:54-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node46 Recreate 
+ Container swarm-node46 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node46 Starting 
+ Container swarm-node46 Started 
+time="2026-04-28T14:36:56-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:56-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node47 Recreate 
+ Container swarm-node47 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node47 Starting 
+ Container swarm-node47 Started 
+time="2026-04-28T14:36:57-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:58-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node48 Recreate 
+ Container swarm-node48 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node48 Starting 
+ Container swarm-node48 Started 
+time="2026-04-28T14:36:59-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:36:59-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node49 Recreate 
+ Container swarm-node49 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node49 Starting 
+ Container swarm-node49 Started 
+time="2026-04-28T14:37:01-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:01-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node50 Recreate 
+ Container swarm-node50 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node50 Starting 
+ Container swarm-node50 Started 
+time="2026-04-28T14:37:03-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:03-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node51 Recreate 
+ Container swarm-node51 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node51 Starting 
+ Container swarm-node51 Started 
+time="2026-04-28T14:37:04-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:04-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node52 Recreate 
+ Container swarm-node52 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node52 Starting 
+ Container swarm-node52 Started 
+time="2026-04-28T14:37:06-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:06-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node53 Recreate 
+ Container swarm-node53 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node53 Starting 
+ Container swarm-node53 Started 
+time="2026-04-28T14:37:08-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:08-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node54 Recreate 
+ Container swarm-node54 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node54 Starting 
+ Container swarm-node54 Started 
+time="2026-04-28T14:37:10-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:10-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node55 Recreate 
+ Container swarm-node55 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node55 Starting 
+ Container swarm-node55 Started 
+time="2026-04-28T14:37:11-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:12-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node56 Recreate 
+ Container swarm-node56 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node56 Starting 
+ Container swarm-node56 Started 
+time="2026-04-28T14:37:13-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:14-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node57 Recreate 
+ Container swarm-node57 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node57 Starting 
+ Container swarm-node57 Started 
+time="2026-04-28T14:37:15-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:15-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node58 Recreate 
+ Container swarm-node58 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node58 Starting 
+ Container swarm-node58 Started 
+time="2026-04-28T14:37:17-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:17-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node59 Recreate 
+ Container swarm-node59 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node59 Starting 
+ Container swarm-node59 Started 
+time="2026-04-28T14:37:18-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:18-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node60 Recreate 
+ Container swarm-node60 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node60 Starting 
+ Container swarm-node60 Started 
+  Started swarm-node60...
+time="2026-04-28T14:37:21-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:21-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node61 Recreate 
+ Container swarm-node61 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node61 Starting 
+ Container swarm-node61 Started 
+time="2026-04-28T14:37:22-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:22-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node62 Recreate 
+ Container swarm-node62 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node62 Starting 
+ Container swarm-node62 Started 
+time="2026-04-28T14:37:24-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:24-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node63 Recreate 
+ Container swarm-node63 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node63 Starting 
+ Container swarm-node63 Started 
+time="2026-04-28T14:37:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:26-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node64 Recreate 
+ Container swarm-node64 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node64 Starting 
+ Container swarm-node64 Started 
+time="2026-04-28T14:37:27-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:28-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node65 Recreate 
+ Container swarm-node65 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node65 Starting 
+ Container swarm-node65 Started 
+time="2026-04-28T14:37:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:29-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node66 Recreate 
+ Container swarm-node66 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node66 Starting 
+ Container swarm-node66 Started 
+time="2026-04-28T14:37:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:31-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node67 Recreate 
+ Container swarm-node67 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node67 Starting 
+ Container swarm-node67 Started 
+time="2026-04-28T14:37:33-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:33-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node68 Recreate 
+ Container swarm-node68 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node68 Starting 
+ Container swarm-node68 Started 
+time="2026-04-28T14:37:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:35-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node69 Recreate 
+ Container swarm-node69 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node69 Starting 
+ Container swarm-node69 Started 
+time="2026-04-28T14:37:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:36-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node70 Recreate 
+ Container swarm-node70 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node70 Starting 
+ Container swarm-node70 Started 
+time="2026-04-28T14:37:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:38-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node71 Recreate 
+ Container swarm-node71 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node71 Starting 
+ Container swarm-node71 Started 
+time="2026-04-28T14:37:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:40-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node72 Recreate 
+ Container swarm-node72 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node72 Starting 
+ Container swarm-node72 Started 
+time="2026-04-28T14:37:41-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:42-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node73 Recreate 
+ Container swarm-node73 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node73 Starting 
+ Container swarm-node73 Started 
+time="2026-04-28T14:37:43-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:44-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node74 Recreate 
+ Container swarm-node74 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node74 Starting 
+ Container swarm-node74 Started 
+time="2026-04-28T14:37:45-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:46-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node75 Recreate 
+ Container swarm-node75 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node75 Starting 
+ Container swarm-node75 Started 
+time="2026-04-28T14:37:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:47-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node76 Recreate 
+ Container swarm-node76 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node76 Starting 
+ Container swarm-node76 Started 
+time="2026-04-28T14:37:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:49-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node77 Recreate 
+ Container swarm-node77 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node77 Starting 
+ Container swarm-node77 Started 
+time="2026-04-28T14:37:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:51-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node78 Recreate 
+ Container swarm-node78 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node78 Starting 
+ Container swarm-node78 Started 
+time="2026-04-28T14:37:53-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:53-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node79 Recreate 
+ Container swarm-node79 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node79 Starting 
+ Container swarm-node79 Started 
+time="2026-04-28T14:37:55-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:55-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node80 Recreate 
+ Container swarm-node80 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node80 Starting 
+ Container swarm-node80 Started 
+  Started swarm-node80...
+time="2026-04-28T14:37:57-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:57-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node81 Recreate 
+ Container swarm-node81 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node81 Starting 
+ Container swarm-node81 Started 
+time="2026-04-28T14:37:58-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:37:59-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node82 Recreate 
+ Container swarm-node82 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node82 Starting 
+ Container swarm-node82 Started 
+time="2026-04-28T14:38:00-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:00-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node83 Recreate 
+ Container swarm-node83 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node83 Starting 
+ Container swarm-node83 Started 
+time="2026-04-28T14:38:02-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:02-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node84 Recreate 
+ Container swarm-node84 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node84 Starting 
+ Container swarm-node84 Started 
+time="2026-04-28T14:38:04-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:04-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node85 Recreate 
+ Container swarm-node85 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node85 Starting 
+ Container swarm-node85 Started 
+time="2026-04-28T14:38:06-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:06-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node86 Recreate 
+ Container swarm-node86 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node86 Starting 
+ Container swarm-node86 Started 
+time="2026-04-28T14:38:08-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:08-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node87 Recreate 
+ Container swarm-node87 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node87 Starting 
+ Container swarm-node87 Started 
+time="2026-04-28T14:38:09-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:10-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node88 Recreate 
+ Container swarm-node88 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node88 Starting 
+ Container swarm-node88 Started 
+time="2026-04-28T14:38:11-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:11-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node89 Recreate 
+ Container swarm-node89 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node89 Starting 
+ Container swarm-node89 Started 
+time="2026-04-28T14:38:13-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:13-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node90 Recreate 
+ Container swarm-node90 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node90 Starting 
+ Container swarm-node90 Started 
+time="2026-04-28T14:38:15-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:15-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node91 Recreate 
+ Container swarm-node91 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node91 Starting 
+ Container swarm-node91 Started 
+time="2026-04-28T14:38:17-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:17-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node92 Recreate 
+ Container swarm-node92 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node92 Starting 
+ Container swarm-node92 Started 
+time="2026-04-28T14:38:19-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:19-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node93 Recreate 
+ Container swarm-node93 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node93 Starting 
+ Container swarm-node93 Started 
+time="2026-04-28T14:38:21-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:21-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node94 Recreate 
+ Container swarm-node94 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node94 Starting 
+ Container swarm-node94 Started 
+time="2026-04-28T14:38:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:23-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node95 Recreate 
+ Container swarm-node95 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node95 Starting 
+ Container swarm-node95 Started 
+time="2026-04-28T14:38:25-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:25-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node96 Recreate 
+ Container swarm-node96 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node96 Starting 
+ Container swarm-node96 Started 
+time="2026-04-28T14:38:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:26-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node97 Recreate 
+ Container swarm-node97 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node97 Starting 
+ Container swarm-node97 Started 
+time="2026-04-28T14:38:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:28-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node98 Recreate 
+ Container swarm-node98 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node98 Starting 
+ Container swarm-node98 Started 
+time="2026-04-28T14:38:30-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T14:38:30-04:00" level=warning msg="No services to build"
+ Container swarm-bootstrap Running 
+ Container swarm-node99 Recreate 
+ Container swarm-node99 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node99 Starting 
+ Container swarm-node99 Started 
+Waiting for all nodes (up to 79 attempts)...
+All nodes are ready!
+
+==========================================
+Swarm/Bee cluster started successfully!
+==========================================
+Bootstrap API: http://172.20.0.200:8500
+Bootstrap Peer ID: 9aa5c39ed1fc86e16c00a2afb9521d266802496125ff52f57392701f4e652f49a1ab04e1aea647ab76d3b636e9505beebeda6672d8433f95fd929070f1208e10
+
+Node addresses:
+  swarm-bootstrap: http://172.20.0.200:8500
+  swarm-node1: http://172.20.0.201:8500
+  swarm-node2: http://172.20.0.202:8500
+  swarm-node3: http://172.20.0.203:8500
+  swarm-node4: http://172.20.0.204:8500
+  swarm-node5: http://172.20.0.205:8500
+  swarm-node6: http://172.20.0.206:8500
+  swarm-node7: http://172.20.0.207:8500
+  swarm-node8: http://172.20.0.208:8500
+  swarm-node9: http://172.20.0.209:8500
+  swarm-node10: http://172.20.0.210:8500
+  swarm-node11: http://172.20.0.211:8500
+  swarm-node12: http://172.20.0.212:8500
+  swarm-node13: http://172.20.0.213:8500
+  swarm-node14: http://172.20.0.214:8500
+  swarm-node15: http://172.20.0.215:8500
+  swarm-node16: http://172.20.0.216:8500
+  swarm-node17: http://172.20.0.217:8500
+  swarm-node18: http://172.20.0.218:8500
+  swarm-node19: http://172.20.0.219:8500
+  swarm-node20: http://172.20.0.220:8500
+  swarm-node21: http://172.20.0.221:8500
+  swarm-node22: http://172.20.0.222:8500
+  swarm-node23: http://172.20.0.223:8500
+  swarm-node24: http://172.20.0.224:8500
+  swarm-node25: http://172.20.0.225:8500
+  swarm-node26: http://172.20.0.226:8500
+  swarm-node27: http://172.20.0.227:8500
+  swarm-node28: http://172.20.0.228:8500
+  swarm-node29: http://172.20.0.229:8500
+  swarm-node30: http://172.20.0.230:8500
+  swarm-node31: http://172.20.0.231:8500
+  swarm-node32: http://172.20.0.232:8500
+  swarm-node33: http://172.20.0.233:8500
+  swarm-node34: http://172.20.0.234:8500
+  swarm-node35: http://172.20.0.235:8500
+  swarm-node36: http://172.20.0.236:8500
+  swarm-node37: http://172.20.0.237:8500
+  swarm-node38: http://172.20.0.238:8500
+  swarm-node39: http://172.20.0.239:8500
+  swarm-node40: http://172.20.0.240:8500
+  swarm-node41: http://172.20.0.241:8500
+  swarm-node42: http://172.20.0.242:8500
+  swarm-node43: http://172.20.0.243:8500
+  swarm-node44: http://172.20.0.244:8500
+  swarm-node45: http://172.20.0.245:8500
+  swarm-node46: http://172.20.0.246:8500
+  swarm-node47: http://172.20.0.247:8500
+  swarm-node48: http://172.20.0.248:8500
+  swarm-node49: http://172.20.0.249:8500
+  swarm-node50: http://172.20.0.250:8500
+  swarm-node51: http://172.20.0.251:8500
+  swarm-node52: http://172.20.0.252:8500
+  swarm-node53: http://172.20.0.253:8500
+  swarm-node54: http://172.20.0.254:8500
+  swarm-node55: http://172.20.0.255:8500
+  swarm-node56: http://172.20.1.0:8500
+  swarm-node57: http://172.20.1.1:8500
+  swarm-node58: http://172.20.1.2:8500
+  swarm-node59: http://172.20.1.3:8500
+  swarm-node60: http://172.20.1.4:8500
+  swarm-node61: http://172.20.1.5:8500
+  swarm-node62: http://172.20.1.6:8500
+  swarm-node63: http://172.20.1.7:8500
+  swarm-node64: http://172.20.1.8:8500
+  swarm-node65: http://172.20.1.9:8500
+  swarm-node66: http://172.20.1.10:8500
+  swarm-node67: http://172.20.1.11:8500
+  swarm-node68: http://172.20.1.12:8500
+  swarm-node69: http://172.20.1.13:8500
+  swarm-node70: http://172.20.1.14:8500
+  swarm-node71: http://172.20.1.15:8500
+  swarm-node72: http://172.20.1.16:8500
+  swarm-node73: http://172.20.1.17:8500
+  swarm-node74: http://172.20.1.18:8500
+  swarm-node75: http://172.20.1.19:8500
+  swarm-node76: http://172.20.1.20:8500
+  swarm-node77: http://172.20.1.21:8500
+  swarm-node78: http://172.20.1.22:8500
+  swarm-node79: http://172.20.1.23:8500
+  swarm-node80: http://172.20.1.24:8500
+  swarm-node81: http://172.20.1.25:8500
+  swarm-node82: http://172.20.1.26:8500
+  swarm-node83: http://172.20.1.27:8500
+  swarm-node84: http://172.20.1.28:8500
+  swarm-node85: http://172.20.1.29:8500
+  swarm-node86: http://172.20.1.30:8500
+  swarm-node87: http://172.20.1.31:8500
+  swarm-node88: http://172.20.1.32:8500
+  swarm-node89: http://172.20.1.33:8500
+  swarm-node90: http://172.20.1.34:8500
+  swarm-node91: http://172.20.1.35:8500
+  swarm-node92: http://172.20.1.36:8500
+  swarm-node93: http://172.20.1.37:8500
+  swarm-node94: http://172.20.1.38:8500
+  swarm-node95: http://172.20.1.39:8500
+  swarm-node96: http://172.20.1.40:8500
+  swarm-node97: http://172.20.1.41:8500
+  swarm-node98: http://172.20.1.42:8500
+  swarm-node99: http://172.20.1.43:8500
+
+To check status: docker-compose -f docker-compose.swarm.yml ps
+To view logs: docker-compose -f docker-compose.swarm.yml logs -f
+To stop: docker-compose -f docker-compose.swarm.yml down
+

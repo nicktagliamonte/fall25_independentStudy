@@ -1,0 +1,532 @@
+==========================================
+Download Latency Test
+==========================================
+Our System API: (skipped) (container: none)
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 100
+GET path: same node as upload (warm, raw stream mode for our system)
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_133937/download_n50_warm_raw.csv
+
+Verifying API endpoints...
+[0;32m✓ Swarm API is accessible[0m
+Skipping provider info (vn-IPFS not selected; Swarm-only download).
+
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to Swarm...
+    Uploaded hash: e7cf7fe980a8bed3f8461143ff31743b092d89382562d3942e467c22fcf851db
+  Waiting 2s before downloads...
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/100... TTFB: 1.74 ms, Total: 1.92 ms
+    Iteration 2/100... TTFB: 1.26 ms, Total: 1.37 ms
+    Iteration 3/100... TTFB: 1.47 ms, Total: 1.58 ms
+    Iteration 4/100... TTFB: 1.47 ms, Total: 1.61 ms
+    Iteration 5/100... TTFB: 1.18 ms, Total: 1.32 ms
+    Iteration 6/100... TTFB: 1.18 ms, Total: 1.29 ms
+    Iteration 7/100... TTFB: 1.48 ms, Total: 1.61 ms
+    Iteration 8/100... TTFB: 1.26 ms, Total: 1.40 ms
+    Iteration 9/100... TTFB: 1.38 ms, Total: 1.48 ms
+    Iteration 10/100... TTFB: 1.37 ms, Total: 1.47 ms
+    Iteration 11/100... TTFB: 1.21 ms, Total: 1.33 ms
+    Iteration 12/100... TTFB: 1.23 ms, Total: 1.34 ms
+    Iteration 13/100... TTFB: 2.35 ms, Total: 2.44 ms
+    Iteration 14/100... TTFB: 1.46 ms, Total: 1.57 ms
+    Iteration 15/100... TTFB: 1.17 ms, Total: 3.17 ms
+    Iteration 16/100... TTFB: 2.59 ms, Total: 2.69 ms
+    Iteration 17/100... TTFB: 2.11 ms, Total: 2.20 ms
+    Iteration 18/100... TTFB: 1.65 ms, Total: 1.78 ms
+    Iteration 19/100... TTFB: 1.42 ms, Total: 1.55 ms
+    Iteration 20/100... TTFB: 1.62 ms, Total: 1.76 ms
+    Iteration 21/100... TTFB: 1.47 ms, Total: 1.59 ms
+    Iteration 22/100... TTFB: 1.37 ms, Total: 1.48 ms
+    Iteration 23/100... TTFB: 3.59 ms, Total: 3.69 ms
+    Iteration 24/100... TTFB: 2.21 ms, Total: 2.30 ms
+    Iteration 25/100... TTFB: 2.02 ms, Total: 2.11 ms
+    Iteration 26/100... TTFB: 2.12 ms, Total: 2.21 ms
+    Iteration 27/100... TTFB: 2.17 ms, Total: 2.26 ms
+    Iteration 28/100... TTFB: 2.01 ms, Total: 2.10 ms
+    Iteration 29/100... TTFB: 2.16 ms, Total: 2.27 ms
+    Iteration 30/100... TTFB: 2.00 ms, Total: 2.10 ms
+    Iteration 31/100... TTFB: 1.35 ms, Total: 1.46 ms
+    Iteration 32/100... TTFB: 1.89 ms, Total: 2.02 ms
+    Iteration 33/100... TTFB: 1.42 ms, Total: 1.54 ms
+    Iteration 34/100... TTFB: 6.08 ms, Total: 6.37 ms
+    Iteration 35/100... TTFB: 2.07 ms, Total: 2.19 ms
+    Iteration 36/100... TTFB: 1.43 ms, Total: 1.55 ms
+    Iteration 37/100... TTFB: 1.42 ms, Total: 1.53 ms
+    Iteration 38/100... TTFB: 1.46 ms, Total: 1.58 ms
+    Iteration 39/100... TTFB: 2.06 ms, Total: 2.20 ms
+    Iteration 40/100... TTFB: 2.28 ms, Total: 2.40 ms
+    Iteration 41/100... TTFB: 1.29 ms, Total: 1.41 ms
+    Iteration 42/100... TTFB: 1.50 ms, Total: 1.63 ms
+    Iteration 43/100... TTFB: 1.67 ms, Total: 1.81 ms
+    Iteration 44/100... TTFB: 1.57 ms, Total: 1.69 ms
+    Iteration 45/100... TTFB: 1.78 ms, Total: 1.90 ms
+    Iteration 46/100... TTFB: 2.05 ms, Total: 2.20 ms
+    Iteration 47/100... TTFB: 1.45 ms, Total: 1.59 ms
+    Iteration 48/100... TTFB: 1.53 ms, Total: 1.67 ms
+    Iteration 49/100... TTFB: 2.05 ms, Total: 2.17 ms
+    Iteration 50/100... TTFB: 1.67 ms, Total: 1.79 ms
+    Iteration 51/100... TTFB: 1.67 ms, Total: 1.82 ms
+    Iteration 52/100... TTFB: 1.41 ms, Total: 1.52 ms
+    Iteration 53/100... TTFB: 1.54 ms, Total: 1.65 ms
+    Iteration 54/100... TTFB: 1.61 ms, Total: 1.74 ms
+    Iteration 55/100... TTFB: 1.62 ms, Total: 1.74 ms
+    Iteration 56/100... TTFB: 1.63 ms, Total: 1.75 ms
+    Iteration 57/100... TTFB: 1.48 ms, Total: 1.60 ms
+    Iteration 58/100... TTFB: 2.72 ms, Total: 2.81 ms
+    Iteration 59/100... TTFB: 1.33 ms, Total: 1.44 ms
+    Iteration 60/100... TTFB: 1.49 ms, Total: 1.62 ms
+    Iteration 61/100... TTFB: 1.70 ms, Total: 1.86 ms
+    Iteration 62/100... TTFB: 1.44 ms, Total: 1.57 ms
+    Iteration 63/100... TTFB: 1.81 ms, Total: 1.93 ms
+    Iteration 64/100... TTFB: 1.35 ms, Total: 1.48 ms
+    Iteration 65/100... TTFB: 1.39 ms, Total: 1.53 ms
+    Iteration 66/100... TTFB: 1.48 ms, Total: 1.61 ms
+    Iteration 67/100... TTFB: 1.74 ms, Total: 1.87 ms
+    Iteration 68/100... TTFB: 1.47 ms, Total: 1.58 ms
+    Iteration 69/100... TTFB: 1.36 ms, Total: 1.49 ms
+    Iteration 70/100... TTFB: 1.43 ms, Total: 1.57 ms
+    Iteration 71/100... TTFB: 1.39 ms, Total: 1.51 ms
+    Iteration 72/100... TTFB: 1.41 ms, Total: 1.55 ms
+    Iteration 73/100... TTFB: 1.36 ms, Total: 1.48 ms
+    Iteration 74/100... TTFB: 2.22 ms, Total: 2.38 ms
+    Iteration 75/100... TTFB: 1.47 ms, Total: 1.61 ms
+    Iteration 76/100... TTFB: 3.77 ms, Total: 3.90 ms
+    Iteration 77/100... TTFB: 3.12 ms, Total: 3.25 ms
+    Iteration 78/100... TTFB: 1.22 ms, Total: 1.34 ms
+    Iteration 79/100... TTFB: 1.32 ms, Total: 1.46 ms
+    Iteration 80/100... TTFB: 1.29 ms, Total: 1.42 ms
+    Iteration 81/100... TTFB: 1.42 ms, Total: 1.53 ms
+    Iteration 82/100... TTFB: 1.29 ms, Total: 1.42 ms
+    Iteration 83/100... TTFB: 1.28 ms, Total: 1.40 ms
+    Iteration 84/100... TTFB: 1.22 ms, Total: 1.34 ms
+    Iteration 85/100... TTFB: 1.48 ms, Total: 1.60 ms
+    Iteration 86/100... TTFB: 1.27 ms, Total: 1.39 ms
+    Iteration 87/100... TTFB: 1.22 ms, Total: 1.34 ms
+    Iteration 88/100... TTFB: 1.75 ms, Total: 1.87 ms
+    Iteration 89/100... TTFB: 1.38 ms, Total: 1.50 ms
+    Iteration 90/100... TTFB: 1.49 ms, Total: 1.61 ms
+    Iteration 91/100... TTFB: 1.73 ms, Total: 1.86 ms
+    Iteration 92/100... TTFB: 1.17 ms, Total: 1.29 ms
+    Iteration 93/100... TTFB: 1.24 ms, Total: 1.38 ms
+    Iteration 94/100... TTFB: 1.15 ms, Total: 1.26 ms
+    Iteration 95/100... TTFB: 1.40 ms, Total: 1.52 ms
+    Iteration 96/100... TTFB: 1.17 ms, Total: 1.28 ms
+    Iteration 97/100... TTFB: 1.18 ms, Total: 1.31 ms
+    Iteration 98/100... TTFB: 1.32 ms, Total: 1.43 ms
+    Iteration 99/100... TTFB: 1.64 ms, Total: 1.76 ms
+    Iteration 100/100... TTFB: 1.44 ms, Total: 1.57 ms
+
+  [0;34mStatistics for 1KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm (TTFB):[0m
+      Min:    1.15 ms
+      Max:    6.08 ms
+      Avg:    1.67 ms
+      P50:    1.47 ms
+      P90:    2.21 ms
+      P99:    6.08 ms
+    [0;32mSwarm (Total):[0m
+      Min:    1.26 ms
+      Max:    6.37 ms
+      Avg:    1.81 ms
+      P50:    1.60 ms
+      P90:    2.38 ms
+      P99:    6.37 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to Swarm...
+    Uploaded hash: e23a76582bb926f2cbb2826569c4928bc32e9269457fedbbcdddf5db84475b4a
+  Waiting 2s before downloads...
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/100... TTFB: 1.77 ms, Total: 1.93 ms
+    Iteration 2/100... TTFB: 2.00 ms, Total: 2.17 ms
+    Iteration 3/100... TTFB: 1.73 ms, Total: 1.86 ms
+    Iteration 4/100... TTFB: 1.58 ms, Total: 1.72 ms
+    Iteration 5/100... TTFB: 1.61 ms, Total: 1.74 ms
+    Iteration 6/100... TTFB: 1.47 ms, Total: 1.62 ms
+    Iteration 7/100... TTFB: 1.48 ms, Total: 1.62 ms
+    Iteration 8/100... TTFB: 1.77 ms, Total: 1.94 ms
+    Iteration 9/100... TTFB: 1.78 ms, Total: 1.92 ms
+    Iteration 10/100... TTFB: 1.55 ms, Total: 1.69 ms
+    Iteration 11/100... TTFB: 1.47 ms, Total: 1.62 ms
+    Iteration 12/100... TTFB: 1.52 ms, Total: 1.67 ms
+    Iteration 13/100... TTFB: 1.31 ms, Total: 1.46 ms
+    Iteration 14/100... TTFB: 1.71 ms, Total: 1.87 ms
+    Iteration 15/100... TTFB: 2.00 ms, Total: 2.15 ms
+    Iteration 16/100... TTFB: 1.91 ms, Total: 2.08 ms
+    Iteration 17/100... TTFB: 1.67 ms, Total: 1.82 ms
+    Iteration 18/100... TTFB: 1.71 ms, Total: 1.86 ms
+    Iteration 19/100... TTFB: 1.51 ms, Total: 1.67 ms
+    Iteration 20/100... TTFB: 1.42 ms, Total: 1.55 ms
+    Iteration 21/100... TTFB: 1.39 ms, Total: 1.51 ms
+    Iteration 22/100... TTFB: 2.77 ms, Total: 2.90 ms
+    Iteration 23/100... TTFB: 1.54 ms, Total: 1.68 ms
+    Iteration 24/100... TTFB: 1.35 ms, Total: 1.50 ms
+    Iteration 25/100... TTFB: 3.17 ms, Total: 3.30 ms
+    Iteration 26/100... TTFB: 2.17 ms, Total: 2.28 ms
+    Iteration 27/100... TTFB: 2.24 ms, Total: 2.38 ms
+    Iteration 28/100... TTFB: 1.56 ms, Total: 1.70 ms
+    Iteration 29/100... TTFB: 2.00 ms, Total: 2.12 ms
+    Iteration 30/100... TTFB: 2.31 ms, Total: 2.42 ms
+    Iteration 31/100... TTFB: 1.50 ms, Total: 1.64 ms
+    Iteration 32/100... TTFB: 2.26 ms, Total: 2.36 ms
+    Iteration 33/100... TTFB: 2.37 ms, Total: 2.48 ms
+    Iteration 34/100... TTFB: 1.53 ms, Total: 1.68 ms
+    Iteration 35/100... TTFB: 1.58 ms, Total: 1.73 ms
+    Iteration 36/100... TTFB: 1.38 ms, Total: 1.52 ms
+    Iteration 37/100... TTFB: 2.80 ms, Total: 2.94 ms
+    Iteration 38/100... TTFB: 3.51 ms, Total: 3.62 ms
+    Iteration 39/100... TTFB: 1.43 ms, Total: 1.58 ms
+    Iteration 40/100... TTFB: 1.31 ms, Total: 1.46 ms
+    Iteration 41/100... TTFB: 2.29 ms, Total: 2.41 ms
+    Iteration 42/100... TTFB: 1.21 ms, Total: 1.36 ms
+    Iteration 43/100... TTFB: 1.49 ms, Total: 1.66 ms
+    Iteration 44/100... TTFB: 1.69 ms, Total: 1.85 ms
+    Iteration 45/100... TTFB: 3.27 ms, Total: 3.63 ms
+    Iteration 46/100... TTFB: 3.01 ms, Total: 3.12 ms
+    Iteration 47/100... TTFB: 1.53 ms, Total: 1.66 ms
+    Iteration 48/100... TTFB: 1.45 ms, Total: 1.59 ms
+    Iteration 49/100... TTFB: 1.35 ms, Total: 1.49 ms
+    Iteration 50/100... TTFB: 2.83 ms, Total: 2.98 ms
+    Iteration 51/100... TTFB: 2.20 ms, Total: 2.32 ms
+    Iteration 52/100... TTFB: 1.35 ms, Total: 1.48 ms
+    Iteration 53/100... TTFB: 1.53 ms, Total: 1.67 ms
+    Iteration 54/100... TTFB: 1.48 ms, Total: 1.63 ms
+    Iteration 55/100... TTFB: 1.33 ms, Total: 1.46 ms
+    Iteration 56/100... TTFB: 1.33 ms, Total: 1.47 ms
+    Iteration 57/100... TTFB: 1.37 ms, Total: 1.50 ms
+    Iteration 58/100... TTFB: 1.35 ms, Total: 1.48 ms
+    Iteration 59/100... TTFB: 2.71 ms, Total: 2.81 ms
+    Iteration 60/100... TTFB: 1.51 ms, Total: 1.65 ms
+    Iteration 61/100... TTFB: 1.34 ms, Total: 1.48 ms
+    Iteration 62/100... TTFB: 1.30 ms, Total: 1.44 ms
+    Iteration 63/100... TTFB: 1.33 ms, Total: 1.48 ms
+    Iteration 64/100... TTFB: 1.35 ms, Total: 1.48 ms
+    Iteration 65/100... TTFB: 3.19 ms, Total: 3.33 ms
+    Iteration 66/100... TTFB: 2.49 ms, Total: 2.62 ms
+    Iteration 67/100... TTFB: 2.38 ms, Total: 2.51 ms
+    Iteration 68/100... TTFB: 2.48 ms, Total: 2.59 ms
+    Iteration 69/100... TTFB: 1.51 ms, Total: 1.65 ms
+    Iteration 70/100... TTFB: 1.45 ms, Total: 1.57 ms
+    Iteration 71/100... TTFB: 1.50 ms, Total: 1.63 ms
+    Iteration 72/100... TTFB: 1.49 ms, Total: 1.61 ms
+    Iteration 73/100... TTFB: 1.42 ms, Total: 1.53 ms
+    Iteration 74/100... TTFB: 2.85 ms, Total: 2.96 ms
+    Iteration 75/100... TTFB: 1.50 ms, Total: 1.66 ms
+    Iteration 76/100... TTFB: 1.53 ms, Total: 1.67 ms
+    Iteration 77/100... TTFB: 1.33 ms, Total: 1.46 ms
+    Iteration 78/100... TTFB: 1.28 ms, Total: 1.42 ms
+    Iteration 79/100... TTFB: 1.88 ms, Total: 2.01 ms
+    Iteration 80/100... TTFB: 1.34 ms, Total: 1.49 ms
+    Iteration 81/100... TTFB: 1.43 ms, Total: 1.58 ms
+    Iteration 82/100... TTFB: 1.47 ms, Total: 1.61 ms
+    Iteration 83/100... TTFB: 1.61 ms, Total: 1.74 ms
+    Iteration 84/100... TTFB: 1.45 ms, Total: 1.59 ms
+    Iteration 85/100... TTFB: 1.31 ms, Total: 1.47 ms
+    Iteration 86/100... TTFB: 1.60 ms, Total: 1.73 ms
+    Iteration 87/100... TTFB: 1.37 ms, Total: 1.50 ms
+    Iteration 88/100... TTFB: 1.51 ms, Total: 1.64 ms
+    Iteration 89/100... TTFB: 1.36 ms, Total: 1.48 ms
+    Iteration 90/100... TTFB: 1.19 ms, Total: 1.33 ms
+    Iteration 91/100... TTFB: 1.34 ms, Total: 1.47 ms
+    Iteration 92/100... TTFB: 1.54 ms, Total: 1.71 ms
+    Iteration 93/100... TTFB: 1.31 ms, Total: 1.45 ms
+    Iteration 94/100... TTFB: 1.50 ms, Total: 1.65 ms
+    Iteration 95/100... TTFB: 1.92 ms, Total: 2.07 ms
+    Iteration 96/100... TTFB: 1.43 ms, Total: 1.57 ms
+    Iteration 97/100... TTFB: 1.54 ms, Total: 1.67 ms
+    Iteration 98/100... TTFB: 2.76 ms, Total: 2.90 ms
+    Iteration 99/100... TTFB: 1.29 ms, Total: 1.44 ms
+    Iteration 100/100... TTFB: 1.38 ms, Total: 1.52 ms
+
+  [0;34mStatistics for 10KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm (TTFB):[0m
+      Min:    1.19 ms
+      Max:    3.51 ms
+      Avg:    1.74 ms
+      P50:    1.52 ms
+      P90:    2.76 ms
+      P99:    3.51 ms
+    [0;32mSwarm (Total):[0m
+      Min:    1.33 ms
+      Max:    3.63 ms
+      Avg:    1.88 ms
+      P50:    1.67 ms
+      P90:    2.90 ms
+      P99:    3.63 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to Swarm...
+    Uploaded hash: 56d727811b4e4880fa90e5a4644a9c3c73473ad7011078d2962475016fc4381f
+  Waiting 2s before downloads...
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/100... TTFB: 1.68 ms, Total: 2.37 ms
+    Iteration 2/100... TTFB: 1.82 ms, Total: 2.32 ms
+    Iteration 3/100... TTFB: 1.53 ms, Total: 2.09 ms
+    Iteration 4/100... TTFB: 1.80 ms, Total: 2.38 ms
+    Iteration 5/100... TTFB: 1.58 ms, Total: 2.20 ms
+    Iteration 6/100... TTFB: 1.59 ms, Total: 2.35 ms
+    Iteration 7/100... TTFB: 1.61 ms, Total: 2.29 ms
+    Iteration 8/100... TTFB: 1.65 ms, Total: 2.33 ms
+    Iteration 9/100... TTFB: 1.66 ms, Total: 2.37 ms
+    Iteration 10/100... TTFB: 1.67 ms, Total: 2.42 ms
+    Iteration 11/100... TTFB: 2.08 ms, Total: 2.68 ms
+    Iteration 12/100... TTFB: 1.67 ms, Total: 2.30 ms
+    Iteration 13/100... TTFB: 3.06 ms, Total: 3.87 ms
+    Iteration 14/100... TTFB: 1.95 ms, Total: 2.92 ms
+    Iteration 15/100... TTFB: 2.04 ms, Total: 2.67 ms
+    Iteration 16/100... TTFB: 1.85 ms, Total: 2.60 ms
+    Iteration 17/100... TTFB: 1.88 ms, Total: 2.63 ms
+    Iteration 18/100... TTFB: 1.79 ms, Total: 2.44 ms
+    Iteration 19/100... TTFB: 1.82 ms, Total: 2.55 ms
+    Iteration 20/100... TTFB: 1.75 ms, Total: 2.42 ms
+    Iteration 21/100... TTFB: 1.84 ms, Total: 2.60 ms
+    Iteration 22/100... TTFB: 1.41 ms, Total: 2.11 ms
+    Iteration 23/100... TTFB: 1.82 ms, Total: 2.51 ms
+    Iteration 24/100... TTFB: 1.47 ms, Total: 2.13 ms
+    Iteration 25/100... TTFB: 1.48 ms, Total: 2.05 ms
+    Iteration 26/100... TTFB: 1.69 ms, Total: 2.27 ms
+    Iteration 27/100... TTFB: 1.67 ms, Total: 2.38 ms
+    Iteration 28/100... TTFB: 1.66 ms, Total: 2.29 ms
+    Iteration 29/100... TTFB: 1.76 ms, Total: 2.33 ms
+    Iteration 30/100... TTFB: 1.55 ms, Total: 2.25 ms
+    Iteration 31/100... TTFB: 1.61 ms, Total: 2.30 ms
+    Iteration 32/100... TTFB: 2.94 ms, Total: 3.82 ms
+    Iteration 33/100... TTFB: 3.75 ms, Total: 4.90 ms
+    Iteration 34/100... TTFB: 1.69 ms, Total: 2.32 ms
+    Iteration 35/100... TTFB: 3.44 ms, Total: 4.37 ms
+    Iteration 36/100... TTFB: 1.90 ms, Total: 2.71 ms
+    Iteration 37/100... TTFB: 1.72 ms, Total: 2.37 ms
+    Iteration 38/100... TTFB: 1.72 ms, Total: 2.36 ms
+    Iteration 39/100... TTFB: 3.15 ms, Total: 4.12 ms
+    Iteration 40/100... TTFB: 3.11 ms, Total: 4.17 ms
+    Iteration 41/100... TTFB: 2.93 ms, Total: 4.09 ms
+    Iteration 42/100... TTFB: 2.41 ms, Total: 3.88 ms
+    Iteration 43/100... TTFB: 2.37 ms, Total: 3.17 ms
+    Iteration 44/100... TTFB: 1.82 ms, Total: 2.38 ms
+    Iteration 45/100... TTFB: 1.61 ms, Total: 2.27 ms
+    Iteration 46/100... TTFB: 2.34 ms, Total: 3.00 ms
+    Iteration 47/100... TTFB: 1.74 ms, Total: 2.56 ms
+    Iteration 48/100... TTFB: 1.89 ms, Total: 2.52 ms
+    Iteration 49/100... TTFB: 1.42 ms, Total: 2.04 ms
+    Iteration 50/100... TTFB: 1.75 ms, Total: 2.52 ms
+    Iteration 51/100... TTFB: 1.77 ms, Total: 2.48 ms
+    Iteration 52/100... TTFB: 1.45 ms, Total: 2.07 ms
+    Iteration 53/100... TTFB: 1.62 ms, Total: 2.24 ms
+    Iteration 54/100... TTFB: 1.55 ms, Total: 2.50 ms
+    Iteration 55/100... TTFB: 1.93 ms, Total: 2.71 ms
+    Iteration 56/100... TTFB: 1.52 ms, Total: 2.14 ms
+    Iteration 57/100... TTFB: 1.87 ms, Total: 2.66 ms
+    Iteration 58/100... TTFB: 1.71 ms, Total: 2.35 ms
+    Iteration 59/100... TTFB: 12.39 ms, Total: 14.62 ms
+    Iteration 60/100... TTFB: 2.19 ms, Total: 2.89 ms
+    Iteration 61/100... TTFB: 2.00 ms, Total: 2.62 ms
+    Iteration 62/100... TTFB: 1.93 ms, Total: 2.69 ms
+    Iteration 63/100... TTFB: 1.84 ms, Total: 2.40 ms
+    Iteration 64/100... TTFB: 1.55 ms, Total: 2.25 ms
+    Iteration 65/100... TTFB: 4.36 ms, Total: 5.11 ms
+    Iteration 66/100... TTFB: 3.10 ms, Total: 4.26 ms
+    Iteration 67/100... TTFB: 3.38 ms, Total: 4.09 ms
+    Iteration 68/100... TTFB: 2.06 ms, Total: 3.18 ms
+    Iteration 69/100... TTFB: 2.22 ms, Total: 3.02 ms
+    Iteration 70/100... TTFB: 3.17 ms, Total: 4.45 ms
+    Iteration 71/100... TTFB: 2.59 ms, Total: 3.71 ms
+    Iteration 72/100... TTFB: 3.16 ms, Total: 4.54 ms
+    Iteration 73/100... TTFB: 2.50 ms, Total: 3.49 ms
+    Iteration 74/100... TTFB: 1.68 ms, Total: 2.38 ms
+    Iteration 75/100... TTFB: 2.11 ms, Total: 2.64 ms
+    Iteration 76/100... TTFB: 1.80 ms, Total: 2.47 ms
+    Iteration 77/100... TTFB: 1.81 ms, Total: 2.50 ms
+    Iteration 78/100... TTFB: 1.67 ms, Total: 2.28 ms
+    Iteration 79/100... TTFB: 1.73 ms, Total: 2.31 ms
+    Iteration 80/100... TTFB: 1.59 ms, Total: 2.25 ms
+    Iteration 81/100... TTFB: 1.74 ms, Total: 2.35 ms
+    Iteration 82/100... TTFB: 1.61 ms, Total: 2.20 ms
+    Iteration 83/100... TTFB: 2.13 ms, Total: 3.13 ms
+    Iteration 84/100... TTFB: 1.95 ms, Total: 2.64 ms
+    Iteration 85/100... TTFB: 1.91 ms, Total: 2.62 ms
+    Iteration 86/100... TTFB: 2.04 ms, Total: 2.78 ms
+    Iteration 87/100... TTFB: 2.40 ms, Total: 3.13 ms
+    Iteration 88/100... TTFB: 1.89 ms, Total: 2.79 ms
+    Iteration 89/100... TTFB: 2.56 ms, Total: 3.45 ms
+    Iteration 90/100... TTFB: 2.17 ms, Total: 2.86 ms
+    Iteration 91/100... TTFB: 1.81 ms, Total: 2.71 ms
+    Iteration 92/100... TTFB: 2.31 ms, Total: 4.05 ms
+    Iteration 93/100... TTFB: 1.83 ms, Total: 2.52 ms
+    Iteration 94/100... TTFB: 2.77 ms, Total: 4.10 ms
+    Iteration 95/100... TTFB: 2.11 ms, Total: 2.86 ms
+    Iteration 96/100... TTFB: 2.75 ms, Total: 3.88 ms
+    Iteration 97/100... TTFB: 4.82 ms, Total: 9.01 ms
+    Iteration 98/100... TTFB: 2.48 ms, Total: 4.05 ms
+    Iteration 99/100... TTFB: 2.19 ms, Total: 2.88 ms
+    Iteration 100/100... TTFB: 2.27 ms, Total: 3.65 ms
+
+  [0;34mStatistics for 100KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm (TTFB):[0m
+      Min:    1.41 ms
+      Max:    12.39 ms
+      Avg:    2.18 ms
+      P50:    1.84 ms
+      P90:    3.11 ms
+      P99:    12.39 ms
+    [0;32mSwarm (Total):[0m
+      Min:    2.04 ms
+      Max:    14.62 ms
+      Avg:    3.01 ms
+      P50:    2.60 ms
+      P90:    4.12 ms
+      P99:    14.62 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to Swarm...
+    Uploaded hash: d1b9a29504a566aab6eed43f9292daf2a57f479b6cb592adad80d07d91cf5db6
+  Waiting 2s before downloads...
+
+  [0;32mTesting Swarm downloads...[0m
+    Iteration 1/100... TTFB: 2.12 ms, Total: 9.74 ms
+    Iteration 2/100... TTFB: 2.39 ms, Total: 12.56 ms
+    Iteration 3/100... TTFB: 1.99 ms, Total: 10.52 ms
+    Iteration 4/100... TTFB: 5.22 ms, Total: 17.93 ms
+    Iteration 5/100... TTFB: 2.33 ms, Total: 8.58 ms
+    Iteration 6/100... TTFB: 1.96 ms, Total: 8.36 ms
+    Iteration 7/100... TTFB: 1.83 ms, Total: 7.84 ms
+    Iteration 8/100... TTFB: 1.58 ms, Total: 8.24 ms
+    Iteration 9/100... TTFB: 2.21 ms, Total: 8.55 ms
+    Iteration 10/100... TTFB: 1.70 ms, Total: 7.88 ms
+    Iteration 11/100... TTFB: 1.63 ms, Total: 9.28 ms
+    Iteration 12/100... TTFB: 1.68 ms, Total: 7.87 ms
+    Iteration 13/100... TTFB: 2.11 ms, Total: 8.62 ms
+    Iteration 14/100... TTFB: 2.26 ms, Total: 8.91 ms
+    Iteration 15/100... TTFB: 2.06 ms, Total: 8.47 ms
+    Iteration 16/100... TTFB: 2.27 ms, Total: 8.14 ms
+    Iteration 17/100... TTFB: 1.90 ms, Total: 8.38 ms
+    Iteration 18/100... TTFB: 1.78 ms, Total: 7.79 ms
+    Iteration 19/100... TTFB: 2.02 ms, Total: 8.75 ms
+    Iteration 20/100... TTFB: 1.88 ms, Total: 10.88 ms
+    Iteration 21/100... TTFB: 1.71 ms, Total: 8.12 ms
+    Iteration 22/100... TTFB: 2.53 ms, Total: 9.89 ms
+    Iteration 23/100... TTFB: 2.14 ms, Total: 9.20 ms
+    Iteration 24/100... TTFB: 1.75 ms, Total: 7.83 ms
+    Iteration 25/100... TTFB: 2.13 ms, Total: 8.83 ms
+    Iteration 26/100... TTFB: 2.06 ms, Total: 8.31 ms
+    Iteration 27/100... TTFB: 1.97 ms, Total: 9.73 ms
+    Iteration 28/100... TTFB: 1.81 ms, Total: 8.52 ms
+    Iteration 29/100... TTFB: 2.04 ms, Total: 11.52 ms
+    Iteration 30/100... TTFB: 1.91 ms, Total: 7.85 ms
+    Iteration 31/100... TTFB: 2.23 ms, Total: 9.53 ms
+    Iteration 32/100... TTFB: 2.12 ms, Total: 8.70 ms
+    Iteration 33/100... TTFB: 2.26 ms, Total: 8.84 ms
+    Iteration 34/100... TTFB: 2.18 ms, Total: 8.88 ms
+    Iteration 35/100... TTFB: 2.43 ms, Total: 8.86 ms
+    Iteration 36/100... TTFB: 2.15 ms, Total: 8.37 ms
+    Iteration 37/100... TTFB: 2.07 ms, Total: 8.96 ms
+    Iteration 38/100... TTFB: 1.85 ms, Total: 8.72 ms
+    Iteration 39/100... TTFB: 2.28 ms, Total: 8.92 ms
+    Iteration 40/100... TTFB: 2.01 ms, Total: 8.24 ms
+    Iteration 41/100... TTFB: 2.23 ms, Total: 9.46 ms
+    Iteration 42/100... TTFB: 1.73 ms, Total: 7.69 ms
+    Iteration 43/100... TTFB: 2.49 ms, Total: 8.98 ms
+    Iteration 44/100... TTFB: 2.00 ms, Total: 9.02 ms
+    Iteration 45/100... TTFB: 1.58 ms, Total: 8.15 ms
+    Iteration 46/100... TTFB: 1.88 ms, Total: 8.26 ms
+    Iteration 47/100... TTFB: 2.09 ms, Total: 8.06 ms
+    Iteration 48/100... TTFB: 1.91 ms, Total: 8.11 ms
+    Iteration 49/100... TTFB: 2.00 ms, Total: 8.11 ms
+    Iteration 50/100... TTFB: 2.12 ms, Total: 8.31 ms
+    Iteration 51/100... TTFB: 1.75 ms, Total: 8.18 ms
+    Iteration 52/100... TTFB: 2.17 ms, Total: 8.42 ms
+    Iteration 53/100... TTFB: 2.04 ms, Total: 8.13 ms
+    Iteration 54/100... TTFB: 2.12 ms, Total: 8.30 ms
+    Iteration 55/100... TTFB: 1.72 ms, Total: 8.00 ms
+    Iteration 56/100... TTFB: 1.76 ms, Total: 9.36 ms
+    Iteration 57/100... TTFB: 2.15 ms, Total: 9.73 ms
+    Iteration 58/100... TTFB: 2.38 ms, Total: 9.52 ms
+    Iteration 59/100... TTFB: 2.14 ms, Total: 14.31 ms
+    Iteration 60/100... TTFB: 2.26 ms, Total: 8.59 ms
+    Iteration 61/100... TTFB: 1.76 ms, Total: 8.13 ms
+    Iteration 62/100... TTFB: 3.31 ms, Total: 9.61 ms
+    Iteration 63/100... TTFB: 1.72 ms, Total: 8.30 ms
+    Iteration 64/100... TTFB: 3.04 ms, Total: 10.04 ms
+    Iteration 65/100... TTFB: 1.71 ms, Total: 7.74 ms
+    Iteration 66/100... TTFB: 2.45 ms, Total: 8.55 ms
+    Iteration 67/100... TTFB: 2.24 ms, Total: 8.30 ms
+    Iteration 68/100... TTFB: 2.22 ms, Total: 8.46 ms
+    Iteration 69/100... TTFB: 1.70 ms, Total: 8.35 ms
+    Iteration 70/100... TTFB: 2.21 ms, Total: 9.01 ms
+    Iteration 71/100... TTFB: 1.82 ms, Total: 8.86 ms
+    Iteration 72/100... TTFB: 2.10 ms, Total: 8.32 ms
+    Iteration 73/100... TTFB: 1.74 ms, Total: 9.53 ms
+    Iteration 74/100... TTFB: 1.96 ms, Total: 9.04 ms
+    Iteration 75/100... TTFB: 1.76 ms, Total: 7.87 ms
+    Iteration 76/100... TTFB: 2.45 ms, Total: 8.40 ms
+    Iteration 77/100... TTFB: 2.18 ms, Total: 8.58 ms
+    Iteration 78/100... TTFB: 1.99 ms, Total: 8.47 ms
+    Iteration 79/100... TTFB: 2.18 ms, Total: 8.15 ms
+    Iteration 80/100... TTFB: 2.02 ms, Total: 8.43 ms
+    Iteration 81/100... TTFB: 2.15 ms, Total: 8.33 ms
+    Iteration 82/100... TTFB: 1.90 ms, Total: 8.13 ms
+    Iteration 83/100... TTFB: 2.33 ms, Total: 8.64 ms
+    Iteration 84/100... TTFB: 2.58 ms, Total: 8.55 ms
+    Iteration 85/100... TTFB: 2.19 ms, Total: 9.93 ms
+    Iteration 86/100... TTFB: 2.84 ms, Total: 10.05 ms
+    Iteration 87/100... TTFB: 1.79 ms, Total: 8.66 ms
+    Iteration 88/100... TTFB: 2.11 ms, Total: 8.11 ms
+    Iteration 89/100... TTFB: 2.38 ms, Total: 9.95 ms
+    Iteration 90/100... TTFB: 2.32 ms, Total: 8.65 ms
+    Iteration 91/100... TTFB: 2.13 ms, Total: 11.51 ms
+    Iteration 92/100... TTFB: 1.89 ms, Total: 8.15 ms
+    Iteration 93/100... TTFB: 1.75 ms, Total: 9.83 ms
+    Iteration 94/100... TTFB: 1.73 ms, Total: 7.51 ms
+    Iteration 95/100... TTFB: 2.00 ms, Total: 8.77 ms
+    Iteration 96/100... TTFB: 1.52 ms, Total: 7.50 ms
+    Iteration 97/100... TTFB: 3.30 ms, Total: 12.21 ms
+    Iteration 98/100... TTFB: 1.96 ms, Total: 7.98 ms
+    Iteration 99/100... TTFB: 2.14 ms, Total: 8.24 ms
+    Iteration 100/100... TTFB: 2.02 ms, Total: 8.79 ms
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm (TTFB):[0m
+      Min:    1.52 ms
+      Max:    5.22 ms
+      Avg:    2.10 ms
+      P50:    2.07 ms
+      P90:    2.45 ms
+      P99:    5.22 ms
+    [0;32mSwarm (Total):[0m
+      Min:    7.50 ms
+      Max:    17.93 ms
+      Avg:    8.93 ms
+      P50:    8.55 ms
+      P90:    10.04 ms
+      P99:    17.93 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_133937/download_n50_warm_raw.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_133937/download_n50_warm_raw.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_133937/download_n50_warm_raw.csv'); print(df.groupby(['system', 'payload_size'])[['ttfb_ms', 'total_ms']].describe())"

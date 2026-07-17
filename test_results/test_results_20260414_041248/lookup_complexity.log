@@ -1,0 +1,158 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 50 | Iterations: 100
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_041248/lookup_complexity_results.csv
+
+  iteration 1/100: put...
+  iteration 1/100: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:21:30 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37599->172.20.0.10:4001: i/o timeout
+2026/04/14 08:21:30 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:21:30 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:21:40 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41913->172.20.0.10:4001: i/o timeout
+2026/04/14 08:21:40 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:21:40 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:21:49 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37627->172.20.0.10:4001: i/o timeout
+2026/04/14 08:21:49 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:21:49 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:21:57 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37211->172.20.0.10:4001: i/o timeout
+2026/04/14 08:21:57 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:21:57 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:22:06 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36059->172.20.0.10:4001: i/o timeout
+2026/04/14 08:22:06 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:22:06 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:22:15 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36273->172.20.0.10:4001: i/o timeout
+2026/04/14 08:22:15 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:22:15 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:22:25 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34901->172.20.0.10:4001: i/o timeout
+2026/04/14 08:22:25 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:22:25 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:22:34 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43649->172.20.0.10:4001: i/o timeout
+2026/04/14 08:22:34 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:22:34 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:22:44 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40265->172.20.0.10:4001: i/o timeout
+2026/04/14 08:22:44 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:22:44 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:22:55 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44265->172.20.0.10:4001: i/o timeout
+2026/04/14 08:22:55 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:22:55 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:05 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:05 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:05 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:14 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36449->172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:14 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:14 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+  iteration 2/100: put...
+  iteration 2/100: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:19 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43741->172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:19 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:19 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:29 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33773->172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:29 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:29 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:38 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34535->172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:38 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:38 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:45 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44745->172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:45 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:45 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:23:55 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42233->172.20.0.10:4001: i/o timeout
+2026/04/14 08:23:55 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:23:55 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:24:04 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40581->172.20.0.10:4001: i/o timeout
+2026/04/14 08:24:04 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:24:04 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 1/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:24:14 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33521->172.20.0.10:4001: i/o timeout
+2026/04/14 08:24:14 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:24:14 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 2/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:24:23 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39139->172.20.0.10:4001: i/o timeout
+2026/04/14 08:24:23 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:24:23 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+cold lookup-key: empty or non-JSON stdout (attempt 3/3, bootstrap=/dns4/fall25-bootstrap/tcp/4001/p2p/12D3KooWPdpHY6qnLsaG...)
+2026/04/14 08:24:32 lookup-key: bootstrap 0: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44291->172.20.0.10:4001: i/o timeout
+2026/04/14 08:24:32 lookup-key: bootstrap 1: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff
+2026/04/14 08:24:32 connect to bootstrap: all 2 dials failed: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial backoff

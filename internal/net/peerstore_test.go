@@ -12,10 +12,17 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
+// newMemDS returns a fresh in-memory, mutex-synchronized datastore suitable for
+// constructing a PeerStore in tests without touching disk.
 func newMemDS() ds.Batching {
 	return dssync.MutexWrap(ds.NewMapDatastore())
 }
 
+// TestPeerStorePersistence verifies that a peer Upsert-ed into one PeerStore instance
+// is recoverable (with correct PeerID) via GetDialCandidates from a second PeerStore
+// instance opened against the same underlying datastore, confirming records survive a
+// "reopen" (i.e. loadAll correctly reconstructs the in-memory index from persisted
+// data).
 func TestPeerStorePersistence(t *testing.T) {
 	mem := newMemDS()
 	ps, err := NewPeerStore(mem)
@@ -43,6 +50,10 @@ func TestPeerStorePersistence(t *testing.T) {
 	}
 }
 
+// TestPeerStoreScoring verifies that GetDialCandidates ranks a peer with a matching
+// service bit and a recent dial success (pidA) ahead of a peer with no service match
+// and recorded dial failures (pidB), and that Prune, after tightening the max-failure
+// policy via SetPolicy, removes at least the over-threshold peer (pidB).
 func TestPeerStoreScoring(t *testing.T) {
 	mem := newMemDS()
 	ps, err := NewPeerStore(mem)

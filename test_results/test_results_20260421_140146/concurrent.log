@@ -1,0 +1,33 @@
+[0;34mConcurrent Read/Write Test[0m
+  Concurrent writes: 1, reads: 0
+  Payload size: 65536 bytes
+
+[0;32mOur system (1 w / 0 r)...[0m
+  throughput=.49 MB/s, p99=101.436000000 ms
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/concurrent_results.csv
+system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms
+our_system,1,0,.49,101.436000000
+[0;34mConcurrent Read/Write Test[0m
+  Concurrent writes: 5, reads: 5
+  Payload size: 65536 bytes
+
+[0;32mOur system (5 w / 5 r)...[0m
+  throughput=.60 MB/s, p99=111.183000000 ms
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/concurrent_results.csv
+system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms
+our_system,1,0,.49,101.436000000
+our_system,5,5,.60,111.183000000
+[0;34mConcurrent Read/Write Test[0m
+  Concurrent writes: 10, reads: 10
+  Payload size: 65536 bytes
+
+[0;32mOur system (10 w / 10 r)...[0m
+  throughput=.62 MB/s, p99=219.877000000 ms
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/concurrent_results.csv
+system,concurrent_writes,concurrent_reads,throughput_mbps,p99_latency_ms
+our_system,1,0,.49,101.436000000
+our_system,5,5,.60,111.183000000
+our_system,10,10,.62,219.877000000

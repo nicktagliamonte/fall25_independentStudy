@@ -11,22 +11,30 @@ import (
 	"time"
 )
 
-// Helper to convert uint32 IP to string (assuming BigEndian for network order if that's what was intended,
-// though tslib.go writes what it gets. We'll just force 127.0.0.1 for callbacks in test).
+// localhostIP returns the uint32 value used as TupleSpaceClient.HostIP in tests
+// (0x7F000001 = 127.0.0.1). It is a fixed placeholder rather than a general
+// IP-to-uint32 conversion, since tests always run against a local mock server and
+// TsPut/TsGet/TsRead only echo HostIP back into the wire structs without interpreting it.
 func localhostIP() uint32 {
 	return 0x7F000001
 }
 
-// MockTshServer handles the server side of the test
+// MockTshServer is a minimal stand-in for a real TSH daemon, used by the tests in this
+// file to script specific server-side response sequences (immediate vs. delayed
+// responses, UVR callbacks, etc.) against the TupleSpaceClient methods under test.
 type MockTshServer struct {
 	Listener net.Listener
 	Addr     string
 	// Queues for expected behaviors or channels to signal test progress
-	putChan  chan []byte
-	getChan  chan string
+	putChan chan []byte
+	getChan chan string
+	// doneChan is used by each test's server goroutine to report completion (nil) or
+	// a mismatch/protocol error (non-nil) back to the test's main goroutine.
 	doneChan chan error
 }
 
+// startMockServer binds MockTshServer's Listener to an OS-assigned port on
+// 127.0.0.1, failing the test immediately (t.Fatalf) if binding fails.
 func startMockServer(t *testing.T) *MockTshServer {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -42,10 +50,14 @@ func startMockServer(t *testing.T) *MockTshServer {
 	}
 }
 
+// Close shuts down the mock server's listener.
 func (s *MockTshServer) Close() {
 	s.Listener.Close()
 }
 
+// handlePut is an unused stub (empty body, no callers in this file) left over from an
+// earlier/alternate test structure; each TestTsPut_* test currently implements its own
+// inline server goroutine instead of dispatching through this method.
 func (s *MockTshServer) handlePut(conn net.Conn) {
 	// 1. Read OpCode (already read by dispatcher? No, dispatcher peeks or reads)
 	// Dispatcher logic below
@@ -53,6 +65,10 @@ func (s *MockTshServer) handlePut(conn net.Conn) {
 
 // Manually read/write structs matching tslib.go logic
 
+// readTshPutIt reads a TshPutIt from r field-by-field (mirroring writeTshPutIt's
+// encoding, including padding), for use by mock server goroutines that need to parse a
+// request written by TupleSpaceClient.TsPut. Returns the decoded struct, or a non-nil
+// error if any field read fails.
 func readTshPutIt(r io.Reader) (*TshPutIt, error) {
 	var s TshPutIt
 	if err := binary.Read(r, binary.BigEndian, &s.AppId); err != nil {
@@ -81,6 +97,10 @@ func readTshPutIt(r io.Reader) (*TshPutIt, error) {
 	return &s, nil
 }
 
+// readTshGetIt reads a TshGetIt from r field-by-field (mirroring writeTshGetIt's
+// encoding, including padding), for use by mock server goroutines that need to parse a
+// request written by TupleSpaceClient.TsGet/TsRead. Returns the decoded struct, or a
+// non-nil error if any field read fails.
 func readTshGetIt(r io.Reader) (*TshGetIt, error) {
 	var s TshGetIt
 	if err := binary.Read(r, binary.BigEndian, &s.AppId); err != nil {
@@ -109,6 +129,10 @@ func readTshGetIt(r io.Reader) (*TshGetIt, error) {
 	return &s, nil
 }
 
+// writeTshGetOt2 writes a TshGetOt2 to w field-by-field in big-endian order with
+// explicit padding, for use by mock server goroutines simulating the TSH daemon's
+// tuple-details response to TsGet/TsRead. Like the equivalent functions in tslib.go,
+// individual binary.Write errors are discarded and the function always returns nil.
 func writeTshGetOt2(w io.Writer, s TshGetOt2) error {
 	binary.Write(w, binary.BigEndian, s.AppId)
 	binary.Write(w, binary.BigEndian, s.Name)
@@ -118,6 +142,14 @@ func writeTshGetOt2(w io.Writer, s TshGetOt2) error {
 	return nil
 }
 
+// TestTsPut_Phase3Storage exercises TupleSpaceClient.TsPut's full three-phase path: a
+// mock server returns FAILURE on the initial put attempt (forcing the UVR wait loop),
+// then calls back the client's local listener with a UvrReturnStruct carrying
+// Status: FAILURE (signaling end-of-traversal, no consuming match), which should drive
+// TsPut into phase 3 (TSH_OP_UVRPut3) where the mock server finally responds with
+// SUCCESS and a custom Error code. The test asserts TsPut returns that custom code
+// (100) with no error, and that the server observed the expected opcodes and tuple
+// bytes at each phase.
 func TestTsPut_Phase3Storage(t *testing.T) {
 	server := startMockServer(t)
 	defer server.Close()
@@ -225,6 +257,11 @@ func TestTsPut_Phase3Storage(t *testing.T) {
 	}
 }
 
+// TestTsGet_Immediate verifies TupleSpaceClient.TsGet's "immediate" path: the mock
+// server responds to TSH_OP_GET with TshGetOt1{Status: SUCCESS} on the same
+// connection, followed directly by the tuple details and data, and TsGet is expected
+// to read the data from that same connection (never touching its callback listener)
+// and return it unchanged.
 func TestTsGet_Immediate(t *testing.T) {
 	server := startMockServer(t)
 	defer server.Close()
@@ -282,6 +319,12 @@ func TestTsGet_Immediate(t *testing.T) {
 	}
 }
 
+// TestTsRead_Delayed verifies TupleSpaceClient.TsRead's "delayed" path: the mock
+// server responds to TSH_OP_READ with TshGetOt1{Status: FAILURE} and closes the
+// request connection, then (after a short delay) dials back the client's local
+// callback listener (using the port advertised in the request) to deliver the tuple
+// details and data. TsRead is expected to block on its listener and return the data
+// it receives there.
 func TestTsRead_Delayed(t *testing.T) {
 	server := startMockServer(t)
 	defer server.Close()
@@ -349,7 +392,9 @@ func TestTsRead_Delayed(t *testing.T) {
 	}
 }
 
-// Basic struct size sanity check
+// TestStructSizes is a basic sanity check that TshPutIt and TshGetIt, including their
+// explicit padding fields, marshal (via binary.Size) to exactly 212 bytes each,
+// matching the expected on-wire size of the corresponding C structs.
 func TestStructSizes(t *testing.T) {
 	// tsh_put_it size in C?
 	// 64 + 128 + 2 + 2(pad) + 4 + 2 + 2(pad) + 4 + 4 = 212 bytes?
@@ -374,6 +419,9 @@ func TestStructSizes(t *testing.T) {
 	}
 }
 
+// TestUvrCores verifies UvrCores correctly sums cores and counts nodes from a
+// well-formed "<ip> <cores>" hosts file, and separately verifies that a missing hosts
+// file is treated as zero cores/zero nodes with no error (rather than a failure).
 func TestUvrCores(t *testing.T) {
 	// Create a temporary hosts file
 	content := `192.168.1.1 4

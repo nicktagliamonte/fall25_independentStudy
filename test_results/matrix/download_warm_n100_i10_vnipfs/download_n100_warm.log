@@ -1,0 +1,124 @@
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Download Latency Test
+==========================================
+Our System API: http://[::]:9400 (container: fall25-bootstrap)
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 10
+GET path: same node as upload (warm)
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_152145/download_n100_warm.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;36mSwarm API check skipped (vn-IPFS-only run)[0m
+Getting provider info for our system...
+  Peer ID: 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq
+  Address: /ip4/172.20.0.10/tcp/4001
+
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: 142bea07aca5e314...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/10... FAILED
+    Iteration 2/10... FAILED
+    Iteration 3/10... FAILED
+    Iteration 4/10... FAILED
+    Iteration 5/10... FAILED
+    Iteration 6/10... FAILED
+    Iteration 7/10... FAILED
+    Iteration 8/10... FAILED
+    Iteration 9/10... FAILED
+    Iteration 10/10... FAILED
+
+  [0;34mStatistics for 1KB:[0m
+    [0;31mOur System: All iterations failed[0m
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: 5fe6e27472ef1771...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/10... FAILED
+    Iteration 2/10... FAILED
+    Iteration 3/10... FAILED
+    Iteration 4/10... FAILED
+    Iteration 5/10... FAILED
+    Iteration 6/10... FAILED
+    Iteration 7/10... FAILED
+    Iteration 8/10... FAILED
+    Iteration 9/10... FAILED
+    Iteration 10/10... FAILED
+
+  [0;34mStatistics for 10KB:[0m
+    [0;31mOur System: All iterations failed[0m
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: 8f38295dc87dd095...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/10... FAILED
+    Iteration 2/10... FAILED
+    Iteration 3/10... FAILED
+    Iteration 4/10... FAILED
+    Iteration 5/10... FAILED
+    Iteration 6/10... FAILED
+    Iteration 7/10... FAILED
+    Iteration 8/10... FAILED
+    Iteration 9/10... FAILED
+    Iteration 10/10... FAILED
+
+  [0;34mStatistics for 100KB:[0m
+    [0;31mOur System: All iterations failed[0m
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: ce496821689e5aa3...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/10... FAILED
+    Iteration 2/10... FAILED
+    Iteration 3/10... FAILED
+    Iteration 4/10... FAILED
+    Iteration 5/10... FAILED
+    Iteration 6/10... FAILED
+    Iteration 7/10... FAILED
+    Iteration 8/10... FAILED
+    Iteration 9/10... FAILED
+    Iteration 10/10... FAILED
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;31mOur System: All iterations failed[0m
+    [0;36mSwarm: not run[0m
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_152145/download_n100_warm.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_152145/download_n100_warm.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_152145/download_n100_warm.csv'); print(df.groupby(['system', 'payload_size'])[['ttfb_ms', 'total_ms']].describe())"

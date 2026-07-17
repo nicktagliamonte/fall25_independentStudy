@@ -1,0 +1,28 @@
+[0;34mReplication Distribution Test (N/M/F vs Swarm)[0m
+  Payload size: 65536, replicas target: 2
+
+[0;32mOur system: put done, waiting for R >= 2...[0m
+  N/M/F: near=1, midrange=0, farflung=0
+
+[0;32mSwarm: chunk-based replication (no N/M/F)[0m
+  Swarm uses chunk-based push sync; N/M/F not applicable.
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_165651/replication_distribution.csv
+system,node_count,near,midrange,farflung
+our_system,50,1,0,0
+swarm,50,N/A,N/A,N/A
+[0;34mReplication Distribution Test (N/M/F vs Swarm)[0m
+  Payload size: 65536, replicas target: 2
+
+[0;32mOur system: put done, waiting for R >= 2...[0m
+  N/M/F: near=1, midrange=0, farflung=0
+
+[0;32mSwarm: chunk-based replication (no N/M/F)[0m
+  Swarm uses chunk-based push sync; N/M/F not applicable.
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_165651/replication_distribution.csv
+system,node_count,near,midrange,farflung
+our_system,50,1,0,0
+swarm,50,N/A,N/A,N/A
+our_system,100,1,0,0
+swarm,100,N/A,N/A,N/A

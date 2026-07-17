@@ -1,0 +1,216 @@
+Starting 10 vn-IPFS Docker nodes...
+Wrote /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml (nodes 2..10, PLACEHOLDER_PEER_ID for start_vnipfs.sh to replace)
+Building Docker image once (bootstrap only; peers use image fall25_independentstudy-bootstrap:latest; COMPOSE_HTTP_TIMEOUT=86400s)...
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+time="2026-04-07T12:30:22-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image fall25_independentstudy-bootstrap:latest Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 658B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.22kB done
+#2 DONE 0.0s
+
+#3 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 resolve image config for docker-image://docker.io/docker/dockerfile:1.6
+#4 DONE 0.4s
+
+#5 docker-image://docker.io/docker/dockerfile:1.6@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021
+#5 resolve docker.io/docker/dockerfile:1.6@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021 done
+#5 CACHED
+
+#6 [auth] library/golang:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/alpine:3.21
+#7 DONE 0.0s
+
+#8 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#8 DONE 0.2s
+
+#9 [internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [stage-1 1/5] FROM docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+#10 resolve docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 done
+#10 DONE 0.0s
+
+#11 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#11 resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 done
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 1.33MB 0.3s done
+#12 DONE 0.4s
+
+#13 [builder 3/6] COPY go.mod go.sum ./
+#13 CACHED
+
+#14 [builder 2/6] WORKDIR /build
+#14 CACHED
+
+#15 [builder 4/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     sh -c 'set -e; for _ in 1 2 3 4 5; do go mod download && exit 0; sleep 20; done; exit 1'
+#15 CACHED
+
+#16 [builder 5/6] COPY . .
+#16 DONE 0.8s
+
+#17 [builder 6/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     go build -o bin/node ./cmd/node
+#17 DONE 1.3s
+
+#18 [stage-1 2/5] WORKDIR /app
+#18 CACHED
+
+#19 [stage-1 3/5] COPY --from=builder /build/bin/node /app/node
+#19 DONE 0.0s
+
+#20 [stage-1 4/5] RUN --network=host apk add --no-cache ca-certificates curl jq
+#20 0.045 fetch https://dl-cdn.alpinelinux.org/alpine/v3.21/main/aarch64/APKINDEX.tar.gz
+#20 0.253 fetch https://dl-cdn.alpinelinux.org/alpine/v3.21/community/aarch64/APKINDEX.tar.gz
+#20 0.445 (1/12) Installing ca-certificates (20250911-r0)
+#20 0.480 (2/12) Installing brotli-libs (1.1.0-r2)
+#20 0.542 (3/12) Installing c-ares (1.34.6-r0)
+#20 0.581 (4/12) Installing libunistring (1.2-r0)
+#20 0.622 (5/12) Installing libidn2 (2.3.7-r0)
+#20 0.668 (6/12) Installing nghttp2-libs (1.64.0-r0)
+#20 0.701 (7/12) Installing libpsl (0.21.5-r3)
+#20 0.735 (8/12) Installing zstd-libs (1.5.6-r2)
+#20 0.781 (9/12) Installing libcurl (8.14.1-r2)
+#20 0.822 (10/12) Installing curl (8.14.1-r2)
+#20 0.854 (11/12) Installing oniguruma (6.9.9-r0)
+#20 0.884 (12/12) Installing jq (1.7.1-r0)
+#20 0.914 Executing busybox-1.37.0-r14.trigger
+#20 0.917 Executing ca-certificates-20250911-r0.trigger
+#20 0.936 OK: 14 MiB in 27 packages
+#20 DONE 1.0s
+
+#21 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#21 DONE 0.0s
+
+#22 exporting to image
+#22 exporting layers
+#22 exporting layers 1.0s done
+#22 exporting manifest sha256:f64536790f69822703b074d0afa9bdc05229c8ca72c2dbed44c36e6f26f7fa0f done
+#22 exporting config sha256:ed51e7d0f1434aa6cf9dad21fc61aafafbd29e5411ecf568cf2a3a4c097d7c64 done
+#22 exporting attestation manifest sha256:5dd4ef2d8467fc6e16c79185ed6d4186525c88a0f213ff3e824970185d7b8d2a done
+#22 exporting manifest list sha256:9d1839bdad74f2e08ddc22d51c5ac001d66cc4ea3b36f71204a8b28a1061e56f done
+#22 naming to docker.io/library/fall25_independentstudy-bootstrap:latest done
+#22 unpacking to docker.io/library/fall25_independentstudy-bootstrap:latest
+#22 unpacking to docker.io/library/fall25_independentstudy-bootstrap:latest 0.2s done
+#22 DONE 1.3s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.0s
+ Image fall25_independentstudy-bootstrap:latest Built 
+Starting bootstrap node...
+time="2026-04-07T12:30:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:28-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:28-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Recreate 
+ Container fall25-bootstrap Recreated 
+ Container fall25-bootstrap Starting 
+ Container fall25-bootstrap Started 
+Waiting for bootstrap (health check)...
+time="2026-04-07T12:30:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+Bootstrap ready (1s)
+Starting peer nodes 2..10...
+time="2026-04-07T12:30:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:31-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:31-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node2 Recreate 
+ Container fall25-node2 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node2 Starting 
+ Container fall25-node2 Started 
+time="2026-04-07T12:30:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:34-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:34-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node3 Recreate 
+ Container fall25-node3 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node3 Starting 
+ Container fall25-node3 Started 
+time="2026-04-07T12:30:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:35-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:35-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node4 Recreate 
+ Container fall25-node4 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node4 Starting 
+ Container fall25-node4 Started 
+time="2026-04-07T12:30:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:37-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:37-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node5 Recreate 
+ Container fall25-node5 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node5 Starting 
+ Container fall25-node5 Started 
+time="2026-04-07T12:30:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:38-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:38-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node6 Recreate 
+ Container fall25-node6 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node6 Starting 
+ Container fall25-node6 Started 
+time="2026-04-07T12:30:39-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:39-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:40-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node7 Recreate 
+ Container fall25-node7 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node7 Starting 
+ Container fall25-node7 Started 
+time="2026-04-07T12:30:41-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:41-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:41-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node8 Recreate 
+ Container fall25-node8 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node8 Starting 
+ Container fall25-node8 Started 
+time="2026-04-07T12:30:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:42-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:42-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node9 Recreate 
+ Container fall25-node9 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node9 Starting 
+ Container fall25-node9 Started 
+time="2026-04-07T12:30:44-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:30:44-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:30:44-04:00" level=warning msg="Found orphan containers ([fall25-node100 fall25-node99 fall25-node98 fall25-node97 fall25-node96 fall25-node95 fall25-node94 fall25-node93 fall25-node92 fall25-node91 fall25-node90 fall25-node89 fall25-node88 fall25-node87 fall25-node86 fall25-node85 fall25-node84 fall25-node83 fall25-node82 fall25-node81 fall25-node80 fall25-node79 fall25-node78 fall25-node77 fall25-node76 fall25-node75 fall25-node74 fall25-node73 fall25-node72 fall25-node71 fall25-node70 fall25-node69 fall25-node68 fall25-node67 fall25-node66 fall25-node65 fall25-node64 fall25-node63 fall25-node62 fall25-node61 fall25-node60 fall25-node59 fall25-node58 fall25-node57 fall25-node56 fall25-node55 fall25-node54 fall25-node53 fall25-node52 fall25-node51 fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container fall25-bootstrap Running 
+ Container fall25-node10 Recreate 
+ Container fall25-node10 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node10 Starting 
+ Container fall25-node10 Started 
+Waiting for nodes to connect...
+
+vn-IPFS: 10 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f

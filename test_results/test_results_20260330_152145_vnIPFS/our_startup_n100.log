@@ -1,0 +1,2595 @@
+Starting 100 vn-IPFS Docker nodes...
+Wrote /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml (nodes 2..100, PLACEHOLDER_PEER_ID for start_vnipfs.sh to replace)
+Building Docker image (COMPOSE_HTTP_TIMEOUT=86400s)...
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+time="2026-03-30T15:21:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image fall25_independentstudy-node16 Building 
+ Image fall25_independentstudy-node34 Building 
+ Image fall25_independentstudy-node15 Building 
+ Image fall25_independentstudy-node67 Building 
+ Image fall25_independentstudy-node97 Building 
+ Image fall25_independentstudy-node84 Building 
+ Image fall25_independentstudy-node44 Building 
+ Image fall25_independentstudy-bootstrap Building 
+ Image fall25_independentstudy-node73 Building 
+ Image fall25_independentstudy-node46 Building 
+ Image fall25_independentstudy-node82 Building 
+ Image fall25_independentstudy-node23 Building 
+ Image fall25_independentstudy-node77 Building 
+ Image fall25_independentstudy-node57 Building 
+ Image fall25_independentstudy-node81 Building 
+ Image fall25_independentstudy-node89 Building 
+ Image fall25_independentstudy-node4 Building 
+ Image fall25_independentstudy-node58 Building 
+ Image fall25_independentstudy-node12 Building 
+ Image fall25_independentstudy-node65 Building 
+ Image fall25_independentstudy-node61 Building 
+ Image fall25_independentstudy-node26 Building 
+ Image fall25_independentstudy-node80 Building 
+ Image fall25_independentstudy-node59 Building 
+ Image fall25_independentstudy-node13 Building 
+ Image fall25_independentstudy-node8 Building 
+ Image fall25_independentstudy-node32 Building 
+ Image fall25_independentstudy-node75 Building 
+ Image fall25_independentstudy-node35 Building 
+ Image fall25_independentstudy-node24 Building 
+ Image fall25_independentstudy-node22 Building 
+ Image fall25_independentstudy-node21 Building 
+ Image fall25_independentstudy-node14 Building 
+ Image fall25_independentstudy-node38 Building 
+ Image fall25_independentstudy-node64 Building 
+ Image fall25_independentstudy-node51 Building 
+ Image fall25_independentstudy-node72 Building 
+ Image fall25_independentstudy-node88 Building 
+ Image fall25_independentstudy-node98 Building 
+ Image fall25_independentstudy-node100 Building 
+ Image fall25_independentstudy-node74 Building 
+ Image fall25_independentstudy-node87 Building 
+ Image fall25_independentstudy-node95 Building 
+ Image fall25_independentstudy-node52 Building 
+ Image fall25_independentstudy-node69 Building 
+ Image fall25_independentstudy-node60 Building 
+ Image fall25_independentstudy-node45 Building 
+ Image fall25_independentstudy-node3 Building 
+ Image fall25_independentstudy-node39 Building 
+ Image fall25_independentstudy-node92 Building 
+ Image fall25_independentstudy-node70 Building 
+ Image fall25_independentstudy-node83 Building 
+ Image fall25_independentstudy-node7 Building 
+ Image fall25_independentstudy-node49 Building 
+ Image fall25_independentstudy-node43 Building 
+ Image fall25_independentstudy-node36 Building 
+ Image fall25_independentstudy-node18 Building 
+ Image fall25_independentstudy-node48 Building 
+ Image fall25_independentstudy-node30 Building 
+ Image fall25_independentstudy-node62 Building 
+ Image fall25_independentstudy-node56 Building 
+ Image fall25_independentstudy-node20 Building 
+ Image fall25_independentstudy-node5 Building 
+ Image fall25_independentstudy-node37 Building 
+ Image fall25_independentstudy-node11 Building 
+ Image fall25_independentstudy-node93 Building 
+ Image fall25_independentstudy-node86 Building 
+ Image fall25_independentstudy-node76 Building 
+ Image fall25_independentstudy-node99 Building 
+ Image fall25_independentstudy-node79 Building 
+ Image fall25_independentstudy-node63 Building 
+ Image fall25_independentstudy-node50 Building 
+ Image fall25_independentstudy-node2 Building 
+ Image fall25_independentstudy-node91 Building 
+ Image fall25_independentstudy-node94 Building 
+ Image fall25_independentstudy-node10 Building 
+ Image fall25_independentstudy-node6 Building 
+ Image fall25_independentstudy-node40 Building 
+ Image fall25_independentstudy-node47 Building 
+ Image fall25_independentstudy-node96 Building 
+ Image fall25_independentstudy-node66 Building 
+ Image fall25_independentstudy-node31 Building 
+ Image fall25_independentstudy-node54 Building 
+ Image fall25_independentstudy-node25 Building 
+ Image fall25_independentstudy-node17 Building 
+ Image fall25_independentstudy-node68 Building 
+ Image fall25_independentstudy-node90 Building 
+ Image fall25_independentstudy-node33 Building 
+ Image fall25_independentstudy-node27 Building 
+ Image fall25_independentstudy-node19 Building 
+ Image fall25_independentstudy-node85 Building 
+ Image fall25_independentstudy-node55 Building 
+ Image fall25_independentstudy-node78 Building 
+ Image fall25_independentstudy-node42 Building 
+ Image fall25_independentstudy-node41 Building 
+ Image fall25_independentstudy-node53 Building 
+ Image fall25_independentstudy-node9 Building 
+ Image fall25_independentstudy-node71 Building 
+ Image fall25_independentstudy-node28 Building 
+ Image fall25_independentstudy-node29 Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 52.77kB done
+#1 DONE 0.0s
+
+#2 [node27 internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.11kB 0.0s done
+#2 DONE 0.0s
+
+#3 [node68] resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 ...
+
+#4 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [node68] resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 1.0s
+
+#5 [node51] docker-image://docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91
+#5 resolve docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91 0.0s done
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 0B / 12.71MB 0.2s
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 3.15MB / 12.71MB 0.3s
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 7.34MB / 12.71MB 0.5s
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 11.53MB / 12.71MB 0.6s
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 12.71MB / 12.71MB 0.6s done
+#5 extracting sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 0.1s done
+#5 extracting sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 0.1s done
+#5 DONE 0.7s
+
+#6 [node71 internal] load metadata for docker.io/library/golang:1.26-alpine
+#6 ...
+
+#7 [auth] library/golang:pull token for registry-1.docker.io
+#7 DONE 0.0s
+
+#8 [auth] library/alpine:pull token for registry-1.docker.io
+#8 DONE 0.0s
+
+#6 [node90 internal] load metadata for docker.io/library/golang:1.26-alpine
+#6 DONE 0.4s
+
+#2 [node83 internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.11kB 0.0s done
+#2 DONE 0.0s
+
+#9 [node5 internal] load metadata for docker.io/library/alpine:latest
+#9 DONE 0.4s
+
+#10 [node50 internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#3 [node83] resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 ...
+
+#2 [node23 internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.11kB 0.0s done
+#2 DONE 0.1s
+
+#5 [node75] docker-image://docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91
+#5 resolve docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91 0.0s done
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 12.71MB / 12.71MB 0.6s done
+#5 extracting sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 0.1s done
+#5 DONE 1.5s
+
+#9 [node40 internal] load metadata for docker.io/library/alpine:latest
+#9 DONE 0.8s
+
+#6 [node40 internal] load metadata for docker.io/library/golang:1.26-alpine
+#6 DONE 0.8s
+
+#10 [node40 internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#11 [node33 builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#11 resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 0.0s done
+#11 DONE 0.0s
+
+#12 [node33 stage-1 1/5] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+#12 resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 0.0s done
+#12 DONE 0.0s
+
+#3 [node75] resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 2.2s
+
+#5 [node88] docker-image://docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91
+#5 resolve docker.io/docker/dockerfile:1@sha256:4a43a54dd1fedceb30ba47e76cfcf2b47304f4161c0caeac2db1c61804ea3c91 0.0s done
+#5 sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 12.71MB / 12.71MB 0.6s done
+#5 extracting sha256:3b88f5232a559cd96d2d4d212d697742a4c3bf960fd09c8168bb95cf9cd5694b 0.1s done
+#5 DONE 1.5s
+
+#13 [node33 internal] load build context
+#13 ...
+
+#10 [node59 internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#13 [node33 internal] load build context
+#13 transferring context: 2.02MB 0.4s done
+#13 DONE 1.0s
+
+#10 [node30 internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#11 [node49 builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#11 resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 0.0s done
+#11 DONE 0.0s
+
+#12 [node49 stage-1 1/5] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+#12 resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 0.0s done
+#12 DONE 0.0s
+
+#9 [node18 internal] load metadata for docker.io/library/alpine:latest
+#9 DONE 1.1s
+
+#14 [node49 builder 2/6] WORKDIR /build
+#14 CACHED
+
+#15 [node49 builder 3/6] COPY go.mod go.sum ./
+#15 CACHED
+
+#6 [node66 internal] load metadata for docker.io/library/golang:1.26-alpine
+#6 DONE 1.1s
+
+#16 [node49 builder 4/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     sh -c 'set -e; for _ in 1 2 3 4 5; do go mod download && exit 0; sleep 20; done; exit 1'
+#16 ...
+
+#11 [node83 builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#11 resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 0.0s done
+#11 DONE 0.0s
+
+#12 [node83 stage-1 1/5] FROM docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+#12 resolve docker.io/library/alpine:latest@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 0.0s done
+#12 DONE 0.0s
+
+#13 [node83 internal] load build context
+#13 transferring context: 2.02MB 0.4s done
+#13 DONE 1.0s
+
+#14 [node83 builder 2/6] WORKDIR /build
+#14 CACHED
+
+#15 [node83 builder 3/6] COPY go.mod go.sum ./
+#15 CACHED
+
+#16 [node83 builder 4/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     sh -c 'set -e; for _ in 1 2 3 4 5; do go mod download && exit 0; sleep 20; done; exit 1'
+#16 DONE 9.1s
+
+#17 [node27 builder 5/6] COPY . .
+#17 DONE 2.3s
+
+#18 [node87 builder 6/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     go build -o bin/node ./cmd/node
+#18 DONE 9.9s
+
+#19 [node68 stage-1 2/5] RUN apk --no-cache add ca-certificates curl jq
+#19 CACHED
+
+#20 [node68 stage-1 3/5] WORKDIR /app
+#20 CACHED
+
+#21 [node99 stage-1 4/5] COPY --from=builder /build/bin/node /app/node
+#21 DONE 0.1s
+
+#22 [node62 stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#22 DONE 0.2s
+
+#23 [node92] exporting to image
+#23 exporting layers
+#23 exporting layers 0.9s done
+#23 exporting manifest sha256:831025960121c6ad9f2cb8a2c6bc1f4a1269076f29bb5e7a80ba2ea230861a6e
+#23 exporting manifest sha256:831025960121c6ad9f2cb8a2c6bc1f4a1269076f29bb5e7a80ba2ea230861a6e 0.2s done
+#23 exporting config sha256:c9c1aa3401af0604182860d404401144abcaf0a2d9cf79233f59004067b4c240
+#23 exporting config sha256:c9c1aa3401af0604182860d404401144abcaf0a2d9cf79233f59004067b4c240 0.3s done
+#23 exporting attestation manifest sha256:b6a67affccba40164407b16e2964d51677a7f6b65f31a8daed937b7ed486429f
+#23 exporting attestation manifest sha256:b6a67affccba40164407b16e2964d51677a7f6b65f31a8daed937b7ed486429f 0.6s done
+#23 exporting manifest list sha256:ffed7c5d3c3c01c984d349a55db77c0748106307649e1cacdc43673140bb322b
+#23 exporting manifest list sha256:ffed7c5d3c3c01c984d349a55db77c0748106307649e1cacdc43673140bb322b 0.2s done
+#23 naming to docker.io/library/fall25_independentstudy-node92:latest
+#23 naming to docker.io/library/fall25_independentstudy-node92:latest 0.1s done
+#23 unpacking to docker.io/library/fall25_independentstudy-node92:latest
+#23 ...
+
+#24 [node72] exporting to image
+#24 exporting layers 1.0s done
+#24 exporting manifest sha256:5513f38753f9d95a6009d57b0dc8dab1e2369939629745b96223dc4ef7090441 0.2s done
+#24 exporting config sha256:a0dd139c56c376b6e196af28ff2cced717d654455ced562e1df6567e66409de7 0.2s done
+#24 exporting attestation manifest sha256:522a9e7bcda96c9e11ed7dc36e1226e1a74c803aa7eb13f58971719a206eeee3 0.5s done
+#24 exporting manifest list sha256:fff91d3f532e455f3615eb9dd9f7f20e17fed8172c63c162d9a84f5483566bed 0.2s done
+#24 naming to docker.io/library/fall25_independentstudy-node72:latest 0.1s done
+#24 unpacking to docker.io/library/fall25_independentstudy-node72:latest 1.1s done
+#24 DONE 3.8s
+
+#25 [node35] exporting to image
+#25 exporting layers 0.9s done
+#25 exporting manifest sha256:0a940f435ea34df7db4bedf2a8e5ab1d7a875b1f09da9ead76b0c24c400165c5 0.2s done
+#25 exporting config sha256:66e465365d2fcc50b6845fcf345799f472b7232091a3971fc09d63ba21d5a453 0.2s done
+#25 exporting attestation manifest sha256:943ee25e2a53d41d51d3b4714d20bced66c2d3835670a6c99a6eb77cfa771d77 0.5s done
+#25 exporting manifest list sha256:72714d83f81a97bba194b52ec23603f7b16e764cab36bcad3f240dc2c9110601 0.3s done
+#25 naming to docker.io/library/fall25_independentstudy-node35:latest 0.1s done
+#25 unpacking to docker.io/library/fall25_independentstudy-node35:latest 1.6s done
+#25 DONE 4.6s
+
+#26 [node40] exporting to image
+#26 exporting layers 0.9s done
+#26 exporting manifest sha256:8447f04dfd024b7e5dac7cd7d543cb13a52baf3624e650fe41ebd099b578bd89 0.2s done
+#26 exporting config sha256:66e3174dc471dffd3f79a5fa116071aabc83fadb2ce3f2e6e273ffb86664329c 0.2s done
+#26 exporting attestation manifest sha256:3e9492ba724b375e361a78243e3ad9b46f3d69135e254242c437d3d6e1a0246c 0.5s done
+#26 exporting manifest list sha256:3d6d7d2608e2a9e04366f714a9f887ebe07bc2adb9b7a6d38d6b46cae61e3a50 0.3s done
+#26 naming to docker.io/library/fall25_independentstudy-node40:latest 0.1s done
+#26 unpacking to docker.io/library/fall25_independentstudy-node40:latest 1.7s done
+#26 DONE 4.6s
+
+#27 [node33] exporting to image
+#27 exporting layers 0.9s done
+#27 exporting manifest sha256:5bec1ac0bd1851f63e093b71b02f601d0d2197daf509a9101522130360492cee 0.2s done
+#27 exporting config sha256:f90dc7e64f15eab93bae77d2a0a6d219af1185f66605d8700f7dcff0d7d408d9 0.2s done
+#27 exporting attestation manifest sha256:423086d2aab697cf6ad44addd3ef0f16dcbde9128a14ab703a96da9396bdc7d4 0.5s done
+#27 exporting manifest list sha256:40ce1923e291d3fba84d6abb5ab5ebfbfc8b3783a5c2cb15a191016eb01a5954 0.3s done
+#27 naming to docker.io/library/fall25_independentstudy-node33:latest 0.1s done
+#27 unpacking to docker.io/library/fall25_independentstudy-node33:latest 1.5s done
+#27 DONE 4.6s
+
+#28 [node99] exporting to image
+#28 exporting layers 0.9s done
+#28 exporting manifest sha256:ce4a1e3c02256eaff3a6d1f4e0fa2320a22c043aa98976b2225c8141ea8d87e2 0.2s done
+#28 exporting config sha256:e6e7706fc2f42366ab637ead88433be884c8c3241b96b0c86eecbec9ca799fca 0.2s done
+#28 exporting attestation manifest sha256:cd6a24582ce90961c0e3551c9d0953c0191d5a65c28d11a75ce3a1eb4fd02140 0.5s done
+#28 exporting manifest list sha256:6dcf087f8403954707ba2638fceca24e020e85047ca4e235cff2edeb06b5682b 0.3s done
+#28 naming to docker.io/library/fall25_independentstudy-node99:latest 0.1s done
+#28 unpacking to docker.io/library/fall25_independentstudy-node99:latest 1.6s done
+#28 DONE 4.6s
+
+#29 [node16] exporting to image
+#29 exporting layers 1.0s done
+#29 exporting manifest sha256:3b6cb3e37ec3a32c6fc2d4d0416329f72af1cd0de3ab243f17484f91616d080b 0.2s done
+#29 exporting config sha256:788caee5ee7a533ff391146033ec85da2d0c2dccf5fde0f10e6254f22b18a46f 0.2s done
+#29 exporting attestation manifest sha256:fc261eb5a3b9b1d5102cbf03708676aaa99df332541a643d27f3beadbb279dff 0.5s done
+#29 exporting manifest list sha256:ecd8bbe9ed495db6a57cbcd20947868efff77b72f10c02c9f23ee03080d53771 0.3s done
+#29 naming to docker.io/library/fall25_independentstudy-node16:latest 0.1s done
+#29 unpacking to docker.io/library/fall25_independentstudy-node16:latest 1.7s done
+#29 DONE 4.6s
+
+#30 [node5] exporting to image
+#30 exporting layers 0.9s done
+#30 exporting manifest sha256:91d94d084dc6a06fb46a95ae9f9123f9cfea0ecc81465044974de44d92f8bafb 0.2s done
+#30 exporting config sha256:eed50e198d967ce24dd49e217e9eb0d50e20bb1fc386cfef51eb1222c3879ebf 0.2s done
+#30 exporting attestation manifest sha256:25993683bcc095895b27ed3fde95627d46d002ea1553b5430e9186ca3e34db27 0.5s done
+#30 exporting manifest list sha256:a4d32980b973b9fa1aedf54530fd47bb7b82813bdc9b6ccabd0a1217fbf67c0b 0.3s done
+#30 naming to docker.io/library/fall25_independentstudy-node5:latest 0.1s done
+#30 unpacking to docker.io/library/fall25_independentstudy-node5:latest 1.6s done
+#30 DONE 4.6s
+
+#31 [node46] exporting to image
+#31 exporting layers 0.9s done
+#31 exporting manifest sha256:0962aff11d599ad535af38c9835c374434e7a0eac7587a92ed34227e6ab36872 0.2s done
+#31 exporting config sha256:1319bed7218b3c67a86c49173a60dcc38da5c6c79d77c5e4b0494a6eaf277c24 0.2s done
+#31 exporting attestation manifest sha256:309813c922adee2bd49c913fd17913ad478ef91a198a1843d4ebc0f35a336409 0.5s done
+#31 exporting manifest list sha256:bb9ca45b6130161cf18626bb8a41f6d92362ab4518ca76646d9ffa25a14ead62 0.3s done
+#31 naming to docker.io/library/fall25_independentstudy-node46:latest 0.1s done
+#31 unpacking to docker.io/library/fall25_independentstudy-node46:latest 1.7s done
+#31 DONE 4.6s
+
+#32 [node47] exporting to image
+#32 exporting layers 0.9s done
+#32 exporting manifest sha256:7b72a6ede6b621b5d69b5d1e716de6c98840190cd1d4e6a5f354db853109aef2 0.2s done
+#32 exporting config sha256:72e8052d80f861e25f189460a22552e4ba6743f6097768b6b4f7a7934395e678 0.2s done
+#32 exporting attestation manifest sha256:74aeea3e522858cb3909d04b14aaccb7faec2cf0200c1c98071d05832e912bdf 0.5s done
+#32 exporting manifest list sha256:f3cc94696a40a52a5f5f29f8dcfdea75d9910df94e447fb3bf9a1ebf3f7f93cd 0.3s done
+#32 naming to docker.io/library/fall25_independentstudy-node47:latest 0.1s done
+#32 unpacking to docker.io/library/fall25_independentstudy-node47:latest 1.7s done
+#32 DONE 4.6s
+
+#33 [node100] exporting to image
+#33 exporting layers 1.0s done
+#33 exporting manifest sha256:a3adff97c5e3870553c9bc8e0e279555072c0a293f2f81055fd4af4a0216c96d 0.2s done
+#33 exporting config sha256:165b528b77519fb172eb8d67e466f55e24df489ff2fc5612a370633b09bc24df 0.2s done
+#33 exporting attestation manifest sha256:74342babb278bf9a88b18be8d55b0b8d55d3ce49237da1276db3f9e6f808496f 0.5s done
+#33 exporting manifest list sha256:d466a9adca0b20aa89fbe31ad96a9ca2a9b3d22383ce696d5f3b8baa00f70540 0.3s done
+#33 naming to docker.io/library/fall25_independentstudy-node100:latest 0.1s done
+#33 unpacking to docker.io/library/fall25_independentstudy-node100:latest 1.7s done
+#33 DONE 4.6s
+
+#34 [node45] exporting to image
+#34 exporting layers 0.9s done
+#34 exporting manifest sha256:36722dc452c455754fbcf79f28cd17622974394ab00c36ad6c1f581b5038ed3f 0.2s done
+#34 exporting config sha256:d3a4869ae630546d4d3d6a2af2238fac85d1a38b2dbf85759476c640cb134c2f 0.2s done
+#34 exporting attestation manifest sha256:6f366bc23cbeb0c2ad1160154391d69c4248948e25f55ed573410fd41c27aaec 0.5s done
+#34 exporting manifest list sha256:a7df7fd33f618e5895c437d49dda14823f54c8978b07f587e97b40a4f8161575 0.3s done
+#34 naming to docker.io/library/fall25_independentstudy-node45:latest 0.1s done
+#34 unpacking to docker.io/library/fall25_independentstudy-node45:latest 1.7s done
+#34 DONE 4.6s
+
+#35 [node78] exporting to image
+#35 exporting layers 1.0s done
+#35 exporting manifest sha256:3a8cbf8c0f59747a6a7fe21332a617992b18481c3ae39766188c4ba754156ea0 0.2s done
+#35 exporting config sha256:94524256369caca5d6dc58a3c6da59220881f5f6cd938d354a8d3ddcbc5ff2f2 0.2s done
+#35 exporting attestation manifest sha256:f8c166630f9555448ac866addaf1a60d723526335804f1b960b8158ce8fbe0cc 0.5s done
+#35 exporting manifest list sha256:a54888e7d0381529ccf120743ffff3ef70ab98ff47ab095ea6602e978fd57297 0.3s done
+#35 naming to docker.io/library/fall25_independentstudy-node78:latest 0.1s done
+#35 unpacking to docker.io/library/fall25_independentstudy-node78:latest 1.7s done
+#35 DONE 4.6s
+
+#36 [node82] exporting to image
+#36 exporting layers 1.0s done
+#36 exporting manifest sha256:b6713a24d158b0b3664fc1915ff4cb4355cc8e434d615e9471dbf6f045f80967 0.2s done
+#36 exporting config sha256:8f71a7538158997870b0f8342b0ea6b47e99924a79feb9fa832ef344dbbb582e 0.2s done
+#36 exporting attestation manifest sha256:13a550b6b8238841ba6333ea9b49f691c608529f10e5566cfde31299a3bba287 0.5s done
+#36 exporting manifest list sha256:1beadf0754f92b41fafc9289b9a34435ff8f5fa0753d10c7f85127366ee56d82 0.3s done
+#36 naming to docker.io/library/fall25_independentstudy-node82:latest 0.1s done
+#36 unpacking to docker.io/library/fall25_independentstudy-node82:latest 1.7s done
+#36 DONE 4.6s
+
+#37 [node7] exporting to image
+#37 exporting layers 1.0s done
+#37 exporting manifest sha256:14be8a57e169c08db28003613e41fad740747d4fdbfa13d0f9a052b9338831c3 0.2s done
+#37 exporting config sha256:7a9d0d2e11ea9a526c3683dc8528ccc4304960e77bcb21badb4c643e5e53a1d1 0.2s done
+#37 exporting attestation manifest sha256:589e1b71b8a4391d3d2984f4faa5bb50ddf550a42aa8358d0860c91e29ca75b6 0.5s done
+#37 exporting manifest list sha256:93a82dc3383aa157a32ed0ad0f4eb351b13d8c991b57f6195a88862c653e514e 0.3s done
+#37 naming to docker.io/library/fall25_independentstudy-node7:latest 0.1s done
+#37 unpacking to docker.io/library/fall25_independentstudy-node7:latest 1.8s done
+#37 DONE 4.7s
+
+#38 [node96] exporting to image
+#38 exporting layers 0.9s done
+#38 exporting manifest sha256:51cae203fb8407783fdd0470d601ad845b8d6e95821161ce8c436338f19b1859 0.2s done
+#38 exporting config sha256:39c82444d468b28130fe341ccd8bb4662b3620cf563363ffe240b2452d0c7e09 0.2s done
+#38 exporting attestation manifest sha256:2386e2bf8db5c2b56849f5da50f489d4a4568b43b93d00b72f7dc1ae1d42822d 0.4s done
+#38 exporting manifest list sha256:7e7afcbfb50abcc716c202cec3d5465abe3895d2074213e347392a3ec38ff51a 0.3s done
+#38 naming to docker.io/library/fall25_independentstudy-node96:latest 0.1s done
+#38 unpacking to docker.io/library/fall25_independentstudy-node96:latest 1.8s done
+#38 DONE 4.6s
+
+#39 [node56] exporting to image
+#39 exporting layers 1.0s done
+#39 exporting manifest sha256:856a9bf776a07c5947b19927d8e242424ed37fdacce0f61fe534fd07b5af391d 0.2s done
+#39 exporting config sha256:a15ebb9c683a693a44ff2b1a1294968564df7c5d529506496c00758cbeb03044 0.2s done
+#39 exporting attestation manifest sha256:297f55a7dd66d88b8644daef60e72db328b2bbc2f08cce6fa0b2af320ea8eeea 0.5s done
+#39 exporting manifest list sha256:725ddace0d4b8ee67799d8a9e5fce2b7afc6fbd1cf2d05218bb2d9e2f8cc38fe 0.3s done
+#39 naming to docker.io/library/fall25_independentstudy-node56:latest 0.1s done
+#39 unpacking to docker.io/library/fall25_independentstudy-node56:latest 1.8s done
+#39 DONE 4.7s
+
+#40 [node29] exporting to image
+#40 exporting layers 0.9s done
+#40 exporting manifest sha256:283772d2384911db4a4254c13817f2d621975fd12c068ef9b6f94100d7f7170a 0.2s done
+#40 exporting config sha256:14a588b4785b3c4850e56747675255b6d990ecaa7dfc8b0595e44dbf6e47394a 0.2s done
+#40 exporting attestation manifest sha256:b5e2e294bbf478687c3a013ece48631b3c2500d071090e4711ff40b3174a0104 0.5s done
+#40 exporting manifest list sha256:7ae21fd2fec3ff1d86dba9ad445ff9aae85982747ea048291e3a5147dd425a86 0.3s done
+#40 naming to docker.io/library/fall25_independentstudy-node29:latest 0.1s done
+#40 unpacking to docker.io/library/fall25_independentstudy-node29:latest 1.8s done
+#40 DONE 4.6s
+
+#41 [node95] exporting to image
+#41 exporting layers 0.9s done
+#41 exporting manifest sha256:544d5faef2e82d8aaf64af1eb65737ab8dcc19c0c2db8c1ebf9f2287653725c7 0.2s done
+#41 exporting config sha256:25078c7d620eba2f1843aef285b104d3b101c70e9b4c33b06483634062e14dd3 0.2s done
+#41 exporting attestation manifest sha256:f4b643dca08dda9f477af6372e275b2ba38a8e59edf5a67fa1867fb8aff8fdd5 0.5s done
+#41 exporting manifest list sha256:f1b13c14c4f9101842b03ff62d8cc822a5dd3e6622487766449c670abff07f82 0.3s done
+#41 naming to docker.io/library/fall25_independentstudy-node95:latest 0.1s done
+#41 unpacking to docker.io/library/fall25_independentstudy-node95:latest 1.9s done
+#41 DONE 4.6s
+
+#42 [node84] exporting to image
+#42 exporting layers 0.9s done
+#42 exporting manifest sha256:fa9c5e92d5e8230d80f614e08c8c9efaec07a5dc8e31a536f65f94527f2794ba 0.2s done
+#42 exporting config sha256:baed773586d349caa32a3a1d6c105d216714180b2c2c6aa4b4e1018665e9afd4 0.2s done
+#42 exporting attestation manifest sha256:c359ad376ea73496ab28b605addab890a3a3b10d065f9cc828a0620b33f86a44 0.5s done
+#42 exporting manifest list sha256:2814ab9b515fa0c1488fa0a1d59604b98d3c432303e3a00520a883c74dad0b47 0.3s done
+#42 naming to docker.io/library/fall25_independentstudy-node84:latest 0.1s done
+#42 unpacking to docker.io/library/fall25_independentstudy-node84:latest 1.9s done
+#42 DONE 4.7s
+
+#43 [node44] exporting to image
+#43 exporting layers 0.9s done
+#43 exporting manifest sha256:091c07a1783f6ca19a3c8bb824f287fed118528cd9cc8335ce60dbc9f675d512 0.2s done
+#43 exporting config sha256:7ff6a80eca96fd9132cf7d0cbbddafaeb462a2e224d3b431614e187843c711d5 0.2s done
+#43 exporting attestation manifest sha256:d03529bdca0afd9a5e99b08d461b3c8981714ed267a982d56182f157ae9c7d9a 0.5s done
+#43 exporting manifest list sha256:3bc4e4123164b97bb4bcdba8c62b33786b387f76f3ce8224b500fcbf44623ee0 0.3s done
+#43 naming to docker.io/library/fall25_independentstudy-node44:latest 0.1s done
+#43 unpacking to docker.io/library/fall25_independentstudy-node44:latest 2.0s done
+#43 DONE 4.6s
+
+#44 [bootstrap] exporting to image
+#44 exporting layers 1.0s done
+#44 exporting manifest sha256:0dbdef4c391f403ffefc396b28778dc960b688a41fc427be2fe2f22fe66079c9 0.2s done
+#44 exporting config sha256:5fb54688bcdfb6f013d24fa4e592b14ba37e678e92213c0934cfaf82cd4f7091 0.2s done
+#44 exporting attestation manifest sha256:61fbcbcb8137f3b1649a906c431c82236abd8939aa1f97cbee5c8cbbd197c164 0.5s done
+#44 exporting manifest list sha256:c40d9b7106773f5a5c30fca35acc0ccd38f581b897e30eb1b13d25dd51dce7ac 0.3s done
+#44 naming to docker.io/library/fall25_independentstudy-bootstrap:latest 0.1s done
+#44 unpacking to docker.io/library/fall25_independentstudy-bootstrap:latest 1.9s done
+#44 DONE 4.7s
+
+#45 [node24] exporting to image
+#45 exporting layers 0.9s done
+#45 exporting manifest sha256:93d455c0612d4dc9bd3a33cf6a7ba06cbb5f5ad213675bcb0a4c8f7dfbfb2041 0.2s done
+#45 exporting config sha256:d118bdbca3771bc192c7e800ece13b9a7da7407338fa52000457ac308ab20d40 0.2s done
+#45 exporting attestation manifest sha256:0cad4e9aed512835bdd2a64e96cb45c0559c1cc2b7e28c806727b2149c8373e2 0.5s done
+#45 exporting manifest list sha256:e47eb83d48c31023157bca9f6084ea83d9b9f37bc47206231b82153d017efa70 0.3s done
+#45 naming to docker.io/library/fall25_independentstudy-node24:latest 0.1s done
+#45 unpacking to docker.io/library/fall25_independentstudy-node24:latest 1.9s done
+#45 DONE 4.7s
+
+#46 [node3] exporting to image
+#46 exporting layers 0.9s done
+#46 exporting manifest sha256:921ed9c5be077f4098a74e0db379348122da34912e20a26c2dc3628407f7cb37 0.2s done
+#46 exporting config sha256:c81b3835badcc24d6beab52479bdccf90db9b2109cb784d416b8c4f0c0207c5c 0.2s done
+#46 exporting attestation manifest sha256:9677580660fdce3fa93d8381a91612b9defe01c42e9db4daeb413066f218dfb7 0.5s done
+#46 exporting manifest list sha256:37b62c89e528fa1b7962931ce7c0b41e97a20034e458e29cea5bf9fe86cb7eee 0.3s done
+#46 naming to docker.io/library/fall25_independentstudy-node3:latest 0.1s done
+#46 unpacking to docker.io/library/fall25_independentstudy-node3:latest 1.9s done
+#46 DONE 4.7s
+
+#47 [node60] exporting to image
+#47 exporting layers 0.9s done
+#47 exporting manifest sha256:ccd347f44b9495405d7f841c30422b63c45e0b224adee336a2f5d4b4b84f5ffb 0.2s done
+#47 exporting config sha256:8348f956764310dfd64920d23cb13eae39b35910092f77916a42265d326a42b4 0.2s done
+#47 exporting attestation manifest sha256:178fbb6c4768a8e4830ba53eb0ee24d3dfa01d2fc7e4438bf8dc308388679015 0.5s done
+#47 exporting manifest list sha256:be0f9f6376b02c0dcb93c8e1e1f02481b5c36b31519d2587f7c57e92ac87dce3 0.3s done
+#47 naming to docker.io/library/fall25_independentstudy-node60:latest 0.1s done
+#47 unpacking to docker.io/library/fall25_independentstudy-node60:latest 1.9s done
+#47 DONE 4.7s
+
+#48 [node18] exporting to image
+#48 exporting layers 1.0s done
+#48 exporting manifest sha256:5cead507e20eaf5d0a238ddf96dc63cfb8396bc9c998da9781b8b8d144d029ee 0.2s done
+#48 exporting config sha256:92699039ceec8639d4e3718c0be50a7bff2f6e51aee41df68365d3c418612116 0.2s done
+#48 exporting attestation manifest sha256:ebcf9b99c42370ce030c89cef22321e368c0269aa30d2cb740e42b7a8ca8c55d 0.5s done
+#48 exporting manifest list sha256:84ece9a583b682fe790a961d4075789e5f2e6b2579ad14c08f66358ab1996e36 0.3s done
+#48 naming to docker.io/library/fall25_independentstudy-node18:latest 0.1s done
+#48 unpacking to docker.io/library/fall25_independentstudy-node18:latest 2.0s done
+#48 DONE 4.7s
+
+#49 [node19] exporting to image
+#49 exporting layers 1.0s done
+#49 exporting manifest sha256:3ee1529345c9f168cfbcda212247468b6c138ebaf25e3d9536401ace3192c124 0.2s done
+#49 exporting config sha256:46caaf40433e37f9b9e489b8121138a1c9c8a72e64c590c93e9081245e2ede36 0.2s done
+#49 exporting attestation manifest sha256:a6b41be54c911af0a2a7f1a69e2f2ef507991289f211a3dffda4ac1888e4c844 0.5s done
+#49 exporting manifest list sha256:0fa038930af1c4f9e645780a1f4c89ea9deb9c94a7bd5d99c1a060716569e1f6 0.3s done
+#49 naming to docker.io/library/fall25_independentstudy-node19:latest 0.1s done
+#49 unpacking to docker.io/library/fall25_independentstudy-node19:latest 1.9s done
+#49 DONE 4.7s
+
+#50 [node68] exporting to image
+#50 exporting layers 1.0s done
+#50 exporting manifest sha256:c96d1734e913280e713498f1cdf383495a433f4f4c20028ddce2207bbcaf3ff9 0.2s done
+#50 exporting config sha256:b74a2c808a0f6478a1cb1c72a4d43140c1b14b58c0f474786c51d54aa0696bb6 0.2s done
+#50 exporting attestation manifest sha256:42b20272b181ebc26bc662ee42a45b33a9ae6e257adf46a91145ce417f71ceff 0.5s done
+#50 exporting manifest list sha256:5ed717a8a6f167f82f2e1cd33de1177c295808f80b0db66144e63516ce977954 0.3s done
+#50 naming to docker.io/library/fall25_independentstudy-node68:latest 0.1s done
+#50 unpacking to docker.io/library/fall25_independentstudy-node68:latest 2.0s done
+#50 DONE 4.7s
+
+#51 [node97] exporting to image
+#51 exporting layers 0.9s done
+#51 exporting manifest sha256:c49f05e6be3e7ecd494631d782d267c66302c6723d99d4074527b8c2994dc238 0.2s done
+#51 exporting config sha256:74f47d2bb1b8550103d8bd3b83fdf4910a1878c319de4d12a706f96006d56cfd 0.1s done
+#51 exporting attestation manifest sha256:47e2bf5399424897fd97fedc2c24e481e1fe6a6618e60a4e4a21a33812995767 0.5s done
+#51 exporting manifest list sha256:0a873b6bc1282dbcea3471ecac5d7a4b5dd7b576de879b60fbebb385142da8bd 0.3s done
+#51 naming to docker.io/library/fall25_independentstudy-node97:latest 0.1s done
+#51 unpacking to docker.io/library/fall25_independentstudy-node97:latest 2.0s done
+#51 DONE 4.7s
+
+#52 [node87] exporting to image
+#52 exporting layers 0.9s done
+#52 exporting manifest sha256:b2ab24bb356e2eb4681dd61ce7773879f37ad7f5465e52537a3f2eeca2cdd8aa 0.2s done
+#52 exporting config sha256:c39163170a07c908ef03918d1dcfce47527ba16112bd6df7f8723124749bd770 0.2s done
+#52 exporting attestation manifest sha256:7bf11283db52f7997cfd549fd5667f6e115bb42d3cfc16194ef5dc990d53c2d1 0.5s done
+#52 exporting manifest list sha256:8fc27f03e00ae8978389579ada7dafe4cf4a98a2d8040df89923fb6770189920 0.2s done
+#52 naming to docker.io/library/fall25_independentstudy-node87:latest 0.1s done
+#52 unpacking to docker.io/library/fall25_independentstudy-node87:latest 2.2s done
+#52 DONE 4.7s
+
+#53 [node53] exporting to image
+#53 exporting layers 0.9s done
+#53 exporting manifest sha256:27c2f96176a5d7c5bd0b46890bec9f0914d9c4eaafa39cdaa0900475cd195eb7 0.2s done
+#53 exporting config sha256:fecbef1eae9a9240a9628e04bb2c5d5157e144ac48445b58adeca1740bbb14fa 0.2s done
+#53 exporting attestation manifest sha256:7128b5b0a519d7caec36e47c1bf5516ce4e368e1c578c2bd7899bef9a962fad6 0.5s done
+#53 exporting manifest list sha256:ae3d4be98b5db64688c4ca4aa431d555fc4d8b161c3ec49f0c7cde50fb37b151 0.2s done
+#53 naming to docker.io/library/fall25_independentstudy-node53:latest 0.1s done
+#53 unpacking to docker.io/library/fall25_independentstudy-node53:latest 2.1s done
+#53 DONE 4.7s
+
+#54 [node81] exporting to image
+#54 exporting layers 0.9s done
+#54 exporting manifest sha256:a0e8859615ff5f197102ec8c16abf67085775179216190a212a340fc74024592 0.1s done
+#54 exporting config sha256:91eff92ad79118ba5de89212a79081bba4f295f101d6396933d0ffa7d8b14c1f 0.3s done
+#54 exporting attestation manifest sha256:6232789fc87332f36c02273f78824d87b80bcbc3dafaf2c9267da4bb9cd5881e 0.5s done
+#54 exporting manifest list sha256:0f646dc88b9b16f49858f2afc48cb6cc57e761ca4fa9fceecae443a9ab793940 0.3s done
+#54 naming to docker.io/library/fall25_independentstudy-node81:latest 0.1s done
+#54 unpacking to docker.io/library/fall25_independentstudy-node81:latest 2.1s done
+#54 DONE 4.7s
+
+#55 [node80] exporting to image
+#55 exporting layers 0.9s done
+#55 exporting manifest sha256:2a383abc71c670baed801fc28b32f045eaf182807d57958ffee08ac552c6bbe4 0.2s done
+#55 exporting config sha256:0f80b9c106e3d734e1f0a562bf09b88b2efe417cdca3aa05a4e0f73b79ddbc03 0.2s done
+#55 exporting attestation manifest sha256:903a601aaec679d8d85eaf8315521ead833da55840bce2628ed99b17958ef4a3 0.5s done
+#55 exporting manifest list sha256:f603fb2f000b93553cd45678b26edd793671ade02aaa79acb785d46a8da3d32b 0.3s done
+#55 naming to docker.io/library/fall25_independentstudy-node80:latest 0.1s done
+#55 unpacking to docker.io/library/fall25_independentstudy-node80:latest 2.1s done
+#55 DONE 4.7s
+
+#56 [node57] exporting to image
+#56 exporting layers 0.9s done
+#56 exporting manifest sha256:9587e5c0320b1a3f839979f503e51c866a0e01e4f4fac43e71adae82df14cf94 0.2s done
+#56 exporting config sha256:e5df0f99adec229ac773120383616a85ef14407f8412793536a2610826e747aa 0.2s done
+#56 exporting attestation manifest sha256:e0f07e51f874d582a0669bcc6bd8a78f0f838bd0eccf9c4811bd69466ecce14c 0.5s done
+#56 exporting manifest list sha256:6af9c038b294e455e4180973ad1ca945eba78ae84bee8aaa9a666a1ac446f963 0.3s done
+#56 naming to docker.io/library/fall25_independentstudy-node57:latest 0.1s done
+#56 unpacking to docker.io/library/fall25_independentstudy-node57:latest 2.1s done
+#56 DONE 4.7s
+
+#57 [node67] exporting to image
+#57 exporting layers 0.9s done
+#57 exporting manifest sha256:8ebbf0825521cc031f5990f2e9bcf0687ec8023eb0f419d3e3a9fe0107cbbb8f 0.2s done
+#57 exporting config sha256:bd9a65cd4366db7a4b7433730b7deb5bfeee31b97730eb4f5e21eabe45c61816 0.2s done
+#57 exporting attestation manifest sha256:e76ce1768f139f7e438e0c72e06faad619429466ef84e76f8036304ce7f454dd 0.5s done
+#57 exporting manifest list sha256:e0cb05fb4ba3c62b8637f23ef4765f41637595d5cc6db16d35ea3c5aab902a2d 0.3s done
+#57 naming to docker.io/library/fall25_independentstudy-node67:latest 0.1s done
+#57 unpacking to docker.io/library/fall25_independentstudy-node67:latest 2.1s done
+#57 DONE 4.7s
+
+#58 [node73] exporting to image
+#58 exporting layers 1.0s done
+#58 exporting manifest sha256:228ee17665d42a832a19557f42312dfc3bae1e2bb7c0bcc8bde300fa597ecca8 0.2s done
+#58 exporting config sha256:bf04a9f2a9901616012b9cf7d353408df9e0603a7986addc35d4697517b2ea73 0.2s done
+#58 exporting attestation manifest sha256:ccbc2fae4162655583e816481d35417837549aaa653942ee2c81240626cdaf77 0.5s done
+#58 exporting manifest list sha256:977716770c06ee65acd3a4788f005016262f478897a61520e11a7c2ca16aa78a 0.2s done
+#58 naming to docker.io/library/fall25_independentstudy-node73:latest 0.1s done
+#58 unpacking to docker.io/library/fall25_independentstudy-node73:latest 2.1s done
+#58 DONE 4.7s
+
+#59 [node90] exporting to image
+#59 exporting layers 0.9s done
+#59 exporting manifest sha256:8408559e18d53dececaac648dfc808144eac12a8c67a86c81839324a440152c9 0.2s done
+#59 exporting config sha256:99877fb8b81bb5f5d88032a68c1548efb715ffe5e3cd5b53a3227fae2fb95b67 0.2s done
+#59 exporting attestation manifest sha256:8837bf9a72b52d0d9fe871ab268ee47a2d15312d92c92162c17cdc9ea4ad6112 0.5s done
+#59 exporting manifest list sha256:dc9f948c44672396d33e76a5fc595de9eabe2481a3e560ac2065386ca7de2cbd 0.3s done
+#59 naming to docker.io/library/fall25_independentstudy-node90:latest 0.1s done
+#59 unpacking to docker.io/library/fall25_independentstudy-node90:latest 2.1s done
+#59 DONE 4.7s
+
+#60 [node38] exporting to image
+#60 exporting layers 0.9s done
+#60 exporting manifest sha256:7b8ee657d4cace1cbcc27c4af720a219d4a24222769244900b033d7d62dab50f 0.2s done
+#60 exporting config sha256:9eb987494671ea1e5075dded0e52bac3b2e9044bc0bcf6df571039ec5ad6cc80 0.2s done
+#60 exporting attestation manifest sha256:8366ae9b82f377b6efea1e895a44ee29fe1aac3e29d645aa355bbfeb2fadaaf0 0.5s done
+#60 exporting manifest list sha256:edc98fe26497652cc408efda999d50a335ccf9031f321621a070e4023d4f8d31 0.3s done
+#60 naming to docker.io/library/fall25_independentstudy-node38:latest 0.1s done
+#60 unpacking to docker.io/library/fall25_independentstudy-node38:latest 2.1s done
+#60 DONE 4.7s
+
+#61 [node4] exporting to image
+#61 exporting layers 0.9s done
+#61 exporting manifest sha256:0b814aa9c73edb8b39cca2e60d88e3045805263abdbd7702140843f0d198d100 0.2s done
+#61 exporting config sha256:bdb20923d9607f96c2d0bae27e61ee7dd99586d544e61336d39d903d87a41493 0.2s done
+#61 exporting attestation manifest sha256:c733c3415f9346e138a7695a001714066dd62e6313ce6c6966232e62919284f7 0.5s done
+#61 exporting manifest list sha256:4a00e16706b7d6e347507ecbb6e52a658a1d8d61c5ad448fab7009d177d7749d 0.3s done
+#61 naming to docker.io/library/fall25_independentstudy-node4:latest 0.1s done
+#61 unpacking to docker.io/library/fall25_independentstudy-node4:latest 2.2s done
+#61 DONE 4.7s
+
+#62 [node75] exporting to image
+#62 exporting layers 0.9s done
+#62 exporting manifest sha256:162ebb8aef6ec2312054a41ad19a947e10a4b592b9a127f77fbda39ae618fd79 0.2s done
+#62 exporting config sha256:dcefc01426fa5168cf93cdad0325d1f8dd254671bdbf1cb7709bd000c38f86c2 0.2s done
+#62 exporting attestation manifest sha256:88cca7c2a62e3e157591514a42b0437f3f77dcad45b8fc4272278dfea329f354 0.5s done
+#62 exporting manifest list sha256:117614c713658b5de6fd07db20f72b2505b5f9afbe2a1176882754d7ddb71c4c 0.2s done
+#62 naming to docker.io/library/fall25_independentstudy-node75:latest 0.1s done
+#62 unpacking to docker.io/library/fall25_independentstudy-node75:latest 2.2s done
+#62 DONE 4.7s
+
+#63 [node70] exporting to image
+#63 exporting layers 0.9s done
+#63 exporting manifest sha256:47f48602ecd54172eee2d7b09b3d7a66560dd09fbf5cc0505b74debee5660786 0.2s done
+#63 exporting config sha256:6635c180134fd1cfa5aa82dffa8ac60693b2644111a73e11b741c972fd8277d9 0.2s done
+#63 exporting attestation manifest sha256:0e2e4fca7b9ff21c77c7eb5d872ec0b6584ee662afe0aabb46cf3db4d80e323d 0.5s done
+#63 exporting manifest list sha256:7d7349193e4ec094b2bad9e61a48a165f02e55add3eacbb92099a1b65756e819 0.3s done
+#63 naming to docker.io/library/fall25_independentstudy-node70:latest 0.1s done
+#63 unpacking to docker.io/library/fall25_independentstudy-node70:latest 2.1s done
+#63 DONE 4.7s
+
+#64 [node15] exporting to image
+#64 exporting layers 0.9s done
+#64 exporting manifest sha256:7dea4b07ea83828f7ac77a1a801f15241f3c27483e196de5910582a27aa3cf50 0.2s done
+#64 exporting config sha256:6341643a0b0c75517fe0c076e2e6ca2b78f9a37b2b3600b07cd9a5622cfedd4a 0.2s done
+#64 exporting attestation manifest sha256:c633a2dad2105d3a0b073ee8513eb2c71faae316984103549274be012671ab82 0.5s done
+#64 exporting manifest list sha256:2299ac26532f3057a8f1de8b5c310f472d772881e62e73ca1dc4b367022d9240 0.3s done
+#64 naming to docker.io/library/fall25_independentstudy-node15:latest 0.1s done
+#64 unpacking to docker.io/library/fall25_independentstudy-node15:latest 2.2s done
+#64 DONE 4.7s
+
+#65 [node39] exporting to image
+#65 exporting layers 0.9s done
+#65 exporting manifest sha256:384f79d003b23084f9a65536f3d552d54f2e071c5291c2456b9755287eff8ab2 0.2s done
+#65 exporting config sha256:c5628eb0373d42a00c4514d10377cf715fa0487c97ac271082425e7cff010dfd 0.2s done
+#65 exporting attestation manifest sha256:d28a262766e0b68eab3faafdee6f245e38fc51095797bf2edb331df36e91d5e7 0.5s done
+#65 exporting manifest list sha256:112af43b3d3991da103ab1dbd93c834376d4f1b80ab7516a465d361286f97c3b 0.3s done
+#65 naming to docker.io/library/fall25_independentstudy-node39:latest 0.1s done
+#65 unpacking to docker.io/library/fall25_independentstudy-node39:latest 2.2s done
+#65 DONE 4.7s
+
+#66 [node31] exporting to image
+#66 exporting layers 0.9s done
+#66 exporting manifest sha256:832c5973508f1ab26b7b3a58ba4da7c16cd22d5a5320458e1b9a8120ea6307dd 0.2s done
+#66 exporting config sha256:11e3c4001328d2c71a46949a6666b0e5a316aa03f48c4a2a5cd3202bad626053 0.2s done
+#66 exporting attestation manifest sha256:77de6e480e2c080d578c700b8c3c972cadefab561054d27dc80234e0f00d7b5b 0.5s done
+#66 exporting manifest list sha256:617c2017d7591dc7893bdbb554143e451d21c19fec0a1bd7c823ecaad7c7e124 0.3s done
+#66 naming to docker.io/library/fall25_independentstudy-node31:latest 0.1s done
+#66 unpacking to docker.io/library/fall25_independentstudy-node31:latest 2.2s done
+#66 DONE 4.7s
+
+#67 [node49] exporting to image
+#67 exporting layers 0.9s done
+#67 exporting manifest sha256:45bd2dd2c7c51c2717f9b568dc9ce878a032d9293c261dcde453c414ce44952b 0.2s done
+#67 exporting config sha256:d26b17637d156de83ca3de5646753bd3aac4db4a43bb2732f36f1d100cd9106d 0.2s done
+#67 exporting attestation manifest sha256:06f5e410496844d560bd2dd080f005db620814ddc6152b088bf8968043c4deac 0.5s done
+#67 exporting manifest list sha256:e0388b8e1c156f32a091a69d804ddc442413f34a96dc124d00713d1bd1ce1d46 0.3s done
+#67 naming to docker.io/library/fall25_independentstudy-node49:latest 0.1s done
+#67 unpacking to docker.io/library/fall25_independentstudy-node49:latest 2.0s done
+#67 DONE 4.7s
+
+#68 [node30] exporting to image
+#68 exporting layers 0.9s done
+#68 exporting manifest sha256:31fcde1eb72788719a8e51d8fde136152051d361414952c05bc8efe26e3880a9 0.2s done
+#68 exporting config sha256:607761c570b7472a2aa3fb819537ee9840bd7ccfb19619588c824f7e55e950d5 0.2s done
+#68 exporting attestation manifest sha256:aaac6f57ba5688256af6e26f625c2d38071c05ad2f3ed1984caeca3e2607ccba 0.6s done
+#68 exporting manifest list sha256:8856873e0096843ff20735f1b6b5298e77bc21e29a6736f07a0b528d0bcbce88 0.2s done
+#68 naming to docker.io/library/fall25_independentstudy-node30:latest 0.1s done
+#68 unpacking to docker.io/library/fall25_independentstudy-node30:latest 2.2s done
+#68 DONE 4.7s
+
+#69 [node79] exporting to image
+#69 exporting layers 0.9s done
+#69 exporting manifest sha256:582b377915791e21c3dda8fdcf9b7e460c627215e64ba6490416735a1b918c81 0.2s done
+#69 exporting config sha256:7c5d21b4809b8247420ead5c1456b4b5f5e3eb0e6d1512152e76ce21f663f44d 0.2s done
+#69 exporting attestation manifest sha256:8566bd87d026a8d4b9dc6c90d693bc63a46b615ba0c5fd1134bc96e7a3dffbac 0.5s done
+#69 exporting manifest list sha256:d165740c9fbbfc8e694bf7297ef95095ce183ec7077928f3db312a72b299eb70 0.3s done
+#69 naming to docker.io/library/fall25_independentstudy-node79:latest 0.1s done
+#69 unpacking to docker.io/library/fall25_independentstudy-node79:latest 2.2s done
+#69 DONE 4.7s
+
+#70 [node63] exporting to image
+#70 exporting layers 0.9s done
+#70 exporting manifest sha256:0e005a09a4eeb02eb78ef49dcd5dd8dcfc97ee7ab71671d46193cdfdd36cc0cb 0.2s done
+#70 exporting config sha256:4647e2c1eeb794da870384130a31e51b6bdc25fc0560c4f14e4f1bfb53598e02 0.2s done
+#70 exporting attestation manifest sha256:0b1c7d646b1bd2adf34f1623056959d50ab20a8a6cb7212942ec7dd948fa9904 0.5s done
+#70 exporting manifest list sha256:a1c5e11132d1a2ee0ad71482c8a3879790eefd972e40f504028c51802717334b 0.3s done
+#70 naming to docker.io/library/fall25_independentstudy-node63:latest 0.1s done
+#70 unpacking to docker.io/library/fall25_independentstudy-node63:latest 2.2s done
+#70 DONE 4.7s
+
+#71 [node9] exporting to image
+#71 exporting layers 0.9s done
+#71 exporting manifest sha256:45c7649c7d9c864b6a87bbdaff054102aa04e4a8ade60399e02dce367a2346e9 0.2s done
+#71 exporting config sha256:bb4e02e6db8d8cda65be1d0b0720e2a81c1be86a55084dc582f4432a4aab55b5 0.2s done
+#71 exporting attestation manifest sha256:9e97493a823c06fc598b0171139964abb9dc247ee7be8e9d26bec2d845b18616 0.5s done
+#71 exporting manifest list sha256:95b322b5efb2018752bf36a8e62f2f77ee25a58f2e507475f562f45f90862b95 0.3s done
+#71 naming to docker.io/library/fall25_independentstudy-node9:latest 0.1s done
+#71 unpacking to docker.io/library/fall25_independentstudy-node9:latest 2.2s done
+#71 DONE 4.7s
+
+#72 [node12] exporting to image
+#72 exporting layers 0.9s done
+#72 exporting manifest sha256:6e58abfc0d09aeef11dd57d38afaa868f7cb5bf622776ce581501b36350a7661 0.2s done
+#72 exporting config sha256:b96e97693005c19ffa18c445d5ceeab3035c87427e70e2a2d8cfae02ddf154a8 0.2s done
+#72 exporting attestation manifest sha256:4743151c5a8fe12a966a97a66d91d9eab1031194b06c760e8e14a1aab192fa55 0.5s done
+#72 exporting manifest list sha256:8ba4d4359f49e04065f1f5dd75731f684e9fe55851661d87863d9e13aa8786fb 0.2s done
+#72 naming to docker.io/library/fall25_independentstudy-node12:latest 0.1s done
+#72 unpacking to docker.io/library/fall25_independentstudy-node12:latest 2.2s done
+#72 DONE 4.7s
+
+#73 [node76] exporting to image
+#73 exporting layers 0.9s done
+#73 exporting manifest sha256:6dc8d368a7eb4be15134cc4ef0be9fc0d8f1576e92ef3c1d5292f4731e8de408 0.2s done
+#73 exporting config sha256:8832ed54604ac5f958c6912491785ee45d622185262c930b6864a83c14e43110 0.2s done
+#73 exporting attestation manifest sha256:9560cd3ea4d5ee359655b6781fd195aa26a22ab46c77c1169644e89fad6fd9d8 0.5s done
+#73 exporting manifest list sha256:7330c6a13995e2971bc91f2a1868a7f90daaab3d93819acd8b5ec6565fd921f3 0.2s done
+#73 naming to docker.io/library/fall25_independentstudy-node76:latest 0.1s done
+#73 unpacking to docker.io/library/fall25_independentstudy-node76:latest 2.2s done
+#73 DONE 4.7s
+
+#74 [node21] exporting to image
+#74 exporting layers 0.9s done
+#74 exporting manifest sha256:afe4038211c85fe6a8d1f70731c6798a3a57e557f2e85af28f73c0a20b837127 0.2s done
+#74 exporting config sha256:8cd3858c085cafbfcb314ef0379edcbfacec5505141f07854e63fc9a5875b858 0.2s done
+#74 exporting attestation manifest sha256:f8df233bbf0f0eae2c7ad93513f4ef6ddaebd50c26ef0111ea5d1f46df1ccb71 0.5s done
+#74 exporting manifest list sha256:8da700934e645118cb7e1c8fd80b000df24ecd16b67ecc08e1e7c987730c30f4 0.3s done
+#74 naming to docker.io/library/fall25_independentstudy-node21:latest 0.1s done
+#74 unpacking to docker.io/library/fall25_independentstudy-node21:latest 2.2s done
+#74 DONE 4.7s
+
+#75 [node62] exporting to image
+#75 exporting layers 0.9s done
+#75 exporting manifest sha256:38e33150ecb624f225d2326c4f78a74d497082108ea89d530d2cdb9e9d0cdeb9 0.2s done
+#75 exporting config sha256:395770eef95b13f4fec8a33bdd235904c3e37e6eb4da5826941407754bb40efe 0.2s done
+#75 exporting attestation manifest sha256:9f3c6c6ca9ba41e960f847bc67ace3c79e40e9e49e4b1990e64858c6a53ab5b0 0.6s done
+#75 exporting manifest list sha256:192002c4e5127053b0eb7a282b27a82a7fbb986a236d7e156ae01d68f414a55b 0.2s done
+#75 naming to docker.io/library/fall25_independentstudy-node62:latest 0.1s done
+#75 unpacking to docker.io/library/fall25_independentstudy-node62:latest 2.2s done
+#75 DONE 4.7s
+
+#76 [node50] exporting to image
+#76 exporting layers 0.9s done
+#76 exporting manifest sha256:1971addf87c4097d243b148329b0580fadab6c5d8cc15ce1445dc504006d4565 0.2s done
+#76 exporting config sha256:bed23657c9779cabc52465a00dc24b47137c1a14af528ed6d9d7d6775bbd2644 0.2s done
+#76 exporting attestation manifest sha256:4d69b016e5ae947f99e2e658d479fd447c0f29844b5902ac6a911d10567a731c 0.5s done
+#76 exporting manifest list sha256:36af1cf6b8c68767b60119794d6852f26ea7e3807ba81d5345f876c3637ccc9b 0.3s done
+#76 naming to docker.io/library/fall25_independentstudy-node50:latest 0.1s done
+#76 unpacking to docker.io/library/fall25_independentstudy-node50:latest 2.2s done
+#76 DONE 4.7s
+
+#77 [node10] exporting to image
+#77 exporting layers 0.9s done
+#77 exporting manifest sha256:bf45896535cda67b55058b10d00191db614d22baf788dac507f7f6d752460fb1 0.2s done
+#77 exporting config sha256:1a0426646ae7e91f3d9db5b837eb12e5d486782b317bca0e159315070a086a3e 0.2s done
+#77 exporting attestation manifest sha256:c6ea0bb90b3554a07a7e2e2a070add5cc910d6fe22c5e5382f9a3d02745d99b0 0.5s done
+#77 exporting manifest list sha256:a148b58d52a7a441fdf29a7ad13336a7ed591e641c4e235df78e9436826bc796 0.3s done
+#77 naming to docker.io/library/fall25_independentstudy-node10:latest 0.1s done
+#77 unpacking to docker.io/library/fall25_independentstudy-node10:latest 2.2s done
+#77 DONE 4.7s
+
+#78 [node20] exporting to image
+#78 exporting layers 1.0s done
+#78 exporting manifest sha256:42e47c027e33919f5d77a0a0124b94972e054825b39322e1e321555fd77860ef 0.3s done
+#78 exporting config sha256:56f16a713a1ef9ff45cab42dbe04b453a4a2db1e2826185d9142c9d9f0d21e28 0.2s done
+#78 exporting attestation manifest sha256:97807da55d578436abcba89859b212d3baa70647332f33d654c50c5c960d0b1f 0.5s done
+#78 exporting manifest list sha256:02994c94f808d9b0fb3944e26b54e1e898be2c4f6e7a2f649d386844605e6ab6 0.1s done
+#78 naming to docker.io/library/fall25_independentstudy-node20:latest 0.1s done
+#78 unpacking to docker.io/library/fall25_independentstudy-node20:latest 2.2s done
+#78 DONE 4.7s
+
+#79 [node89] exporting to image
+#79 exporting layers 0.9s done
+#79 exporting manifest sha256:ebb9266c22d137b1348915987d0e7a82f9ad402c5f67eb266e4a8436dc84c4fe 0.2s done
+#79 exporting config sha256:5b06de4528908c42e875357c2e43883777d4e320fcd73b5885c6adb1560031f5 0.2s done
+#79 exporting attestation manifest sha256:d1a0d5c522d35e644b1daed89a6075fef142caf0f0c761fb0209088a08518518 0.5s done
+#79 exporting manifest list sha256:17da5d6e94260e1497071ba50a04310906e2780366783020ddd66b5444b798b4 0.3s done
+#79 naming to docker.io/library/fall25_independentstudy-node89:latest 0.1s done
+#79 unpacking to docker.io/library/fall25_independentstudy-node89:latest 2.2s done
+#79 DONE 4.7s
+
+#80 [node86] exporting to image
+#80 exporting layers 0.9s done
+#80 exporting manifest sha256:1db8b08e71f61436bc8df0a5f1db97e5729638e497cf2644b55d0db3621b1d8c 0.2s done
+#80 exporting config sha256:4f1e1978de862b98fb77204a5fae4baa16aac0bc62b34348882f4761f8a51524 0.2s done
+#80 exporting attestation manifest sha256:f457a1e752ab1e1da0fd1812ed0202655db89decb3fd1b04093d63a439871e34 0.5s done
+#80 exporting manifest list sha256:a1913e3565a3f9758df626a3e976b1ec60955081812761bcc72b6b939510dbf4 0.3s done
+#80 naming to docker.io/library/fall25_independentstudy-node86:latest 0.1s done
+#80 unpacking to docker.io/library/fall25_independentstudy-node86:latest 2.2s done
+#80 DONE 4.7s
+
+#81 [node94] exporting to image
+#81 exporting layers 0.9s done
+#81 exporting manifest sha256:b9f0b6ee24a5da3bf916964c39c1e93f463bd6f28174e7c200731f81757bad76 0.2s done
+#81 exporting config sha256:6f1772d7b263f8aebcf730a95f8f9af2c2ec84536d3a03f99215ad8c92421ef3 0.2s done
+#81 exporting attestation manifest sha256:8db8df02f5dca6cbb250f26063b8b7a41beb1de3491aa3044683ce47956c5b62 0.5s done
+#81 exporting manifest list sha256:ca5610a544975ae9fad6cce8a2a0cd9cf1a63e50c1f7de5719e0797b6610b006 0.3s done
+#81 naming to docker.io/library/fall25_independentstudy-node94:latest 0.1s done
+#81 unpacking to docker.io/library/fall25_independentstudy-node94:latest 2.2s done
+#81 DONE 4.7s
+
+#82 [node32] exporting to image
+#82 exporting layers 0.9s done
+#82 exporting manifest sha256:6b2cafae0f2d5785924a692b598353e95a32c717883243e5be9264c77adc14b9 0.2s done
+#82 exporting config sha256:0ceca708e55d39d8ba752f92b29f8fb8fc9d41294ade019720aa08c80f334e77 0.2s done
+#82 exporting attestation manifest sha256:19b70c7898f044c3e39f190d2b78a087ff5306661823c4d423325cb72fcd7f70 0.6s done
+#82 exporting manifest list sha256:43d13aa76b3b2021862208d49dbf396e342aeeac6ca256b8f5c9425971164f56 0.2s done
+#82 naming to docker.io/library/fall25_independentstudy-node32:latest 0.1s done
+#82 unpacking to docker.io/library/fall25_independentstudy-node32:latest 2.2s done
+#82 DONE 4.7s
+
+#83 [node52] exporting to image
+#83 exporting layers 0.9s done
+#83 exporting manifest sha256:a6df40896937b73448afc0561bd5a55d4d4b4d583db050d6f093fc4b952cccaf 0.2s done
+#83 exporting config sha256:dc7525de702e476fd8e6d1e039969793ea6ca48ac3d3717989655c4e7563e508 0.2s done
+#83 exporting attestation manifest sha256:ff61d89bb1a2a6a13d6d8ed25e8f7d459adbf8a5487314ccb3802be9bfe3e44f 0.5s done
+#83 exporting manifest list sha256:40008764d50ec6fa62e14c33f47f6048dc2a8d053abeeaf2037c0f2214e44241 0.2s done
+#83 naming to docker.io/library/fall25_independentstudy-node52:latest 0.1s done
+#83 unpacking to docker.io/library/fall25_independentstudy-node52:latest 2.2s done
+#83 DONE 4.7s
+
+#84 [node23] exporting to image
+#84 exporting layers 1.0s done
+#84 exporting manifest sha256:3595815d47321a98e3bdfa43cf31435e415c84616545ce8d3fe5171ce33fecac 0.3s done
+#84 exporting config sha256:663eed41452f566b48f535715efa6a867b9a0f46778308e5b50b5f10ee18e62b 0.2s done
+#84 exporting attestation manifest sha256:2c62dacaf1c8b5a616b7973ddb06fc2408ace4fa87d774d85515c7672dc44814 0.5s done
+#84 exporting manifest list sha256:1d6ec65df1c444c54b8b767706e6ca44eff62b40b37f67fc3191d3a10034a5c9 0.2s done
+#84 naming to docker.io/library/fall25_independentstudy-node23:latest 0.1s done
+#84 unpacking to docker.io/library/fall25_independentstudy-node23:latest 2.2s done
+#84 DONE 4.7s
+
+#85 [node51] exporting to image
+#85 exporting layers 1.0s done
+#85 exporting manifest sha256:d208132beaa522e4787625e6b58fddf54e947e86ac5ceb004f111980138b25b0 0.3s done
+#85 exporting config sha256:5eef4b018170c1a10a16555a4555d305a75d38774ba0f0c24ef5ed79bf42a4ec 0.2s done
+#85 exporting attestation manifest sha256:4bfb27e3a3178c608cf9ecd603fd6bab96d88c591be898b6fbee8f093fe901c1 0.5s done
+#85 exporting manifest list sha256:de73e2f6a77800631353f95d20030d7a00dde46830a5d6920f11c87b2a7b732a 0.2s done
+#85 naming to docker.io/library/fall25_independentstudy-node51:latest 0.1s done
+#85 unpacking to docker.io/library/fall25_independentstudy-node51:latest 2.1s done
+#85 DONE 4.8s
+
+#86 [node55] exporting to image
+#86 exporting layers 0.9s done
+#86 exporting manifest sha256:6ce1efd8fa35d4784e9681fbb5bff886d23e7be3bdf98257444637b5fdf837fd 0.2s done
+#86 exporting config sha256:d66db47cd1e574bd1ed3c8c9ee13fdc8b5166ccd89c87d9d7a83ada2641bc55c 0.2s done
+#86 exporting attestation manifest sha256:9e53104f14c233bfd3a4d4bf204bf2616315ef1f4236ec0148a41442fab0bee7 0.6s done
+#86 exporting manifest list sha256:521f27425c352781cc511e8ffffc0400944a4e32ba43220dc5fbf4ad12126123 0.2s done
+#86 naming to docker.io/library/fall25_independentstudy-node55:latest 0.1s done
+#86 unpacking to docker.io/library/fall25_independentstudy-node55:latest 2.2s done
+#86 DONE 4.7s
+
+#87 [node11] exporting to image
+#87 exporting layers 1.0s done
+#87 exporting manifest sha256:a3891bf1306c16d9d714ad9f59009a44254f0a9da8c0c3f4c13021d4f592a597 0.2s done
+#87 exporting config sha256:a0d3981134fba8e46129ba58c533b4bf65f2749d9a4497e1f7dab4657eb4da75 0.2s done
+#87 exporting attestation manifest sha256:37093de528dc4b28837d70f6f6fb9893438a1014f66cc9b6c5224453e2fb7944 0.5s done
+#87 exporting manifest list sha256:e5e51f32d28560326f15a25e4b47d1769cd777bc83dc9322b2fab76748a531f1 0.2s done
+#87 naming to docker.io/library/fall25_independentstudy-node11:latest 0.1s done
+#87 unpacking to docker.io/library/fall25_independentstudy-node11:latest 2.2s done
+#87 DONE 4.7s
+
+#88 [node66] exporting to image
+#88 exporting layers 0.9s done
+#88 exporting manifest sha256:379a487b329dc8a2817c63fc8591a71e805eaf7a7ac806548138c2a169870447 0.2s done
+#88 exporting config sha256:1a514ab659b1638dc793e00911c9eb25ff52508ef32e4127feccaf95bcdcc8ef 0.2s done
+#88 exporting attestation manifest sha256:fae676a85f5c9ffadfcdd2d8905113fce6ce896e11ea3fa54b7a27e590af4f61 0.5s done
+#88 exporting manifest list sha256:f72314877d8e66652ffdc0ab08579fd084901a3a7989cebe3017902ca2cc0054 0.3s done
+#88 naming to docker.io/library/fall25_independentstudy-node66:latest 0.1s done
+#88 unpacking to docker.io/library/fall25_independentstudy-node66:latest 2.3s done
+#88 DONE 4.7s
+
+#89 [node43] exporting to image
+#89 exporting layers 0.9s done
+#89 exporting manifest sha256:6072177758b2699bd1f507fad9ee3466adcdc369de20bd0036ea16a521f7160c 0.2s done
+#89 exporting config sha256:b99b27e17c578b1eb669a6f34b52478d15f66961ba7cfee1b20a6760e45f8f44 0.3s done
+#89 exporting attestation manifest sha256:eaad12b4f8a21ba8abe9808dbf129670f634698fe10c31c2d8a228872407fe3a 0.5s done
+#89 exporting manifest list sha256:27d31a1dee1f259ae9a58997560c9c689f51f086f8ab5bfff5c7e4746716dbe4 0.2s done
+#89 naming to docker.io/library/fall25_independentstudy-node43:latest 0.1s done
+#89 unpacking to docker.io/library/fall25_independentstudy-node43:latest 2.2s done
+#89 DONE 4.7s
+
+#90 [node17] exporting to image
+#90 exporting layers 0.9s done
+#90 exporting manifest sha256:0ae555e984f6b9bcdae3a148d5d6d198da8422c58debebbc83eca34a9db6753a 0.2s done
+#90 exporting config sha256:6ed4dcab1a87bd706fbdda8d5cec748ce2cee95b6f66f0fa5632b26345950aed 0.3s done
+#90 exporting attestation manifest sha256:da998dce836aa807350721e229385598c1e8925e8ead09da84185af0ec83f3f4 0.5s done
+#90 exporting manifest list sha256:66d0af90461067de3f22b8aceed9db39ceb355639c47880edd5a291d2bd8fe17 0.3s done
+#90 naming to docker.io/library/fall25_independentstudy-node17:latest 0.1s done
+#90 unpacking to docker.io/library/fall25_independentstudy-node17:latest 2.2s done
+#90 DONE 4.7s
+
+#91 [node93] exporting to image
+#91 exporting layers 0.9s done
+#91 exporting manifest sha256:a8911068e4d0e371b596b155efe6f624ec065c2cbf96bee25550f3a02e326751 0.2s done
+#91 exporting config sha256:b12c79c0275a00fffc85a3980a7d5dfc66a982591310ea08c1dee45ffc460ce8 0.2s done
+#91 exporting attestation manifest sha256:dbc0ac113a9207358ac9abdfdb52c895e4da346aa350a56754c0c49291c0f450 0.5s done
+#91 exporting manifest list sha256:ba4a972e6539b7fba8fc8140bd0c5fc0cf60dc22b1a89dfc1be382322dfabfb2 0.3s done
+#91 naming to docker.io/library/fall25_independentstudy-node93:latest 0.1s done
+#91 unpacking to docker.io/library/fall25_independentstudy-node93:latest 2.3s done
+#91 DONE 4.7s
+
+#23 [node92] exporting to image
+#23 unpacking to docker.io/library/fall25_independentstudy-node92:latest 2.3s done
+#23 DONE 4.8s
+
+#92 [node13] exporting to image
+#92 exporting layers 0.9s done
+#92 exporting manifest sha256:99f41d75af9f1f54a3683482c3d2ece8cb9bfc58f41dd80ba4dd9cdf09dedfe3 0.2s done
+#92 exporting config sha256:0f41ae71b5d91dab0ed986cb7d8c0061a4ce6bc5776f2bba52d76ebb8680079b 0.2s done
+#92 exporting attestation manifest sha256:e00ecb38660ada8d0e825c728a897fb9fba0b270c2bcb542bcd82e4151329b70 0.6s done
+#92 exporting manifest list sha256:3bf1f17009439bd8440d4fd3e44aea3107fc67e0000b0381578a92d4a957c11d 0.2s done
+#92 naming to docker.io/library/fall25_independentstudy-node13:latest 0.1s done
+#92 unpacking to docker.io/library/fall25_independentstudy-node13:latest 2.3s done
+#92 DONE 4.7s
+
+#93 [node27] exporting to image
+#93 exporting layers 0.9s done
+#93 exporting manifest sha256:bfe5488abf8b039399b27c5e48e87db487da9dab0ae36c777f2194da1db09c6c 0.2s done
+#93 exporting config sha256:f36bf7b58a9157d66d0e043727a990837c0d6451511e53e471a614cddd09b6a6 0.2s done
+#93 exporting attestation manifest sha256:7cfa699b30d114d2e4ec2533057cee2fe529183759029a0e6cb2602f4784a3ad 0.6s done
+#93 exporting manifest list sha256:12b248595b28047fc911457e598d4a8e801fdfeaa20942953d0856f21dde7b78 0.2s done
+#93 naming to docker.io/library/fall25_independentstudy-node27:latest 0.1s done
+#93 unpacking to docker.io/library/fall25_independentstudy-node27:latest 2.3s done
+#93 DONE 4.7s
+
+#94 [node2] exporting to image
+#94 exporting layers 0.9s done
+#94 exporting manifest sha256:cddfec556e6ac6bb21cb3469e5d9cbaa3c1a608ee3bbd9e60f69efafe8756e2b 0.2s done
+#94 exporting config sha256:f7782b7f5fdc7c3a2dd8dd89352f09bc1101b18bed77d12b3a2e158c9461c2c2 0.2s done
+#94 exporting attestation manifest sha256:611987aeb9b77817ba6bf4e6df95acf2e111ca6c7f72860ac14cb5a81093c75c 0.6s done
+#94 exporting manifest list sha256:a6c747cd835bc3d20800286db275e52d2ecd5c95a915c093b06d7d3197d580a0 0.2s done
+#94 naming to docker.io/library/fall25_independentstudy-node2:latest 0.1s done
+#94 unpacking to docker.io/library/fall25_independentstudy-node2:latest 2.3s done
+#94 DONE 4.8s
+
+#95 [node61] exporting to image
+#95 exporting layers 1.0s done
+#95 exporting manifest sha256:922f13d272e2ec1822917d5a182c70bf6255474eb9bc21405b9b4ac57dbc4add 0.3s done
+#95 exporting config sha256:e46a53b9966777f69a0421f38d8e434ef0b6f69385a7101b41116c12114403fd 0.2s done
+#95 exporting attestation manifest sha256:a3a577266705d39d49e6cca4d177a076af55b1ddbc53bba2323034e012123353 0.5s done
+#95 exporting manifest list sha256:efc634e45689df4279eb9dd1bfdb8260cdf5a956425396b410730dfd95e4333b 0.2s done
+#95 naming to docker.io/library/fall25_independentstudy-node61:latest 0.1s done
+#95 unpacking to docker.io/library/fall25_independentstudy-node61:latest 2.1s done
+#95 DONE 4.8s
+
+#96 [node98] exporting to image
+#96 exporting layers 0.9s done
+#96 exporting manifest sha256:9e42d03179ab9896ecec322a2110445255ec62abfe871685f3a6d8575bab86a1 0.2s done
+#96 exporting config sha256:57c0d522fa7d0d8b9356a2365baab870fcd9f7f365b6087e72db2c879e5c3f4c 0.2s done
+#96 exporting attestation manifest sha256:60f529dbf757cc2550237db62fce8ba9ceb527f233af99589b39d618746769ce 0.6s done
+#96 exporting manifest list sha256:aff5e0b863780fd6f17cc05d8421a4f854712fcbdcebbb64e614a92559c539c6 0.3s done
+#96 naming to docker.io/library/fall25_independentstudy-node98:latest 0.1s done
+#96 unpacking to docker.io/library/fall25_independentstudy-node98:latest 2.3s done
+#96 DONE 4.7s
+
+#97 [node65] exporting to image
+#97 exporting layers 0.9s done
+#97 exporting manifest sha256:a6c9d34ef7f8e49365136b22e943d16e99a4c52e737764b0bc4ba3c38471fc6b 0.2s done
+#97 exporting config sha256:cc3b0620ea218ba666e317a06f68a9d09cf0fd752c2a95d8a00734183cdca5df 0.3s done
+#97 exporting attestation manifest sha256:70288665cebb9f33e6a6f62567b0265d5cdba8af0b0a4068bf35f9e72c4a0258 0.5s done
+#97 exporting manifest list sha256:852c8e60758038e9a83015e3063fbcbe059058ba91fd1669dfcee789de2e7803 0.2s done
+#97 naming to docker.io/library/fall25_independentstudy-node65:latest 0.1s done
+#97 unpacking to docker.io/library/fall25_independentstudy-node65:latest 2.2s done
+#97 DONE 4.8s
+
+#98 [node8] exporting to image
+#98 exporting layers 1.0s done
+#98 exporting manifest sha256:44059f8f04f196a67de66f931f65a51b9fe1bf5216b9328a3ef001355d0bb961 0.3s done
+#98 exporting config sha256:bfd1087fa016e361a0485823686db6723d118b9cc09d2f970d7421a06c065959 0.2s done
+#98 exporting attestation manifest sha256:f2cfdd99a76d17851added3bb72f036928c5205def4ac14bc1f5d67ab9400908 0.5s done
+#98 exporting manifest list sha256:96253072d402203ab17856a56703f9635802cb38ab047b87670007a9960ffe61 0.2s done
+#98 naming to docker.io/library/fall25_independentstudy-node8:latest 0.1s done
+#98 unpacking to docker.io/library/fall25_independentstudy-node8:latest 2.2s done
+#98 DONE 4.8s
+
+#99 [node36] exporting to image
+#99 exporting layers 0.9s done
+#99 exporting manifest sha256:4213bb6d78f65b4b07dde836635f150951d5d391764ac22a33f4612327a33b97 0.2s done
+#99 exporting config sha256:c3dee98bb9958673f339aa3339b0bac2eab23ab5fba091c39de0bc9217c73786 0.3s done
+#99 exporting attestation manifest sha256:b8254eaa7d045e1b3a1089c00b9b3d2da2aabb1a5f9792e4546ea3856374bbb5 0.5s done
+#99 exporting manifest list sha256:64a97890e33251227bb3eb0b4c57bcc2a8f81c961bd3f3c573ea156c2baa054f 0.2s done
+#99 naming to docker.io/library/fall25_independentstudy-node36:latest 0.1s done
+#99 unpacking to docker.io/library/fall25_independentstudy-node36:latest 2.2s done
+#99 DONE 4.8s
+
+#100 [node22] exporting to image
+#100 exporting layers 0.9s done
+#100 exporting manifest sha256:3b4942425869d358ab84ebb493fcd2951f5f27fe547a7e6e00de1405e5d94162 0.3s done
+#100 exporting config sha256:5715c949eec745e0edf6cde094b0cc44cbd294126b200a1b6eb816aba5fd071f 0.2s done
+#100 exporting attestation manifest sha256:42a34eb9cc4c0236892e7d3ba25b8d74d107053d913d6866648aafc47e44d572 0.6s done
+#100 exporting manifest list sha256:ca5570f7953bbfd50286c57f52dbb8bc24de4910977c49ca8f5f4a5f24cb4099 0.2s done
+#100 naming to docker.io/library/fall25_independentstudy-node22:latest 0.2s done
+#100 unpacking to docker.io/library/fall25_independentstudy-node22:latest 2.1s done
+#100 DONE 4.8s
+
+#101 [node74] exporting to image
+#101 exporting layers 0.9s done
+#101 exporting manifest sha256:27ab1c716cc945034686b27c3ef69c8a8b037b566162e5567a573870fab24323 0.2s done
+#101 exporting config sha256:b409e6763e23e33f6422f2f68342ee39a36d285fb5bb308cbbd263f27ce16713 0.3s done
+#101 exporting attestation manifest sha256:e4441536066b6a65288263a77fc03fc84ec62dd7db49e7bb08c1d25420985a30 0.5s done
+#101 exporting manifest list sha256:1da3b8292fd9134823b0311067691c936e333f81275687e860dc2c477c8ef1ee 0.2s done
+#101 naming to docker.io/library/fall25_independentstudy-node74:latest 0.1s done
+#101 unpacking to docker.io/library/fall25_independentstudy-node74:latest 2.3s done
+#101 DONE 4.8s
+
+#102 [node6] exporting to image
+#102 exporting layers 1.0s done
+#102 exporting manifest sha256:dbcd5da778a47b2fe7d7ecc40081223f08871de0ac1e7caac54c4f5d8e2d45fb 0.3s done
+#102 exporting config sha256:7aca375f2ae21d55726c2e82ef78f313765bf57506493179f7e40fac54aaf723 0.2s done
+#102 exporting attestation manifest sha256:664ecb3ac38259294179a7ee9e786897f097a5701c32683acc1d66b201a6476b 0.5s done
+#102 exporting manifest list sha256:e447268a9510b08c5fe44b4ddd006dba8e02b3afbaaead02a664b83f06d65263 0.2s done
+#102 naming to docker.io/library/fall25_independentstudy-node6:latest 0.1s done
+#102 unpacking to docker.io/library/fall25_independentstudy-node6:latest 2.2s done
+#102 DONE 4.8s
+
+#103 [node28] exporting to image
+#103 exporting layers 0.9s done
+#103 exporting manifest sha256:3d192bc2d80bf8c180b8b139541b70f50fc29dda2d14ff0a11844f37e18f005a 0.2s done
+#103 exporting config sha256:3e8446965bbbd1263d42b890843ccfc6e09faac4e2bd90730d1c1ec2804020c5 0.3s done
+#103 exporting attestation manifest sha256:3d1555e37e4fc98abd2463f797f7f1a009582bb5cfde54e1fb75b8da1bab00b5 0.5s done
+#103 exporting manifest list sha256:447c1d3ecda7db300714b6ee1929690ba43914d6cec604efd7d29776a9021390 0.2s done
+#103 naming to docker.io/library/fall25_independentstudy-node28:latest 0.1s done
+#103 unpacking to docker.io/library/fall25_independentstudy-node28:latest 2.3s done
+#103 DONE 4.8s
+
+#104 [node48] exporting to image
+#104 exporting layers 1.0s done
+#104 exporting manifest sha256:18a133a30f26d617189faf04aca4eb8f7e3a870856c1902727f9c7bfca085af8 0.3s done
+#104 exporting config sha256:3565be5b5f08efb994ade50e3db8e6694dfaf540d74155b3d206e56b5aef639c 0.2s done
+#104 exporting attestation manifest sha256:9b004e9bab5a534f16ef6a7afa68b08ce2711ce996e3c7955b134b41fdb23eac 0.6s done
+#104 exporting manifest list sha256:690f63e6cfc7cd9614224558f5248c58025103ce2e6cb10a9796e93d77d347f7 0.2s done
+#104 naming to docker.io/library/fall25_independentstudy-node48:latest 0.2s done
+#104 unpacking to docker.io/library/fall25_independentstudy-node48:latest 2.1s done
+#104 DONE 4.8s
+
+#105 [node54] exporting to image
+#105 exporting layers 1.0s done
+#105 exporting manifest sha256:29c48273e55a6648d56ed36fba45a6720730546a8067f0da462a78c3b51c9aae 0.3s done
+#105 exporting config sha256:32770d6fe3520e29d66caba350f84aca169c7e4831dba90d09bedc1fb6d5f0e0 0.2s done
+#105 exporting attestation manifest sha256:cb998fc9d127d5f9af2d1573184b181032d053e72a863b2a384715aadb69b9f0 0.4s done
+#105 exporting manifest list sha256:446835334c3874a3edd4dd16aa58f7acab0a3a6361dccf9f7e482456d5bfaf13 0.2s done
+#105 naming to docker.io/library/fall25_independentstudy-node54:latest 0.1s done
+#105 unpacking to docker.io/library/fall25_independentstudy-node54:latest 2.3s done
+#105 DONE 4.8s
+
+#106 [node77] exporting to image
+#106 exporting layers 0.9s done
+#106 exporting manifest sha256:b3a398428c9d4818bc94b3c39aaf54cc93ae309d035a0551e0da4751d5ced17e 0.3s done
+#106 exporting config sha256:aa62d7fddc1310a6eb449e780aa3e51f179302a54236b2f0aa69db59fea36125 0.2s done
+#106 exporting attestation manifest sha256:2dfcc89825ee51f58f1764a1118330d4e2e3a4b0ba5bcd661dbc5ca65c25992c 0.6s done
+#106 exporting manifest list sha256:f76dade392144a902e0fa79af0064c34b5703fac487e2fdfdf88e2b416da1094 0.2s done
+#106 naming to docker.io/library/fall25_independentstudy-node77:latest 0.2s done
+#106 unpacking to docker.io/library/fall25_independentstudy-node77:latest 2.1s done
+#106 DONE 4.8s
+
+#107 [node14] exporting to image
+#107 exporting layers 0.9s done
+#107 exporting manifest sha256:6e0f1dac95283557e67a248f212bd532ebbd0ef75adc71f74108f7c6e6ba70d2 0.2s done
+#107 exporting config sha256:0825273fe9f242c10833925c35afa7da975f262cc1c92165f1f1cce3471d03e3 0.2s done
+#107 exporting attestation manifest sha256:b8a997c54aeaf77a8bb26441eee4721acdcddae3a58ff43a2a52a2fab331d240 0.6s done
+#107 exporting manifest list sha256:2f27b66d45f51700809715f87cf13766e75aac815e87a2efa21230dd15521c81 0.3s done
+#107 naming to docker.io/library/fall25_independentstudy-node14:latest 0.1s done
+#107 unpacking to docker.io/library/fall25_independentstudy-node14:latest 2.3s done
+#107 DONE 4.8s
+
+#108 [node58] exporting to image
+#108 exporting layers 0.9s done
+#108 exporting manifest sha256:e4e7469651715c7be413a3cd950ad69940b0edfc56a1218a23cbe95b44b7deec 0.3s done
+#108 exporting config sha256:cec6f7136e9305af617c129892b41c878cdade850bb8a68fe01af9bcf670ef28 0.2s done
+#108 exporting attestation manifest sha256:aafa2e1e9afc2f1157295c8ffb2bc2677da94163ed64eda9bf1bd8cc73f75bfc 0.5s done
+#108 exporting manifest list sha256:d0a891129cdec8553572342ad4ff9cea1095ede08f15c199f4c6c9ebb2bd7770 0.2s done
+#108 naming to docker.io/library/fall25_independentstudy-node58:latest 0.1s done
+#108 unpacking to docker.io/library/fall25_independentstudy-node58:latest 2.2s done
+#108 DONE 4.8s
+
+#109 [node59] exporting to image
+#109 exporting layers 1.0s done
+#109 exporting manifest sha256:8b119079814aa4e3b1479ad9afcffa36d54a6a622b9b5c9d1138a31b43745767 0.3s done
+#109 exporting config sha256:baf92b405f4d352ca842eed1a9ca2777f8f21bb71396d95d49ea0526c2d28414 0.2s done
+#109 exporting attestation manifest sha256:ff2a4a1d46f9ec1beaa453c3fc8381e4466b8e1869ac750713d0bf31cca21823 0.6s done
+#109 exporting manifest list sha256:2b8d773adc0dce23b1d462e2ed647b94912cdeb7d675b15311b1ece75c79f27a 0.2s done
+#109 naming to docker.io/library/fall25_independentstudy-node59:latest 0.2s done
+#109 unpacking to docker.io/library/fall25_independentstudy-node59:latest 2.1s done
+#109 DONE 4.8s
+
+#110 [node91] exporting to image
+#110 exporting layers 0.9s done
+#110 exporting manifest sha256:54aac62fb969b29777dfe92d1a2f90c41dcc8728de88cecb413212c2ccbc0132 0.2s done
+#110 exporting config sha256:3a43667dd9a549667b5ad8a66d1fe0203523c56a4f1656db4a207416314af563 0.3s done
+#110 exporting attestation manifest sha256:e1928e01c89cfb6807dc44dec265e6b02e0fdd7fe1ecfe93590e567d743d7b03 0.5s done
+#110 exporting manifest list sha256:270889dcdd689a0c4ec74bd70f18678f544d59ac02db55d3ef20d7a73052b27d 0.2s done
+#110 naming to docker.io/library/fall25_independentstudy-node91:latest 0.1s done
+#110 unpacking to docker.io/library/fall25_independentstudy-node91:latest 2.3s done
+#110 DONE 4.8s
+
+#111 [node41] exporting to image
+#111 exporting layers 0.9s done
+#111 exporting manifest sha256:5c6317c72f8dd3be007dd8dd1f89d0e2897c01fec41960e5b3e77dda5937a31c 0.2s done
+#111 exporting config sha256:7aace3f7d6ad77e6e8c14078ea728c19b42241b8a17875d684376928ae5ff65c 0.2s done
+#111 exporting attestation manifest sha256:8d429b5d9eba820880db360741d0f28cfb8ecc6987e63ae5b553dd0655c81338 0.5s done
+#111 exporting manifest list sha256:684c6abb5318a3394bf803e0dea2ae2bbd1a2ecd019be3d98e1a83741c4107e7 0.2s done
+#111 naming to docker.io/library/fall25_independentstudy-node41:latest 0.1s done
+#111 unpacking to docker.io/library/fall25_independentstudy-node41:latest 2.3s done
+#111 DONE 4.8s
+
+#112 [node64] exporting to image
+#112 exporting layers 1.0s done
+#112 exporting manifest sha256:4163d945e4c6cc506eb6524759c4d8a261b83494a55f880f2d21ce351a2a415c 0.3s done
+#112 exporting config sha256:5b4020779f3c482caa74908725a37a07dfb7868279d895aabf86b0111982d0a9 0.2s done
+#112 exporting attestation manifest sha256:9fbbf1f693988731fd7381bcd349addca83e50033dc805f66a397f6d4edcf86b 0.5s done
+#112 exporting manifest list sha256:f5cf94c1eddb80ca3df9aae4b8d7c9b2c84a2921160b41b1d04fe7731bd487d1 0.2s done
+#112 naming to docker.io/library/fall25_independentstudy-node64:latest 0.1s done
+#112 unpacking to docker.io/library/fall25_independentstudy-node64:latest 2.2s done
+#112 DONE 4.8s
+
+#113 [node88] exporting to image
+#113 exporting layers 1.0s done
+#113 exporting manifest sha256:50cda03942a94e1bb85e9938603b6544cd9df4bb6abb246d44e53ef1adfa1660 0.3s done
+#113 exporting config sha256:29414cc6eba0ac92feb267176f6334c2454173e3938722ac54ddd7627fde7c0c 0.2s done
+#113 exporting attestation manifest sha256:52af1a4670e54f0b2619598fd24724b5bb6c1bf7dc19f5ddf3bcd7f7d4da6e96 0.5s done
+#113 exporting manifest list sha256:a500e1be074f0f54132f28ecd31adc0f840b0a66dbf0bb1df04a99c51a5ea881 0.2s done
+#113 naming to docker.io/library/fall25_independentstudy-node88:latest 0.1s done
+#113 unpacking to docker.io/library/fall25_independentstudy-node88:latest 2.2s done
+#113 DONE 4.8s
+
+#114 [node37] exporting to image
+#114 exporting layers 1.0s done
+#114 exporting manifest sha256:dfc88addd63c2118eedffa731d0b80d396842fb069237379bf335c39cfeb2a5f 0.3s done
+#114 exporting config sha256:0ef63bc1ceb34ee6790d3524a873dcaf0a697dbd2399f1a9685a963dfdab8652 0.2s done
+#114 exporting attestation manifest sha256:8701dffb387260221392359d56b268ea1a1a05b2a6a1dcc12e9fe6cc2b8193b6 0.6s done
+#114 exporting manifest list sha256:dfcf56ae5fa7ff504439a5702e480f9ae3c803db39e1fb87618e5158f50ce4b8 0.2s done
+#114 naming to docker.io/library/fall25_independentstudy-node37:latest 0.2s done
+#114 unpacking to docker.io/library/fall25_independentstudy-node37:latest 2.1s done
+#114 DONE 4.8s
+
+#115 [node34] exporting to image
+#115 exporting layers 1.0s done
+#115 exporting manifest sha256:0191333db8ac62a59ae0b475ea15411f0d4f8df51824f3a81176cba0cef3f207 0.3s done
+#115 exporting config sha256:f0dec695913749e46077db07cce89210a031db1f049e03f098cba288aac43d43 0.2s done
+#115 exporting attestation manifest sha256:4ea1147f90244478facb31e99103535100aef7543e8a3519fa89724da84c185a 0.5s done
+#115 exporting manifest list sha256:9d9626273a45b05cee3105c618b0fcdd5f92753f5d58f12c747470c9bcb3e832 0.2s done
+#115 naming to docker.io/library/fall25_independentstudy-node34:latest 0.1s done
+#115 unpacking to docker.io/library/fall25_independentstudy-node34:latest 2.3s done
+#115 DONE 4.8s
+
+#116 [node69] exporting to image
+#116 exporting layers 1.0s done
+#116 exporting manifest sha256:e981aca5d96b50dd99b9abc6a874bd2ecf2669417428bb405a46a21dbec883c1 0.3s done
+#116 exporting config sha256:d81efb7dab9303df7134f42e0ea1305fc12e7515ced2b9e7be3815cdc30434de 0.2s done
+#116 exporting attestation manifest sha256:d6894a4e14e15951c0d1c0a1ca87eda770a17d894a2c627d774a214db01cb580 0.5s done
+#116 exporting manifest list sha256:55e7097978422c96ba13ba7b8063b34c6c61dbec4beb8183493341c6fa1ae1f1 0.2s done
+#116 naming to docker.io/library/fall25_independentstudy-node69:latest 0.1s done
+#116 unpacking to docker.io/library/fall25_independentstudy-node69:latest 2.2s done
+#116 DONE 4.8s
+
+#117 [node26] exporting to image
+#117 exporting layers 1.0s done
+#117 exporting manifest sha256:904662ced7c8cb73e579e45c72bcf677dee8d4814f33ae1e6754726c192e24bd 0.3s done
+#117 exporting config sha256:1312d139646dc27660468e2c2681d4ec526d9a8721d07547776ff7b367a6e217 0.2s done
+#117 exporting attestation manifest sha256:d668c38cba0e9bbbd00d4c0479edf6aaa7815212be234ef3e6022cb2a2cae9c8 0.6s done
+#117 exporting manifest list sha256:4cfdceceb9ca1bf97e574c0294cb0a794df01c558a9177d16395c160616ed5cd 0.2s done
+#117 naming to docker.io/library/fall25_independentstudy-node26:latest 0.2s done
+#117 unpacking to docker.io/library/fall25_independentstudy-node26:latest 2.1s done
+#117 DONE 4.8s
+
+#118 [node42] exporting to image
+#118 exporting layers 0.9s done
+#118 exporting manifest sha256:50ea427a60923c2b5794a5e62a96a665f80b3d87552c7780cacf33961e14a568 0.3s done
+#118 exporting config sha256:f0c369a7a6c8fd8a4fe0f72cd9228104bcd68865f921d3330908804261b4f458 0.2s done
+#118 exporting attestation manifest sha256:e5efc041519c4cd94989b911c118ccde4b7fdf4135bf661c96be5e8f9d65becc 0.6s done
+#118 exporting manifest list sha256:1fcacc1efbbc433cfc7b9bcd299c4d470e2ecad50a55f1d16683cdab436cb575 0.2s done
+#118 naming to docker.io/library/fall25_independentstudy-node42:latest 0.1s done
+#118 unpacking to docker.io/library/fall25_independentstudy-node42:latest 2.2s done
+#118 DONE 4.8s
+
+#119 [node83] exporting to image
+#119 exporting layers 0.9s done
+#119 exporting manifest sha256:7203b5bc76f446f19f634fe811de6359a9af5c358021a086cb3170a09a36ea81 0.2s done
+#119 exporting config sha256:48e8a616e526483dc2f0facd94d982d57f9ed5807083ff89ad792fb5f51fa432 0.3s done
+#119 exporting attestation manifest sha256:d771c6939f9905aac6505adaa49081c142a07f9eab9614e33fb4ce7a76eb1c54 0.5s done
+#119 exporting manifest list sha256:e443b6284de4c4ee3fe7f33abe0278ef958633353170ea19be707f7bdbebcf54 0.2s done
+#119 naming to docker.io/library/fall25_independentstudy-node83:latest 0.1s done
+#119 unpacking to docker.io/library/fall25_independentstudy-node83:latest 2.3s done
+#119 DONE 4.8s
+
+#120 [node71] exporting to image
+#120 exporting layers 1.0s done
+#120 exporting manifest sha256:afaef6670bcc69116ce6b8e658859997da532f59b0aa04299ac62d9ee872a418 0.3s done
+#120 exporting config sha256:2e8f8113f2df1b72c4709fcf2031e305932dd1c211a78263569136d7020c4fc2 0.2s done
+#120 exporting attestation manifest sha256:3431ae8610a66b67cb981257c9136f371f3c360476ec1060a6e567360fc6a81f 0.5s done
+#120 exporting manifest list sha256:790d21158da8119d997f46031dab3466049144ea2168462275401afe4872c841 0.2s done
+#120 naming to docker.io/library/fall25_independentstudy-node71:latest 0.1s done
+#120 unpacking to docker.io/library/fall25_independentstudy-node71:latest 2.2s done
+#120 DONE 4.8s
+
+#121 [node25] exporting to image
+#121 exporting layers 1.0s done
+#121 exporting manifest sha256:b9ea4dcccef293b73fc9db5bac250be86de904e0249a30b1eab0ad56e143555c 0.3s done
+#121 exporting config sha256:ae290aa746938b1b41a0927f4fb807b23b5d733ba751c3900268e47c90c7b266 0.2s done
+#121 exporting attestation manifest sha256:d8aa9f613f843535bdcbeaa8188c4a10bdbf7c2e8a74edcdfa246d2c31ba9638 0.5s done
+#121 exporting manifest list sha256:4513200d304ec13e404ee1b7e2495f98192da034dae4e863a5aadc525a571397 0.2s done
+#121 naming to docker.io/library/fall25_independentstudy-node25:latest 0.1s done
+#121 unpacking to docker.io/library/fall25_independentstudy-node25:latest 2.3s done
+#121 DONE 4.8s
+
+#122 [node85] exporting to image
+#122 exporting layers 1.0s done
+#122 exporting manifest sha256:127c483b04d58e2379e7cef1b650e9a15503eed99f01635d2ed96279020d5c2f 0.3s done
+#122 exporting config sha256:480914a5c1b01576e0911232f323941e5c5b27277084fb162e7b48f60ae91ef2 0.2s done
+#122 exporting attestation manifest sha256:e54312b21c3002befc472c1c4a8bac199170e75ba69c24b887007759c1ab4032 0.6s done
+#122 exporting manifest list sha256:9adee66e91bd1aaaeed6341d310f4c83f27210f873ba288a502e337b015f0b15 0.2s done
+#122 naming to docker.io/library/fall25_independentstudy-node85:latest 0.2s done
+#122 unpacking to docker.io/library/fall25_independentstudy-node85:latest 2.1s done
+#122 DONE 4.8s
+
+#123 [node72] resolving provenance for metadata file
+#123 DONE 1.1s
+
+#124 [node45] resolving provenance for metadata file
+#124 DONE 1.0s
+
+#125 [node47] resolving provenance for metadata file
+#125 DONE 1.0s
+
+#126 [node29] resolving provenance for metadata file
+#126 DONE 0.9s
+
+#127 [node100] resolving provenance for metadata file
+#127 DONE 1.0s
+
+#128 [node68] resolving provenance for metadata file
+#128 DONE 0.8s
+
+#129 [node78] resolving provenance for metadata file
+#129 DONE 1.0s
+
+#130 [node36] resolving provenance for metadata file
+#130 DONE 0.3s
+
+#131 [node5] resolving provenance for metadata file
+#131 DONE 1.0s
+
+#132 [node33] resolving provenance for metadata file
+#132 DONE 1.1s
+
+#133 [node82] resolving provenance for metadata file
+#133 DONE 1.1s
+
+#134 [node35] resolving provenance for metadata file
+#134 DONE 1.1s
+
+#135 [node99] resolving provenance for metadata file
+#135 DONE 1.1s
+
+#136 [node56] resolving provenance for metadata file
+#136 DONE 1.0s
+
+#137 [node46] resolving provenance for metadata file
+#137 DONE 1.0s
+
+#138 [node3] resolving provenance for metadata file
+#138 DONE 0.9s
+
+#139 [node44] resolving provenance for metadata file
+#139 DONE 0.7s
+
+#140 [node16] resolving provenance for metadata file
+#140 DONE 1.1s
+
+#141 [node19] resolving provenance for metadata file
+#141 DONE 0.8s
+
+#142 [node39] resolving provenance for metadata file
+#142 DONE 0.5s
+
+#143 [node81] resolving provenance for metadata file
+#143 DONE 0.8s
+
+#144 [node31] resolving provenance for metadata file
+#144 DONE 0.7s
+
+#145 [node21] resolving provenance for metadata file
+#145 DONE 0.5s
+
+#146 [node90] resolving provenance for metadata file
+#146 DONE 0.8s
+
+#147 [node7] resolving provenance for metadata file
+#147 DONE 1.0s
+
+#148 [node97] resolving provenance for metadata file
+#148 DONE 0.8s
+
+#149 [node59] resolving provenance for metadata file
+#149 DONE 0.2s
+
+#150 [node49] resolving provenance for metadata file
+#150 DONE 0.7s
+
+#151 [node53] resolving provenance for metadata file
+#151 DONE 0.8s
+
+#152 [node2] resolving provenance for metadata file
+#152 DONE 0.4s
+
+#153 [node28] resolving provenance for metadata file
+#153 DONE 0.2s
+
+#154 [bootstrap] resolving provenance for metadata file
+#154 DONE 0.9s
+
+#155 [node86] resolving provenance for metadata file
+#155 DONE 0.5s
+
+#156 [node4] resolving provenance for metadata file
+#156 DONE 0.8s
+
+#157 [node18] resolving provenance for metadata file
+#157 DONE 0.9s
+
+#158 [node15] resolving provenance for metadata file
+#158 DONE 0.7s
+
+#159 [node20] resolving provenance for metadata file
+#159 DONE 0.5s
+
+#160 [node87] resolving provenance for metadata file
+#160 DONE 0.8s
+
+#161 [node64] resolving provenance for metadata file
+#161 DONE 0.2s
+
+#162 [node76] resolving provenance for metadata file
+#162 DONE 0.6s
+
+#163 [node34] resolving provenance for metadata file
+#163 DONE 0.1s
+
+#164 [node8] resolving provenance for metadata file
+#164 DONE 0.3s
+
+#165 [node51] resolving provenance for metadata file
+#165 DONE 0.3s
+
+#166 [node93] resolving provenance for metadata file
+#166 DONE 0.3s
+
+#167 [node42] resolving provenance for metadata file
+#167 DONE 0.1s
+
+#168 [node40] resolving provenance for metadata file
+#168 DONE 1.1s
+
+#169 [node65] resolving provenance for metadata file
+#169 DONE 0.5s
+
+#170 [node96] resolving provenance for metadata file
+#170 DONE 1.0s
+
+#171 [node80] resolving provenance for metadata file
+#171 DONE 0.7s
+
+#172 [node10] resolving provenance for metadata file
+#172 DONE 0.5s
+
+#173 [node13] resolving provenance for metadata file
+#173 DONE 0.5s
+
+#174 [node43] resolving provenance for metadata file
+#174 DONE 0.6s
+
+#175 [node54] resolving provenance for metadata file
+#175 DONE 0.3s
+
+#176 [node73] resolving provenance for metadata file
+#176 DONE 0.8s
+
+#177 [node24] resolving provenance for metadata file
+#177 DONE 0.9s
+
+#178 [node94] resolving provenance for metadata file
+#178 DONE 0.4s
+
+#179 [node55] resolving provenance for metadata file
+#179 DONE 0.6s
+
+#180 [node91] resolving provenance for metadata file
+#180 DONE 0.3s
+
+#181 [node23] resolving provenance for metadata file
+#181 DONE 0.6s
+
+#182 [node92] resolving provenance for metadata file
+#182 DONE 0.3s
+
+#183 [node71] resolving provenance for metadata file
+#183 DONE 0.1s
+
+#184 [node70] resolving provenance for metadata file
+#184 DONE 0.8s
+
+#185 [node98] resolving provenance for metadata file
+#185 DONE 0.4s
+
+#186 [node60] resolving provenance for metadata file
+#186 DONE 0.9s
+
+#187 [node84] resolving provenance for metadata file
+#187 DONE 0.9s
+
+#188 [node77] resolving provenance for metadata file
+#188 DONE 0.2s
+
+#189 [node95] resolving provenance for metadata file
+#189 DONE 0.9s
+
+#190 [node27] resolving provenance for metadata file
+#190 DONE 0.5s
+
+#191 [node14] resolving provenance for metadata file
+#191 DONE 0.1s
+
+#192 [node48] resolving provenance for metadata file
+#192 DONE 0.2s
+
+#193 [node79] resolving provenance for metadata file
+#193 DONE 0.7s
+
+#194 [node32] resolving provenance for metadata file
+#194 DONE 0.4s
+
+#195 [node41] resolving provenance for metadata file
+#195 DONE 0.2s
+
+#196 [node58] resolving provenance for metadata file
+#196 DONE 0.1s
+
+#197 [node69] resolving provenance for metadata file
+#197 DONE 0.2s
+
+#198 [node22] resolving provenance for metadata file
+#198 DONE 0.1s
+
+#199 [node30] resolving provenance for metadata file
+#199 DONE 0.7s
+
+#200 [node74] resolving provenance for metadata file
+#200 DONE 0.4s
+
+#201 [node83] resolving provenance for metadata file
+#201 DONE 0.1s
+
+#202 [node6] resolving provenance for metadata file
+#202 DONE 0.2s
+
+#203 [node67] resolving provenance for metadata file
+#203 DONE 0.7s
+
+#204 [node9] resolving provenance for metadata file
+#204 DONE 0.7s
+
+#205 [node52] resolving provenance for metadata file
+#205 DONE 0.4s
+
+#206 [node11] resolving provenance for metadata file
+#206 DONE 0.5s
+
+#207 [node63] resolving provenance for metadata file
+#207 DONE 0.6s
+
+#208 [node26] resolving provenance for metadata file
+#208 DONE 0.2s
+
+#209 [node50] resolving provenance for metadata file
+#209 DONE 0.4s
+
+#210 [node38] resolving provenance for metadata file
+#210 DONE 0.8s
+
+#211 [node61] resolving provenance for metadata file
+#211 DONE 0.3s
+
+#212 [node66] resolving provenance for metadata file
+#212 DONE 0.6s
+
+#213 [node85] resolving provenance for metadata file
+#213 DONE 0.2s
+
+#214 [node62] resolving provenance for metadata file
+#214 DONE 0.6s
+
+#215 [node37] resolving provenance for metadata file
+#215 DONE 0.2s
+
+#216 [node17] resolving provenance for metadata file
+#216 DONE 0.5s
+
+#217 [node75] resolving provenance for metadata file
+#217 DONE 0.6s
+
+#218 [node88] resolving provenance for metadata file
+#218 DONE 0.3s
+
+#219 [node25] resolving provenance for metadata file
+#219 DONE 0.1s
+
+#220 [node12] resolving provenance for metadata file
+#220 DONE 0.6s
+
+#221 [node89] resolving provenance for metadata file
+#221 DONE 0.5s
+
+#222 [node57] resolving provenance for metadata file
+#222 DONE 0.8s
+ Image fall25_independentstudy-node32 Built 
+ Image fall25_independentstudy-node41 Built 
+ Image fall25_independentstudy-node80 Built 
+ Image fall25_independentstudy-node82 Built 
+ Image fall25_independentstudy-node23 Built 
+ Image fall25_independentstudy-node78 Built 
+ Image fall25_independentstudy-node25 Built 
+ Image fall25_independentstudy-node81 Built 
+ Image fall25_independentstudy-node86 Built 
+ Image fall25_independentstudy-node22 Built 
+ Image fall25_independentstudy-node50 Built 
+ Image fall25_independentstudy-node67 Built 
+ Image fall25_independentstudy-node52 Built 
+ Image fall25_independentstudy-node54 Built 
+ Image fall25_independentstudy-node43 Built 
+ Image fall25_independentstudy-node39 Built 
+ Image fall25_independentstudy-node27 Built 
+ Image fall25_independentstudy-node30 Built 
+ Image fall25_independentstudy-node51 Built 
+ Image fall25_independentstudy-node36 Built 
+ Image fall25_independentstudy-node12 Built 
+ Image fall25_independentstudy-node74 Built 
+ Image fall25_independentstudy-node55 Built 
+ Image fall25_independentstudy-node9 Built 
+ Image fall25_independentstudy-node96 Built 
+ Image fall25_independentstudy-node31 Built 
+ Image fall25_independentstudy-node95 Built 
+ Image fall25_independentstudy-node20 Built 
+ Image fall25_independentstudy-node56 Built 
+ Image fall25_independentstudy-node73 Built 
+ Image fall25_independentstudy-node75 Built 
+ Image fall25_independentstudy-node28 Built 
+ Image fall25_independentstudy-node68 Built 
+ Image fall25_independentstudy-node15 Built 
+ Image fall25_independentstudy-node63 Built 
+ Image fall25_independentstudy-node5 Built 
+ Image fall25_independentstudy-node76 Built 
+ Image fall25_independentstudy-node92 Built 
+ Image fall25_independentstudy-node97 Built 
+ Image fall25_independentstudy-node90 Built 
+ Image fall25_independentstudy-node91 Built 
+ Image fall25_independentstudy-node59 Built 
+ Image fall25_independentstudy-node58 Built 
+ Image fall25_independentstudy-bootstrap Built 
+ Image fall25_independentstudy-node6 Built 
+ Image fall25_independentstudy-node16 Built 
+ Image fall25_independentstudy-node4 Built 
+ Image fall25_independentstudy-node70 Built 
+ Image fall25_independentstudy-node45 Built 
+ Image fall25_independentstudy-node71 Built 
+ Image fall25_independentstudy-node62 Built 
+ Image fall25_independentstudy-node65 Built 
+ Image fall25_independentstudy-node69 Built 
+ Image fall25_independentstudy-node35 Built 
+ Image fall25_independentstudy-node13 Built 
+ Image fall25_independentstudy-node61 Built 
+ Image fall25_independentstudy-node60 Built 
+ Image fall25_independentstudy-node17 Built 
+ Image fall25_independentstudy-node53 Built 
+ Image fall25_independentstudy-node64 Built 
+ Image fall25_independentstudy-node48 Built 
+ Image fall25_independentstudy-node40 Built 
+ Image fall25_independentstudy-node10 Built 
+ Image fall25_independentstudy-node24 Built 
+ Image fall25_independentstudy-node66 Built 
+ Image fall25_independentstudy-node19 Built 
+ Image fall25_independentstudy-node93 Built 
+ Image fall25_independentstudy-node77 Built 
+ Image fall25_independentstudy-node89 Built 
+ Image fall25_independentstudy-node49 Built 
+ Image fall25_independentstudy-node8 Built 
+ Image fall25_independentstudy-node26 Built 
+ Image fall25_independentstudy-node85 Built 
+ Image fall25_independentstudy-node88 Built 
+ Image fall25_independentstudy-node72 Built 
+ Image fall25_independentstudy-node100 Built 
+ Image fall25_independentstudy-node46 Built 
+ Image fall25_independentstudy-node29 Built 
+ Image fall25_independentstudy-node11 Built 
+ Image fall25_independentstudy-node87 Built 
+ Image fall25_independentstudy-node79 Built 
+ Image fall25_independentstudy-node33 Built 
+ Image fall25_independentstudy-node44 Built 
+ Image fall25_independentstudy-node2 Built 
+ Image fall25_independentstudy-node84 Built 
+ Image fall25_independentstudy-node3 Built 
+ Image fall25_independentstudy-node83 Built 
+ Image fall25_independentstudy-node14 Built 
+ Image fall25_independentstudy-node7 Built 
+ Image fall25_independentstudy-node98 Built 
+ Image fall25_independentstudy-node21 Built 
+ Image fall25_independentstudy-node57 Built 
+ Image fall25_independentstudy-node34 Built 
+ Image fall25_independentstudy-node18 Built 
+ Image fall25_independentstudy-node99 Built 
+ Image fall25_independentstudy-node42 Built 
+ Image fall25_independentstudy-node47 Built 
+ Image fall25_independentstudy-node38 Built 
+ Image fall25_independentstudy-node37 Built 
+ Image fall25_independentstudy-node94 Built 
+Starting bootstrap node...
+time="2026-03-30T15:22:19-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:19-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Creating 
+ Container fall25-bootstrap Created 
+ Container fall25-bootstrap Starting 
+ Container fall25-bootstrap Started 
+Waiting for bootstrap (health check)...
+time="2026-03-30T15:22:20-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+Bootstrap ready (1s)
+Starting peer nodes 2..100...
+time="2026-03-30T15:22:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:23-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node2 Creating 
+ Container fall25-node2 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node2 Starting 
+ Container fall25-node2 Started 
+time="2026-03-30T15:22:25-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:25-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node3 Creating 
+ Container fall25-node3 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node3 Starting 
+ Container fall25-node3 Started 
+time="2026-03-30T15:22:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:26-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node4 Creating 
+ Container fall25-node4 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node4 Starting 
+ Container fall25-node4 Started 
+time="2026-03-30T15:22:27-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:27-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node5 Creating 
+ Container fall25-node5 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node5 Starting 
+ Container fall25-node5 Started 
+time="2026-03-30T15:22:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:28-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node6 Creating 
+ Container fall25-node6 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node6 Starting 
+ Container fall25-node6 Started 
+time="2026-03-30T15:22:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:28-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node7 Creating 
+ Container fall25-node7 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node7 Starting 
+ Container fall25-node7 Started 
+time="2026-03-30T15:22:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:29-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node8 Creating 
+ Container fall25-node8 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node8 Starting 
+ Container fall25-node8 Started 
+time="2026-03-30T15:22:30-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:30-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node9 Creating 
+ Container fall25-node9 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node9 Starting 
+ Container fall25-node9 Started 
+time="2026-03-30T15:22:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:31-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node10 Creating 
+ Container fall25-node10 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node10 Starting 
+ Container fall25-node10 Started 
+time="2026-03-30T15:22:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:32-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node11 Creating 
+ Container fall25-node11 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node11 Starting 
+ Container fall25-node11 Started 
+time="2026-03-30T15:22:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:33-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node12 Creating 
+ Container fall25-node12 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node12 Starting 
+ Container fall25-node12 Started 
+time="2026-03-30T15:22:33-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:33-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node13 Creating 
+ Container fall25-node13 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node13 Starting 
+ Container fall25-node13 Started 
+time="2026-03-30T15:22:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:34-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node14 Creating 
+ Container fall25-node14 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node14 Starting 
+ Container fall25-node14 Started 
+time="2026-03-30T15:22:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:35-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node15 Creating 
+ Container fall25-node15 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node15 Starting 
+ Container fall25-node15 Started 
+time="2026-03-30T15:22:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:36-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node16 Creating 
+ Container fall25-node16 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node16 Starting 
+ Container fall25-node16 Started 
+time="2026-03-30T15:22:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:37-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node17 Creating 
+ Container fall25-node17 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node17 Starting 
+ Container fall25-node17 Started 
+time="2026-03-30T15:22:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:37-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node18 Creating 
+ Container fall25-node18 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node18 Starting 
+ Container fall25-node18 Started 
+time="2026-03-30T15:22:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:38-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node19 Creating 
+ Container fall25-node19 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node19 Starting 
+ Container fall25-node19 Started 
+time="2026-03-30T15:22:39-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:39-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node20 Creating 
+ Container fall25-node20 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node20 Starting 
+ Container fall25-node20 Started 
+  Started node20...
+time="2026-03-30T15:22:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:40-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node21 Creating 
+ Container fall25-node21 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node21 Starting 
+ Container fall25-node21 Started 
+time="2026-03-30T15:22:41-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:41-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node22 Creating 
+ Container fall25-node22 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node22 Starting 
+ Container fall25-node22 Started 
+time="2026-03-30T15:22:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:42-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node23 Creating 
+ Container fall25-node23 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node23 Starting 
+ Container fall25-node23 Started 
+time="2026-03-30T15:22:43-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:43-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node24 Creating 
+ Container fall25-node24 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node24 Starting 
+ Container fall25-node24 Started 
+time="2026-03-30T15:22:43-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:43-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node25 Creating 
+ Container fall25-node25 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node25 Starting 
+ Container fall25-node25 Started 
+time="2026-03-30T15:22:44-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:44-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node26 Creating 
+ Container fall25-node26 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node26 Starting 
+ Container fall25-node26 Started 
+time="2026-03-30T15:22:45-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:45-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node27 Creating 
+ Container fall25-node27 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node27 Starting 
+ Container fall25-node27 Started 
+time="2026-03-30T15:22:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:46-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node28 Creating 
+ Container fall25-node28 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node28 Starting 
+ Container fall25-node28 Started 
+time="2026-03-30T15:22:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:47-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node29 Creating 
+ Container fall25-node29 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node29 Starting 
+ Container fall25-node29 Started 
+time="2026-03-30T15:22:48-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:48-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node30 Creating 
+ Container fall25-node30 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node30 Starting 
+ Container fall25-node30 Started 
+time="2026-03-30T15:22:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:49-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node31 Creating 
+ Container fall25-node31 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node31 Starting 
+ Container fall25-node31 Started 
+time="2026-03-30T15:22:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:50-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node32 Creating 
+ Container fall25-node32 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node32 Starting 
+ Container fall25-node32 Started 
+time="2026-03-30T15:22:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:51-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node33 Creating 
+ Container fall25-node33 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node33 Starting 
+ Container fall25-node33 Started 
+time="2026-03-30T15:22:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:51-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node34 Creating 
+ Container fall25-node34 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node34 Starting 
+ Container fall25-node34 Started 
+time="2026-03-30T15:22:52-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:52-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node35 Creating 
+ Container fall25-node35 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node35 Starting 
+ Container fall25-node35 Started 
+time="2026-03-30T15:22:53-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:53-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node36 Creating 
+ Container fall25-node36 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node36 Starting 
+ Container fall25-node36 Started 
+time="2026-03-30T15:22:54-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:54-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node37 Creating 
+ Container fall25-node37 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node37 Starting 
+ Container fall25-node37 Started 
+time="2026-03-30T15:22:55-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:55-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node38 Creating 
+ Container fall25-node38 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node38 Starting 
+ Container fall25-node38 Started 
+time="2026-03-30T15:22:56-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:56-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node39 Creating 
+ Container fall25-node39 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node39 Starting 
+ Container fall25-node39 Started 
+time="2026-03-30T15:22:57-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:57-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node40 Creating 
+ Container fall25-node40 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node40 Starting 
+ Container fall25-node40 Started 
+  Started node40...
+time="2026-03-30T15:22:58-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:58-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node41 Creating 
+ Container fall25-node41 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node41 Starting 
+ Container fall25-node41 Started 
+time="2026-03-30T15:22:59-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:22:59-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node42 Creating 
+ Container fall25-node42 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node42 Starting 
+ Container fall25-node42 Started 
+time="2026-03-30T15:23:00-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:00-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node43 Creating 
+ Container fall25-node43 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node43 Starting 
+ Container fall25-node43 Started 
+time="2026-03-30T15:23:01-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:01-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node44 Creating 
+ Container fall25-node44 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node44 Starting 
+ Container fall25-node44 Started 
+time="2026-03-30T15:23:02-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:02-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node45 Creating 
+ Container fall25-node45 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node45 Starting 
+ Container fall25-node45 Started 
+time="2026-03-30T15:23:03-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:03-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node46 Creating 
+ Container fall25-node46 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node46 Starting 
+ Container fall25-node46 Started 
+time="2026-03-30T15:23:04-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:04-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node47 Creating 
+ Container fall25-node47 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node47 Starting 
+ Container fall25-node47 Started 
+time="2026-03-30T15:23:05-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:05-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node48 Creating 
+ Container fall25-node48 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node48 Starting 
+ Container fall25-node48 Started 
+time="2026-03-30T15:23:05-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:06-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node49 Creating 
+ Container fall25-node49 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node49 Starting 
+ Container fall25-node49 Started 
+time="2026-03-30T15:23:06-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:07-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node50 Creating 
+ Container fall25-node50 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node50 Starting 
+ Container fall25-node50 Started 
+time="2026-03-30T15:23:07-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:08-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node51 Creating 
+ Container fall25-node51 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node51 Starting 
+ Container fall25-node51 Started 
+time="2026-03-30T15:23:08-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:09-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node52 Creating 
+ Container fall25-node52 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node52 Starting 
+ Container fall25-node52 Started 
+time="2026-03-30T15:23:09-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:10-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node53 Creating 
+ Container fall25-node53 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node53 Starting 
+ Container fall25-node53 Started 
+time="2026-03-30T15:23:10-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:10-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node54 Creating 
+ Container fall25-node54 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node54 Starting 
+ Container fall25-node54 Started 
+time="2026-03-30T15:23:11-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:12-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node55 Creating 
+ Container fall25-node55 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node55 Starting 
+ Container fall25-node55 Started 
+time="2026-03-30T15:23:12-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:13-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node56 Creating 
+ Container fall25-node56 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node56 Starting 
+ Container fall25-node56 Started 
+time="2026-03-30T15:23:13-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:14-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node57 Creating 
+ Container fall25-node57 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node57 Starting 
+ Container fall25-node57 Started 
+time="2026-03-30T15:23:15-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:15-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node58 Creating 
+ Container fall25-node58 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node58 Starting 
+ Container fall25-node58 Started 
+time="2026-03-30T15:23:16-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:16-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node59 Creating 
+ Container fall25-node59 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node59 Starting 
+ Container fall25-node59 Started 
+time="2026-03-30T15:23:17-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:17-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node60 Creating 
+ Container fall25-node60 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node60 Starting 
+ Container fall25-node60 Started 
+  Started node60...
+time="2026-03-30T15:23:18-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:18-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node61 Creating 
+ Container fall25-node61 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node61 Starting 
+ Container fall25-node61 Started 
+time="2026-03-30T15:23:19-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:19-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node62 Creating 
+ Container fall25-node62 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node62 Starting 
+ Container fall25-node62 Started 
+time="2026-03-30T15:23:20-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:20-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node63 Creating 
+ Container fall25-node63 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node63 Starting 
+ Container fall25-node63 Started 
+time="2026-03-30T15:23:21-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:21-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node64 Creating 
+ Container fall25-node64 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node64 Starting 
+ Container fall25-node64 Started 
+time="2026-03-30T15:23:22-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:22-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node65 Creating 
+ Container fall25-node65 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node65 Starting 
+ Container fall25-node65 Started 
+time="2026-03-30T15:23:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:23-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node66 Creating 
+ Container fall25-node66 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node66 Starting 
+ Container fall25-node66 Started 
+time="2026-03-30T15:23:24-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:24-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node67 Creating 
+ Container fall25-node67 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node67 Starting 
+ Container fall25-node67 Started 
+time="2026-03-30T15:23:25-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:25-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node68 Creating 
+ Container fall25-node68 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node68 Starting 
+ Container fall25-node68 Started 
+time="2026-03-30T15:23:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:26-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node69 Creating 
+ Container fall25-node69 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node69 Starting 
+ Container fall25-node69 Started 
+time="2026-03-30T15:23:27-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:27-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node70 Creating 
+ Container fall25-node70 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node70 Starting 
+ Container fall25-node70 Started 
+time="2026-03-30T15:23:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:28-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node71 Creating 
+ Container fall25-node71 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node71 Starting 
+ Container fall25-node71 Started 
+time="2026-03-30T15:23:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:29-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node72 Creating 
+ Container fall25-node72 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node72 Starting 
+ Container fall25-node72 Started 
+time="2026-03-30T15:23:30-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:30-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node73 Creating 
+ Container fall25-node73 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node73 Starting 
+ Container fall25-node73 Started 
+time="2026-03-30T15:23:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:31-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node74 Creating 
+ Container fall25-node74 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node74 Starting 
+ Container fall25-node74 Started 
+time="2026-03-30T15:23:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:32-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node75 Creating 
+ Container fall25-node75 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node75 Starting 
+ Container fall25-node75 Started 
+time="2026-03-30T15:23:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:34-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node76 Creating 
+ Container fall25-node76 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node76 Starting 
+ Container fall25-node76 Started 
+time="2026-03-30T15:23:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:35-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node77 Creating 
+ Container fall25-node77 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node77 Starting 
+ Container fall25-node77 Started 
+time="2026-03-30T15:23:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:36-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node78 Creating 
+ Container fall25-node78 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node78 Starting 
+ Container fall25-node78 Started 
+time="2026-03-30T15:23:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:37-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node79 Creating 
+ Container fall25-node79 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node79 Starting 
+ Container fall25-node79 Started 
+time="2026-03-30T15:23:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:38-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node80 Creating 
+ Container fall25-node80 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node80 Starting 
+ Container fall25-node80 Started 
+  Started node80...
+time="2026-03-30T15:23:39-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:39-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node81 Creating 
+ Container fall25-node81 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node81 Starting 
+ Container fall25-node81 Started 
+time="2026-03-30T15:23:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:40-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node82 Creating 
+ Container fall25-node82 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node82 Starting 
+ Container fall25-node82 Started 
+time="2026-03-30T15:23:41-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:41-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node83 Creating 
+ Container fall25-node83 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node83 Starting 
+ Container fall25-node83 Started 
+time="2026-03-30T15:23:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:42-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node84 Creating 
+ Container fall25-node84 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node84 Starting 
+ Container fall25-node84 Started 
+time="2026-03-30T15:23:43-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:44-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node85 Creating 
+ Container fall25-node85 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node85 Starting 
+ Container fall25-node85 Started 
+time="2026-03-30T15:23:45-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:45-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node86 Creating 
+ Container fall25-node86 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node86 Starting 
+ Container fall25-node86 Started 
+time="2026-03-30T15:23:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:46-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node87 Creating 
+ Container fall25-node87 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node87 Starting 
+ Container fall25-node87 Started 
+time="2026-03-30T15:23:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:47-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node88 Creating 
+ Container fall25-node88 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node88 Starting 
+ Container fall25-node88 Started 
+time="2026-03-30T15:23:48-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:48-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node89 Creating 
+ Container fall25-node89 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node89 Starting 
+ Container fall25-node89 Started 
+time="2026-03-30T15:23:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:49-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node90 Creating 
+ Container fall25-node90 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node90 Starting 
+ Container fall25-node90 Started 
+time="2026-03-30T15:23:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:50-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node91 Creating 
+ Container fall25-node91 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node91 Starting 
+ Container fall25-node91 Started 
+time="2026-03-30T15:23:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:52-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node92 Creating 
+ Container fall25-node92 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node92 Starting 
+ Container fall25-node92 Started 
+time="2026-03-30T15:23:53-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:53-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node93 Creating 
+ Container fall25-node93 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node93 Starting 
+ Container fall25-node93 Started 
+time="2026-03-30T15:23:54-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:54-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node94 Creating 
+ Container fall25-node94 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node94 Starting 
+ Container fall25-node94 Started 
+time="2026-03-30T15:23:55-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:55-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node95 Creating 
+ Container fall25-node95 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node95 Starting 
+ Container fall25-node95 Started 
+time="2026-03-30T15:23:56-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:56-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node96 Creating 
+ Container fall25-node96 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node96 Starting 
+ Container fall25-node96 Started 
+time="2026-03-30T15:23:57-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:57-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node97 Creating 
+ Container fall25-node97 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node97 Starting 
+ Container fall25-node97 Started 
+time="2026-03-30T15:23:59-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:23:59-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node98 Creating 
+ Container fall25-node98 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node98 Starting 
+ Container fall25-node98 Started 
+time="2026-03-30T15:24:00-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:24:00-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node99 Creating 
+ Container fall25-node99 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node99 Starting 
+ Container fall25-node99 Started 
+time="2026-03-30T15:24:01-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-03-30T15:24:01-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node100 Creating 
+ Container fall25-node100 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node100 Starting 
+ Container fall25-node100 Started 
+  Started node100...
+Waiting for nodes to connect...
+
+vn-IPFS: 100 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f

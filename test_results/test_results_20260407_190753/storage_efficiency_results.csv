@@ -1,0 +1,3 @@
+system,payload_size,nodes,disk_bytes,efficiency_ratio
+our_system,65536,100,1588793,.0412
+swarm,65536,10,,

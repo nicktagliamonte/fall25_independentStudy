@@ -1,0 +1,5 @@
+system,payload_size,batch_size,iteration,latency_ms,total_batch_ms
+our_system,1024,1,1,38.06,38.068000000
+our_system,10240,1,1,35.12,35.126000000
+our_system,102400,1,1,46.85,46.853000000
+our_system,1048576,1,1,166.89,166.898000000

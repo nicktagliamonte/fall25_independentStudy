@@ -6,6 +6,14 @@ import (
 	"time"
 )
 
+// TestStartClose is a smoke test verifying the basic embed-API lifecycle:
+// Start succeeds with ephemeral loopback listen addresses and MinOutbound
+// disabled (0, to avoid the dial-maintenance loop trying to reach real
+// peers during the test), and the returned Service's Close (registered via
+// t.Cleanup, given its own 5-second timeout) completes without error. It
+// does not exercise any data-plane methods (PutRaw, GetRawFrom, etc.) or
+// peer connectivity — see TestRestoreFromManifest_PartialSuccessAndTimeout
+// in restore_test.go for a test that exercises PutRaw/RestoreFromManifest.
 func TestStartClose(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

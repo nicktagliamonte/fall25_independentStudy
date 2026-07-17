@@ -1,0 +1,193 @@
+Starting 10 vn-IPFS Docker nodes...
+Wrote /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml (nodes 2..10, PLACEHOLDER_PEER_ID for start_vnipfs.sh to replace)
+Building Docker image once (bootstrap only; peers use image fall25_independentstudy-bootstrap:latest; COMPOSE_HTTP_TIMEOUT=86400s)...
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+time="2026-04-07T12:23:21-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image fall25_independentstudy-bootstrap:latest Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 658B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.22kB done
+#2 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.6
+#3 ...
+
+#4 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.6
+#3 DONE 0.4s
+
+#5 docker-image://docker.io/docker/dockerfile:1.6@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021
+#5 resolve docker.io/docker/dockerfile:1.6@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021 done
+#5 CACHED
+
+#6 [internal] load metadata for docker.io/library/alpine:3.21
+#6 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#7 ...
+
+#8 [auth] library/golang:pull token for registry-1.docker.io
+#8 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#7 DONE 0.3s
+
+#9 [internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [stage-1 1/5] FROM docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+#10 resolve docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 done
+#10 DONE 0.0s
+
+#11 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039
+#11 resolve docker.io/library/golang:1.26-alpine@sha256:2389ebfa5b7f43eeafbd6be0c3700cc46690ef842ad962f6c5bd6be49ed82039 done
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 47.79MB 0.6s done
+#12 DONE 0.7s
+
+#13 [builder 2/6] WORKDIR /build
+#13 CACHED
+
+#14 [builder 3/6] COPY go.mod go.sum ./
+#14 CACHED
+
+#15 [builder 4/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     sh -c 'set -e; for _ in 1 2 3 4 5; do go mod download && exit 0; sleep 20; done; exit 1'
+#15 CACHED
+
+#16 [builder 5/6] COPY . .
+#16 DONE 1.3s
+
+#17 [builder 6/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     go build -o bin/node ./cmd/node
+#17 DONE 1.8s
+
+#18 [stage-1 2/5] WORKDIR /app
+#18 CACHED
+
+#19 [stage-1 3/5] COPY --from=builder /build/bin/node /app/node
+#19 CACHED
+
+#20 [stage-1 4/5] RUN --network=host apk add --no-cache ca-certificates curl jq
+#20 CACHED
+
+#21 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#21 CACHED
+
+#22 exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:72583785ed95cb5fbaaa5bf5fe689ce9e9c6364eba0f254f1e2536cc307e35f6 done
+#22 exporting config sha256:c555a00672034a06a4496c1173539bc748250e846f5a687faea984e2dda135dc done
+#22 exporting attestation manifest sha256:7b158676a252a630d22fb4b938c7e7633611425df750b718567301b2a1ce5cce done
+#22 exporting manifest list sha256:1f80bf9cf6c14700fb5a9c3beadab827574d03d27e9378f37c5b03e91b6c96a3 done
+#22 naming to docker.io/library/fall25_independentstudy-bootstrap:latest done
+#22 unpacking to docker.io/library/fall25_independentstudy-bootstrap:latest done
+#22 DONE 0.0s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.0s
+ Image fall25_independentstudy-bootstrap:latest Built 
+Starting bootstrap node...
+time="2026-04-07T12:23:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:26-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Creating 
+ Container fall25-bootstrap Created 
+ Container fall25-bootstrap Starting 
+ Container fall25-bootstrap Started 
+Waiting for bootstrap (health check)...
+time="2026-04-07T12:23:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+Bootstrap ready (1s)
+Starting peer nodes 2..10...
+time="2026-04-07T12:23:29-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:29-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node2 Creating 
+ Container fall25-node2 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node2 Starting 
+ Container fall25-node2 Started 
+time="2026-04-07T12:23:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:32-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node3 Creating 
+ Container fall25-node3 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node3 Starting 
+ Container fall25-node3 Started 
+time="2026-04-07T12:23:33-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:33-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node4 Creating 
+ Container fall25-node4 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node4 Starting 
+ Container fall25-node4 Started 
+time="2026-04-07T12:23:33-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:33-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node5 Creating 
+ Container fall25-node5 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node5 Starting 
+ Container fall25-node5 Started 
+time="2026-04-07T12:23:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:34-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node6 Creating 
+ Container fall25-node6 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node6 Starting 
+ Container fall25-node6 Started 
+time="2026-04-07T12:23:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:35-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node7 Creating 
+ Container fall25-node7 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node7 Starting 
+ Container fall25-node7 Started 
+time="2026-04-07T12:23:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:36-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node8 Creating 
+ Container fall25-node8 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node8 Starting 
+ Container fall25-node8 Started 
+time="2026-04-07T12:23:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:36-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node9 Creating 
+ Container fall25-node9 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node9 Starting 
+ Container fall25-node9 Started 
+time="2026-04-07T12:23:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:23:37-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node10 Creating 
+ Container fall25-node10 Created 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node10 Starting 
+ Container fall25-node10 Started 
+Waiting for nodes to connect...
+
+vn-IPFS: 10 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f

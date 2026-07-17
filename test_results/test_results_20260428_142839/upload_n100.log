@@ -1,0 +1,998 @@
+==========================================
+Upload Latency Test
+==========================================
+Our System API: (skipped)
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 100
+Batch size: 1
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch1.csv
+
+Verifying API endpoints...
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=1)... total=24.56 ms, per-file avg=24.56 ms
+    Iteration 2/100 (batch_size=1)... total=22.55 ms, per-file avg=22.54 ms
+    Iteration 3/100 (batch_size=1)... total=22.42 ms, per-file avg=22.42 ms
+    Iteration 4/100 (batch_size=1)... total=21.95 ms, per-file avg=21.94 ms
+    Iteration 5/100 (batch_size=1)... total=21.08 ms, per-file avg=21.07 ms
+    Iteration 6/100 (batch_size=1)... total=21.13 ms, per-file avg=21.13 ms
+    Iteration 7/100 (batch_size=1)... total=22.57 ms, per-file avg=22.57 ms
+    Iteration 8/100 (batch_size=1)... total=22.41 ms, per-file avg=22.41 ms
+    Iteration 9/100 (batch_size=1)... total=21.36 ms, per-file avg=21.36 ms
+    Iteration 10/100 (batch_size=1)... total=20.71 ms, per-file avg=20.71 ms
+    Iteration 11/100 (batch_size=1)... total=20.92 ms, per-file avg=20.91 ms
+    Iteration 12/100 (batch_size=1)... total=20.92 ms, per-file avg=20.92 ms
+    Iteration 13/100 (batch_size=1)... total=21.16 ms, per-file avg=21.15 ms
+    Iteration 14/100 (batch_size=1)... total=22.71 ms, per-file avg=22.70 ms
+    Iteration 15/100 (batch_size=1)... total=21.71 ms, per-file avg=21.70 ms
+    Iteration 16/100 (batch_size=1)... total=21.48 ms, per-file avg=21.47 ms
+    Iteration 17/100 (batch_size=1)... total=21.10 ms, per-file avg=21.10 ms
+    Iteration 18/100 (batch_size=1)... total=20.51 ms, per-file avg=20.51 ms
+    Iteration 19/100 (batch_size=1)... total=23.20 ms, per-file avg=23.20 ms
+    Iteration 20/100 (batch_size=1)... total=21.69 ms, per-file avg=21.68 ms
+    Iteration 21/100 (batch_size=1)... total=22.81 ms, per-file avg=22.81 ms
+    Iteration 22/100 (batch_size=1)... total=21.26 ms, per-file avg=21.26 ms
+    Iteration 23/100 (batch_size=1)... total=21.53 ms, per-file avg=21.52 ms
+    Iteration 24/100 (batch_size=1)... total=21.21 ms, per-file avg=21.20 ms
+    Iteration 25/100 (batch_size=1)... total=26.19 ms, per-file avg=26.19 ms
+    Iteration 26/100 (batch_size=1)... total=21.22 ms, per-file avg=21.21 ms
+    Iteration 27/100 (batch_size=1)... total=20.44 ms, per-file avg=20.43 ms
+    Iteration 28/100 (batch_size=1)... total=21.14 ms, per-file avg=21.14 ms
+    Iteration 29/100 (batch_size=1)... total=19.93 ms, per-file avg=19.92 ms
+    Iteration 30/100 (batch_size=1)... total=21.57 ms, per-file avg=21.56 ms
+    Iteration 31/100 (batch_size=1)... total=22.35 ms, per-file avg=22.34 ms
+    Iteration 32/100 (batch_size=1)... total=22.60 ms, per-file avg=22.60 ms
+    Iteration 33/100 (batch_size=1)... total=23.44 ms, per-file avg=23.44 ms
+    Iteration 34/100 (batch_size=1)... total=22.11 ms, per-file avg=22.10 ms
+    Iteration 35/100 (batch_size=1)... total=21.85 ms, per-file avg=21.84 ms
+    Iteration 36/100 (batch_size=1)... total=21.44 ms, per-file avg=21.44 ms
+    Iteration 37/100 (batch_size=1)... total=20.91 ms, per-file avg=20.90 ms
+    Iteration 38/100 (batch_size=1)... total=20.88 ms, per-file avg=20.88 ms
+    Iteration 39/100 (batch_size=1)... total=21.57 ms, per-file avg=21.56 ms
+    Iteration 40/100 (batch_size=1)... total=22.12 ms, per-file avg=22.12 ms
+    Iteration 41/100 (batch_size=1)... total=20.86 ms, per-file avg=20.85 ms
+    Iteration 42/100 (batch_size=1)... total=21.38 ms, per-file avg=21.37 ms
+    Iteration 43/100 (batch_size=1)... total=21.53 ms, per-file avg=21.53 ms
+    Iteration 44/100 (batch_size=1)... total=21.42 ms, per-file avg=21.41 ms
+    Iteration 45/100 (batch_size=1)... total=21.81 ms, per-file avg=21.80 ms
+    Iteration 46/100 (batch_size=1)... total=22.92 ms, per-file avg=22.92 ms
+    Iteration 47/100 (batch_size=1)... total=20.44 ms, per-file avg=20.43 ms
+    Iteration 48/100 (batch_size=1)... total=21.27 ms, per-file avg=21.27 ms
+    Iteration 49/100 (batch_size=1)... total=21.00 ms, per-file avg=21.00 ms
+    Iteration 50/100 (batch_size=1)... total=23.13 ms, per-file avg=23.13 ms
+    Iteration 51/100 (batch_size=1)... total=23.10 ms, per-file avg=23.10 ms
+    Iteration 52/100 (batch_size=1)... total=21.50 ms, per-file avg=21.49 ms
+    Iteration 53/100 (batch_size=1)... total=21.27 ms, per-file avg=21.26 ms
+    Iteration 54/100 (batch_size=1)... total=21.91 ms, per-file avg=21.90 ms
+    Iteration 55/100 (batch_size=1)... total=21.86 ms, per-file avg=21.85 ms
+    Iteration 56/100 (batch_size=1)... total=21.45 ms, per-file avg=21.45 ms
+    Iteration 57/100 (batch_size=1)... total=21.86 ms, per-file avg=21.85 ms
+    Iteration 58/100 (batch_size=1)... total=29.97 ms, per-file avg=29.97 ms
+    Iteration 59/100 (batch_size=1)... total=21.85 ms, per-file avg=21.84 ms
+    Iteration 60/100 (batch_size=1)... total=22.23 ms, per-file avg=22.23 ms
+    Iteration 61/100 (batch_size=1)... total=21.48 ms, per-file avg=21.47 ms
+    Iteration 62/100 (batch_size=1)... total=20.84 ms, per-file avg=20.83 ms
+    Iteration 63/100 (batch_size=1)... total=21.52 ms, per-file avg=21.52 ms
+    Iteration 64/100 (batch_size=1)... total=23.27 ms, per-file avg=23.27 ms
+    Iteration 65/100 (batch_size=1)... total=22.74 ms, per-file avg=22.74 ms
+    Iteration 66/100 (batch_size=1)... total=21.91 ms, per-file avg=21.91 ms
+    Iteration 67/100 (batch_size=1)... total=23.04 ms, per-file avg=23.03 ms
+    Iteration 68/100 (batch_size=1)... total=30.25 ms, per-file avg=30.25 ms
+    Iteration 69/100 (batch_size=1)... total=22.49 ms, per-file avg=22.49 ms
+    Iteration 70/100 (batch_size=1)... total=22.11 ms, per-file avg=22.11 ms
+    Iteration 71/100 (batch_size=1)... total=22.48 ms, per-file avg=22.47 ms
+    Iteration 72/100 (batch_size=1)... total=23.75 ms, per-file avg=23.75 ms
+    Iteration 73/100 (batch_size=1)... total=21.88 ms, per-file avg=21.88 ms
+    Iteration 74/100 (batch_size=1)... total=23.77 ms, per-file avg=23.77 ms
+    Iteration 75/100 (batch_size=1)... total=24.21 ms, per-file avg=24.21 ms
+    Iteration 76/100 (batch_size=1)... total=23.35 ms, per-file avg=23.34 ms
+    Iteration 77/100 (batch_size=1)... total=22.09 ms, per-file avg=22.09 ms
+    Iteration 78/100 (batch_size=1)... total=21.16 ms, per-file avg=21.15 ms
+    Iteration 79/100 (batch_size=1)... total=21.69 ms, per-file avg=21.69 ms
+    Iteration 80/100 (batch_size=1)... total=22.94 ms, per-file avg=22.93 ms
+    Iteration 81/100 (batch_size=1)... total=22.45 ms, per-file avg=22.45 ms
+    Iteration 82/100 (batch_size=1)... total=22.58 ms, per-file avg=22.58 ms
+    Iteration 83/100 (batch_size=1)... total=23.29 ms, per-file avg=23.29 ms
+    Iteration 84/100 (batch_size=1)... total=22.99 ms, per-file avg=22.99 ms
+    Iteration 85/100 (batch_size=1)... total=21.22 ms, per-file avg=21.21 ms
+    Iteration 86/100 (batch_size=1)... total=24.21 ms, per-file avg=24.21 ms
+    Iteration 87/100 (batch_size=1)... total=22.66 ms, per-file avg=22.65 ms
+    Iteration 88/100 (batch_size=1)... total=22.62 ms, per-file avg=22.62 ms
+    Iteration 89/100 (batch_size=1)... total=22.01 ms, per-file avg=22.00 ms
+    Iteration 90/100 (batch_size=1)... total=22.65 ms, per-file avg=22.65 ms
+    Iteration 91/100 (batch_size=1)... total=28.44 ms, per-file avg=28.44 ms
+    Iteration 92/100 (batch_size=1)... total=21.84 ms, per-file avg=21.84 ms
+    Iteration 93/100 (batch_size=1)... total=22.18 ms, per-file avg=22.17 ms
+    Iteration 94/100 (batch_size=1)... total=22.48 ms, per-file avg=22.48 ms
+    Iteration 95/100 (batch_size=1)... total=24.35 ms, per-file avg=24.35 ms
+    Iteration 96/100 (batch_size=1)... total=23.79 ms, per-file avg=23.78 ms
+    Iteration 97/100 (batch_size=1)... total=22.39 ms, per-file avg=22.38 ms
+    Iteration 98/100 (batch_size=1)... total=22.80 ms, per-file avg=22.79 ms
+    Iteration 99/100 (batch_size=1)... total=21.92 ms, per-file avg=21.92 ms
+    Iteration 100/100 (batch_size=1)... total=22.48 ms, per-file avg=22.47 ms
+    [0;34mNetwork bytes (swarm): 1488451[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    19.92 ms
+      Max:    30.25 ms
+      Avg:    22.31 ms
+      P50:    21.94 ms
+      P90:    23.77 ms
+      P99:    30.25 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=1)... total=25.92 ms, per-file avg=25.91 ms
+    Iteration 2/100 (batch_size=1)... total=29.47 ms, per-file avg=29.47 ms
+    Iteration 3/100 (batch_size=1)... total=23.83 ms, per-file avg=23.82 ms
+    Iteration 4/100 (batch_size=1)... total=25.92 ms, per-file avg=25.92 ms
+    Iteration 5/100 (batch_size=1)... total=25.51 ms, per-file avg=25.50 ms
+    Iteration 6/100 (batch_size=1)... total=23.91 ms, per-file avg=23.90 ms
+    Iteration 7/100 (batch_size=1)... total=21.89 ms, per-file avg=21.88 ms
+    Iteration 8/100 (batch_size=1)... total=21.46 ms, per-file avg=21.46 ms
+    Iteration 9/100 (batch_size=1)... total=23.76 ms, per-file avg=23.75 ms
+    Iteration 10/100 (batch_size=1)... total=28.20 ms, per-file avg=28.19 ms
+    Iteration 11/100 (batch_size=1)... total=23.01 ms, per-file avg=23.00 ms
+    Iteration 12/100 (batch_size=1)... total=22.22 ms, per-file avg=22.21 ms
+    Iteration 13/100 (batch_size=1)... total=22.40 ms, per-file avg=22.40 ms
+    Iteration 14/100 (batch_size=1)... total=25.11 ms, per-file avg=25.11 ms
+    Iteration 15/100 (batch_size=1)... total=28.46 ms, per-file avg=28.46 ms
+    Iteration 16/100 (batch_size=1)... total=22.85 ms, per-file avg=22.84 ms
+    Iteration 17/100 (batch_size=1)... total=22.23 ms, per-file avg=22.23 ms
+    Iteration 18/100 (batch_size=1)... total=24.05 ms, per-file avg=24.04 ms
+    Iteration 19/100 (batch_size=1)... total=24.79 ms, per-file avg=24.79 ms
+    Iteration 20/100 (batch_size=1)... total=22.40 ms, per-file avg=22.40 ms
+    Iteration 21/100 (batch_size=1)... total=22.69 ms, per-file avg=22.69 ms
+    Iteration 22/100 (batch_size=1)... total=22.68 ms, per-file avg=22.68 ms
+    Iteration 23/100 (batch_size=1)... total=25.25 ms, per-file avg=25.25 ms
+    Iteration 24/100 (batch_size=1)... total=22.21 ms, per-file avg=22.20 ms
+    Iteration 25/100 (batch_size=1)... total=23.01 ms, per-file avg=23.00 ms
+    Iteration 26/100 (batch_size=1)... total=22.82 ms, per-file avg=22.81 ms
+    Iteration 27/100 (batch_size=1)... total=21.70 ms, per-file avg=21.69 ms
+    Iteration 28/100 (batch_size=1)... total=21.81 ms, per-file avg=21.81 ms
+    Iteration 29/100 (batch_size=1)... total=21.09 ms, per-file avg=21.08 ms
+    Iteration 30/100 (batch_size=1)... total=20.79 ms, per-file avg=20.79 ms
+    Iteration 31/100 (batch_size=1)... total=20.09 ms, per-file avg=20.09 ms
+    Iteration 32/100 (batch_size=1)... total=21.54 ms, per-file avg=21.54 ms
+    Iteration 33/100 (batch_size=1)... total=22.21 ms, per-file avg=22.20 ms
+    Iteration 34/100 (batch_size=1)... total=23.13 ms, per-file avg=23.12 ms
+    Iteration 35/100 (batch_size=1)... total=22.01 ms, per-file avg=22.00 ms
+    Iteration 36/100 (batch_size=1)... total=21.18 ms, per-file avg=21.18 ms
+    Iteration 37/100 (batch_size=1)... total=27.49 ms, per-file avg=27.48 ms
+    Iteration 38/100 (batch_size=1)... total=22.24 ms, per-file avg=22.23 ms
+    Iteration 39/100 (batch_size=1)... total=21.80 ms, per-file avg=21.79 ms
+    Iteration 40/100 (batch_size=1)... total=20.95 ms, per-file avg=20.95 ms
+    Iteration 41/100 (batch_size=1)... total=22.85 ms, per-file avg=22.85 ms
+    Iteration 42/100 (batch_size=1)... total=21.43 ms, per-file avg=21.42 ms
+    Iteration 43/100 (batch_size=1)... total=20.76 ms, per-file avg=20.75 ms
+    Iteration 44/100 (batch_size=1)... total=21.35 ms, per-file avg=21.34 ms
+    Iteration 45/100 (batch_size=1)... total=21.56 ms, per-file avg=21.55 ms
+    Iteration 46/100 (batch_size=1)... total=22.56 ms, per-file avg=22.55 ms
+    Iteration 47/100 (batch_size=1)... total=21.35 ms, per-file avg=21.35 ms
+    Iteration 48/100 (batch_size=1)... total=22.62 ms, per-file avg=22.62 ms
+    Iteration 49/100 (batch_size=1)... total=22.15 ms, per-file avg=22.15 ms
+    Iteration 50/100 (batch_size=1)... total=21.16 ms, per-file avg=21.16 ms
+    Iteration 51/100 (batch_size=1)... total=20.68 ms, per-file avg=20.67 ms
+    Iteration 52/100 (batch_size=1)... total=21.11 ms, per-file avg=21.11 ms
+    Iteration 53/100 (batch_size=1)... total=26.14 ms, per-file avg=26.14 ms
+    Iteration 54/100 (batch_size=1)... total=24.53 ms, per-file avg=24.53 ms
+    Iteration 55/100 (batch_size=1)... total=21.52 ms, per-file avg=21.52 ms
+    Iteration 56/100 (batch_size=1)... total=20.23 ms, per-file avg=20.23 ms
+    Iteration 57/100 (batch_size=1)... total=21.00 ms, per-file avg=21.00 ms
+    Iteration 58/100 (batch_size=1)... total=21.57 ms, per-file avg=21.57 ms
+    Iteration 59/100 (batch_size=1)... total=21.98 ms, per-file avg=21.97 ms
+    Iteration 60/100 (batch_size=1)... total=22.57 ms, per-file avg=22.57 ms
+    Iteration 61/100 (batch_size=1)... total=21.61 ms, per-file avg=21.61 ms
+    Iteration 62/100 (batch_size=1)... total=21.97 ms, per-file avg=21.97 ms
+    Iteration 63/100 (batch_size=1)... total=20.76 ms, per-file avg=20.75 ms
+    Iteration 64/100 (batch_size=1)... total=25.57 ms, per-file avg=25.56 ms
+    Iteration 65/100 (batch_size=1)... total=20.23 ms, per-file avg=20.23 ms
+    Iteration 66/100 (batch_size=1)... total=22.93 ms, per-file avg=22.93 ms
+    Iteration 67/100 (batch_size=1)... total=24.09 ms, per-file avg=24.09 ms
+    Iteration 68/100 (batch_size=1)... total=27.48 ms, per-file avg=27.47 ms
+    Iteration 69/100 (batch_size=1)... total=24.07 ms, per-file avg=24.07 ms
+    Iteration 70/100 (batch_size=1)... total=20.58 ms, per-file avg=20.57 ms
+    Iteration 71/100 (batch_size=1)... total=21.06 ms, per-file avg=21.05 ms
+    Iteration 72/100 (batch_size=1)... total=22.29 ms, per-file avg=22.29 ms
+    Iteration 73/100 (batch_size=1)... total=22.20 ms, per-file avg=22.20 ms
+    Iteration 74/100 (batch_size=1)... total=22.23 ms, per-file avg=22.23 ms
+    Iteration 75/100 (batch_size=1)... total=21.50 ms, per-file avg=21.50 ms
+    Iteration 76/100 (batch_size=1)... total=21.37 ms, per-file avg=21.37 ms
+    Iteration 77/100 (batch_size=1)... total=20.79 ms, per-file avg=20.78 ms
+    Iteration 78/100 (batch_size=1)... total=24.73 ms, per-file avg=24.72 ms
+    Iteration 79/100 (batch_size=1)... total=23.48 ms, per-file avg=23.48 ms
+    Iteration 80/100 (batch_size=1)... total=20.37 ms, per-file avg=20.36 ms
+    Iteration 81/100 (batch_size=1)... total=21.27 ms, per-file avg=21.26 ms
+    Iteration 82/100 (batch_size=1)... total=21.79 ms, per-file avg=21.78 ms
+    Iteration 83/100 (batch_size=1)... total=21.68 ms, per-file avg=21.68 ms
+    Iteration 84/100 (batch_size=1)... total=23.41 ms, per-file avg=23.41 ms
+    Iteration 85/100 (batch_size=1)... total=21.26 ms, per-file avg=21.25 ms
+    Iteration 86/100 (batch_size=1)... total=21.74 ms, per-file avg=21.74 ms
+    Iteration 87/100 (batch_size=1)... total=21.01 ms, per-file avg=21.01 ms
+    Iteration 88/100 (batch_size=1)... total=19.92 ms, per-file avg=19.91 ms
+    Iteration 89/100 (batch_size=1)... total=20.97 ms, per-file avg=20.97 ms
+    Iteration 90/100 (batch_size=1)... total=20.98 ms, per-file avg=20.98 ms
+    Iteration 91/100 (batch_size=1)... total=27.41 ms, per-file avg=27.41 ms
+    Iteration 92/100 (batch_size=1)... total=23.43 ms, per-file avg=23.42 ms
+    Iteration 93/100 (batch_size=1)... total=21.98 ms, per-file avg=21.97 ms
+    Iteration 94/100 (batch_size=1)... total=22.44 ms, per-file avg=22.44 ms
+    Iteration 95/100 (batch_size=1)... total=20.81 ms, per-file avg=20.80 ms
+    Iteration 96/100 (batch_size=1)... total=21.24 ms, per-file avg=21.24 ms
+    Iteration 97/100 (batch_size=1)... total=21.03 ms, per-file avg=21.02 ms
+    Iteration 98/100 (batch_size=1)... total=20.23 ms, per-file avg=20.22 ms
+    Iteration 99/100 (batch_size=1)... total=23.55 ms, per-file avg=23.55 ms
+    Iteration 100/100 (batch_size=1)... total=21.55 ms, per-file avg=21.54 ms
+    [0;34mNetwork bytes (swarm): 2431597[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    19.91 ms
+      Max:    29.47 ms
+      Avg:    22.59 ms
+      P50:    22.15 ms
+      P90:    25.56 ms
+      P99:    29.47 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=1)... total=27.94 ms, per-file avg=27.93 ms
+    Iteration 2/100 (batch_size=1)... total=24.07 ms, per-file avg=24.06 ms
+    Iteration 3/100 (batch_size=1)... total=23.97 ms, per-file avg=23.97 ms
+    Iteration 4/100 (batch_size=1)... total=27.67 ms, per-file avg=27.67 ms
+    Iteration 5/100 (batch_size=1)... total=24.04 ms, per-file avg=24.03 ms
+    Iteration 6/100 (batch_size=1)... total=24.41 ms, per-file avg=24.40 ms
+    Iteration 7/100 (batch_size=1)... total=29.78 ms, per-file avg=29.77 ms
+    Iteration 8/100 (batch_size=1)... total=23.90 ms, per-file avg=23.90 ms
+    Iteration 9/100 (batch_size=1)... total=24.33 ms, per-file avg=24.33 ms
+    Iteration 10/100 (batch_size=1)... total=26.97 ms, per-file avg=26.97 ms
+    Iteration 11/100 (batch_size=1)... total=23.91 ms, per-file avg=23.91 ms
+    Iteration 12/100 (batch_size=1)... total=23.33 ms, per-file avg=23.32 ms
+    Iteration 13/100 (batch_size=1)... total=22.78 ms, per-file avg=22.77 ms
+    Iteration 14/100 (batch_size=1)... total=24.54 ms, per-file avg=24.54 ms
+    Iteration 15/100 (batch_size=1)... total=29.96 ms, per-file avg=29.96 ms
+    Iteration 16/100 (batch_size=1)... total=25.53 ms, per-file avg=25.52 ms
+    Iteration 17/100 (batch_size=1)... total=26.51 ms, per-file avg=26.50 ms
+    Iteration 18/100 (batch_size=1)... total=25.78 ms, per-file avg=25.78 ms
+    Iteration 19/100 (batch_size=1)... total=26.80 ms, per-file avg=26.80 ms
+    Iteration 20/100 (batch_size=1)... total=24.41 ms, per-file avg=24.40 ms
+    Iteration 21/100 (batch_size=1)... total=26.47 ms, per-file avg=26.47 ms
+    Iteration 22/100 (batch_size=1)... total=25.51 ms, per-file avg=25.51 ms
+    Iteration 23/100 (batch_size=1)... total=25.57 ms, per-file avg=25.56 ms
+    Iteration 24/100 (batch_size=1)... total=25.27 ms, per-file avg=25.26 ms
+    Iteration 25/100 (batch_size=1)... total=33.05 ms, per-file avg=33.04 ms
+    Iteration 26/100 (batch_size=1)... total=26.28 ms, per-file avg=26.28 ms
+    Iteration 27/100 (batch_size=1)... total=24.90 ms, per-file avg=24.89 ms
+    Iteration 28/100 (batch_size=1)... total=46.21 ms, per-file avg=46.21 ms
+    Iteration 29/100 (batch_size=1)... total=38.35 ms, per-file avg=38.35 ms
+    Iteration 30/100 (batch_size=1)... total=42.36 ms, per-file avg=42.36 ms
+    Iteration 31/100 (batch_size=1)... total=32.27 ms, per-file avg=32.27 ms
+    Iteration 32/100 (batch_size=1)... total=26.45 ms, per-file avg=26.45 ms
+    Iteration 33/100 (batch_size=1)... total=25.49 ms, per-file avg=25.48 ms
+    Iteration 34/100 (batch_size=1)... total=25.76 ms, per-file avg=25.76 ms
+    Iteration 35/100 (batch_size=1)... total=28.58 ms, per-file avg=28.58 ms
+    Iteration 36/100 (batch_size=1)... total=25.85 ms, per-file avg=25.84 ms
+    Iteration 37/100 (batch_size=1)... total=24.25 ms, per-file avg=24.24 ms
+    Iteration 38/100 (batch_size=1)... total=30.84 ms, per-file avg=30.84 ms
+    Iteration 39/100 (batch_size=1)... total=24.54 ms, per-file avg=24.54 ms
+    Iteration 40/100 (batch_size=1)... total=22.97 ms, per-file avg=22.97 ms
+    Iteration 41/100 (batch_size=1)... total=24.64 ms, per-file avg=24.64 ms
+    Iteration 42/100 (batch_size=1)... total=23.41 ms, per-file avg=23.41 ms
+    Iteration 43/100 (batch_size=1)... total=24.44 ms, per-file avg=24.43 ms
+    Iteration 44/100 (batch_size=1)... total=24.17 ms, per-file avg=24.17 ms
+    Iteration 45/100 (batch_size=1)... total=30.09 ms, per-file avg=30.09 ms
+    Iteration 46/100 (batch_size=1)... total=26.28 ms, per-file avg=26.27 ms
+    Iteration 47/100 (batch_size=1)... total=27.24 ms, per-file avg=27.24 ms
+    Iteration 48/100 (batch_size=1)... total=23.41 ms, per-file avg=23.41 ms
+    Iteration 49/100 (batch_size=1)... total=23.80 ms, per-file avg=23.79 ms
+    Iteration 50/100 (batch_size=1)... total=22.40 ms, per-file avg=22.40 ms
+    Iteration 51/100 (batch_size=1)... total=23.27 ms, per-file avg=23.26 ms
+    Iteration 52/100 (batch_size=1)... total=23.42 ms, per-file avg=23.41 ms
+    Iteration 53/100 (batch_size=1)... total=23.44 ms, per-file avg=23.43 ms
+    Iteration 54/100 (batch_size=1)... total=24.09 ms, per-file avg=24.09 ms
+    Iteration 55/100 (batch_size=1)... total=27.85 ms, per-file avg=27.84 ms
+    Iteration 56/100 (batch_size=1)... total=24.83 ms, per-file avg=24.83 ms
+    Iteration 57/100 (batch_size=1)... total=23.46 ms, per-file avg=23.45 ms
+    Iteration 58/100 (batch_size=1)... total=21.87 ms, per-file avg=21.87 ms
+    Iteration 59/100 (batch_size=1)... total=23.66 ms, per-file avg=23.65 ms
+    Iteration 60/100 (batch_size=1)... total=26.12 ms, per-file avg=26.11 ms
+    Iteration 61/100 (batch_size=1)... total=21.93 ms, per-file avg=21.92 ms
+    Iteration 62/100 (batch_size=1)... total=23.02 ms, per-file avg=23.02 ms
+    Iteration 63/100 (batch_size=1)... total=22.02 ms, per-file avg=22.02 ms
+    Iteration 64/100 (batch_size=1)... total=20.68 ms, per-file avg=20.68 ms
+    Iteration 65/100 (batch_size=1)... total=25.50 ms, per-file avg=25.50 ms
+    Iteration 66/100 (batch_size=1)... total=23.26 ms, per-file avg=23.25 ms
+    Iteration 67/100 (batch_size=1)... total=22.12 ms, per-file avg=22.12 ms
+    Iteration 68/100 (batch_size=1)... total=22.46 ms, per-file avg=22.45 ms
+    Iteration 69/100 (batch_size=1)... total=23.58 ms, per-file avg=23.57 ms
+    Iteration 70/100 (batch_size=1)... total=22.50 ms, per-file avg=22.50 ms
+    Iteration 71/100 (batch_size=1)... total=21.26 ms, per-file avg=21.26 ms
+    Iteration 72/100 (batch_size=1)... total=23.31 ms, per-file avg=23.31 ms
+    Iteration 73/100 (batch_size=1)... total=21.89 ms, per-file avg=21.89 ms
+    Iteration 74/100 (batch_size=1)... total=28.47 ms, per-file avg=28.47 ms
+    Iteration 75/100 (batch_size=1)... total=26.77 ms, per-file avg=26.77 ms
+    Iteration 76/100 (batch_size=1)... total=23.98 ms, per-file avg=23.97 ms
+    Iteration 77/100 (batch_size=1)... total=22.94 ms, per-file avg=22.94 ms
+    Iteration 78/100 (batch_size=1)... total=22.49 ms, per-file avg=22.49 ms
+    Iteration 79/100 (batch_size=1)... total=22.27 ms, per-file avg=22.26 ms
+    Iteration 80/100 (batch_size=1)... total=22.46 ms, per-file avg=22.45 ms
+    Iteration 81/100 (batch_size=1)... total=22.49 ms, per-file avg=22.49 ms
+    Iteration 82/100 (batch_size=1)... total=22.45 ms, per-file avg=22.44 ms
+    Iteration 83/100 (batch_size=1)... total=21.94 ms, per-file avg=21.94 ms
+    Iteration 84/100 (batch_size=1)... total=21.61 ms, per-file avg=21.60 ms
+    Iteration 85/100 (batch_size=1)... total=22.77 ms, per-file avg=22.76 ms
+    Iteration 86/100 (batch_size=1)... total=29.08 ms, per-file avg=29.08 ms
+    Iteration 87/100 (batch_size=1)... total=22.19 ms, per-file avg=22.19 ms
+    Iteration 88/100 (batch_size=1)... total=21.41 ms, per-file avg=21.40 ms
+    Iteration 89/100 (batch_size=1)... total=27.04 ms, per-file avg=27.03 ms
+    Iteration 90/100 (batch_size=1)... total=22.67 ms, per-file avg=22.66 ms
+    Iteration 91/100 (batch_size=1)... total=22.65 ms, per-file avg=22.64 ms
+    Iteration 92/100 (batch_size=1)... total=24.25 ms, per-file avg=24.25 ms
+    Iteration 93/100 (batch_size=1)... total=23.15 ms, per-file avg=23.14 ms
+    Iteration 94/100 (batch_size=1)... total=23.21 ms, per-file avg=23.21 ms
+    Iteration 95/100 (batch_size=1)... total=23.62 ms, per-file avg=23.62 ms
+    Iteration 96/100 (batch_size=1)... total=24.90 ms, per-file avg=24.90 ms
+    Iteration 97/100 (batch_size=1)... total=23.14 ms, per-file avg=23.14 ms
+    Iteration 98/100 (batch_size=1)... total=23.12 ms, per-file avg=23.12 ms
+    Iteration 99/100 (batch_size=1)... total=23.87 ms, per-file avg=23.87 ms
+    Iteration 100/100 (batch_size=1)... total=22.47 ms, per-file avg=22.47 ms
+    [0;34mNetwork bytes (swarm): 12153299[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    20.68 ms
+      Max:    46.21 ms
+      Avg:    25.14 ms
+      P50:    24.06 ms
+      P90:    29.08 ms
+      P99:    46.21 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=1)... total=53.66 ms, per-file avg=53.66 ms
+    Iteration 2/100 (batch_size=1)... total=36.42 ms, per-file avg=36.41 ms
+    Iteration 3/100 (batch_size=1)... total=34.99 ms, per-file avg=34.99 ms
+    Iteration 4/100 (batch_size=1)... total=34.80 ms, per-file avg=34.80 ms
+    Iteration 5/100 (batch_size=1)... total=33.81 ms, per-file avg=33.80 ms
+    Iteration 6/100 (batch_size=1)... total=37.88 ms, per-file avg=37.88 ms
+    Iteration 7/100 (batch_size=1)... total=31.86 ms, per-file avg=31.86 ms
+    Iteration 8/100 (batch_size=1)... total=36.76 ms, per-file avg=36.76 ms
+    Iteration 9/100 (batch_size=1)... total=37.08 ms, per-file avg=37.08 ms
+    Iteration 10/100 (batch_size=1)... total=38.11 ms, per-file avg=38.11 ms
+    Iteration 11/100 (batch_size=1)... total=46.28 ms, per-file avg=46.28 ms
+    Iteration 12/100 (batch_size=1)... total=40.48 ms, per-file avg=40.48 ms
+    Iteration 13/100 (batch_size=1)... total=32.33 ms, per-file avg=32.32 ms
+    Iteration 14/100 (batch_size=1)... total=37.05 ms, per-file avg=37.04 ms
+    Iteration 15/100 (batch_size=1)... total=38.44 ms, per-file avg=38.44 ms
+    Iteration 16/100 (batch_size=1)... total=31.41 ms, per-file avg=31.41 ms
+    Iteration 17/100 (batch_size=1)... total=36.44 ms, per-file avg=36.43 ms
+    Iteration 18/100 (batch_size=1)... total=41.38 ms, per-file avg=41.38 ms
+    Iteration 19/100 (batch_size=1)... total=32.75 ms, per-file avg=32.75 ms
+    Iteration 20/100 (batch_size=1)... total=40.69 ms, per-file avg=40.68 ms
+    Iteration 21/100 (batch_size=1)... total=37.65 ms, per-file avg=37.64 ms
+    Iteration 22/100 (batch_size=1)... total=32.74 ms, per-file avg=32.74 ms
+    Iteration 23/100 (batch_size=1)... total=37.03 ms, per-file avg=37.03 ms
+    Iteration 24/100 (batch_size=1)... total=37.81 ms, per-file avg=37.81 ms
+    Iteration 25/100 (batch_size=1)... total=32.02 ms, per-file avg=32.02 ms
+    Iteration 26/100 (batch_size=1)... total=38.77 ms, per-file avg=38.77 ms
+    Iteration 27/100 (batch_size=1)... total=40.09 ms, per-file avg=40.09 ms
+    Iteration 28/100 (batch_size=1)... total=33.06 ms, per-file avg=33.06 ms
+    Iteration 29/100 (batch_size=1)... total=38.89 ms, per-file avg=38.88 ms
+    Iteration 30/100 (batch_size=1)... total=37.11 ms, per-file avg=37.10 ms
+    Iteration 31/100 (batch_size=1)... total=32.02 ms, per-file avg=32.02 ms
+    Iteration 32/100 (batch_size=1)... total=38.62 ms, per-file avg=38.61 ms
+    Iteration 33/100 (batch_size=1)... total=45.92 ms, per-file avg=45.92 ms
+    Iteration 34/100 (batch_size=1)... total=38.80 ms, per-file avg=38.80 ms
+    Iteration 35/100 (batch_size=1)... total=62.27 ms, per-file avg=62.27 ms
+    Iteration 36/100 (batch_size=1)... total=36.85 ms, per-file avg=36.84 ms
+    Iteration 37/100 (batch_size=1)... total=29.59 ms, per-file avg=29.59 ms
+    Iteration 38/100 (batch_size=1)... total=36.58 ms, per-file avg=36.58 ms
+    Iteration 39/100 (batch_size=1)... total=36.20 ms, per-file avg=36.20 ms
+    Iteration 40/100 (batch_size=1)... total=32.35 ms, per-file avg=32.35 ms
+    Iteration 41/100 (batch_size=1)... total=35.71 ms, per-file avg=35.71 ms
+    Iteration 42/100 (batch_size=1)... total=34.62 ms, per-file avg=34.61 ms
+    Iteration 43/100 (batch_size=1)... total=32.94 ms, per-file avg=32.93 ms
+    Iteration 44/100 (batch_size=1)... total=46.18 ms, per-file avg=46.18 ms
+    Iteration 45/100 (batch_size=1)... total=34.60 ms, per-file avg=34.59 ms
+    Iteration 46/100 (batch_size=1)... total=33.42 ms, per-file avg=33.42 ms
+    Iteration 47/100 (batch_size=1)... total=36.25 ms, per-file avg=36.24 ms
+    Iteration 48/100 (batch_size=1)... total=32.65 ms, per-file avg=32.64 ms
+    Iteration 49/100 (batch_size=1)... total=29.50 ms, per-file avg=29.49 ms
+    Iteration 50/100 (batch_size=1)... total=34.51 ms, per-file avg=34.50 ms
+    Iteration 51/100 (batch_size=1)... total=39.36 ms, per-file avg=39.35 ms
+    Iteration 52/100 (batch_size=1)... total=32.11 ms, per-file avg=32.10 ms
+    Iteration 53/100 (batch_size=1)... total=36.15 ms, per-file avg=36.14 ms
+    Iteration 54/100 (batch_size=1)... total=32.68 ms, per-file avg=32.68 ms
+    Iteration 55/100 (batch_size=1)... total=33.32 ms, per-file avg=33.32 ms
+    Iteration 56/100 (batch_size=1)... total=33.49 ms, per-file avg=33.48 ms
+    Iteration 57/100 (batch_size=1)... total=34.67 ms, per-file avg=34.66 ms
+    Iteration 58/100 (batch_size=1)... total=36.71 ms, per-file avg=36.70 ms
+    Iteration 59/100 (batch_size=1)... total=37.08 ms, per-file avg=37.08 ms
+    Iteration 60/100 (batch_size=1)... total=34.38 ms, per-file avg=34.38 ms
+    Iteration 61/100 (batch_size=1)... total=32.83 ms, per-file avg=32.82 ms
+    Iteration 62/100 (batch_size=1)... total=40.24 ms, per-file avg=40.24 ms
+    Iteration 63/100 (batch_size=1)... total=36.93 ms, per-file avg=36.93 ms
+    Iteration 64/100 (batch_size=1)... total=33.41 ms, per-file avg=33.40 ms
+    Iteration 65/100 (batch_size=1)... total=35.82 ms, per-file avg=35.82 ms
+    Iteration 66/100 (batch_size=1)... total=37.97 ms, per-file avg=37.97 ms
+    Iteration 67/100 (batch_size=1)... total=32.99 ms, per-file avg=32.99 ms
+    Iteration 68/100 (batch_size=1)... total=44.08 ms, per-file avg=44.07 ms
+    Iteration 69/100 (batch_size=1)... total=35.74 ms, per-file avg=35.74 ms
+    Iteration 70/100 (batch_size=1)... total=31.97 ms, per-file avg=31.97 ms
+    Iteration 71/100 (batch_size=1)... total=37.21 ms, per-file avg=37.20 ms
+    Iteration 72/100 (batch_size=1)... total=35.90 ms, per-file avg=35.89 ms
+    Iteration 73/100 (batch_size=1)... total=34.55 ms, per-file avg=34.54 ms
+    Iteration 74/100 (batch_size=1)... total=42.57 ms, per-file avg=42.56 ms
+    Iteration 75/100 (batch_size=1)... total=39.86 ms, per-file avg=39.86 ms
+    Iteration 76/100 (batch_size=1)... total=38.03 ms, per-file avg=38.03 ms
+    Iteration 77/100 (batch_size=1)... total=36.22 ms, per-file avg=36.22 ms
+    Iteration 78/100 (batch_size=1)... total=36.58 ms, per-file avg=36.57 ms
+    Iteration 79/100 (batch_size=1)... total=38.85 ms, per-file avg=38.84 ms
+    Iteration 80/100 (batch_size=1)... total=37.54 ms, per-file avg=37.53 ms
+    Iteration 81/100 (batch_size=1)... total=36.34 ms, per-file avg=36.34 ms
+    Iteration 82/100 (batch_size=1)... total=33.62 ms, per-file avg=33.62 ms
+    Iteration 83/100 (batch_size=1)... total=40.12 ms, per-file avg=40.12 ms
+    Iteration 84/100 (batch_size=1)... total=50.27 ms, per-file avg=50.26 ms
+    Iteration 85/100 (batch_size=1)... total=45.11 ms, per-file avg=45.11 ms
+    Iteration 86/100 (batch_size=1)... total=52.47 ms, per-file avg=52.46 ms
+    Iteration 87/100 (batch_size=1)... total=57.75 ms, per-file avg=57.75 ms
+    Iteration 88/100 (batch_size=1)... total=50.53 ms, per-file avg=50.52 ms
+    Iteration 89/100 (batch_size=1)... total=81.60 ms, per-file avg=81.60 ms
+    Iteration 90/100 (batch_size=1)... total=56.10 ms, per-file avg=56.10 ms
+    Iteration 91/100 (batch_size=1)... total=45.93 ms, per-file avg=45.93 ms
+    Iteration 92/100 (batch_size=1)... total=52.18 ms, per-file avg=52.17 ms
+    Iteration 93/100 (batch_size=1)... total=65.91 ms, per-file avg=65.90 ms
+    Iteration 94/100 (batch_size=1)... total=46.02 ms, per-file avg=46.01 ms
+    Iteration 95/100 (batch_size=1)... total=73.47 ms, per-file avg=73.47 ms
+    Iteration 96/100 (batch_size=1)... total=69.78 ms, per-file avg=69.78 ms
+    Iteration 97/100 (batch_size=1)... total=47.94 ms, per-file avg=47.94 ms
+    Iteration 98/100 (batch_size=1)... total=62.60 ms, per-file avg=62.60 ms
+    Iteration 99/100 (batch_size=1)... total=53.02 ms, per-file avg=53.01 ms
+    Iteration 100/100 (batch_size=1)... total=57.12 ms, per-file avg=57.11 ms
+    [0;34mNetwork bytes (swarm): 107396443[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    29.49 ms
+      Max:    81.60 ms
+      Avg:    40.24 ms
+      P50:    37.04 ms
+      P90:    53.66 ms
+      P99:    81.60 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch1.csv
+Network bytes: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_network_bytes.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch1.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch1.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"
+==========================================
+Upload Latency Test
+==========================================
+Our System API: (skipped)
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 100
+Batch size: 5
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch5.csv
+
+Verifying API endpoints...
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=5)... total=106.46 ms, per-file avg=21.29 ms
+    Iteration 2/100 (batch_size=5)... total=102.68 ms, per-file avg=20.53 ms
+    Iteration 3/100 (batch_size=5)... total=97.29 ms, per-file avg=19.45 ms
+    Iteration 4/100 (batch_size=5)... total=94.00 ms, per-file avg=18.80 ms
+    Iteration 5/100 (batch_size=5)... total=92.03 ms, per-file avg=18.40 ms
+    Iteration 6/100 (batch_size=5)... total=106.75 ms, per-file avg=21.35 ms
+    Iteration 7/100 (batch_size=5)... total=94.77 ms, per-file avg=18.95 ms
+    Iteration 8/100 (batch_size=5)... total=98.89 ms, per-file avg=19.77 ms
+    Iteration 9/100 (batch_size=5)... total=93.23 ms, per-file avg=18.64 ms
+    Iteration 10/100 (batch_size=5)... total=100.39 ms, per-file avg=20.07 ms
+    Iteration 11/100 (batch_size=5)... total=102.80 ms, per-file avg=20.55 ms
+    Iteration 12/100 (batch_size=5)... total=95.53 ms, per-file avg=19.10 ms
+    Iteration 13/100 (batch_size=5)... total=97.97 ms, per-file avg=19.59 ms
+    Iteration 14/100 (batch_size=5)... total=95.95 ms, per-file avg=19.18 ms
+    Iteration 15/100 (batch_size=5)... total=105.95 ms, per-file avg=21.18 ms
+    Iteration 16/100 (batch_size=5)... total=107.28 ms, per-file avg=21.45 ms
+    Iteration 17/100 (batch_size=5)... total=140.58 ms, per-file avg=28.11 ms
+    Iteration 18/100 (batch_size=5)... total=129.05 ms, per-file avg=25.80 ms
+    Iteration 19/100 (batch_size=5)... total=149.26 ms, per-file avg=29.85 ms
+    Iteration 20/100 (batch_size=5)... total=132.53 ms, per-file avg=26.50 ms
+    Iteration 21/100 (batch_size=5)... total=127.47 ms, per-file avg=25.49 ms
+    Iteration 22/100 (batch_size=5)... total=127.22 ms, per-file avg=25.44 ms
+    Iteration 23/100 (batch_size=5)... total=109.51 ms, per-file avg=21.90 ms
+    Iteration 24/100 (batch_size=5)... total=110.12 ms, per-file avg=22.02 ms
+    Iteration 25/100 (batch_size=5)... total=101.74 ms, per-file avg=20.34 ms
+    Iteration 26/100 (batch_size=5)... total=106.42 ms, per-file avg=21.28 ms
+    Iteration 27/100 (batch_size=5)... total=111.52 ms, per-file avg=22.30 ms
+    Iteration 28/100 (batch_size=5)... total=121.42 ms, per-file avg=24.28 ms
+    Iteration 29/100 (batch_size=5)... total=114.37 ms, per-file avg=22.87 ms
+    Iteration 30/100 (batch_size=5)... total=112.66 ms, per-file avg=22.53 ms
+    Iteration 31/100 (batch_size=5)... total=126.62 ms, per-file avg=25.32 ms
+    Iteration 32/100 (batch_size=5)... total=122.84 ms, per-file avg=24.56 ms
+    Iteration 33/100 (batch_size=5)... total=111.41 ms, per-file avg=22.28 ms
+    Iteration 34/100 (batch_size=5)... total=103.75 ms, per-file avg=20.74 ms
+    Iteration 35/100 (batch_size=5)... total=112.75 ms, per-file avg=22.54 ms
+    Iteration 36/100 (batch_size=5)... total=121.16 ms, per-file avg=24.23 ms
+    Iteration 37/100 (batch_size=5)... total=112.20 ms, per-file avg=22.44 ms
+    Iteration 38/100 (batch_size=5)... total=110.58 ms, per-file avg=22.11 ms
+    Iteration 39/100 (batch_size=5)... total=116.94 ms, per-file avg=23.38 ms
+    Iteration 40/100 (batch_size=5)... total=122.56 ms, per-file avg=24.51 ms
+    Iteration 41/100 (batch_size=5)... total=109.25 ms, per-file avg=21.84 ms
+    Iteration 42/100 (batch_size=5)... total=105.86 ms, per-file avg=21.17 ms
+    Iteration 43/100 (batch_size=5)... total=110.53 ms, per-file avg=22.10 ms
+    Iteration 44/100 (batch_size=5)... total=116.19 ms, per-file avg=23.23 ms
+    Iteration 45/100 (batch_size=5)... total=113.18 ms, per-file avg=22.63 ms
+    Iteration 46/100 (batch_size=5)... total=103.19 ms, per-file avg=20.63 ms
+    Iteration 47/100 (batch_size=5)... total=118.27 ms, per-file avg=23.65 ms
+    Iteration 48/100 (batch_size=5)... total=99.99 ms, per-file avg=19.99 ms
+    Iteration 49/100 (batch_size=5)... total=94.73 ms, per-file avg=18.94 ms
+    Iteration 50/100 (batch_size=5)... total=104.12 ms, per-file avg=20.82 ms
+    Iteration 51/100 (batch_size=5)... total=93.46 ms, per-file avg=18.69 ms
+    Iteration 52/100 (batch_size=5)... total=100.07 ms, per-file avg=20.01 ms
+    Iteration 53/100 (batch_size=5)... total=92.91 ms, per-file avg=18.58 ms
+    Iteration 54/100 (batch_size=5)... total=101.06 ms, per-file avg=20.21 ms
+    Iteration 55/100 (batch_size=5)... total=93.34 ms, per-file avg=18.66 ms
+    Iteration 56/100 (batch_size=5)... total=94.00 ms, per-file avg=18.80 ms
+    Iteration 57/100 (batch_size=5)... total=102.27 ms, per-file avg=20.45 ms
+    Iteration 58/100 (batch_size=5)... total=101.52 ms, per-file avg=20.30 ms
+    Iteration 59/100 (batch_size=5)... total=96.99 ms, per-file avg=19.39 ms
+    Iteration 60/100 (batch_size=5)... total=94.74 ms, per-file avg=18.94 ms
+    Iteration 61/100 (batch_size=5)... total=98.52 ms, per-file avg=19.70 ms
+    Iteration 62/100 (batch_size=5)... total=91.99 ms, per-file avg=18.39 ms
+    Iteration 63/100 (batch_size=5)... total=106.41 ms, per-file avg=21.28 ms
+    Iteration 64/100 (batch_size=5)... total=111.02 ms, per-file avg=22.20 ms
+    Iteration 65/100 (batch_size=5)... total=103.41 ms, per-file avg=20.68 ms
+    Iteration 66/100 (batch_size=5)... total=113.34 ms, per-file avg=22.66 ms
+    Iteration 67/100 (batch_size=5)... total=141.91 ms, per-file avg=28.38 ms
+    Iteration 68/100 (batch_size=5)... total=130.71 ms, per-file avg=26.14 ms
+    Iteration 69/100 (batch_size=5)... total=116.15 ms, per-file avg=23.23 ms
+    Iteration 70/100 (batch_size=5)... total=121.79 ms, per-file avg=24.35 ms
+    Iteration 71/100 (batch_size=5)... total=130.29 ms, per-file avg=26.05 ms
+    Iteration 72/100 (batch_size=5)... total=108.36 ms, per-file avg=21.67 ms
+    Iteration 73/100 (batch_size=5)... total=103.49 ms, per-file avg=20.69 ms
+    Iteration 74/100 (batch_size=5)... total=96.56 ms, per-file avg=19.31 ms
+    Iteration 75/100 (batch_size=5)... total=96.49 ms, per-file avg=19.29 ms
+    Iteration 76/100 (batch_size=5)... total=99.95 ms, per-file avg=19.98 ms
+    Iteration 77/100 (batch_size=5)... total=93.20 ms, per-file avg=18.63 ms
+    Iteration 78/100 (batch_size=5)... total=94.52 ms, per-file avg=18.90 ms
+    Iteration 79/100 (batch_size=5)... total=104.48 ms, per-file avg=20.89 ms
+    Iteration 80/100 (batch_size=5)... total=95.15 ms, per-file avg=19.03 ms
+    Iteration 81/100 (batch_size=5)... total=101.79 ms, per-file avg=20.35 ms
+    Iteration 82/100 (batch_size=5)... total=96.43 ms, per-file avg=19.28 ms
+    Iteration 83/100 (batch_size=5)... total=102.59 ms, per-file avg=20.51 ms
+    Iteration 84/100 (batch_size=5)... total=95.38 ms, per-file avg=19.07 ms
+    Iteration 85/100 (batch_size=5)... total=105.98 ms, per-file avg=21.19 ms
+    Iteration 86/100 (batch_size=5)... total=109.70 ms, per-file avg=21.94 ms
+    Iteration 87/100 (batch_size=5)... total=118.20 ms, per-file avg=23.64 ms
+    Iteration 88/100 (batch_size=5)... total=107.87 ms, per-file avg=21.57 ms
+    Iteration 89/100 (batch_size=5)... total=103.56 ms, per-file avg=20.71 ms
+    Iteration 90/100 (batch_size=5)... total=104.87 ms, per-file avg=20.97 ms
+    Iteration 91/100 (batch_size=5)... total=115.70 ms, per-file avg=23.13 ms
+    Iteration 92/100 (batch_size=5)... total=122.13 ms, per-file avg=24.42 ms
+    Iteration 93/100 (batch_size=5)... total=111.51 ms, per-file avg=22.30 ms
+    Iteration 94/100 (batch_size=5)... total=112.86 ms, per-file avg=22.57 ms
+    Iteration 95/100 (batch_size=5)... total=113.83 ms, per-file avg=22.76 ms
+    Iteration 96/100 (batch_size=5)... total=108.80 ms, per-file avg=21.75 ms
+    Iteration 97/100 (batch_size=5)... total=112.56 ms, per-file avg=22.51 ms
+    Iteration 98/100 (batch_size=5)... total=108.25 ms, per-file avg=21.65 ms
+    Iteration 99/100 (batch_size=5)... total=107.73 ms, per-file avg=21.54 ms
+    Iteration 100/100 (batch_size=5)... total=112.24 ms, per-file avg=22.44 ms
+    [0;34mNetwork bytes (swarm): 3084740[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    18.39 ms
+      Max:    29.85 ms
+      Avg:    21.63 ms
+      P50:    21.29 ms
+      P90:    25.32 ms
+      P99:    29.85 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=5)... total=129.94 ms, per-file avg=25.98 ms
+    Iteration 2/100 (batch_size=5)... total=121.88 ms, per-file avg=24.37 ms
+    Iteration 3/100 (batch_size=5)... total=347.78 ms, per-file avg=69.55 ms
+    Iteration 4/100 (batch_size=5)... total=135.86 ms, per-file avg=27.17 ms
+    Iteration 5/100 (batch_size=5)... total=118.56 ms, per-file avg=23.71 ms
+    Iteration 6/100 (batch_size=5)... total=185.05 ms, per-file avg=37.00 ms
+    Iteration 7/100 (batch_size=5)... total=136.05 ms, per-file avg=27.21 ms
+    Iteration 8/100 (batch_size=5)... total=183.74 ms, per-file avg=36.74 ms
+    Iteration 9/100 (batch_size=5)... total=125.78 ms, per-file avg=25.15 ms
+    Iteration 10/100 (batch_size=5)... total=162.67 ms, per-file avg=32.53 ms
+    Iteration 11/100 (batch_size=5)... total=148.43 ms, per-file avg=29.68 ms
+    Iteration 12/100 (batch_size=5)... total=125.29 ms, per-file avg=25.05 ms
+    Iteration 13/100 (batch_size=5)... total=116.98 ms, per-file avg=23.39 ms
+    Iteration 14/100 (batch_size=5)... total=136.11 ms, per-file avg=27.22 ms
+    Iteration 15/100 (batch_size=5)... total=120.12 ms, per-file avg=24.02 ms
+    Iteration 16/100 (batch_size=5)... total=116.91 ms, per-file avg=23.38 ms
+    Iteration 17/100 (batch_size=5)... total=121.55 ms, per-file avg=24.31 ms
+    Iteration 18/100 (batch_size=5)... total=110.34 ms, per-file avg=22.06 ms
+    Iteration 19/100 (batch_size=5)... total=103.71 ms, per-file avg=20.74 ms
+    Iteration 20/100 (batch_size=5)... total=117.73 ms, per-file avg=23.54 ms
+    Iteration 21/100 (batch_size=5)... total=114.17 ms, per-file avg=22.83 ms
+    Iteration 22/100 (batch_size=5)... total=114.86 ms, per-file avg=22.97 ms
+    Iteration 23/100 (batch_size=5)... total=122.83 ms, per-file avg=24.56 ms
+    Iteration 24/100 (batch_size=5)... total=119.24 ms, per-file avg=23.84 ms
+    Iteration 25/100 (batch_size=5)... total=114.39 ms, per-file avg=22.87 ms
+    Iteration 26/100 (batch_size=5)... total=155.41 ms, per-file avg=31.08 ms
+    Iteration 27/100 (batch_size=5)... total=149.04 ms, per-file avg=29.80 ms
+    Iteration 28/100 (batch_size=5)... total=147.38 ms, per-file avg=29.47 ms
+    Iteration 29/100 (batch_size=5)... total=134.66 ms, per-file avg=26.93 ms
+    Iteration 30/100 (batch_size=5)... total=143.30 ms, per-file avg=28.66 ms
+    Iteration 31/100 (batch_size=5)... total=168.52 ms, per-file avg=33.70 ms
+    Iteration 32/100 (batch_size=5)... total=130.00 ms, per-file avg=26.00 ms
+    Iteration 33/100 (batch_size=5)... total=112.95 ms, per-file avg=22.58 ms
+    Iteration 34/100 (batch_size=5)... total=121.54 ms, per-file avg=24.30 ms
+    Iteration 35/100 (batch_size=5)... total=110.48 ms, per-file avg=22.09 ms
+    Iteration 36/100 (batch_size=5)... total=118.47 ms, per-file avg=23.69 ms
+    Iteration 37/100 (batch_size=5)... total=116.73 ms, per-file avg=23.34 ms
+    Iteration 38/100 (batch_size=5)... total=125.84 ms, per-file avg=25.16 ms
+    Iteration 39/100 (batch_size=5)... total=116.73 ms, per-file avg=23.34 ms
+    Iteration 40/100 (batch_size=5)... total=110.32 ms, per-file avg=22.06 ms
+    Iteration 41/100 (batch_size=5)... total=133.36 ms, per-file avg=26.67 ms
+    Iteration 42/100 (batch_size=5)... total=150.08 ms, per-file avg=30.01 ms
+    Iteration 43/100 (batch_size=5)... total=129.64 ms, per-file avg=25.92 ms
+    Iteration 44/100 (batch_size=5)... total=105.09 ms, per-file avg=21.01 ms
+    Iteration 45/100 (batch_size=5)... total=102.13 ms, per-file avg=20.42 ms
+    Iteration 46/100 (batch_size=5)... total=105.67 ms, per-file avg=21.13 ms
+    Iteration 47/100 (batch_size=5)... total=103.41 ms, per-file avg=20.68 ms
+    Iteration 48/100 (batch_size=5)... total=116.50 ms, per-file avg=23.29 ms
+    Iteration 49/100 (batch_size=5)... total=105.38 ms, per-file avg=21.07 ms
+    Iteration 50/100 (batch_size=5)... total=97.25 ms, per-file avg=19.44 ms
+    Iteration 51/100 (batch_size=5)... total=96.16 ms, per-file avg=19.23 ms
+    Iteration 52/100 (batch_size=5)... total=117.05 ms, per-file avg=23.41 ms
+    Iteration 53/100 (batch_size=5)... total=110.81 ms, per-file avg=22.16 ms
+    Iteration 54/100 (batch_size=5)... total=107.90 ms, per-file avg=21.57 ms
+    Iteration 55/100 (batch_size=5)... total=105.42 ms, per-file avg=21.08 ms
+    Iteration 56/100 (batch_size=5)... total=98.38 ms, per-file avg=19.67 ms
+    Iteration 57/100 (batch_size=5)... total=100.71 ms, per-file avg=20.14 ms
+    Iteration 58/100 (batch_size=5)... total=97.11 ms, per-file avg=19.42 ms
+    Iteration 59/100 (batch_size=5)... total=98.50 ms, per-file avg=19.70 ms
+    Iteration 60/100 (batch_size=5)... total=100.09 ms, per-file avg=20.01 ms
+    Iteration 61/100 (batch_size=5)... total=96.42 ms, per-file avg=19.28 ms
+    Iteration 62/100 (batch_size=5)... total=101.12 ms, per-file avg=20.22 ms
+    Iteration 63/100 (batch_size=5)... total=105.81 ms, per-file avg=21.16 ms
+    Iteration 64/100 (batch_size=5)... total=112.79 ms, per-file avg=22.55 ms
+    Iteration 65/100 (batch_size=5)... total=106.18 ms, per-file avg=21.23 ms
+    Iteration 66/100 (batch_size=5)... total=100.93 ms, per-file avg=20.18 ms
+    Iteration 67/100 (batch_size=5)... total=110.21 ms, per-file avg=22.04 ms
+    Iteration 68/100 (batch_size=5)... total=113.82 ms, per-file avg=22.76 ms
+    Iteration 69/100 (batch_size=5)... total=105.25 ms, per-file avg=21.04 ms
+    Iteration 70/100 (batch_size=5)... total=104.73 ms, per-file avg=20.94 ms
+    Iteration 71/100 (batch_size=5)... total=121.08 ms, per-file avg=24.21 ms
+    Iteration 72/100 (batch_size=5)... total=123.30 ms, per-file avg=24.66 ms
+    Iteration 73/100 (batch_size=5)... total=125.02 ms, per-file avg=25.00 ms
+    Iteration 74/100 (batch_size=5)... total=161.62 ms, per-file avg=32.32 ms
+    Iteration 75/100 (batch_size=5)... total=170.79 ms, per-file avg=34.15 ms
+    Iteration 76/100 (batch_size=5)... total=154.30 ms, per-file avg=30.85 ms
+    Iteration 77/100 (batch_size=5)... total=192.16 ms, per-file avg=38.43 ms
+    Iteration 78/100 (batch_size=5)... total=190.06 ms, per-file avg=38.01 ms
+    Iteration 79/100 (batch_size=5)... total=132.63 ms, per-file avg=26.52 ms
+    Iteration 80/100 (batch_size=5)... total=139.18 ms, per-file avg=27.83 ms
+    Iteration 81/100 (batch_size=5)... total=116.38 ms, per-file avg=23.27 ms
+    Iteration 82/100 (batch_size=5)... total=128.93 ms, per-file avg=25.78 ms
+    Iteration 83/100 (batch_size=5)... total=119.30 ms, per-file avg=23.85 ms
+    Iteration 84/100 (batch_size=5)... total=129.64 ms, per-file avg=25.92 ms
+    Iteration 85/100 (batch_size=5)... total=137.16 ms, per-file avg=27.43 ms
+    Iteration 86/100 (batch_size=5)... total=137.54 ms, per-file avg=27.50 ms
+    Iteration 87/100 (batch_size=5)... total=118.67 ms, per-file avg=23.73 ms
+    Iteration 88/100 (batch_size=5)... total=149.63 ms, per-file avg=29.92 ms
+    Iteration 89/100 (batch_size=5)... total=126.69 ms, per-file avg=25.33 ms
+    Iteration 90/100 (batch_size=5)... total=132.76 ms, per-file avg=26.55 ms
+    Iteration 91/100 (batch_size=5)... total=112.79 ms, per-file avg=22.55 ms
+    Iteration 92/100 (batch_size=5)... total=113.40 ms, per-file avg=22.68 ms
+    Iteration 93/100 (batch_size=5)... total=114.37 ms, per-file avg=22.87 ms
+    Iteration 94/100 (batch_size=5)... total=112.81 ms, per-file avg=22.56 ms
+    Iteration 95/100 (batch_size=5)... total=102.85 ms, per-file avg=20.57 ms
+    Iteration 96/100 (batch_size=5)... total=98.85 ms, per-file avg=19.76 ms
+    Iteration 97/100 (batch_size=5)... total=103.66 ms, per-file avg=20.73 ms
+    Iteration 98/100 (batch_size=5)... total=98.37 ms, per-file avg=19.67 ms
+    Iteration 99/100 (batch_size=5)... total=150.14 ms, per-file avg=30.02 ms
+    Iteration 100/100 (batch_size=5)... total=113.67 ms, per-file avg=22.73 ms
+    [0;34mNetwork bytes (swarm): 7898799[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    19.23 ms
+      Max:    69.55 ms
+      Avg:    25.14 ms
+      P50:    23.69 ms
+      P90:    31.08 ms
+      P99:    69.55 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=5)... total=123.03 ms, per-file avg=24.60 ms
+    Iteration 2/100 (batch_size=5)... total=113.96 ms, per-file avg=22.79 ms
+    Iteration 3/100 (batch_size=5)... total=130.49 ms, per-file avg=26.09 ms
+    Iteration 4/100 (batch_size=5)... total=120.57 ms, per-file avg=24.11 ms
+    Iteration 5/100 (batch_size=5)... total=125.75 ms, per-file avg=25.15 ms
+    Iteration 6/100 (batch_size=5)... total=129.78 ms, per-file avg=25.95 ms
+    Iteration 7/100 (batch_size=5)... total=118.68 ms, per-file avg=23.73 ms
+    Iteration 8/100 (batch_size=5)... total=112.14 ms, per-file avg=22.42 ms
+    Iteration 9/100 (batch_size=5)... total=138.58 ms, per-file avg=27.71 ms
+    Iteration 10/100 (batch_size=5)... total=120.62 ms, per-file avg=24.12 ms
+    Iteration 11/100 (batch_size=5)... total=115.03 ms, per-file avg=23.00 ms
+    Iteration 12/100 (batch_size=5)... total=134.16 ms, per-file avg=26.83 ms
+    Iteration 13/100 (batch_size=5)... total=121.81 ms, per-file avg=24.36 ms
+    Iteration 14/100 (batch_size=5)... total=125.45 ms, per-file avg=25.08 ms
+    Iteration 15/100 (batch_size=5)... total=121.46 ms, per-file avg=24.29 ms
+    Iteration 16/100 (batch_size=5)... total=123.58 ms, per-file avg=24.71 ms
+    Iteration 17/100 (batch_size=5)... total=123.97 ms, per-file avg=24.79 ms
+    Iteration 18/100 (batch_size=5)... total=126.47 ms, per-file avg=25.29 ms
+    Iteration 19/100 (batch_size=5)... total=112.70 ms, per-file avg=22.54 ms
+    Iteration 20/100 (batch_size=5)... total=135.30 ms, per-file avg=27.05 ms
+    Iteration 21/100 (batch_size=5)... total=119.06 ms, per-file avg=23.81 ms
+    Iteration 22/100 (batch_size=5)... total=131.23 ms, per-file avg=26.24 ms
+    Iteration 23/100 (batch_size=5)... total=120.19 ms, per-file avg=24.03 ms
+    Iteration 24/100 (batch_size=5)... total=125.19 ms, per-file avg=25.03 ms
+    Iteration 25/100 (batch_size=5)... total=112.51 ms, per-file avg=22.50 ms
+    Iteration 26/100 (batch_size=5)... total=118.90 ms, per-file avg=23.78 ms
+    Iteration 27/100 (batch_size=5)... total=113.10 ms, per-file avg=22.61 ms
+    Iteration 28/100 (batch_size=5)... total=118.52 ms, per-file avg=23.70 ms
+    Iteration 29/100 (batch_size=5)... total=110.13 ms, per-file avg=22.02 ms
+    Iteration 30/100 (batch_size=5)... total=117.58 ms, per-file avg=23.51 ms
+    Iteration 31/100 (batch_size=5)... total=113.55 ms, per-file avg=22.71 ms
+    Iteration 32/100 (batch_size=5)... total=110.44 ms, per-file avg=22.08 ms
+    Iteration 33/100 (batch_size=5)... total=119.54 ms, per-file avg=23.90 ms
+    Iteration 34/100 (batch_size=5)... total=138.44 ms, per-file avg=27.68 ms
+    Iteration 35/100 (batch_size=5)... total=141.34 ms, per-file avg=28.26 ms
+    Iteration 36/100 (batch_size=5)... total=141.93 ms, per-file avg=28.38 ms
+    Iteration 37/100 (batch_size=5)... total=161.29 ms, per-file avg=32.25 ms
+    Iteration 38/100 (batch_size=5)... total=149.99 ms, per-file avg=29.99 ms
+    Iteration 39/100 (batch_size=5)... total=152.01 ms, per-file avg=30.40 ms
+    Iteration 40/100 (batch_size=5)... total=118.58 ms, per-file avg=23.71 ms
+    Iteration 41/100 (batch_size=5)... total=116.09 ms, per-file avg=23.21 ms
+    Iteration 42/100 (batch_size=5)... total=116.93 ms, per-file avg=23.38 ms
+    Iteration 43/100 (batch_size=5)... total=119.34 ms, per-file avg=23.86 ms
+    Iteration 44/100 (batch_size=5)... total=109.57 ms, per-file avg=21.91 ms
+    Iteration 45/100 (batch_size=5)... total=111.18 ms, per-file avg=22.23 ms
+    Iteration 46/100 (batch_size=5)... total=104.69 ms, per-file avg=20.93 ms
+    Iteration 47/100 (batch_size=5)... total=118.98 ms, per-file avg=23.79 ms
+    Iteration 48/100 (batch_size=5)... total=215.99 ms, per-file avg=43.19 ms
+    Iteration 49/100 (batch_size=5)... total=227.90 ms, per-file avg=45.57 ms
+    Iteration 50/100 (batch_size=5)... total=129.17 ms, per-file avg=25.83 ms
+    Iteration 51/100 (batch_size=5)... total=118.30 ms, per-file avg=23.66 ms
+    Iteration 52/100 (batch_size=5)... total=106.18 ms, per-file avg=21.23 ms
+    Iteration 53/100 (batch_size=5)... total=112.51 ms, per-file avg=22.50 ms
+    Iteration 54/100 (batch_size=5)... total=127.50 ms, per-file avg=25.50 ms
+    Iteration 55/100 (batch_size=5)... total=116.26 ms, per-file avg=23.25 ms
+    Iteration 56/100 (batch_size=5)... total=128.27 ms, per-file avg=25.65 ms
+    Iteration 57/100 (batch_size=5)... total=134.17 ms, per-file avg=26.83 ms
+    Iteration 58/100 (batch_size=5)... total=130.31 ms, per-file avg=26.06 ms
+    Iteration 59/100 (batch_size=5)... total=117.12 ms, per-file avg=23.42 ms
+    Iteration 60/100 (batch_size=5)... total=126.06 ms, per-file avg=25.21 ms
+    Iteration 61/100 (batch_size=5)... total=119.59 ms, per-file avg=23.91 ms
+    Iteration 62/100 (batch_size=5)... total=147.73 ms, per-file avg=29.54 ms
+    Iteration 63/100 (batch_size=5)... total=128.73 ms, per-file avg=25.74 ms
+    Iteration 64/100 (batch_size=5)... total=148.30 ms, per-file avg=29.65 ms
+    Iteration 65/100 (batch_size=5)... total=126.27 ms, per-file avg=25.25 ms
+    Iteration 66/100 (batch_size=5)... total=134.91 ms, per-file avg=26.98 ms
+    Iteration 67/100 (batch_size=5)... total=130.56 ms, per-file avg=26.11 ms
+    Iteration 68/100 (batch_size=5)... total=123.32 ms, per-file avg=24.66 ms
+    Iteration 69/100 (batch_size=5)... total=135.47 ms, per-file avg=27.09 ms
+    Iteration 70/100 (batch_size=5)... total=127.94 ms, per-file avg=25.58 ms
+    Iteration 71/100 (batch_size=5)... total=122.43 ms, per-file avg=24.48 ms
+    Iteration 72/100 (batch_size=5)... total=132.21 ms, per-file avg=26.44 ms
+    Iteration 73/100 (batch_size=5)... total=117.73 ms, per-file avg=23.54 ms
+    Iteration 74/100 (batch_size=5)... total=116.38 ms, per-file avg=23.27 ms
+    Iteration 75/100 (batch_size=5)... total=138.32 ms, per-file avg=27.66 ms
+    Iteration 76/100 (batch_size=5)... total=181.78 ms, per-file avg=36.35 ms
+    Iteration 77/100 (batch_size=5)... total=127.05 ms, per-file avg=25.41 ms
+    Iteration 78/100 (batch_size=5)... total=139.18 ms, per-file avg=27.83 ms
+    Iteration 79/100 (batch_size=5)... total=132.44 ms, per-file avg=26.48 ms
+    Iteration 80/100 (batch_size=5)... total=124.39 ms, per-file avg=24.87 ms
+    Iteration 81/100 (batch_size=5)... total=124.89 ms, per-file avg=24.97 ms
+    Iteration 82/100 (batch_size=5)... total=112.44 ms, per-file avg=22.48 ms
+    Iteration 83/100 (batch_size=5)... total=114.30 ms, per-file avg=22.85 ms
+    Iteration 84/100 (batch_size=5)... total=114.78 ms, per-file avg=22.95 ms
+    Iteration 85/100 (batch_size=5)... total=115.73 ms, per-file avg=23.14 ms
+    Iteration 86/100 (batch_size=5)... total=112.79 ms, per-file avg=22.55 ms
+    Iteration 87/100 (batch_size=5)... total=115.71 ms, per-file avg=23.14 ms
+    Iteration 88/100 (batch_size=5)... total=109.56 ms, per-file avg=21.91 ms
+    Iteration 89/100 (batch_size=5)... total=109.05 ms, per-file avg=21.80 ms
+    Iteration 90/100 (batch_size=5)... total=109.83 ms, per-file avg=21.96 ms
+    Iteration 91/100 (batch_size=5)... total=116.00 ms, per-file avg=23.20 ms
+    Iteration 92/100 (batch_size=5)... total=108.22 ms, per-file avg=21.64 ms
+    Iteration 93/100 (batch_size=5)... total=118.33 ms, per-file avg=23.66 ms
+    Iteration 94/100 (batch_size=5)... total=109.88 ms, per-file avg=21.97 ms
+    Iteration 95/100 (batch_size=5)... total=111.60 ms, per-file avg=22.31 ms
+    Iteration 96/100 (batch_size=5)... total=113.94 ms, per-file avg=22.78 ms
+    Iteration 97/100 (batch_size=5)... total=112.24 ms, per-file avg=22.44 ms
+    Iteration 98/100 (batch_size=5)... total=112.17 ms, per-file avg=22.43 ms
+    Iteration 99/100 (batch_size=5)... total=105.71 ms, per-file avg=21.14 ms
+    Iteration 100/100 (batch_size=5)... total=118.07 ms, per-file avg=23.61 ms
+    [0;34mNetwork bytes (swarm): 54990050[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    20.93 ms
+      Max:    45.57 ms
+      Avg:    25.02 ms
+      P50:    24.03 ms
+      P90:    28.26 ms
+      P99:    45.57 ms
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;36mSkipping our system (SWARM_COMPARISON_SYSTEM selects Swarm only)[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/100 (batch_size=5)... total=175.91 ms, per-file avg=35.18 ms
+    Iteration 2/100 (batch_size=5)... total=167.45 ms, per-file avg=33.48 ms
+    Iteration 3/100 (batch_size=5)... total=169.55 ms, per-file avg=33.91 ms
+    Iteration 4/100 (batch_size=5)... total=186.91 ms, per-file avg=37.38 ms
+    Iteration 5/100 (batch_size=5)... total=171.22 ms, per-file avg=34.24 ms
+    Iteration 6/100 (batch_size=5)... total=173.46 ms, per-file avg=34.69 ms
+    Iteration 7/100 (batch_size=5)... total=172.92 ms, per-file avg=34.58 ms
+    Iteration 8/100 (batch_size=5)... total=165.48 ms, per-file avg=33.09 ms
+    Iteration 9/100 (batch_size=5)... total=184.99 ms, per-file avg=36.99 ms
+    Iteration 10/100 (batch_size=5)... total=177.08 ms, per-file avg=35.41 ms
+    Iteration 11/100 (batch_size=5)... total=199.23 ms, per-file avg=39.84 ms
+    Iteration 12/100 (batch_size=5)... total=245.32 ms, per-file avg=49.06 ms
+    Iteration 13/100 (batch_size=5)... total=237.17 ms, per-file avg=47.43 ms
+    Iteration 14/100 (batch_size=5)... total=224.60 ms, per-file avg=44.92 ms
+    Iteration 15/100 (batch_size=5)... total=189.02 ms, per-file avg=37.80 ms
+    Iteration 16/100 (batch_size=5)... total=191.42 ms, per-file avg=38.28 ms
+    Iteration 17/100 (batch_size=5)... total=180.26 ms, per-file avg=36.05 ms
+    Iteration 18/100 (batch_size=5)... total=194.64 ms, per-file avg=38.92 ms
+    Iteration 19/100 (batch_size=5)... total=195.84 ms, per-file avg=39.16 ms
+    Iteration 20/100 (batch_size=5)... total=188.63 ms, per-file avg=37.72 ms
+    Iteration 21/100 (batch_size=5)... total=210.01 ms, per-file avg=42.00 ms
+    Iteration 22/100 (batch_size=5)... total=178.21 ms, per-file avg=35.64 ms
+    Iteration 23/100 (batch_size=5)... total=218.46 ms, per-file avg=43.69 ms
+    Iteration 24/100 (batch_size=5)... total=201.43 ms, per-file avg=40.28 ms
+    Iteration 25/100 (batch_size=5)... total=194.86 ms, per-file avg=38.97 ms
+    Iteration 26/100 (batch_size=5)... total=199.02 ms, per-file avg=39.80 ms
+    Iteration 27/100 (batch_size=5)... total=184.35 ms, per-file avg=36.86 ms
+    Iteration 28/100 (batch_size=5)... total=196.72 ms, per-file avg=39.34 ms
+    Iteration 29/100 (batch_size=5)... total=178.90 ms, per-file avg=35.77 ms
+    Iteration 30/100 (batch_size=5)... total=185.08 ms, per-file avg=37.01 ms
+    Iteration 31/100 (batch_size=5)... total=169.72 ms, per-file avg=33.94 ms
+    Iteration 32/100 (batch_size=5)... total=179.21 ms, per-file avg=35.84 ms
+    Iteration 33/100 (batch_size=5)... total=166.12 ms, per-file avg=33.22 ms
+    Iteration 34/100 (batch_size=5)... total=194.50 ms, per-file avg=38.90 ms
+    Iteration 35/100 (batch_size=5)... total=203.33 ms, per-file avg=40.66 ms
+    Iteration 36/100 (batch_size=5)... total=177.41 ms, per-file avg=35.48 ms
+    Iteration 37/100 (batch_size=5)... total=170.35 ms, per-file avg=34.07 ms
+    Iteration 38/100 (batch_size=5)... total=172.98 ms, per-file avg=34.59 ms
+    Iteration 39/100 (batch_size=5)... total=183.34 ms, per-file avg=36.66 ms
+    Iteration 40/100 (batch_size=5)... total=209.66 ms, per-file avg=41.93 ms
+    Iteration 41/100 (batch_size=5)... total=196.48 ms, per-file avg=39.29 ms
+    Iteration 42/100 (batch_size=5)... total=207.77 ms, per-file avg=41.55 ms
+    Iteration 43/100 (batch_size=5)... total=205.93 ms, per-file avg=41.18 ms
+    Iteration 44/100 (batch_size=5)... total=204.65 ms, per-file avg=40.92 ms
+    Iteration 45/100 (batch_size=5)... total=193.52 ms, per-file avg=38.70 ms
+    Iteration 46/100 (batch_size=5)... total=170.76 ms, per-file avg=34.15 ms
+    Iteration 47/100 (batch_size=5)... total=169.55 ms, per-file avg=33.90 ms
+    Iteration 48/100 (batch_size=5)... total=179.66 ms, per-file avg=35.93 ms
+    Iteration 49/100 (batch_size=5)... total=168.81 ms, per-file avg=33.76 ms
+    Iteration 50/100 (batch_size=5)... total=187.46 ms, per-file avg=37.49 ms
+    Iteration 51/100 (batch_size=5)... total=170.59 ms, per-file avg=34.11 ms
+    Iteration 52/100 (batch_size=5)... total=184.60 ms, per-file avg=36.92 ms
+    Iteration 53/100 (batch_size=5)... total=171.70 ms, per-file avg=34.34 ms
+    Iteration 54/100 (batch_size=5)... total=188.54 ms, per-file avg=37.70 ms
+    Iteration 55/100 (batch_size=5)... total=190.53 ms, per-file avg=38.10 ms
+    Iteration 56/100 (batch_size=5)... total=201.60 ms, per-file avg=40.32 ms
+    Iteration 57/100 (batch_size=5)... total=215.02 ms, per-file avg=43.00 ms
+    Iteration 58/100 (batch_size=5)... total=221.21 ms, per-file avg=44.24 ms
+    Iteration 59/100 (batch_size=5)... total=214.48 ms, per-file avg=42.89 ms
+    Iteration 60/100 (batch_size=5)... total=211.22 ms, per-file avg=42.24 ms
+    Iteration 61/100 (batch_size=5)... total=178.44 ms, per-file avg=35.68 ms
+    Iteration 62/100 (batch_size=5)... total=187.29 ms, per-file avg=37.45 ms
+    Iteration 63/100 (batch_size=5)... total=194.81 ms, per-file avg=38.96 ms
+    Iteration 64/100 (batch_size=5)... total=181.43 ms, per-file avg=36.28 ms
+    Iteration 65/100 (batch_size=5)... total=207.63 ms, per-file avg=41.52 ms
+    Iteration 66/100 (batch_size=5)... total=181.04 ms, per-file avg=36.20 ms
+    Iteration 67/100 (batch_size=5)... total=196.10 ms, per-file avg=39.22 ms
+    Iteration 68/100 (batch_size=5)... total=189.66 ms, per-file avg=37.93 ms
+    Iteration 69/100 (batch_size=5)... total=197.05 ms, per-file avg=39.41 ms
+    Iteration 70/100 (batch_size=5)... total=225.67 ms, per-file avg=45.13 ms
+    Iteration 71/100 (batch_size=5)... total=198.43 ms, per-file avg=39.68 ms
+    Iteration 72/100 (batch_size=5)... total=206.87 ms, per-file avg=41.37 ms
+    Iteration 73/100 (batch_size=5)... total=220.09 ms, per-file avg=44.01 ms
+    Iteration 74/100 (batch_size=5)... total=167.64 ms, per-file avg=33.52 ms
+    Iteration 75/100 (batch_size=5)... total=173.09 ms, per-file avg=34.61 ms
+    Iteration 76/100 (batch_size=5)... total=165.21 ms, per-file avg=33.04 ms
+    Iteration 77/100 (batch_size=5)... total=170.47 ms, per-file avg=34.09 ms
+    Iteration 78/100 (batch_size=5)... total=171.86 ms, per-file avg=34.37 ms
+    Iteration 79/100 (batch_size=5)... total=181.73 ms, per-file avg=36.34 ms
+    Iteration 80/100 (batch_size=5)... total=179.29 ms, per-file avg=35.85 ms
+    Iteration 81/100 (batch_size=5)... total=170.81 ms, per-file avg=34.16 ms
+    Iteration 82/100 (batch_size=5)... total=179.18 ms, per-file avg=35.83 ms
+    Iteration 83/100 (batch_size=5)... total=174.46 ms, per-file avg=34.89 ms
+    Iteration 84/100 (batch_size=5)... total=191.74 ms, per-file avg=38.34 ms
+    Iteration 85/100 (batch_size=5)... total=212.47 ms, per-file avg=42.49 ms
+    Iteration 86/100 (batch_size=5)... total=214.18 ms, per-file avg=42.83 ms
+    Iteration 87/100 (batch_size=5)... total=199.87 ms, per-file avg=39.97 ms
+    Iteration 88/100 (batch_size=5)... total=186.98 ms, per-file avg=37.39 ms
+    Iteration 89/100 (batch_size=5)... total=189.86 ms, per-file avg=37.97 ms
+    Iteration 90/100 (batch_size=5)... total=194.28 ms, per-file avg=38.85 ms
+    Iteration 91/100 (batch_size=5)... total=189.91 ms, per-file avg=37.98 ms
+    Iteration 92/100 (batch_size=5)... total=173.06 ms, per-file avg=34.61 ms
+    Iteration 93/100 (batch_size=5)... total=186.79 ms, per-file avg=37.35 ms
+    Iteration 94/100 (batch_size=5)... total=203.30 ms, per-file avg=40.66 ms
+    Iteration 95/100 (batch_size=5)... total=176.44 ms, per-file avg=35.28 ms
+    Iteration 96/100 (batch_size=5)... total=211.62 ms, per-file avg=42.32 ms
+    Iteration 97/100 (batch_size=5)... total=177.66 ms, per-file avg=35.53 ms
+    Iteration 98/100 (batch_size=5)... total=187.55 ms, per-file avg=37.51 ms
+    Iteration 99/100 (batch_size=5)... total=200.88 ms, per-file avg=40.17 ms
+    Iteration 100/100 (batch_size=5)... total=216.11 ms, per-file avg=43.22 ms
+    [0;34mNetwork bytes (swarm): 533829235[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;36mOur System: not run[0m
+    [0;32mSwarm:[0m
+      Min:    33.04 ms
+      Max:    49.06 ms
+      Avg:    38.05 ms
+      P50:    37.70 ms
+      P90:    42.89 ms
+      P99:    49.06 ms
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch5.csv
+Network bytes: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_network_bytes.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch5.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/upload_n100_batch5.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"

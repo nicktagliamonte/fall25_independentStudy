@@ -1,0 +1,13 @@
+[0;34mRepair Time Test (after node failure)[0m
+  Target: measure time until R=2 replicas restored after stopping one node
+
+[0;32mOur system: put, wait R, stop one replica node, measure repair time[0m
+  Key: 3be40edae7724c142ffde5f674f50af16045639481137fb7ebdac259d76054d2
+  [1;33mDid not reach R=2 before failure step, skipping repair[0m
+
+[1;33mSwarm: skipped (no OOB replication; benchmark our system only)[0m
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/repair_time_results.csv
+system,node_count,repair_time_s
+our_system,10,SKIP
+swarm,10,SKIP

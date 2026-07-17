@@ -1,0 +1,214 @@
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://[::]:9400
+Swarm API: 
+Iterations per size: 1
+Batch size: 1
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch1.csv
+
+Waiting for host control API http://127.0.0.1:9400/health (up to 120s)...
+[0;32mUsing direct API (127.0.0.1:9400) for fair latency measurement[0m
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;36mSwarm API check skipped (vn-IPFS-only run)[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... total=38.07 ms, per-file avg=38.06 ms hops=0
+    [0;34mNetwork bytes (our_system): 2967005[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    38.06 ms
+      Max:    38.06 ms
+      Avg:    38.06 ms
+      P50:    38.06 ms
+      P90:    38.06 ms
+      P99:    38.06 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... total=35.13 ms, per-file avg=35.12 ms hops=0
+    [0;34mNetwork bytes (our_system): 367914[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    35.12 ms
+      Max:    35.12 ms
+      Avg:    35.12 ms
+      P50:    35.12 ms
+      P90:    35.12 ms
+      P99:    35.12 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... total=46.85 ms, per-file avg=46.85 ms hops=0
+    [0;34mNetwork bytes (our_system): 1607064[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System:[0m
+      Min:    46.85 ms
+      Max:    46.85 ms
+      Avg:    46.85 ms
+      P50:    46.85 ms
+      P90:    46.85 ms
+      P99:    46.85 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... total=166.90 ms, per-file avg=166.89 ms hops=0
+    [0;34mNetwork bytes (our_system): 14353395[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System:[0m
+      Min:    166.89 ms
+      Max:    166.89 ms
+      Avg:    166.89 ms
+      P50:    166.89 ms
+      P90:    166.89 ms
+      P99:    166.89 ms
+    [0;36mSwarm: not run[0m
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch1.csv
+Network bytes: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_network_bytes.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch1.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch1.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://[::]:9400
+Swarm API: 
+Iterations per size: 1
+Batch size: 5
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch5.csv
+
+Waiting for host control API http://127.0.0.1:9400/health (up to 120s)...
+[0;32mUsing direct API (127.0.0.1:9400) for fair latency measurement[0m
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;36mSwarm API check skipped (vn-IPFS-only run)[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=5)... total=166.49 ms, per-file avg=33.29 ms hops=0
+    [0;34mNetwork bytes (our_system): 10561851[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    33.29 ms
+      Max:    33.29 ms
+      Avg:    33.29 ms
+      P50:    33.29 ms
+      P90:    33.29 ms
+      P99:    33.29 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=5)... total=170.67 ms, per-file avg=34.13 ms hops=0
+    [0;34mNetwork bytes (our_system): 1415560[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    34.13 ms
+      Max:    34.13 ms
+      Avg:    34.13 ms
+      P50:    34.13 ms
+      P90:    34.13 ms
+      P99:    34.13 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=5)... total=221.75 ms, per-file avg=44.34 ms hops=0
+    [0;34mNetwork bytes (our_system): 7589382[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System:[0m
+      Min:    44.34 ms
+      Max:    44.34 ms
+      Avg:    44.34 ms
+      P50:    44.34 ms
+      P90:    44.34 ms
+      P99:    44.34 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=5)... total=789.88 ms, per-file avg=157.97 ms hops=0
+    [0;34mNetwork bytes (our_system): 71488734[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System:[0m
+      Min:    157.97 ms
+      Max:    157.97 ms
+      Avg:    157.97 ms
+      P50:    157.97 ms
+      P90:    157.97 ms
+      P99:    157.97 ms
+    [0;36mSwarm: not run[0m
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch5.csv
+Network bytes: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_network_bytes.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch5.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/upload_n10_batch5.csv'); print(df.groupby(['system', 'payload_size'])['latency_ms'].describe())"

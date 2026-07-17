@@ -1,0 +1,563 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 10 | Iterations: 50
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_125006/lookup_complexity_results.csv
+
+  iteration 1/50: put...
+  iteration 1/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 2/50: put...
+  iteration 2/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 3/50: put...
+  iteration 3/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 4/50: put...
+  iteration 4/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 5/50: put...
+  iteration 5/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 6/50: put...
+  iteration 6/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 7/50: put...
+  iteration 7/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 8/50: put...
+  iteration 8/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 9/50: put...
+  iteration 9/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 10/50: put...
+  iteration 10/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 11/50: put...
+  iteration 11/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 12/50: put...
+  iteration 12/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 13/50: put...
+  iteration 13/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 14/50: put...
+  iteration 14/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 15/50: put...
+  iteration 15/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 16/50: put...
+  iteration 16/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 17/50: put...
+  iteration 17/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 18/50: put...
+  iteration 18/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 19/50: put...
+  iteration 19/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 20/50: put...
+  iteration 20/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 21/50: put...
+  iteration 21/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 22/50: put...
+  iteration 22/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 23/50: put...
+  iteration 23/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 24/50: put...
+  iteration 24/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 25/50: put...
+  iteration 25/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 26/50: put...
+  iteration 26/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 27/50: put...
+  iteration 27/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 28/50: put...
+  iteration 28/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 29/50: put...
+  iteration 29/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 30/50: put...
+  iteration 30/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 31/50: put...
+  iteration 31/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 32/50: put...
+  iteration 32/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 33/50: put...
+  iteration 33/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 34/50: put...
+  iteration 34/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 35/50: put...
+  iteration 35/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 36/50: put...
+  iteration 36/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 37/50: put...
+  iteration 37/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 38/50: put...
+  iteration 38/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 39/50: put...
+  iteration 39/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 40/50: put...
+  iteration 40/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 41/50: put...
+  iteration 41/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 42/50: put...
+  iteration 42/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 43/50: put...
+  iteration 43/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 44/50: put...
+  iteration 44/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 45/50: put...
+  iteration 45/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 46/50: put...
+  iteration 46/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 47/50: put...
+  iteration 47/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 48/50: put...
+  iteration 48/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 49/50: put...
+  iteration 49/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+  iteration 50/50: put...
+  iteration 50/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/lookup_complexity_test.sh: line 173: timeout: command not found
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_125006/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_latency_ms,lookup_type
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 50 | Iterations: 50
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_125006/lookup_complexity_results.csv
+
+  iteration 1/50: put...
+  iteration 1/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:32:40 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44299->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:32:48 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40813->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:32:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39453->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:33:09 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40943->172.20.0.10:4001: i/o timeout
+  iteration 2/50: put...
+  iteration 2/50: cold lookup-key...
+  iteration 3/50: put...
+  iteration 3/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:35:19 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46633->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:35:27 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36835->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:35:36 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38323->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:35:47 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33121->172.20.0.10:4001: i/o timeout
+  iteration 4/50: put...
+  iteration 4/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:35:53 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36719->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:36:00 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42055->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:36:10 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40817->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 17:36:21 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+  iteration 5/50: put...
+  iteration 5/50: cold lookup-key...

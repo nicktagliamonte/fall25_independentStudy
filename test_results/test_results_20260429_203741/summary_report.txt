@@ -1,0 +1,21 @@
+==========================================
+Swarm Comparison Test Summary Report
+==========================================
+Generated: Wed Apr 29 20:43:33 EDT 2026
+
+Test Configuration:
+  Node counts: 50 100
+  Payload sizes: 1024 10240 102400 1048576 bytes
+  Iterations per test: 100
+
+Upload Latency Test Results:
+----------------------------
+  Status: skipped (upload not in --tests-include).
+
+Download Latency Test Results:
+------------------------------
+  Status: skipped (download_warm_raw not in --tests-include).
+
+==========================================
+All results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260429_203741
+==========================================

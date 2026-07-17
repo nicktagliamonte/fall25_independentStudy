@@ -1,0 +1,13 @@
+Storage efficiency test: payload=65536 bytes, replication=1
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/storage_efficiency_results.csv
+
+[0;32mOur system...[0m
+  nodes=100 disk_delta=1588793 bytes efficiency_ratio=.0412
+
+[0;32mSwarm...[0m
+[0;31mSwarm upload failed[0m
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/storage_efficiency_results.csv
+system,payload_size,nodes,disk_bytes,efficiency_ratio
+our_system,65536,100,1588793,.0412
+swarm,65536,10,,

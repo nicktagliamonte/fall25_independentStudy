@@ -1,0 +1,5 @@
+system,node_count,payload_size,iteration,cache_mode,ttfb_ms,total_ms,lookup_type
+our_system,10,1024,1,warm,.264000,.309000,key
+our_system,10,10240,1,warm,.301000,.354000,key
+our_system,10,102400,1,warm,.314000,.665000,key
+our_system,10,1048576,1,warm,.438000,3.674000,key

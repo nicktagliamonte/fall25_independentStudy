@@ -1,0 +1,11 @@
+Routing overhead test: our=http://[::]:9400 swarm=http://127.0.0.1:8500
+  Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_165651/routing_overhead_results.csv
+
+[0;32mOur system (token_lookup)...[0m
+  put: 0 msgs (token_lookup), get: 1 msgs (token_lookup)
+[1;33mSkipping Swarm (vn-IPFS-only run)[0m
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_165651/routing_overhead_results.csv
+system,operation,message_count,overhead_type
+our_system,put,0,token_lookup
+our_system,get,1,token_lookup

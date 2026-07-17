@@ -33,14 +33,26 @@ import (
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
 
+// stringSlice implements flag.Value to support repeatable string flags
+// (e.g. "-listen" or "-seed" passed multiple times, each appended in order).
 type stringSlice []string
 
+// String implements flag.Value. It returns the Go-syntax representation of
+// the accumulated slice (via fmt.Sprint), primarily used by the flag package
+// for help/usage output and default-value display.
 func (s *stringSlice) String() string { return fmt.Sprint([]string(*s)) }
+
+// Set implements flag.Value. It is called once per occurrence of the flag on
+// the command line and appends v to the slice. It never returns a non-nil
+// error (any string value is accepted as-is).
 func (s *stringSlice) Set(v string) error {
 	*s = append(*s, v)
 	return nil
 }
 
+// printBanner writes the node's PeerID and each of its listen/advertised
+// addresses to stdout, one "PeerID: <id>" line followed by one "Addr: <a>"
+// line per address in addrs. Used by the "run" subcommand at startup.
 func printBanner(hID string, addrs []string) {
 	fmt.Println("PeerID:", hID)
 	for _, a := range addrs {
@@ -48,7 +60,21 @@ func printBanner(hID string, addrs []string) {
 	}
 }
 
-// bestPublicIPv4 returns the first non-loopback, non-private IPv4 found on the machine.
+// bestPublicIPv4 attempts to determine this machine's public-facing IPv4
+// address, for display purposes (printDerivedPublicAddrs) and as a fallback
+// host-IP source for the tuple-space client (newTupleSpaceClient). It takes
+// no parameters.
+//
+// It first enumerates local network interfaces (net.Interfaces) and returns
+// the first IPv4 address found that is up, not a loopback interface, not a
+// loopback/private/link-local address (RFC1918 and link-local ranges are
+// skipped). If no such local address is found, it falls back to
+// fetchPublicIPv4, which queries an external "what is my IP" service.
+//
+// Returns the string form of the discovered IPv4 address, or "" if neither
+// the local-interface scan nor the external fallback yields one (e.g. no
+// network access). This is a best-effort heuristic — it can be wrong on
+// machines with multiple interfaces, complex NAT, or IPv6-only egress.
 func bestPublicIPv4() string {
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
@@ -88,6 +114,18 @@ func bestPublicIPv4() string {
 // printDerivedPublicAddrs emits derived public addrs by replacing the /ip4 component
 // in the host addrs with the detected public IPv4. This does not change what the
 // node listens on; it only prints human-usable remote addresses.
+//
+// Parameters:
+//   - addrs: the node's own listen/advertised multiaddr strings (as from
+//     hostAddrsStrings). Only entries containing "/ip4/" are considered;
+//     others (e.g. pure /ip6 addrs) are silently skipped.
+//
+// If bestPublicIPv4 cannot determine a public IPv4 (returns ""), this
+// function does nothing. Otherwise, for each matching addr it prints a
+// "Public Addr: /ip4/<publicIP><remainder>" line to stdout, where
+// <remainder> is everything in the original addr after the IP component
+// (e.g. "/tcp/2893"). No value is returned; this is purely for operator
+// convenience when sharing a dialable address with peers behind NAT.
 func printDerivedPublicAddrs(addrs []string) {
 	pub := bestPublicIPv4()
 	if pub == "" {
@@ -110,7 +148,16 @@ func printDerivedPublicAddrs(addrs []string) {
 }
 
 // fetchPublicIPv4 contacts a simple web service to discover the public IPv4.
-// Uses short timeouts and falls back across providers.
+// Uses short timeouts and falls back across providers. Takes no parameters.
+//
+// It tries each endpoint in turn (currently api.ipify.org and
+// checkip.amazonaws.com, both of which return the caller's IPv4 as plain
+// text) with a 1.5-second HTTP client timeout, stopping at the first
+// endpoint that returns a parseable, non-private, non-loopback IPv4 address.
+//
+// Returns the discovered IPv4 as a string, or "" if every endpoint fails to
+// respond, times out, or returns an unusable address (network errors are
+// silently ignored and the next endpoint is tried).
 func fetchPublicIPv4() string {
 	client := &http.Client{Timeout: 1500 * time.Millisecond}
 	endpoints := []string{
@@ -136,6 +183,10 @@ func fetchPublicIPv4() string {
 	return ""
 }
 
+// hostAddrsStrings returns the string encoding of every multiaddr the given
+// libp2p host h is currently listening on/advertising (h.Addrs()), in the
+// same order. Used to populate handshake advertisements and CLI banner
+// output. Returns an empty (non-nil) slice if h has no addresses.
 func hostAddrsStrings(h host.Host) []string {
 	addrs := make([]string, 0, len(h.Addrs()))
 	for _, a := range h.Addrs() {
@@ -144,6 +195,10 @@ func hostAddrsStrings(h host.Host) []string {
 	return addrs
 }
 
+// minDuration returns the smaller of a and b (time.Duration comparison).
+// Used to cap a fetch/dial timeout so it never exceeds a hardcoded ceiling
+// (e.g. dialDur := minDuration(dur, 10*time.Second) in the commented-out
+// inline "get" flow).
 func minDuration(a, b time.Duration) time.Duration {
 	if a < b {
 		return a
@@ -151,12 +206,44 @@ func minDuration(a, b time.Duration) time.Duration {
 	return b
 }
 
+// dialWithTimeout attempts to connect host h to the peer described by info,
+// aborting the attempt if it does not complete within d. ctx is the parent
+// context; a child context with a d timeout is derived from it via
+// context.WithTimeout and always canceled before returning (deferred).
+// Returns the error from h.Connect, which is non-nil on timeout, refused
+// connection, unreachable address, or handshake/security-transport failure
+// at the libp2p layer; nil on a successful connection.
 func dialWithTimeout(ctx context.Context, h host.Host, info peer.AddrInfo, d time.Duration) error {
 	connectCtx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
 	return h.Connect(connectCtx, info)
 }
 
+// getHandshakePolicyFromEnv builds a myhost.HandshakePolicy for the inline
+// (non-"run", non-daemon) CLI subcommands ("connect", and the now-dead
+// inline branches of "put"/"get") from CLI/env-derived settings.
+//
+// Parameters:
+//   - require: if true, forces RequireCredential on the resulting policy
+//     regardless of pubs/token (mirrors Options.RequireToken /
+//     SNG40_ENV=true).
+//   - pubs: a comma-separated list of base64-standard-encoded 32-byte
+//     Ed25519 CA public keys (mirrors Options.CAPubKeysB64 /
+//     SNG40_CA_PUBS). Entries that fail to base64-decode or do not decode
+//     to exactly 32 bytes are silently skipped (unlike Options-based Start,
+//     this function does not error on a malformed entry).
+//   - token: the shared credential string (mirrors Options.Token /
+//     SNG40_TOKEN).
+//   - timeout: the handshake timeout to set on the returned policy.
+//
+// The base policy always sets MinAgentVersion to "sng40/0.1.0" and
+// ServicesAllow to all bits set (^uint64(0)). RequireCredential (with
+// AuthScheme "token-ed25519-v1") is enabled when require is true, or when
+// both at least one valid CA key was parsed from pubs AND token is
+// non-empty — matching the same "either flag, or both key+token" rule used
+// by Start for Options.RequireToken/CAPubKeysB64/Token.
+//
+// Returns the constructed myhost.HandshakePolicy; never errors.
 func getHandshakePolicyFromEnv(require bool, pubs string, token string, timeout time.Duration) myhost.HandshakePolicy {
 	var caPubs [][]byte
 	if pubs != "" {
@@ -177,7 +264,80 @@ func getHandshakePolicyFromEnv(require bool, pubs string, token string, timeout 
 	return policyBase
 }
 
-// Run executes the CLI behavior of the node and returns an error on failure.
+// Run executes the CLI behavior of the node binary. It reads os.Args
+// directly (os.Args[0] is the program name, os.Args[1] is the subcommand,
+// and each subcommand parses its own flag.FlagSet from os.Args[2:]), so it
+// is intended to be called once from main() and takes no parameters.
+//
+// Three environment variables configure the token-gated admission policy
+// for the inline (non-daemon) subcommands ("connect", and the dead inline
+// branches of "put"/"get"), via getHandshakePolicyFromEnv:
+//   - SNG40_ENV: if "true", forces RequireCredential on.
+//   - SNG40_TOKEN: the shared credential token.
+//   - SNG40_CA_PUBS: comma-separated base64 CA public keys.
+//
+// Subcommands (os.Args[1]):
+//   - "run": starts a long-running node. Supports "-daemon" to re-exec
+//     itself detached (Setsid) with the same flags translated back onto the
+//     child's argv and stdout/stderr redirected to a log file (either
+//     "-log" or a default under /tmp/fall25_node), returning immediately
+//     after spawning the child. In foreground mode, it constructs the host
+//     and storage stack (optionally persistent via "-key"/"-store"),
+//     installs the handshake responder/gate, starts the same three
+//     background loops as Start (pruning, dial-maintenance, gossip — here
+//     duplicated as an inline implementation rather than calling Start;
+//     see refactor note), loads bootstrap seeds from "-seed"/"-seed-file"/
+//     the SNG40_SEEDS env var, starts the control server and writes its
+//     address as JSON to the "-control" path (default
+//     /tmp/fall25_node/daemon.json) for other subcommands/processes to
+//     discover, prints the PeerID/address banner, and then blocks until the
+//     context is canceled (e.g. via the control server's /shutdown
+//     endpoint).
+//   - "put": submits a tuple-space PUT via a myhost.TupleSpaceClient
+//     (requires "-name" and one of "-data"/"-file"; talks to a TSH daemon
+//     at "-tsh", default 127.0.0.1:2890). NOTE: despite the "put" name,
+//     this no longer performs the P2P block-put behavior described in
+//     docs/FOR_NEXT_WEEK.txt's node CLI reference; the original inline
+//     libp2p/blockstore "put" implementation is present but commented out
+//     below (dead code) — see refactor notes.
+//   - "connect": dials a remote peer directly by "-addr"/"-peer" (bypassing
+//     the daemon unless "-daemon" is passed, in which case it POSTs to the
+//     running daemon's /connect endpoint instead), performs a handshake,
+//     and attempts a bounded suffix-sync if the remote's chain height is
+//     ahead of the local one.
+//   - "get": submits a tuple-space GET via TsRead (requires "-name"; despite
+//     the flag set being named "ts-read" this is the "get" case). Like
+//     "put", the original inline P2P content-fetch implementation is
+//     present but commented out (dead code).
+//   - "shutdown": reads the daemon's control address from "-control" and
+//     issues an HTTP GET to its /shutdown endpoint.
+//   - "restore": reads a manifest (a file of one-CID-per-line, or a single
+//     CID literal if the path does not exist as a file) and POSTs a restore
+//     job to the daemon's /restore endpoint (retrying up to 3 times with
+//     exponential backoff on submit failure), then polls
+//     /restore/status?id=<job> once per second (bounded by a 5-minute total
+//     poll timeout) until the job reports done, printing progress and a
+//     final /metrics snapshot.
+//   - "snapshot": GETs the daemon's /snapshot endpoint (with "-limit" and
+//     optional "-cursor" for pagination) and copies the response body
+//     verbatim to stdout.
+//   - "neighbors": GETs the daemon's /neighbors endpoint and copies the
+//     response body verbatim to stdout.
+//   - "keygen": generates (or loads, if one already exists at "-out") a
+//     persistent libp2p private key and prints the resulting PeerID.
+//   - "ts-get" / "ts-read": duplicate tuple-space GET/READ implementations
+//     (functionally identical to each other and to the "get" case above);
+//     see refactor notes about consolidating these three near-duplicate
+//     branches.
+//
+// Returns nil on success. Returns a non-nil error for: fewer than 2
+// os.Args (missing subcommand), an unrecognized subcommand, missing
+// required flags for a subcommand, failures parsing user-supplied
+// multiaddrs/peer IDs/durations/CIDs, I/O failures (reading files, HTTP
+// requests to a daemon), or propagated errors from the underlying
+// libp2p/storage/control layers. Most subcommands write human-readable
+// progress/results to stdout as a side effect regardless of the return
+// value.
 func Run() error {
 	if len(os.Args) < 2 {
 		return fmt.Errorf("usage: %s <run|put|connect|get> [flags]", os.Args[0])
@@ -1401,9 +1561,23 @@ func Run() error {
 	}
 }
 
-// staticContentRouter implements routing.ContentRouting and always returns
-// the connected provider peer for any queried CID.
-
+// newTupleSpaceClient constructs a myhost.TupleSpaceClient for talking to a
+// TSH (tuple-space handler) daemon, used by the "put"/"get"/"ts-get"/
+// "ts-read" CLI subcommands.
+//
+// Parameters:
+//   - tshAddr: the TSH daemon's "host:port" address to connect to.
+//   - appId: the application ID namespace to use for tuple operations.
+//
+// It determines this machine's IPv4 (via bestPublicIPv4, falling back to
+// "127.0.0.1" if that yields nothing) to use as a callback/identifying host
+// IP embedded in the client, encoding it as a big-endian uint32
+// (HostIP) for the TupleSpaceClient.
+//
+// Returns the constructed *myhost.TupleSpaceClient, or a non-nil error if
+// the determined IP string fails to parse as an IP (should not normally
+// happen given bestPublicIPv4's own validation) or is not an IPv4 address
+// (e.g. an IPv6-only result).
 func newTupleSpaceClient(tshAddr, appId string) (*myhost.TupleSpaceClient, error) {
 	// determine host IP for callback
 	ipStr := bestPublicIPv4()
@@ -1427,13 +1601,41 @@ func newTupleSpaceClient(tshAddr, appId string) (*myhost.TupleSpaceClient, error
 	}, nil
 }
 
+// staticContentRouter implements routing.ContentRouting and always returns
+// the connected provider peer for any queried CID.
+//
+// It is used wherever a caller already knows exactly which peer to fetch
+// content from (GetRawFrom in service.go, and the commented-out inline
+// "get" implementation in Run) and wants Bitswap to route all wants to that
+// single peer without doing real content discovery (which is out of scope
+// for this repo — routing/coordination is expected to live in the separate
+// SNG tuple-space system). It effectively turns off content routing in
+// favor of a fixed, single provider.
 type staticContentRouter struct {
+	// provider is the single peer (with its known addresses) returned for
+	// every FindProviders/FindProvidersAsync query, regardless of the CID
+	// requested.
 	provider peer.AddrInfo
 }
 
-func (s *staticContentRouter) Provide(ctx context.Context, c cid.Cid, b bool) error  { return nil }
+// Provide implements routing.ContentRouting.Provide as a no-op: this router
+// never announces content to a wider network (there is no DHT/routing
+// table to announce to). c and b (the "broadcast" flag) are ignored. Always
+// returns nil.
+func (s *staticContentRouter) Provide(ctx context.Context, c cid.Cid, b bool) error { return nil }
+
+// ProvideMany implements routing.ContentRouting's batch-provide extension as
+// a no-op, mirroring Provide. keys is ignored. Always returns nil.
 func (s *staticContentRouter) ProvideMany(ctx context.Context, keys []cid.Cid) error { return nil }
 
+// FindProvidersAsync implements routing.ContentRouting.FindProvidersAsync.
+// It ignores c and count and always yields exactly s.provider on the
+// returned channel (buffered, capacity 1), regardless of which CID was
+// queried — this router does not actually discover providers, it just
+// asserts a single fixed one. The channel is closed after the single send
+// (or immediately, without sending, if ctx is canceled first). The
+// goroutine that performs the send exits either after sending or when ctx
+// is done, so it never leaks.
 func (s *staticContentRouter) FindProvidersAsync(ctx context.Context, c cid.Cid, count int) <-chan peer.AddrInfo {
 	out := make(chan peer.AddrInfo, 1)
 	go func() {
@@ -1447,8 +1649,14 @@ func (s *staticContentRouter) FindProvidersAsync(ctx context.Context, c cid.Cid,
 	return out
 }
 
+// FindProviders implements routing.ContentRouting.FindProviders (the
+// synchronous variant). It ignores c and always returns a single-element
+// slice containing s.provider. The error return is always nil.
 func (s *staticContentRouter) FindProviders(ctx context.Context, c cid.Cid) ([]peer.AddrInfo, error) {
 	return []peer.AddrInfo{s.provider}, nil
 }
 
+// Ready implements routing.ContentRouting.Ready. It always reports true:
+// this router has no warm-up state and is usable immediately upon
+// construction.
 func (s *staticContentRouter) Ready() bool { return true }

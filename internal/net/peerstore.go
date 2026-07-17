@@ -19,40 +19,96 @@ import (
 )
 
 const (
-	peerstoreNS       = "/peers"
-	defaultStaleAge   = 24 * time.Hour
-	defaultMaxFail    = 8
+	// peerstoreNS is the datastore key prefix (namespace) under which all peer
+	// records are stored, keeping them separate from other data in the shared store.
+	peerstoreNS = "/peers"
+	// defaultStaleAge is the default age (since LastSeenUnix) after which a peer
+	// record is eligible for removal by Prune, unless overridden via SetPolicy.
+	defaultStaleAge = 24 * time.Hour
+	// defaultMaxFail is the default consecutive-failure threshold at/above which a
+	// peer is excluded from GetDialCandidates and eligible for removal by Prune,
+	// unless overridden via SetPolicy.
+	defaultMaxFail = 8
+	// defaultExpireNone is the zero value for PeerRecord.ExpireAtUnix, meaning "does
+	// not expire".
 	defaultExpireNone = int64(0)
 )
 
-// PeerRecord captures persistent metadata for a known peer.
+// PeerRecord captures persistent metadata for a known peer, as stored (JSON-encoded)
+// in the datastore and returned (as a value copy) by GetDialCandidates.
 type PeerRecord struct {
-	PeerID        string   `json:"peer_id"`
-	Addrs         []string `json:"addrs"`
-	Services      uint64   `json:"services"`
-	LastSeenUnix  int64    `json:"last_seen_unix"`
-	LastTriedUnix int64    `json:"last_tried_unix"`
-	LastSuccUnix  int64    `json:"last_succ_unix"`
-	FailureCount  int      `json:"failure_count"`
-	Source        string   `json:"source"`
-	Score         float64  `json:"score"`
-	ExpireAtUnix  int64    `json:"expire_at_unix"`
+	// PeerID is the string form (peer.ID.String()) of the peer's identity; also used
+	// (escaped via escapeKey) as the datastore key for this record.
+	PeerID string `json:"peer_id"`
+	// Addrs is the deduplicated set of known multiaddr strings for this peer,
+	// accumulated across calls to Upsert.
+	Addrs []string `json:"addrs"`
+	// Services is the most recently observed non-zero services bitmask advertised by
+	// this peer (see Upsert — a zero value passed to Upsert does not clear it).
+	Services uint64 `json:"services"`
+	// LastSeenUnix is the Unix timestamp of the most recent Upsert (or dial success,
+	// which also updates it) for this peer; 0 if never set.
+	LastSeenUnix int64 `json:"last_seen_unix"`
+	// LastTriedUnix is the Unix timestamp of the most recent dial attempt recorded via
+	// RecordDialAttempt or RecordDialFailure; 0 if never attempted.
+	LastTriedUnix int64 `json:"last_tried_unix"`
+	// LastSuccUnix is the Unix timestamp of the most recent successful dial recorded
+	// via RecordDialSuccess; 0 if never succeeded.
+	LastSuccUnix int64 `json:"last_succ_unix"`
+	// FailureCount is the number of consecutive dial failures since the last success;
+	// reset to 0 by RecordDialSuccess and incremented by RecordDialFailure.
+	FailureCount int `json:"failure_count"`
+	// Source is a free-form label describing how this peer was learned (e.g. "seed",
+	// "gossip", "handshake"); overwritten by Upsert whenever a non-empty source is
+	// passed.
+	Source string `json:"source"`
+	// Score is the most recently computed ranking score (see computeScoreLocked);
+	// recomputed and persisted on every mutating call. Note the persisted value
+	// reflects the last computation's wantServices argument (often 0), while
+	// GetDialCandidates recomputes a fresh, non-persisted score per call using its own
+	// wantServices.
+	Score float64 `json:"score"`
+	// ExpireAtUnix, if non-zero, is a Unix timestamp after which the record is treated
+	// as expired: excluded from GetDialCandidates and removed by Prune. 0 means "does
+	// not expire" (defaultExpireNone).
+	ExpireAtUnix int64 `json:"expire_at_unix"`
 }
 
-// PeerStore maintains an in-memory index backed by a datastore namespace.
+// PeerStore maintains an in-memory index of PeerRecord values backed by a namespaced
+// datastore for persistence. All exported methods are safe for concurrent use (guarded
+// by mu); the zero value is not usable — construct via NewPeerStore.
 type PeerStore struct {
-	mu   sync.RWMutex
-	ds   ds.Batching
-	nsp  ds.Batching
+	mu sync.RWMutex
+	// ds is the underlying (un-namespaced) datastore passed to NewPeerStore.
+	ds ds.Batching
+	// nsp is ds wrapped with the peerstoreNS namespace; all record reads/writes go
+	// through nsp so keys don't collide with other data sharing the same underlying
+	// datastore.
+	nsp ds.Batching
+	// byID is the in-memory index of peer records keyed by peer.ID.String(), kept in
+	// sync with nsp on every mutation.
 	byID map[string]*PeerRecord
 
 	// policy knobs
+	// staleAge is the age threshold used by Prune (see defaultStaleAge).
 	staleAge time.Duration
-	maxFail  int
+	// maxFail is the failure-count threshold used by GetDialCandidates (to exclude)
+	// and Prune (to remove); see defaultMaxFail.
+	maxFail int
+	// maxKnown is a soft cap on the number of distinct peers tracked; once reached,
+	// Upsert stops admitting brand-new peer IDs (existing ones can still be updated).
+	// 0 (or negative) disables the cap.
 	maxKnown int
 }
 
-// NewPeerStore constructs a PeerStore and loads existing records from ds under a private namespace.
+// NewPeerStore constructs a PeerStore backed by store, wrapping it in the peerstoreNS
+// namespace so records don't collide with other data kept in the same underlying
+// datastore. Default policy values are staleAge=24h (defaultStaleAge), maxFail=8
+// (defaultMaxFail), and maxKnown=5000; use SetPolicy/SetMaxKnown to override. All
+// existing records under the namespace are eagerly loaded into memory (via loadAll)
+// before returning. Returns a non-nil error if the initial load fails (e.g. datastore
+// query error or, per-record, propagates any query.Result.Error — malformed JSON for
+// an individual record is tolerated and simply skipped, not an error).
 func NewPeerStore(store ds.Batching) (*PeerStore, error) {
 	ns := dsnames.Wrap(store, ds.NewKey(peerstoreNS))
 	ps := &PeerStore{
@@ -69,7 +125,10 @@ func NewPeerStore(store ds.Batching) (*PeerStore, error) {
 	return ps, nil
 }
 
-// SetPolicy allows overriding defaults for pruning.
+// SetPolicy overrides the staleAge and maxFail thresholds used by GetDialCandidates
+// and Prune. staleAge is only applied if positive (values <= 0 are silently ignored
+// and leave the existing value unchanged); the same holds for maxFailures. Safe for
+// concurrent use.
 func (ps *PeerStore) SetPolicy(staleAge time.Duration, maxFailures int) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -81,14 +140,35 @@ func (ps *PeerStore) SetPolicy(staleAge time.Duration, maxFailures int) {
 	}
 }
 
-// SetMaxKnown sets a soft cap for the number of peers tracked.
+// SetMaxKnown sets the soft cap (maxKnown) on the number of distinct peers Upsert will
+// admit. Unlike SetPolicy's fields, n is applied unconditionally, including
+// non-positive values (which disable the cap per the Upsert check "ps.maxKnown > 0").
+// Safe for concurrent use.
 func (ps *PeerStore) SetMaxKnown(n int) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 	ps.maxKnown = n
 }
 
-// Upsert records a peer with optional services and source. Addrs are merged and deduplicated.
+// Upsert records or updates metadata for peer p:
+//   - if the maxKnown soft cap is reached and p is not already known, the call is a
+//     silent no-op (returns nil, nothing is written) — existing peers can still be
+//     updated past the cap;
+//   - addrs (multiaddr values) are merged into the existing address set for p and
+//     deduplicated by string representation (order is not preserved — merging is done
+//     via a map);
+//   - services, if non-zero, replaces the stored Services bitmask (a zero value leaves
+//     the previously stored value untouched, so callers cannot use Upsert to explicitly
+//     clear services back to 0);
+//   - source, if non-empty, replaces the stored Source label (empty leaves it
+//     unchanged);
+//   - LastSeenUnix is set to the current time;
+//   - the record's Score is recomputed (via computeScoreLocked with wantServices=0) and
+//     the record is persisted to the datastore.
+//
+// Returns a non-nil error only if persisting the updated record to the datastore
+// fails (via saveLocked); the in-memory index is updated regardless. Safe for
+// concurrent use.
 func (ps *PeerStore) Upsert(p peer.ID, addrs []ma.Multiaddr, services uint64, source string) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -132,7 +212,10 @@ func (ps *PeerStore) Upsert(p peer.ID, addrs []ma.Multiaddr, services uint64, so
 	return ps.saveLocked(rec)
 }
 
-// RecordDialAttempt notes a connection attempt to the peer.
+// RecordDialAttempt updates LastTriedUnix to the current time for peer p and
+// recomputes its Score (wantServices=0), then persists the record. Returns an error
+// ("unknown peer") if p has no existing record (Upsert must be called first); returns
+// a non-nil error if persisting the update fails. Safe for concurrent use.
 func (ps *PeerStore) RecordDialAttempt(p peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -145,7 +228,10 @@ func (ps *PeerStore) RecordDialAttempt(p peer.ID) error {
 	return ps.saveLocked(rec)
 }
 
-// RecordDialFailure increments failure counters and updates score.
+// RecordDialFailure updates LastTriedUnix to the current time, increments
+// FailureCount, recomputes Score (wantServices=0), and persists the record for peer p.
+// Returns an error ("unknown peer") if p has no existing record; returns a non-nil
+// error if persisting the update fails. Safe for concurrent use.
 func (ps *PeerStore) RecordDialFailure(p peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -159,7 +245,10 @@ func (ps *PeerStore) RecordDialFailure(p peer.ID) error {
 	return ps.saveLocked(rec)
 }
 
-// RecordDialSuccess resets failures, updates timestamps and score.
+// RecordDialSuccess updates LastSeenUnix and LastSuccUnix to the current time, resets
+// FailureCount to 0, recomputes Score (wantServices=0), and persists the record for
+// peer p. Returns an error ("unknown peer") if p has no existing record; returns a
+// non-nil error if persisting the update fails. Safe for concurrent use.
 func (ps *PeerStore) RecordDialSuccess(p peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -175,9 +264,28 @@ func (ps *PeerStore) RecordDialSuccess(p peer.ID) error {
 	return ps.saveLocked(rec)
 }
 
-// GetDialCandidates returns up to limit peer infos, sorted by score and recency.
-// wantServices is a bitmask; if non-zero, candidates with matching services rank higher.
-// exclude contains peer IDs to skip.
+// GetDialCandidates selects and ranks known peers as dial candidates.
+//
+// It takes a point-in-time snapshot of all records, recomputing each one's Score with
+// the given wantServices (a services bitmask; if non-zero, peers whose Services
+// overlaps it get a +100 boost — see computeScoreLocked); this recomputed score is
+// NOT persisted back to the datastore. Records are then filtered to drop:
+//   - expired records (ExpireAtUnix != 0 and <= now);
+//   - records at/above the maxFail failure threshold;
+//   - records whose PeerID fails to decode as a peer.ID (defensive/corrupt-data case);
+//   - records whose peer.ID is present (true) in the exclude map (exclude may be nil,
+//     meaning no exclusions).
+//
+// Remaining candidates are sorted descending by Score, breaking ties by (in order)
+// more recent LastSuccUnix, then more recent LastSeenUnix, then fewer FailureCount.
+// Up to limit candidates are returned (limit <= 0 or > available count means "return
+// all"); records whose Addrs fail to parse as multiaddrs are dropped from that entry's
+// AddrInfo silently.
+//
+// Returns two parallel slices: peer.AddrInfo values suitable for h.Connect, and the
+// corresponding PeerRecord snapshots (with the wantServices-adjusted Score) — index i
+// in each slice refers to the same peer. Safe for concurrent use (read-locked for the
+// snapshot phase only).
 func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude map[peer.ID]bool) ([]peer.AddrInfo, []PeerRecord) {
 	ps.mu.RLock()
 	// snapshot
@@ -247,7 +355,18 @@ func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude m
 	return infos, retMeta
 }
 
-// Prune removes peers that exceed failure limits or are stale.
+// Prune removes, from both the in-memory index and the underlying datastore, every
+// peer record that meets any of: FailureCount >= maxFail; LastSeenUnix is non-zero and
+// older than staleAge; or ExpireAtUnix is non-zero and has passed. Iteration order over
+// ps.byID (a Go map) is unspecified, but every matching record is visited regardless of
+// order.
+//
+// Returns the count of removed records and a non-nil error if a datastore delete
+// fails; on such a failure, Prune stops early (returns immediately) — records not yet
+// visited are left untouched, and removed reflects only records successfully deleted
+// before the error. Safe for concurrent use with the rest of PeerStore, but not
+// re-entrant with itself in a way that matters (mu.Lock excludes concurrent Prune
+// calls from interleaving).
 func (ps *PeerStore) Prune() (removed int, err error) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -265,7 +384,17 @@ func (ps *PeerStore) Prune() (removed int, err error) {
 	return removed, nil
 }
 
-// loadAll loads all peer records from the namespaced datastore.
+// loadAll queries every key under the namespaced datastore (ps.nsp) and populates
+// ps.byID from the results. It is called once, from NewPeerStore, before the store is
+// returned to the caller, so it does not itself take ps.mu.
+//
+// For each result: a query-level error (r.Error) aborts loadAll immediately with that
+// error; a record whose value fails to json.Unmarshal into a PeerRecord is skipped
+// (not an error); a record with an empty PeerID field has it derived from the
+// datastore key instead (via unescapeKey, reversing escapeKey's '/' -> '_' mapping),
+// which handles records that predate the PeerID field being added to the JSON schema.
+//
+// Returns nil on success, or the first query/result error encountered.
 func (ps *PeerStore) loadAll(ctx context.Context) error {
 	q, err := ps.nsp.Query(ctx, query.Query{Prefix: "/"})
 	if err != nil {
@@ -289,6 +418,10 @@ func (ps *PeerStore) loadAll(ctx context.Context) error {
 	return nil
 }
 
+// saveLocked JSON-marshals rec and writes it to the namespaced datastore under a key
+// derived from rec.PeerID (via escapeKey). Must be called with ps.mu already held (by
+// convention, all current callers hold the write lock). Returns a non-nil error if
+// marshaling or the datastore Put fails.
 func (ps *PeerStore) saveLocked(rec *PeerRecord) error {
 	b, err := json.Marshal(rec)
 	if err != nil {
@@ -298,8 +431,19 @@ func (ps *PeerStore) saveLocked(rec *PeerRecord) error {
 	return ps.nsp.Put(context.Background(), key, b)
 }
 
-// computeScoreLocked calculates a score from metadata. If wantServices is non-zero,
-// matching services receive a large boost.
+// computeScoreLocked computes a ranking score for rec, higher meaning a more desirable
+// dial candidate. Despite the name (mirroring the *Locked convention used by
+// saveLocked), this function does not itself read/write any PeerStore-protected state
+// (rec is passed by pointer and ps.mu is not touched) — the name simply documents that
+// it's only meant to be called while ps.mu is already held by the caller. Components:
+//   - +100 if wantServices is non-zero and rec.Services shares at least one bit with it;
+//   - up to +50 for a recent RecordDialSuccess, decaying linearly to 0 over 50 minutes
+//     (1 point lost per elapsed minute since LastSuccUnix);
+//   - up to +20 for a recent Upsert/sighting, decaying linearly to 0 over 200 minutes
+//     (1 point lost per elapsed 10-minute period since LastSeenUnix);
+//   - -5 per FailureCount.
+//
+// Returns the resulting float64 score (may be negative).
 func (ps *PeerStore) computeScoreLocked(rec *PeerRecord, wantServices uint64) float64 {
 	score := 0.0
 	// prefer service matches strongly
@@ -332,11 +476,21 @@ func (ps *PeerStore) computeScoreLocked(rec *PeerRecord, wantServices uint64) fl
 	return score
 }
 
+// escapeKey converts a peer ID string into a datastore-safe key by replacing every '/'
+// with '_', since datastore keys are path-like and a raw '/' in id would otherwise be
+// interpreted as a path separator. Note: standard peer.ID string encodings (base58btc
+// or multibase-prefixed) do not contain '/', so in practice this is a no-op; it exists
+// as a defensive normalization.
 func escapeKey(id string) string {
 	// datastore keys are path-like; ensure no '/' from peer IDs
 	return strings.ReplaceAll(id, "/", "_")
 }
 
+// unescapeKey reverses escapeKey by replacing every '_' with '/'. Note this is not a
+// safe general-purpose inverse: if a peer ID string ever legitimately contained '_'
+// (not the case for current peer.ID encodings), unescapeKey would incorrectly turn it
+// into '/'. It is only used by loadAll as a fallback to recover PeerID from the
+// datastore key for legacy records that predate the PeerID JSON field.
 func unescapeKey(k string) string {
 	return strings.ReplaceAll(k, "_", "/")
 }

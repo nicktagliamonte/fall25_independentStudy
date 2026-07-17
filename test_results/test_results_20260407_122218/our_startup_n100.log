@@ -1,0 +1,9 @@
+Starting 100 vn-IPFS Docker nodes...
+Wrote /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml (nodes 2..100, PLACEHOLDER_PEER_ID for start_vnipfs.sh to replace)
+Building Docker image once (bootstrap only; peers use image fall25_independentstudy-bootstrap:latest; COMPOSE_HTTP_TIMEOUT=86400s)...
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+time="2026-04-07T12:22:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image fall25_independentstudy-bootstrap:latest Building 
+Cannot connect to the Docker daemon at unix:///Users/garrett/.docker/run/docker.sock. Is the docker daemon running?
+
+ERROR: Docker build failed. Check /tmp/docker_build_vnipfs.log

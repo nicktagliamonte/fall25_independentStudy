@@ -1,0 +1,24 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 10 | Iterations: 1
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/lookup_complexity_results.csv
+
+  iteration 1/1: put...
+  iteration 1/1: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 23:27:00 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36183->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 23:27:08 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44095->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 23:27:17 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46575->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 23:27:28 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44151->172.20.0.10:4001: i/o timeout
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_latency_ms,lookup_type

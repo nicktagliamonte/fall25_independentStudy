@@ -1,0 +1,140 @@
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Download Latency Test
+==========================================
+Our System API: http://[::]:9400 (container: fall25-bootstrap)
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 1
+GET path: same node as upload (warm, raw stream mode for our system)
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/download_n10_warm_raw.csv
+
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;36mSwarm API check skipped (vn-IPFS-only run)[0m
+Getting provider info for our system...
+  Peer ID: 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq
+  Address: /ip4/172.20.0.10/tcp/4001
+
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: ddd3364d975ccbba...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 0.31 ms, Total: 0.35 ms hops=0
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    0.31 ms
+      Max:    0.31 ms
+      Avg:    0.31 ms
+      P50:    0.31 ms
+      P90:    0.31 ms
+      P99:    0.31 ms
+    [0;32mOur System (Total):[0m
+      Min:    0.35 ms
+      Max:    0.35 ms
+      Avg:    0.35 ms
+      P50:    0.35 ms
+      P90:    0.35 ms
+      P99:    0.35 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: 3453958465f71886...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 0.39 ms, Total: 0.44 ms hops=0
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    0.39 ms
+      Max:    0.39 ms
+      Avg:    0.38 ms
+      P50:    0.39 ms
+      P90:    0.39 ms
+      P99:    0.39 ms
+    [0;32mOur System (Total):[0m
+      Min:    0.44 ms
+      Max:    0.44 ms
+      Avg:    0.43 ms
+      P50:    0.44 ms
+      P90:    0.44 ms
+      P99:    0.44 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: edbe85ca7ca89204...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 0.31 ms, Total: 0.66 ms hops=0
+
+  [0;34mStatistics for 100KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    0.31 ms
+      Max:    0.31 ms
+      Avg:    0.31 ms
+      P50:    0.31 ms
+      P90:    0.31 ms
+      P99:    0.31 ms
+    [0;32mOur System (Total):[0m
+      Min:    0.66 ms
+      Max:    0.66 ms
+      Avg:    0.66 ms
+      P50:    0.66 ms
+      P90:    0.66 ms
+      P99:    0.66 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 1024KB (1048576 bytes)[0m
+  Generating test file...
+
+  [0;32mUploading to selected system(s)...[0m
+    Uploading to our system...
+    Uploaded key: 2a3cecc6913d96d9...
+  Waiting 2s before downloads...
+
+  [0;32mTesting our system downloads...[0m
+    Iteration 1/1... TTFB: 0.44 ms, Total: 3.67 ms hops=0
+
+  [0;34mStatistics for 1024KB:[0m
+    [0;32mOur System (TTFB):[0m
+      Min:    0.44 ms
+      Max:    0.44 ms
+      Avg:    0.43 ms
+      P50:    0.44 ms
+      P90:    0.44 ms
+      P99:    0.44 ms
+    [0;32mOur System (Total):[0m
+      Min:    3.67 ms
+      Max:    3.67 ms
+      Avg:    3.67 ms
+      P50:    3.67 ms
+      P90:    3.67 ms
+      P99:    3.67 ms
+    [0;36mSwarm: not run[0m
+
+==========================================
+Test Complete
+==========================================
+Results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/download_n10_warm_raw.csv
+
+To view results:
+  cat /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/download_n10_warm_raw.csv
+
+To analyze with Python:
+  python3 -c "import pandas as pd; df = pd.read_csv('/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/download_n10_warm_raw.csv'); print(df.groupby(['system', 'payload_size'])[['ttfb_ms', 'total_ms']].describe())"

@@ -1,0 +1,9 @@
+system,payload_size,batch_size,bytes_transferred
+our_system,1024,1,2967005
+our_system,10240,1,367914
+our_system,102400,1,1607064
+our_system,1048576,1,14353395
+our_system,1024,5,10561851
+our_system,10240,5,1415560
+our_system,102400,5,7589382
+our_system,1048576,5,71488734

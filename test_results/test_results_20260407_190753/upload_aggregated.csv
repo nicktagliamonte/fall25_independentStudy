@@ -1,0 +1,5 @@
+system,node_count,payload_size,batch_size,iteration,latency_ms,total_batch_ms
+our_system,10,1024,1,1,45.95,45.950000000
+swarm,10,1024,1,1,28.13,28.130000000
+our_system,10,10240,1,1,34.44,34.442000000
+swarm,10,10240,1,1,28.72,28.720000000

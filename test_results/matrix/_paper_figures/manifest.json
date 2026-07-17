@@ -1,0 +1,34 @@
+{
+  "matrix_root": "/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_042505",
+  "output_dir": "/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results/matrix/_paper_figures",
+  "iterations": 10,
+  "node_counts": [
+    10,
+    50,
+    100
+  ],
+  "exclude_storage_node_counts": [
+    10
+  ],
+  "comparative_tests": [
+    "download_warm",
+    "upload",
+    "concurrent",
+    "storage_efficiency"
+  ],
+  "vnipfs_only_tests": [
+    "lookup_complexity"
+  ],
+  "skipped_tests": [
+    "routing_overhead",
+    "repair_time",
+    "replication",
+    "replication_distribution"
+  ],
+  "figures": [
+    "fig01_download_warm_total_ms.png",
+    "fig02_download_warm_ttfb_ms.png",
+    "fig03_upload_latency_batch1_mean.png",
+    "fig04_concurrent_throughput.png"
+  ]
+}

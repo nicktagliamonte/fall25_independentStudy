@@ -23,7 +23,63 @@ import (
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
 
-// Start launches the node with the provided options and returns a Service.
+// Start launches an embedded node with the provided options and returns a
+// running Service, or an error if any stage of setup fails.
+//
+// Parameters:
+//   - parent: the parent context governing the node's lifetime. Start
+//     derives an internal cancelable context from it (via
+//     context.WithCancel); canceling parent (or calling the returned
+//     Service's Close) stops all of Start's background goroutines. Start
+//     itself does not block on parent — it returns once setup completes.
+//   - opts: configuration for the node; see Options for field-by-field
+//     semantics and defaulting. Start mutates its local copy of opts (value
+//     receiver) to apply defaults for ListenMultiaddrs, MinOutbound,
+//     PerIPDialLimit, and DialTimeout before using them; the caller's
+//     original Options value is not modified.
+//
+// Setup performed, in order (each failure closes any resources already
+// opened and returns a non-nil error, leaving no partially-started
+// goroutines behind):
+//  1. Apply defaults to unset Options fields.
+//  2. Create the libp2p host: using a persistent key at opts.KeyPath if set,
+//     else a deterministic key derived from opts.EphemeralSeed if set, else
+//     a fresh random identity.
+//  3. Create the storage stack: a persistent blockstore at opts.StorePath if
+//     set (with a null content router, since DHT-based routing is out of
+//     scope for this package), else an in-memory stack.
+//  4. Create the PeerStore over the same datastore as the storage stack, and
+//     a fresh NodeMetrics.
+//  5. Build the handshake admission policy (basePolicy) from
+//     opts.RequireToken/opts.Token/opts.CAPubKeysB64, decoding and
+//     validating each CA public key (must be 32 bytes); an invalid entry
+//     aborts startup with an error.
+//  6. Register the inbound handshake responder/gate (advertising current
+//     chain head/height and listen addrs) and a peer-sample provider used to
+//     answer WantPeerlist handshake requests from GetDialCandidates.
+//  7. Construct the *service and start three background goroutines tracked
+//     via its sync.WaitGroup: a peer-store pruning loop (every 5 minutes), a
+//     dial-maintenance loop (continuously tries to reach opts.MinOutbound
+//     outbound connections, respecting opts.PerIPDialLimit and
+//     opts.DialTimeout, with exponential-ish backoff per candidate's prior
+//     failure count capped at 5 minutes), and a gossip loop (every 2
+//     minutes, re-handshakes with connected peers to learn new peer
+//     addresses via HandshakeResult.Learned).
+//  8. Seed the PeerStore with opts.BootstrapPeers (deduplicated, parsed as
+//     p2p multiaddrs, skipping the local node's own ID or unparseable
+//     entries).
+//  9. Start the control-plane HTTP server (internal/control.Start), wiring
+//     its shutdown trigger to cancel the node's internal context.
+//
+// Returns:
+//   - Service: non-nil on success, ready for immediate use (Status, PutRaw,
+//     GetRawFrom, ListImmediatePeerIDs, RestoreFromManifest, Close).
+//   - error: non-nil if key loading, host creation, storage stack creation,
+//     PeerStore creation, CA public key validation, or control-server
+//     startup fails. On any such failure, resources already created in that
+//     call (host, stack/Bitswap) are closed and the internal context is
+//     canceled before returning, so the caller does not need to perform any
+//     cleanup on error.
 func Start(parent context.Context, opts Options) (Service, error) {
 	// Defaults
 	if len(opts.ListenMultiaddrs) == 0 {

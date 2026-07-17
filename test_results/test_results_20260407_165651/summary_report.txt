@@ -1,0 +1,15 @@
+==========================================
+Swarm Comparison Test Summary Report
+==========================================
+Generated: Tue Apr  7 17:40:14 EDT 2026
+
+Test Configuration:
+  Node counts: 50 100
+  Payload sizes: 1024 10240 102400 1048576 bytes
+  Iterations per test: 50
+
+Upload Latency Test Results:
+----------------------------
+
+[0;34mCleaning up containers...[0m
+  Cleanup complete

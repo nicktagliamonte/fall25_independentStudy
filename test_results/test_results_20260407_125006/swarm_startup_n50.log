@@ -1,0 +1,671 @@
+Starting 50 Swarm/Bee Docker nodes...
+verify_generated_ips: OK (/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml)
+Pre-pulling Swarm Dockerfile bases (best-effort; warms cache, reduces apk/git flakes)...
+1.14-alpine: Pulling from library/golang
+Digest: sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+Status: Image is up to date for golang:1.14-alpine
+docker.io/library/golang:1.14-alpine
+3.21: Pulling from library/alpine
+Digest: sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+Status: Image is up to date for alpine:3.21
+docker.io/library/alpine:3.21
+Building Swarm Docker image (DOCKER_BUILDKIT=1)...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.49kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#4 [auth] library/alpine:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/golang:1.14-alpine
+#5 DONE 0.2s
+
+#6 [internal] load metadata for docker.io/library/alpine:3.21
+#6 DONE 0.3s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [builder 1/7] FROM docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+#8 resolve docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1 0.0s done
+#8 DONE 0.0s
+
+#9 [stage-1 1/9] FROM docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+#9 resolve docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 0.0s done
+#9 DONE 0.0s
+
+#10 [internal] load build context
+#10 transferring context: 35B done
+#10 DONE 0.0s
+
+#11 [stage-1 3/9] RUN set -e;   for i in 1 2 3 4 5 6; do     if apk add --no-cache ca-certificates curl jq; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#11 CACHED
+
+#12 [stage-1 4/9] WORKDIR /app
+#12 CACHED
+
+#13 [stage-1 6/9] RUN chmod +x /app/swarm
+#13 CACHED
+
+#14 [builder 2/7] WORKDIR /build
+#14 CACHED
+
+#15 [builder 5/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#15 CACHED
+
+#16 [builder 4/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if apk add --no-cache git make gcc musl-dev linux-headers; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#16 CACHED
+
+#17 [stage-1 2/9] RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.edge.kernel.org/g' /etc/apk/repositories
+#17 CACHED
+
+#18 [builder 7/7] RUN make swarm
+#18 CACHED
+
+#19 [stage-1 7/9] RUN mkdir -p /app/data /app/logs
+#19 CACHED
+
+#20 [builder 3/7] RUN sed -i 's/dl-cdn.alpinelinux.org/dl-5.alpinelinux.org/g' /etc/apk/repositories
+#20 CACHED
+
+#21 [builder 6/7] WORKDIR /build/swarm
+#21 CACHED
+
+#22 [stage-1 5/9] COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
+#22 CACHED
+
+#23 [stage-1 8/9] COPY entrypoint.sh /app/entrypoint.sh
+#23 CACHED
+
+#24 [stage-1 9/9] RUN chmod +x /app/entrypoint.sh
+#24 CACHED
+
+#25 exporting to image
+#25 exporting layers done
+#25 exporting manifest sha256:2c028a56cd0ae9d5ddd3e8c9d52fab52cf40dd31cc3d0fb126638b69e8f4cef1 done
+#25 exporting config sha256:b6ad2189581f948d7b1a26a9efdadec1c3007010ceb1c850e9fb05508e1f3880 done
+#25 exporting attestation manifest sha256:08021d2ab75d6fe70cc8114e2cfbe6989a84f8494b857c5ecbc8b57959d32012 done
+#25 exporting manifest list sha256:0f927037dc4c4c487c21db869907e6c861759bacf654727aec22ffb4c46d66b4 done
+#25 naming to docker.io/library/swarm-node:latest done
+#25 unpacking to docker.io/library/swarm-node:latest done
+#25 DONE 0.0s
+Starting bootstrap node...
+time="2026-04-07T13:12:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:12:51-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:12:51-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Recreate 
+ Container swarm-bootstrap Recreated 
+ Container swarm-bootstrap Starting 
+ Container swarm-bootstrap Started 
+Waiting for bootstrap node to be ready...
+  Attempt 1/30...
+Bootstrap node is ready!
+Bootnode enode: enode://9aa5c39ed1fc86e16c00a2afb9521d266802496125ff52f57392701f4e652f49a1ab04e1aea647ab76d3b636e9505beebeda6672d8433f95fd929070f1208e10@172.20.0.200:30399
+Starting 49 peer nodes...
+time="2026-04-07T13:12:54-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:12:54-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:12:54-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node1 Recreate 
+ Container swarm-node1 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node1 Starting 
+ Container swarm-node1 Started 
+time="2026-04-07T13:12:57-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:12:57-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:12:57-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node2 Recreate 
+ Container swarm-node2 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node2 Starting 
+ Container swarm-node2 Started 
+time="2026-04-07T13:12:58-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:12:58-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:12:58-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node3 Recreate 
+ Container swarm-node3 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node3 Starting 
+ Container swarm-node3 Started 
+time="2026-04-07T13:12:59-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:00-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:00-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node4 Recreate 
+ Container swarm-node4 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node4 Starting 
+ Container swarm-node4 Started 
+time="2026-04-07T13:13:01-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:01-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:01-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node5 Recreate 
+ Container swarm-node5 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node5 Starting 
+ Container swarm-node5 Started 
+time="2026-04-07T13:13:02-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:02-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:02-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node6 Recreate 
+ Container swarm-node6 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node6 Starting 
+ Container swarm-node6 Started 
+time="2026-04-07T13:13:03-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:03-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:03-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node7 Recreate 
+ Container swarm-node7 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node7 Starting 
+ Container swarm-node7 Started 
+time="2026-04-07T13:13:04-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:04-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:04-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node8 Recreate 
+ Container swarm-node8 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node8 Starting 
+ Container swarm-node8 Started 
+time="2026-04-07T13:13:05-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:05-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:05-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node9 Recreate 
+ Container swarm-node9 Recreated 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node9 Starting 
+ Container swarm-node9 Started 
+time="2026-04-07T13:13:07-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:07-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:07-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node10 Creating 
+ Container swarm-node10 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node10 Starting 
+ Container swarm-node10 Started 
+time="2026-04-07T13:13:08-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:08-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:08-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node11 Creating 
+ Container swarm-node11 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node11 Starting 
+ Container swarm-node11 Started 
+time="2026-04-07T13:13:09-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:09-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:09-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node12 Creating 
+ Container swarm-node12 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node12 Starting 
+ Container swarm-node12 Started 
+time="2026-04-07T13:13:10-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:10-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:10-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node13 Creating 
+ Container swarm-node13 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node13 Starting 
+ Container swarm-node13 Started 
+time="2026-04-07T13:13:11-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:11-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:11-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node14 Creating 
+ Container swarm-node14 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node14 Starting 
+ Container swarm-node14 Started 
+time="2026-04-07T13:13:12-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:12-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:12-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node15 Creating 
+ Container swarm-node15 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node15 Starting 
+ Container swarm-node15 Started 
+time="2026-04-07T13:13:13-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:13-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:13-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node16 Creating 
+ Container swarm-node16 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node16 Starting 
+ Container swarm-node16 Started 
+time="2026-04-07T13:13:14-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:14-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:14-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node17 Creating 
+ Container swarm-node17 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node17 Starting 
+ Container swarm-node17 Started 
+time="2026-04-07T13:13:15-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:15-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:15-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node18 Creating 
+ Container swarm-node18 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node18 Starting 
+ Container swarm-node18 Started 
+time="2026-04-07T13:13:16-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:16-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:16-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node19 Creating 
+ Container swarm-node19 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node19 Starting 
+ Container swarm-node19 Started 
+time="2026-04-07T13:13:17-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:17-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:17-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node20 Creating 
+ Container swarm-node20 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node20 Starting 
+ Container swarm-node20 Started 
+  Started swarm-node20...
+time="2026-04-07T13:13:18-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:18-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:18-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node21 Creating 
+ Container swarm-node21 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node21 Starting 
+ Container swarm-node21 Started 
+time="2026-04-07T13:13:19-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:19-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:19-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node22 Creating 
+ Container swarm-node22 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node22 Starting 
+ Container swarm-node22 Started 
+time="2026-04-07T13:13:20-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:20-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:21-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node23 Creating 
+ Container swarm-node23 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node23 Starting 
+ Container swarm-node23 Started 
+time="2026-04-07T13:13:21-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:22-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:22-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node24 Creating 
+ Container swarm-node24 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node24 Starting 
+ Container swarm-node24 Started 
+time="2026-04-07T13:13:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:23-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:23-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node25 Creating 
+ Container swarm-node25 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node25 Starting 
+ Container swarm-node25 Started 
+time="2026-04-07T13:13:24-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:24-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:24-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node26 Creating 
+ Container swarm-node26 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node26 Starting 
+ Container swarm-node26 Started 
+time="2026-04-07T13:13:25-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:25-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:25-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node27 Creating 
+ Container swarm-node27 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node27 Starting 
+ Container swarm-node27 Started 
+time="2026-04-07T13:13:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:26-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:26-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node28 Creating 
+ Container swarm-node28 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node28 Starting 
+ Container swarm-node28 Started 
+time="2026-04-07T13:13:27-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:27-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:27-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node29 Creating 
+ Container swarm-node29 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node29 Starting 
+ Container swarm-node29 Started 
+time="2026-04-07T13:13:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:28-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:29-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node30 Creating 
+ Container swarm-node30 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node30 Starting 
+ Container swarm-node30 Started 
+time="2026-04-07T13:13:30-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:30-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:30-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node31 Creating 
+ Container swarm-node31 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node31 Starting 
+ Container swarm-node31 Started 
+time="2026-04-07T13:13:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:31-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:31-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node32 Creating 
+ Container swarm-node32 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node32 Starting 
+ Container swarm-node32 Started 
+time="2026-04-07T13:13:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:32-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:32-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node33 Creating 
+ Container swarm-node33 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node33 Starting 
+ Container swarm-node33 Started 
+time="2026-04-07T13:13:33-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:33-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:33-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node34 Creating 
+ Container swarm-node34 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node34 Starting 
+ Container swarm-node34 Started 
+time="2026-04-07T13:13:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:34-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:34-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node35 Creating 
+ Container swarm-node35 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node35 Starting 
+ Container swarm-node35 Started 
+time="2026-04-07T13:13:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:35-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:36-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node36 Creating 
+ Container swarm-node36 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node36 Starting 
+ Container swarm-node36 Started 
+time="2026-04-07T13:13:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:37-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:37-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node37 Creating 
+ Container swarm-node37 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node37 Starting 
+ Container swarm-node37 Started 
+time="2026-04-07T13:13:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:38-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:38-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node38 Creating 
+ Container swarm-node38 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node38 Starting 
+ Container swarm-node38 Started 
+time="2026-04-07T13:13:39-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:39-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:39-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node39 Creating 
+ Container swarm-node39 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node39 Starting 
+ Container swarm-node39 Started 
+time="2026-04-07T13:13:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:40-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:40-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node40 Creating 
+ Container swarm-node40 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node40 Starting 
+ Container swarm-node40 Started 
+  Started swarm-node40...
+time="2026-04-07T13:13:41-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:41-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:41-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node41 Creating 
+ Container swarm-node41 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node41 Starting 
+ Container swarm-node41 Started 
+time="2026-04-07T13:13:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:43-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:43-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node42 Creating 
+ Container swarm-node42 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node42 Starting 
+ Container swarm-node42 Started 
+time="2026-04-07T13:13:44-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:44-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:44-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node43 Creating 
+ Container swarm-node43 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node43 Starting 
+ Container swarm-node43 Started 
+time="2026-04-07T13:13:45-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:45-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:45-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node44 Creating 
+ Container swarm-node44 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node44 Starting 
+ Container swarm-node44 Started 
+time="2026-04-07T13:13:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:46-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:46-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node45 Creating 
+ Container swarm-node45 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node45 Starting 
+ Container swarm-node45 Started 
+time="2026-04-07T13:13:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:47-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:48-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node46 Creating 
+ Container swarm-node46 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node46 Starting 
+ Container swarm-node46 Started 
+time="2026-04-07T13:13:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:49-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:49-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node47 Creating 
+ Container swarm-node47 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node47 Starting 
+ Container swarm-node47 Started 
+time="2026-04-07T13:13:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:50-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:50-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node48 Creating 
+ Container swarm-node48 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node48 Starting 
+ Container swarm-node48 Started 
+time="2026-04-07T13:13:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T13:13:51-04:00" level=warning msg="No services to build"
+time="2026-04-07T13:13:51-04:00" level=warning msg="Found orphan containers ([fall25-node50 fall25-node49 fall25-node48 fall25-node47 fall25-node46 fall25-node45 fall25-node44 fall25-node43 fall25-node42 fall25-node41 fall25-node40 fall25-node39 fall25-node38 fall25-node37 fall25-node36 fall25-node35 fall25-node34 fall25-node33 fall25-node32 fall25-node31 fall25-node30 fall25-node29 fall25-node28 fall25-node27 fall25-node26 fall25-node25 fall25-node24 fall25-node23 fall25-node22 fall25-node21 fall25-node20 fall25-node19 fall25-node18 fall25-node17 fall25-node16 fall25-node15 fall25-node14 fall25-node13 fall25-node12 fall25-node11 fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node49 Creating 
+ Container swarm-node49 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node49 Starting 
+ Container swarm-node49 Started 
+Waiting for all nodes (up to 69 attempts)...
+All nodes are ready!
+
+==========================================
+Swarm/Bee cluster started successfully!
+==========================================
+Bootstrap API: http://172.20.0.200:8500
+Bootstrap Peer ID: 9aa5c39ed1fc86e16c00a2afb9521d266802496125ff52f57392701f4e652f49a1ab04e1aea647ab76d3b636e9505beebeda6672d8433f95fd929070f1208e10
+
+Node addresses:
+  swarm-bootstrap: http://172.20.0.200:8500
+  swarm-node1: http://172.20.0.201:8500
+  swarm-node2: http://172.20.0.202:8500
+  swarm-node3: http://172.20.0.203:8500
+  swarm-node4: http://172.20.0.204:8500
+  swarm-node5: http://172.20.0.205:8500
+  swarm-node6: http://172.20.0.206:8500
+  swarm-node7: http://172.20.0.207:8500
+  swarm-node8: http://172.20.0.208:8500
+  swarm-node9: http://172.20.0.209:8500
+  swarm-node10: http://172.20.0.210:8500
+  swarm-node11: http://172.20.0.211:8500
+  swarm-node12: http://172.20.0.212:8500
+  swarm-node13: http://172.20.0.213:8500
+  swarm-node14: http://172.20.0.214:8500
+  swarm-node15: http://172.20.0.215:8500
+  swarm-node16: http://172.20.0.216:8500
+  swarm-node17: http://172.20.0.217:8500
+  swarm-node18: http://172.20.0.218:8500
+  swarm-node19: http://172.20.0.219:8500
+  swarm-node20: http://172.20.0.220:8500
+  swarm-node21: http://172.20.0.221:8500
+  swarm-node22: http://172.20.0.222:8500
+  swarm-node23: http://172.20.0.223:8500
+  swarm-node24: http://172.20.0.224:8500
+  swarm-node25: http://172.20.0.225:8500
+  swarm-node26: http://172.20.0.226:8500
+  swarm-node27: http://172.20.0.227:8500
+  swarm-node28: http://172.20.0.228:8500
+  swarm-node29: http://172.20.0.229:8500
+  swarm-node30: http://172.20.0.230:8500
+  swarm-node31: http://172.20.0.231:8500
+  swarm-node32: http://172.20.0.232:8500
+  swarm-node33: http://172.20.0.233:8500
+  swarm-node34: http://172.20.0.234:8500
+  swarm-node35: http://172.20.0.235:8500
+  swarm-node36: http://172.20.0.236:8500
+  swarm-node37: http://172.20.0.237:8500
+  swarm-node38: http://172.20.0.238:8500
+  swarm-node39: http://172.20.0.239:8500
+  swarm-node40: http://172.20.0.240:8500
+  swarm-node41: http://172.20.0.241:8500
+  swarm-node42: http://172.20.0.242:8500
+  swarm-node43: http://172.20.0.243:8500
+  swarm-node44: http://172.20.0.244:8500
+  swarm-node45: http://172.20.0.245:8500
+  swarm-node46: http://172.20.0.246:8500
+  swarm-node47: http://172.20.0.247:8500
+  swarm-node48: http://172.20.0.248:8500
+  swarm-node49: http://172.20.0.249:8500
+
+To check status: docker-compose -f docker-compose.swarm.yml ps
+To view logs: docker-compose -f docker-compose.swarm.yml logs -f
+To stop: docker-compose -f docker-compose.swarm.yml down
+

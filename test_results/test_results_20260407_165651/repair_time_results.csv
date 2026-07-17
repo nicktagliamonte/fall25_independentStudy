@@ -1,0 +1,5 @@
+system,node_count,repair_time_s
+our_system,50,SKIP
+swarm,50,SKIP
+our_system,100,SKIP
+swarm,100,SKIP

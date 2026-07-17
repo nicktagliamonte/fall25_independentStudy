@@ -1,0 +1,9 @@
+Storage efficiency test: payload=65536 bytes, replication=1
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_132233/storage_efficiency_results.csv
+
+[0;32mOur system...[0m
+  nodes=50 disk_delta=776397 bytes efficiency_ratio=.0844
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_132233/storage_efficiency_results.csv
+system,payload_size,nodes,disk_bytes,efficiency_ratio
+our_system,65536,50,776397,.0844

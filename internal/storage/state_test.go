@@ -16,6 +16,13 @@ import (
 	basicnode "github.com/ipld/go-ipld-prime/node/basicnode"
 )
 
+// TestSyncSuffix_EmptyCatchesUp verifies the "fresh node" path of
+// SyncSuffix: starting from a completely empty local datastore (head/height
+// keys deleted after building a 2-event remote chain via AppendPeerAdded),
+// syncing against the remote head at height 2 should apply both events and
+// leave the local head/height equal to the remote's, since an undefined
+// local head is treated as trivially rooted (foundAncestor starts true in
+// SyncSuffix).
 func TestSyncSuffix_EmptyCatchesUp(t *testing.T) {
 	ctx := context.Background()
 	mem := dsmem.MutexWrap(ds.NewMapDatastore())
@@ -47,6 +54,15 @@ func TestSyncSuffix_EmptyCatchesUp(t *testing.T) {
 	}
 }
 
+// TestSyncSuffix_CommonAncestor verifies the "partial sync" path: the local
+// chain already has A1 -> A2 as its head (via two real AppendPeerAdded
+// calls), and a remote block A3 is hand-constructed (bypassing
+// AppendPeerAdded, building the DAG-CBOR map directly with dagcbor.Encode
+// and a manually computed CIDv1/dag-cbor/sha2-256 CID) whose "prev" field
+// points at a2. Syncing against remoteHead=A3/remoteHeight=3 should walk
+// back exactly one step, recognize a2 as the local head (common ancestor),
+// and apply exactly 1 new event (A3), advancing local head to A3 and height
+// to 3.
 func TestSyncSuffix_CommonAncestor(t *testing.T) {
 	ctx := context.Background()
 	mem := dsmem.MutexWrap(ds.NewMapDatastore())
@@ -97,6 +113,15 @@ func TestSyncSuffix_CommonAncestor(t *testing.T) {
 	}
 }
 
+// TestSyncSuffix_LyingHead is the negative/security-relevant case: the
+// local chain has one real event L1, and a completely disconnected event
+// block (peer "U1", no "prev" field at all — root of its own unrelated
+// chain) is stored directly in the mock blockservice. Syncing against that
+// block as remoteHead (claiming remoteHeight=2, exceeding local height 1)
+// must fail with an error, since the backward walk from it can never reach
+// local head L1 within the given MaxDepth (2) — this guards against a peer
+// lying about (or genuinely diverging on) chain history being able to
+// silently splice an unrelated chain onto local state.
 func TestSyncSuffix_LyingHead(t *testing.T) {
 	ctx := context.Background()
 	mem := dsmem.MutexWrap(ds.NewMapDatastore())
@@ -138,8 +163,15 @@ func TestSyncSuffix_LyingHead(t *testing.T) {
 	}
 }
 
+// memBsvc is a minimal in-memory implementation of bserv.BlockService used
+// only in tests to avoid pulling in a real Bitswap/network stack. It is
+// intentionally not safe for concurrent use (no locking around m) — fine
+// for these sequential tests, but not a general-purpose substitute.
 type memBsvc struct{ m map[string]blocks.Block }
 
+// AddBlock stores b in the in-memory map, keyed by its CID's string form.
+// Lazily initializes the map on first use. Always returns nil (storage
+// never fails in this test double).
 func (m *memBsvc) AddBlock(ctx context.Context, b blocks.Block) error {
 	if m.m == nil {
 		m.m = make(map[string]blocks.Block)
@@ -147,6 +179,11 @@ func (m *memBsvc) AddBlock(ctx context.Context, b blocks.Block) error {
 	m.m[b.Cid().String()] = b
 	return nil
 }
+
+// GetBlock looks up c in the in-memory map. Returns
+// bstore.ErrHashMismatch (repurposed here simply as a generic "not found"
+// sentinel, not because of an actual hash mismatch) if the map is
+// uninitialized or c is not present.
 func (m *memBsvc) GetBlock(ctx context.Context, c cid.Cid) (blocks.Block, error) {
 	if m.m == nil {
 		return nil, bstore.ErrHashMismatch
@@ -156,6 +193,10 @@ func (m *memBsvc) GetBlock(ctx context.Context, c cid.Cid) (blocks.Block, error)
 	}
 	return nil, bstore.ErrHashMismatch
 }
+
+// AddBlocks calls AddBlock for each block in blks sequentially, returning
+// the first error encountered (if any); since AddBlock never errors here,
+// this always returns nil in practice.
 func (m *memBsvc) AddBlocks(ctx context.Context, blks []blocks.Block) error {
 	for _, b := range blks {
 		if err := m.AddBlock(ctx, b); err != nil {
@@ -164,6 +205,12 @@ func (m *memBsvc) AddBlocks(ctx context.Context, blks []blocks.Block) error {
 	}
 	return nil
 }
+
+// GetBlocks fetches each key in ks via GetBlock and streams found blocks
+// on the returned channel from a background goroutine; the channel is
+// buffered to len(ks) and closed once all keys have been attempted. Blocks
+// that fail to fetch (not present) are silently omitted rather than
+// producing an error on the channel.
 func (m *memBsvc) GetBlocks(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 	out := make(chan blocks.Block, len(ks))
 	go func() {
@@ -176,9 +223,24 @@ func (m *memBsvc) GetBlocks(ctx context.Context, ks []cid.Cid) <-chan blocks.Blo
 	}()
 	return out
 }
-func (m *memBsvc) Close() error                  { return nil }
+
+// Close is a no-op satisfying the bserv.BlockService interface; always
+// returns nil.
+func (m *memBsvc) Close() error { return nil }
+
+// Blockstore returns a fresh, empty in-memory blockstore on every call —
+// it is NOT backed by memBsvc's own m map, so it does not reflect blocks
+// added via AddBlock. Only present to satisfy the bserv.BlockService
+// interface; tests do not rely on this method's contents.
 func (m *memBsvc) Blockstore() bstore.Blockstore { return bstore.NewBlockstore(ds.NewMapDatastore()) }
-func (m *memBsvc) Exchange() exch.Interface      { return nil }
+
+// Exchange always returns nil, satisfying the bserv.BlockService interface
+// without providing a real exchange (Bitswap) implementation.
+func (m *memBsvc) Exchange() exch.Interface { return nil }
+
+// DeleteBlock removes c from the in-memory map if present. Returns nil
+// whether or not the map was initialized or c was present (deleting an
+// absent key is a no-op, not an error).
 func (m *memBsvc) DeleteBlock(ctx context.Context, c cid.Cid) error {
 	if m.m == nil {
 		return nil

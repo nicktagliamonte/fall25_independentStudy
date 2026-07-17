@@ -1,0 +1,164 @@
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://[::]:9400
+Swarm API: 
+Iterations per size: 10
+Batch size: 1
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260331_132053/upload_n200_batch1.csv
+
+Waiting for host control API http://127.0.0.1:9400/health (up to 120s)...
+[0;32mUsing direct API (127.0.0.1:9400) for fair latency measurement[0m
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;36mSwarm API check skipped (vn-IPFS-only run)[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/10 (batch_size=1)... total=42.64 ms, per-file avg=42.64 ms hops=0
+    Iteration 2/10 (batch_size=1)... total=38.91 ms, per-file avg=38.91 ms hops=0
+    Iteration 3/10 (batch_size=1)... total=37.24 ms, per-file avg=37.24 ms hops=0
+    Iteration 4/10 (batch_size=1)... total=40.08 ms, per-file avg=40.08 ms hops=0
+    Iteration 5/10 (batch_size=1)... total=37.92 ms, per-file avg=37.91 ms hops=0
+    Iteration 6/10 (batch_size=1)... total=38.12 ms, per-file avg=38.12 ms hops=0
+    Iteration 7/10 (batch_size=1)... total=40.06 ms, per-file avg=40.05 ms hops=0
+    Iteration 8/10 (batch_size=1)... total=40.08 ms, per-file avg=40.08 ms hops=0
+    Iteration 9/10 (batch_size=1)... total=40.06 ms, per-file avg=40.05 ms hops=0
+    Iteration 10/10 (batch_size=1)... total=39.51 ms, per-file avg=39.50 ms hops=0
+    [0;34mNetwork bytes (our_system): 188487532[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    37.24 ms
+      Max:    42.64 ms
+      Avg:    39.45 ms
+      P50:    40.05 ms
+      P90:    42.64 ms
+      P99:    42.64 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/10 (batch_size=1)... FAILED
+    Iteration 2/10 (batch_size=1)... total=37.38 ms, per-file avg=37.38 ms hops=0
+    Iteration 3/10 (batch_size=1)... total=35.92 ms, per-file avg=35.92 ms hops=0
+    Iteration 4/10 (batch_size=1)... total=35.02 ms, per-file avg=35.01 ms hops=0
+    Iteration 5/10 (batch_size=1)... total=34.74 ms, per-file avg=34.74 ms hops=0
+    Iteration 6/10 (batch_size=1)... total=38.67 ms, per-file avg=38.67 ms hops=0
+    Iteration 7/10 (batch_size=1)... total=45.99 ms, per-file avg=45.99 ms hops=0
+    Iteration 8/10 (batch_size=1)... total=44.23 ms, per-file avg=44.22 ms hops=0
+    Iteration 9/10 (batch_size=1)... total=42.03 ms, per-file avg=42.02 ms hops=0
+    Iteration 10/10 (batch_size=1)... total=40.79 ms, per-file avg=40.78 ms hops=0
+    [0;34mNetwork bytes (our_system): 264530550[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    34.74 ms
+      Max:    45.99 ms
+      Avg:    39.41 ms
+      P50:    38.67 ms
+      P90:    45.99 ms
+      P99:    45.99 ms
+      Failures: 1/10
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/10 (batch_size=1)... [0;31m  <<< command failed (exit 1): /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/upload_test.sh --iterations 10 --batch-size 1 --output /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260331_132053/upload_n200_batch1.csv >>>[0m
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://[::]:9400
+Swarm API: 
+Iterations per size: 10
+Batch size: 5
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260331_132053/upload_n200_batch5.csv
+
+Waiting for host control API http://127.0.0.1:9400/health (up to 120s)...
+  ... still waiting (10s / 120s)
+  ... still waiting (20s / 120s)
+  ... still waiting (30s / 120s)
+[0;32mUsing direct API (127.0.0.1:9400) for fair latency measurement[0m
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;36mSwarm API check skipped (vn-IPFS-only run)[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/10 (batch_size=5)... total=204.37 ms, per-file avg=40.87 ms hops=0
+    Iteration 2/10 (batch_size=5)... total=210.95 ms, per-file avg=42.19 ms hops=0
+    Iteration 3/10 (batch_size=5)... total=261.30 ms, per-file avg=52.26 ms hops=0
+    Iteration 4/10 (batch_size=5)... total=257.28 ms, per-file avg=51.45 ms hops=0
+    Iteration 5/10 (batch_size=5)... total=256.23 ms, per-file avg=51.24 ms hops=0
+    Iteration 6/10 (batch_size=5)... total=207.60 ms, per-file avg=41.52 ms hops=0
+    Iteration 7/10 (batch_size=5)... total=194.17 ms, per-file avg=38.83 ms hops=0
+    Iteration 8/10 (batch_size=5)... total=190.84 ms, per-file avg=38.16 ms hops=0
+    Iteration 9/10 (batch_size=5)... total=232.05 ms, per-file avg=46.40 ms hops=0
+    Iteration 10/10 (batch_size=5)... total=236.75 ms, per-file avg=47.34 ms hops=0
+    [0;34mNetwork bytes (our_system): 298606907[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    38.16 ms
+      Max:    52.26 ms
+      Avg:    45.02 ms
+      P50:    46.40 ms
+      P90:    52.26 ms
+      P99:    52.26 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/10 (batch_size=5)... total=240.31 ms, per-file avg=48.06 ms hops=0
+    Iteration 2/10 (batch_size=5)... total=211.20 ms, per-file avg=42.23 ms hops=0
+    Iteration 3/10 (batch_size=5)... total=215.26 ms, per-file avg=43.05 ms hops=0
+    Iteration 4/10 (batch_size=5)... total=193.07 ms, per-file avg=38.61 ms hops=0
+    Iteration 5/10 (batch_size=5)... total=209.35 ms, per-file avg=41.87 ms hops=0
+    Iteration 6/10 (batch_size=5)... total=237.58 ms, per-file avg=47.51 ms hops=0
+    Iteration 7/10 (batch_size=5)... total=180.11 ms, per-file avg=36.02 ms hops=0
+    Iteration 8/10 (batch_size=5)... total=166.37 ms, per-file avg=33.27 ms hops=0
+    Iteration 9/10 (batch_size=5)... total=163.45 ms, per-file avg=32.69 ms hops=0
+    Iteration 10/10 (batch_size=5)... total=162.54 ms, per-file avg=32.50 ms hops=0
+    [0;34mNetwork bytes (our_system): 402398672[0m
+
+  [0;36mSkipping Swarm (SWARM_COMPARISON_SYSTEM selects vn-IPFS only)[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    32.50 ms
+      Max:    48.06 ms
+      Avg:    39.58 ms
+      P50:    41.87 ms
+      P90:    48.06 ms
+      P99:    48.06 ms
+    [0;36mSwarm: not run[0m
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/10 (batch_size=5)... [0;31m  <<< command failed (exit 1): /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/upload_test.sh --iterations 10 --batch-size 5 --output /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260331_132053/upload_n200_batch5.csv >>>[0m

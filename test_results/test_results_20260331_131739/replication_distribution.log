@@ -1,0 +1,4 @@
+[0;34mReplication Distribution Test (N/M/F vs Swarm)[0m
+  Payload size: 65536, replicas target: 2
+
+[0;32mOur system: put done, waiting for R >= 2...[0m

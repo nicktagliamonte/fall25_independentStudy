@@ -1,0 +1,229 @@
+Starting 10 Swarm/Bee Docker nodes...
+verify_generated_ips: OK (/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml)
+Pre-pulling Swarm Dockerfile bases (best-effort; warms cache, reduces apk/git flakes)...
+1.14-alpine: Pulling from library/golang
+Digest: sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+Status: Image is up to date for golang:1.14-alpine
+docker.io/library/golang:1.14-alpine
+3.21: Pulling from library/alpine
+Digest: sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+Status: Image is up to date for alpine:3.21
+docker.io/library/alpine:3.21
+Building Swarm Docker image (DOCKER_BUILDKIT=1)...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.49kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#4 [auth] library/alpine:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/golang:1.14-alpine
+#5 DONE 0.2s
+
+#6 [internal] load metadata for docker.io/library/alpine:3.21
+#6 DONE 0.3s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [builder 1/7] FROM docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+#8 resolve docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1 done
+#8 DONE 0.0s
+
+#9 [stage-1 1/9] FROM docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+#9 resolve docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 done
+#9 DONE 0.0s
+
+#10 [internal] load build context
+#10 transferring context: 35B done
+#10 DONE 0.0s
+
+#11 [stage-1 2/9] RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.edge.kernel.org/g' /etc/apk/repositories
+#11 CACHED
+
+#12 [stage-1 6/9] RUN chmod +x /app/swarm
+#12 CACHED
+
+#13 [builder 2/7] WORKDIR /build
+#13 CACHED
+
+#14 [stage-1 5/9] COPY --from=builder /build/swarm/build/bin/swarm /app/swarm
+#14 CACHED
+
+#15 [builder 3/7] RUN sed -i 's/dl-cdn.alpinelinux.org/dl-5.alpinelinux.org/g' /etc/apk/repositories
+#15 CACHED
+
+#16 [builder 4/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if apk add --no-cache git make gcc musl-dev linux-headers; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#16 CACHED
+
+#17 [builder 6/7] WORKDIR /build/swarm
+#17 CACHED
+
+#18 [stage-1 7/9] RUN mkdir -p /app/data /app/logs
+#18 CACHED
+
+#19 [stage-1 3/9] RUN set -e;   for i in 1 2 3 4 5 6; do     if apk add --no-cache ca-certificates curl jq; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#19 CACHED
+
+#20 [builder 7/7] RUN make swarm
+#20 CACHED
+
+#21 [builder 5/7] RUN set -e;   for i in 1 2 3 4 5 6; do     if git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git; then break; fi;     if [ $i -eq 6 ]; then exit 1; fi;     sleep 15;   done
+#21 CACHED
+
+#22 [stage-1 8/9] COPY entrypoint.sh /app/entrypoint.sh
+#22 CACHED
+
+#23 [stage-1 4/9] WORKDIR /app
+#23 CACHED
+
+#24 [stage-1 9/9] RUN chmod +x /app/entrypoint.sh
+#24 CACHED
+
+#25 exporting to image
+#25 exporting layers done
+#25 exporting manifest sha256:2c028a56cd0ae9d5ddd3e8c9d52fab52cf40dd31cc3d0fb126638b69e8f4cef1 done
+#25 exporting config sha256:b6ad2189581f948d7b1a26a9efdadec1c3007010ceb1c850e9fb05508e1f3880 done
+#25 exporting attestation manifest sha256:a0bd89c4823856d04db55e562fc23239f4f273aa61aa32c42b126c62f389de05 done
+#25 exporting manifest list sha256:7b9c8d7a52747d765eeadff6af8fd1a31392e7a28d07c2d18315dad7d7f8cad4 done
+#25 naming to docker.io/library/swarm-node:latest done
+#25 unpacking to docker.io/library/swarm-node:latest done
+#25 DONE 0.0s
+Starting bootstrap node...
+time="2026-04-07T12:50:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:40-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:40-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Creating 
+ Container swarm-bootstrap Created 
+ Container swarm-bootstrap Starting 
+ Container swarm-bootstrap Started 
+Waiting for bootstrap node to be ready...
+  Attempt 1/30...
+Bootstrap node is ready!
+Bootnode enode: enode://9aa5c39ed1fc86e16c00a2afb9521d266802496125ff52f57392701f4e652f49a1ab04e1aea647ab76d3b636e9505beebeda6672d8433f95fd929070f1208e10@172.20.0.200:30399
+Starting 9 peer nodes...
+time="2026-04-07T12:50:43-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:43-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:43-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node1 Creating 
+ Container swarm-node1 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node1 Starting 
+ Container swarm-node1 Started 
+time="2026-04-07T12:50:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:46-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:46-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node2 Creating 
+ Container swarm-node2 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node2 Starting 
+ Container swarm-node2 Started 
+time="2026-04-07T12:50:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:47-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:47-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node3 Creating 
+ Container swarm-node3 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node3 Starting 
+ Container swarm-node3 Started 
+time="2026-04-07T12:50:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:47-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:47-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node4 Creating 
+ Container swarm-node4 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node4 Starting 
+ Container swarm-node4 Started 
+time="2026-04-07T12:50:48-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:48-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:48-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node5 Creating 
+ Container swarm-node5 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node5 Starting 
+ Container swarm-node5 Started 
+time="2026-04-07T12:50:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:49-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:49-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node6 Creating 
+ Container swarm-node6 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node6 Starting 
+ Container swarm-node6 Started 
+time="2026-04-07T12:50:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:50-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:50-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node7 Creating 
+ Container swarm-node7 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node7 Starting 
+ Container swarm-node7 Started 
+time="2026-04-07T12:50:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:51-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:51-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node8 Creating 
+ Container swarm-node8 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node8 Starting 
+ Container swarm-node8 Started 
+time="2026-04-07T12:50:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-07T12:50:51-04:00" level=warning msg="No services to build"
+time="2026-04-07T12:50:51-04:00" level=warning msg="Found orphan containers ([fall25-node10 fall25-node9 fall25-node8 fall25-node7 fall25-node6 fall25-node5 fall25-node4 fall25-node3 fall25-node2 fall25-bootstrap]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up."
+ Container swarm-bootstrap Running 
+ Container swarm-node9 Creating 
+ Container swarm-node9 Created 
+ Container swarm-bootstrap Waiting 
+ Container swarm-bootstrap Healthy 
+ Container swarm-node9 Starting 
+ Container swarm-node9 Started 
+Waiting for all nodes (up to 61 attempts)...
+All nodes are ready!
+
+==========================================
+Swarm/Bee cluster started successfully!
+==========================================
+Bootstrap API: http://172.20.0.200:8500
+Bootstrap Peer ID: 9aa5c39ed1fc86e16c00a2afb9521d266802496125ff52f57392701f4e652f49a1ab04e1aea647ab76d3b636e9505beebeda6672d8433f95fd929070f1208e10
+
+Node addresses:
+  swarm-bootstrap: http://172.20.0.200:8500
+  swarm-node1: http://172.20.0.201:8500
+  swarm-node2: http://172.20.0.202:8500
+  swarm-node3: http://172.20.0.203:8500
+  swarm-node4: http://172.20.0.204:8500
+  swarm-node5: http://172.20.0.205:8500
+  swarm-node6: http://172.20.0.206:8500
+  swarm-node7: http://172.20.0.207:8500
+  swarm-node8: http://172.20.0.208:8500
+  swarm-node9: http://172.20.0.209:8500
+
+To check status: docker-compose -f docker-compose.swarm.yml ps
+To view logs: docker-compose -f docker-compose.swarm.yml logs -f
+To stop: docker-compose -f docker-compose.swarm.yml down
+

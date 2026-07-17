@@ -1,0 +1,105 @@
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://[::]:9400
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 1
+Batch size: 1
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/upload_n10_batch1.csv
+
+Waiting for host control API http://127.0.0.1:9400/health (up to 120s)...
+[0;32mUsing direct API (127.0.0.1:9400) for fair latency measurement[0m
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[0;32m✓ Swarm API is accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... total=45.95 ms, per-file avg=45.95 ms hops=0
+    [0;34mNetwork bytes (our_system): 225029648[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/1 (batch_size=1)... total=28.13 ms, per-file avg=28.13 ms
+    [0;34mNetwork bytes (swarm): 11627[0m
+
+  [0;34mStatistics for 1KB:[0m
+    [0;32mOur System:[0m
+      Min:    45.95 ms
+      Max:    45.95 ms
+      Avg:    45.95 ms
+      P50:    45.95 ms
+      P90:    45.95 ms
+      P99:    45.95 ms
+    [0;32mSwarm:[0m
+      Min:    28.13 ms
+      Max:    28.13 ms
+      Avg:    28.13 ms
+      P50:    28.13 ms
+      P90:    28.13 ms
+      P99:    28.13 ms
+
+[0;34mTesting payload size: 10KB (10240 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... total=34.44 ms, per-file avg=34.44 ms hops=0
+    [0;34mNetwork bytes (our_system): 24483847[0m
+
+  [0;32mTesting Swarm...[0m
+    Iteration 1/1 (batch_size=1)... total=28.72 ms, per-file avg=28.72 ms
+    [0;34mNetwork bytes (swarm): 22257[0m
+
+  [0;34mStatistics for 10KB:[0m
+    [0;32mOur System:[0m
+      Min:    34.44 ms
+      Max:    34.44 ms
+      Avg:    34.44 ms
+      P50:    34.44 ms
+      P90:    34.44 ms
+      P99:    34.44 ms
+    [0;32mSwarm:[0m
+      Min:    28.72 ms
+      Max:    28.72 ms
+      Avg:    28.72 ms
+      P50:    28.72 ms
+      P90:    28.72 ms
+      P99:    28.72 ms
+
+[0;34mTesting payload size: 100KB (102400 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=1)... [0;31m  <<< command failed (exit 1): /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/upload_test.sh --iterations 1 --batch-size 1 --output /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/upload_n10_batch1.csv >>>[0m
+Detected control API: http://[::]:9400 (container: fall25-bootstrap)
+==========================================
+Upload Latency Test
+==========================================
+Our System API: http://[::]:9400
+Swarm API: http://127.0.0.1:8500
+Iterations per size: 1
+Batch size: 5
+Output file: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/upload_n10_batch5.csv
+
+Waiting for host control API http://127.0.0.1:9400/health (up to 120s)...
+[0;32mUsing direct API (127.0.0.1:9400) for fair latency measurement[0m
+Verifying API endpoints...
+[0;32m✓ Our system API is accessible[0m
+[1;33m[2026-04-07 19:20:56] WARNING: API endpoint not accessible: http://127.0.0.1:8500/ (Context: attempt 1/3)[0m
+[1;33m[2026-04-07 19:21:03] WARNING: API endpoint not accessible: http://127.0.0.1:8500/ (Context: attempt 2/3)[0m
+[1;33m[2026-04-07 19:21:12] WARNING: API endpoint not accessible: http://127.0.0.1:8500/ (Context: attempt 3/3)[0m
+[0;31m[2026-04-07 19:21:12] ERROR: API endpoint failed after 3 attempts: http://127.0.0.1:8500/[0m
+[0;31m[2026-04-07 19:21:12] ERROR: Swarm API not accessible (Context: url: http://127.0.0.1:8500)[0m
+[1;33mWarning: Swarm API (http://127.0.0.1:8500) may not be accessible[0m
+
+[0;34mTesting payload size: 1KB (1024 bytes)[0m
+  Generating test file...
+  [0;36mWarmup (discarded, not written to CSV)[0m
+
+  [0;32mTesting our system...[0m
+    Iteration 1/1 (batch_size=5)... [0;31m  <<< command failed (exit 1): /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/upload_test.sh --iterations 1 --batch-size 5 --output /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_190753/upload_n10_batch5.csv >>>[0m

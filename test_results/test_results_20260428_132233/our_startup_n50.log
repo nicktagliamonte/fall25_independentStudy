@@ -1,0 +1,549 @@
+Starting 50 vn-IPFS Docker nodes...
+Wrote /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml (nodes 2..50, PLACEHOLDER_PEER_ID for start_vnipfs.sh to replace)
+Building Docker image once (bootstrap only; peers use image fall25_independentstudy-bootstrap:latest; COMPOSE_HTTP_TIMEOUT=86400s)...
+--progress is a global compose flag, better use `docker compose --progress xx build ...
+time="2026-04-28T13:22:36-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Image fall25_independentstudy-bootstrap:latest Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 658B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.22kB done
+#2 DONE 0.0s
+
+#3 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 resolve image config for docker-image://docker.io/docker/dockerfile:1.6
+#4 DONE 0.3s
+
+#5 docker-image://docker.io/docker/dockerfile:1.6@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021
+#5 resolve docker.io/docker/dockerfile:1.6@sha256:ac85f380a63b13dfcefa89046420e1781752bab202122f8f50032edf31be0021 done
+#5 CACHED
+
+#6 [auth] library/golang:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#7 [internal] load metadata for docker.io/library/alpine:3.21
+#7 DONE 0.0s
+
+#8 [internal] load metadata for docker.io/library/golang:1.26-alpine
+#8 DONE 0.1s
+
+#9 [internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [builder 1/6] FROM docker.io/library/golang:1.26-alpine@sha256:f85330846cde1e57ca9ec309382da3b8e6ae3ab943d2739500e08c86393a21b1
+#10 resolve docker.io/library/golang:1.26-alpine@sha256:f85330846cde1e57ca9ec309382da3b8e6ae3ab943d2739500e08c86393a21b1 0.0s done
+#10 DONE 0.0s
+
+#11 [stage-1 1/5] FROM docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+#11 resolve docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 0.0s done
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 6.50MB 0.2s done
+#12 DONE 0.2s
+
+#13 [builder 2/6] WORKDIR /build
+#13 CACHED
+
+#14 [builder 3/6] COPY go.mod go.sum ./
+#14 CACHED
+
+#15 [builder 4/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     sh -c 'set -e; for _ in 1 2 3 4 5; do go mod download && exit 0; sleep 20; done; exit 1'
+#15 CACHED
+
+#16 [builder 5/6] COPY . .
+#16 DONE 0.7s
+
+#17 [builder 6/6] RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     go build -o bin/node ./cmd/node
+#17 DONE 0.9s
+
+#18 [stage-1 2/5] WORKDIR /app
+#18 CACHED
+
+#19 [stage-1 3/5] COPY --from=builder /build/bin/node /app/node
+#19 CACHED
+
+#20 [stage-1 4/5] RUN --network=host apk add --no-cache ca-certificates curl jq
+#20 CACHED
+
+#21 [stage-1 5/5] RUN mkdir -p /app/data /app/keys /app/logs
+#21 CACHED
+
+#22 exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:a3a5e16e23b6eb351d9efab93c2df6bb95275b59c512ee48a1718c1dab95c11a done
+#22 exporting config sha256:21c5ab8a70ca29c8f9a8688c48f7089ad335d00e41d4644b8fec6e67dfe0730c done
+#22 exporting attestation manifest sha256:8788316422dba5c6f6ae2f5c96a368db86a7ad15b6a463d03a34cdcceed0b000 done
+#22 exporting manifest list sha256:67b06dedcaf0c3ae63ecdd20924a1ec74f2f8f33374fe276ba87a8d7048bb4ae done
+#22 naming to docker.io/library/fall25_independentstudy-bootstrap:latest done
+#22 unpacking to docker.io/library/fall25_independentstudy-bootstrap:latest done
+#22 DONE 0.0s
+
+#23 resolving provenance for metadata file
+#23 DONE 0.0s
+ Image fall25_independentstudy-bootstrap:latest Built 
+Starting bootstrap node...
+time="2026-04-28T13:22:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:39-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Recreate 
+ Container fall25-bootstrap Recreated 
+ Container fall25-bootstrap Starting 
+ Container fall25-bootstrap Started 
+Waiting for bootstrap (health check)...
+time="2026-04-28T13:22:40-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+Bootstrap ready (1s)
+Starting peer nodes 2..50...
+time="2026-04-28T13:22:42-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:42-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node2 Recreate 
+ Container fall25-node2 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node2 Starting 
+ Container fall25-node2 Started 
+time="2026-04-28T13:22:45-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:45-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node3 Recreate 
+ Container fall25-node3 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node3 Starting 
+ Container fall25-node3 Started 
+time="2026-04-28T13:22:46-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:46-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node4 Recreate 
+ Container fall25-node4 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node4 Starting 
+ Container fall25-node4 Started 
+time="2026-04-28T13:22:47-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:47-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node5 Recreate 
+ Container fall25-node5 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node5 Starting 
+ Container fall25-node5 Started 
+time="2026-04-28T13:22:48-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:48-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node6 Recreate 
+ Container fall25-node6 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node6 Starting 
+ Container fall25-node6 Started 
+time="2026-04-28T13:22:49-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:49-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node7 Recreate 
+ Container fall25-node7 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node7 Starting 
+ Container fall25-node7 Started 
+time="2026-04-28T13:22:50-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:50-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node8 Recreate 
+ Container fall25-node8 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node8 Starting 
+ Container fall25-node8 Started 
+time="2026-04-28T13:22:51-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:51-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node9 Recreate 
+ Container fall25-node9 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node9 Starting 
+ Container fall25-node9 Started 
+time="2026-04-28T13:22:53-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:53-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node10 Recreate 
+ Container fall25-node10 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node10 Starting 
+ Container fall25-node10 Started 
+time="2026-04-28T13:22:54-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:54-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node11 Recreate 
+ Container fall25-node11 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node11 Starting 
+ Container fall25-node11 Started 
+time="2026-04-28T13:22:55-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:55-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node12 Recreate 
+ Container fall25-node12 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node12 Starting 
+ Container fall25-node12 Started 
+time="2026-04-28T13:22:56-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:56-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node13 Recreate 
+ Container fall25-node13 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node13 Starting 
+ Container fall25-node13 Started 
+time="2026-04-28T13:22:57-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:57-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node14 Recreate 
+ Container fall25-node14 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node14 Starting 
+ Container fall25-node14 Started 
+time="2026-04-28T13:22:58-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:58-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node15 Recreate 
+ Container fall25-node15 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node15 Starting 
+ Container fall25-node15 Started 
+time="2026-04-28T13:22:59-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:22:59-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node16 Recreate 
+ Container fall25-node16 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node16 Starting 
+ Container fall25-node16 Started 
+time="2026-04-28T13:23:00-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:00-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node17 Recreate 
+ Container fall25-node17 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node17 Starting 
+ Container fall25-node17 Started 
+time="2026-04-28T13:23:01-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:02-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node18 Recreate 
+ Container fall25-node18 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node18 Starting 
+ Container fall25-node18 Started 
+time="2026-04-28T13:23:03-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:03-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node19 Recreate 
+ Container fall25-node19 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node19 Starting 
+ Container fall25-node19 Started 
+time="2026-04-28T13:23:05-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:05-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node20 Recreate 
+ Container fall25-node20 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node20 Starting 
+ Container fall25-node20 Started 
+  Started node20...
+time="2026-04-28T13:23:06-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:06-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node21 Recreate 
+ Container fall25-node21 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node21 Starting 
+ Container fall25-node21 Started 
+time="2026-04-28T13:23:07-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:07-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node22 Recreate 
+ Container fall25-node22 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node22 Starting 
+ Container fall25-node22 Started 
+time="2026-04-28T13:23:08-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:08-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node23 Recreate 
+ Container fall25-node23 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node23 Starting 
+ Container fall25-node23 Started 
+time="2026-04-28T13:23:09-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:09-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node24 Recreate 
+ Container fall25-node24 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node24 Starting 
+ Container fall25-node24 Started 
+time="2026-04-28T13:23:10-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:10-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node25 Recreate 
+ Container fall25-node25 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node25 Starting 
+ Container fall25-node25 Started 
+time="2026-04-28T13:23:11-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:11-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node26 Recreate 
+ Container fall25-node26 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node26 Starting 
+ Container fall25-node26 Started 
+time="2026-04-28T13:23:12-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:13-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node27 Recreate 
+ Container fall25-node27 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node27 Starting 
+ Container fall25-node27 Started 
+time="2026-04-28T13:23:14-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:14-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node28 Recreate 
+ Container fall25-node28 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node28 Starting 
+ Container fall25-node28 Started 
+time="2026-04-28T13:23:15-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:15-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node29 Recreate 
+ Container fall25-node29 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node29 Starting 
+ Container fall25-node29 Started 
+time="2026-04-28T13:23:16-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:16-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node30 Recreate 
+ Container fall25-node30 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node30 Starting 
+ Container fall25-node30 Started 
+time="2026-04-28T13:23:17-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:17-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node31 Recreate 
+ Container fall25-node31 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node31 Starting 
+ Container fall25-node31 Started 
+time="2026-04-28T13:23:18-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:18-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node32 Recreate 
+ Container fall25-node32 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node32 Starting 
+ Container fall25-node32 Started 
+time="2026-04-28T13:23:19-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:19-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node33 Recreate 
+ Container fall25-node33 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node33 Starting 
+ Container fall25-node33 Started 
+time="2026-04-28T13:23:20-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:21-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node34 Recreate 
+ Container fall25-node34 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node34 Starting 
+ Container fall25-node34 Started 
+time="2026-04-28T13:23:22-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:22-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node35 Recreate 
+ Container fall25-node35 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node35 Starting 
+ Container fall25-node35 Started 
+time="2026-04-28T13:23:23-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:23-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node36 Recreate 
+ Container fall25-node36 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node36 Starting 
+ Container fall25-node36 Started 
+time="2026-04-28T13:23:24-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:24-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node37 Recreate 
+ Container fall25-node37 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node37 Starting 
+ Container fall25-node37 Started 
+time="2026-04-28T13:23:25-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:25-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node38 Recreate 
+ Container fall25-node38 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node38 Starting 
+ Container fall25-node38 Started 
+time="2026-04-28T13:23:26-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:26-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node39 Recreate 
+ Container fall25-node39 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node39 Starting 
+ Container fall25-node39 Started 
+time="2026-04-28T13:23:27-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:27-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node40 Recreate 
+ Container fall25-node40 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node40 Starting 
+ Container fall25-node40 Started 
+  Started node40...
+time="2026-04-28T13:23:28-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:28-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node41 Recreate 
+ Container fall25-node41 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node41 Starting 
+ Container fall25-node41 Started 
+time="2026-04-28T13:23:30-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:30-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node42 Recreate 
+ Container fall25-node42 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node42 Starting 
+ Container fall25-node42 Started 
+time="2026-04-28T13:23:31-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:31-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node43 Recreate 
+ Container fall25-node43 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node43 Starting 
+ Container fall25-node43 Started 
+time="2026-04-28T13:23:32-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:32-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node44 Recreate 
+ Container fall25-node44 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node44 Starting 
+ Container fall25-node44 Started 
+time="2026-04-28T13:23:33-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:33-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node45 Recreate 
+ Container fall25-node45 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node45 Starting 
+ Container fall25-node45 Started 
+time="2026-04-28T13:23:34-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:34-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node46 Recreate 
+ Container fall25-node46 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node46 Starting 
+ Container fall25-node46 Started 
+time="2026-04-28T13:23:35-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:35-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node47 Recreate 
+ Container fall25-node47 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node47 Starting 
+ Container fall25-node47 Started 
+time="2026-04-28T13:23:37-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:37-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node48 Recreate 
+ Container fall25-node48 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node48 Starting 
+ Container fall25-node48 Started 
+time="2026-04-28T13:23:38-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:38-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node49 Recreate 
+ Container fall25-node49 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node49 Starting 
+ Container fall25-node49 Started 
+time="2026-04-28T13:23:39-04:00" level=warning msg="/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.vnipfs.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+time="2026-04-28T13:23:39-04:00" level=warning msg="No services to build"
+ Container fall25-bootstrap Running 
+ Container fall25-node50 Recreate 
+ Container fall25-node50 Recreated 
+ Container fall25-bootstrap Waiting 
+ Container fall25-bootstrap Healthy 
+ Container fall25-node50 Starting 
+ Container fall25-node50 Started 
+Waiting for nodes to connect...
+
+vn-IPFS: 50 nodes running (docker-compose.vnipfs.yml)
+  Stop: docker-compose -f docker-compose.vnipfs.yml down
+  Logs: docker-compose -f docker-compose.vnipfs.yml logs -f

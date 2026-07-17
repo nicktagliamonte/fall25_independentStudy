@@ -1,0 +1,28 @@
+[0;34mRepair Time Test (after node failure)[0m
+  Target: measure time until R=2 replicas restored after stopping one node
+
+[0;32mOur system: put, wait R, stop one replica node, measure repair time[0m
+  Key: c0d1c1fae42db8c4e6f085a1eec78bbf4b3d250eab542e3be22927d001a01016
+  [1;33mDid not reach R=2 before failure step, skipping repair[0m
+
+[1;33mSwarm: skipped (no OOB replication; benchmark our system only)[0m
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_042505/repair_time_results.csv
+system,node_count,repair_time_s
+our_system,50,SKIP
+swarm,50,SKIP
+[0;34mRepair Time Test (after node failure)[0m
+  Target: measure time until R=2 replicas restored after stopping one node
+
+[0;32mOur system: put, wait R, stop one replica node, measure repair time[0m
+  Key: b8fa6e736efab874a52a2b0546070de4cdfd6d32ff407e6c5c7ef027f3c4e314
+  [1;33mDid not reach R=2 before failure step, skipping repair[0m
+
+[1;33mSwarm: skipped (no OOB replication; benchmark our system only)[0m
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_042505/repair_time_results.csv
+system,node_count,repair_time_s
+our_system,50,SKIP
+swarm,50,SKIP
+our_system,100,SKIP
+swarm,100,SKIP

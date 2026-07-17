@@ -1,0 +1,12 @@
+Routing overhead test: our=(skipped) swarm=http://127.0.0.1:8500
+  Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/routing_overhead_results.csv
+
+[1;33mSkipping our system (Swarm-only run)[0m
+
+[0;32mSwarm (provider_announce + retrieval)...[0m
+  [1;33mSwarm /metrics not available (v0.5.8 may not expose Prometheus metrics)[0m
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260428_142839/routing_overhead_results.csv
+system,operation,message_count,overhead_type
+swarm,put,N/A,provider_announce
+swarm,get,N/A,retrieval

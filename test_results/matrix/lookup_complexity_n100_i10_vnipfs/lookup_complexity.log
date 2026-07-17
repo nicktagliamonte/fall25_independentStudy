@@ -1,0 +1,12 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 100 | Iterations: 10
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_152145/lookup_complexity_results.csv
+
+  Waiting 25s for DHT to stabilize before cold lookup...
+  Extra 15s pre-wait (large N)...
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260330_152145/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_type

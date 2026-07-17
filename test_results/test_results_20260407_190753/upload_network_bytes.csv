@@ -1,0 +1,5 @@
+system,payload_size,batch_size,bytes_transferred
+our_system,1024,1,225029648
+swarm,1024,1,11627
+our_system,10240,1,24483847
+swarm,10240,1,22257

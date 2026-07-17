@@ -1,0 +1,12 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 10 | Iterations: 1
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/lookup_complexity_results.csv
+
+  iteration 1/1: put...
+  iteration 1/1: cold lookup-key...
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260421_140146/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops(logn ref),hops_raw(measured),lookup_latency_ms

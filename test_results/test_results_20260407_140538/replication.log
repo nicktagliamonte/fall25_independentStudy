@@ -1,0 +1,12 @@
+[0;34mReplication Speed Test[0m
+  Payload size: 65536 bytes
+  Replicas target: 2
+  Timeout: 120s, poll interval: 2s
+
+[0;32mOur system: put and poll /replication/status until R >= 2[0m
+  Key: 6e0f434f3016defb08080a5117f5ab613003c132a244439ed4d3973ae605db0f
+  Triggering repair: GET from fall25-node50 (cold)...
+  Poll: replica_count=0 (45.47s)... 
+  [1;33mTimeout after 120s (last count: 0)[0m
+  [0;31mC.3 verification failed: time_to_R=TIMEOUT (expected numeric or target reached)[0m
+[0;31m  <<< command failed (exit 1): /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/scripts/tests/swarm_comparison/replication_test.sh --payload-size 65536 --replicas-target 2 --timeout 120 --node-count 50 --output /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_140538/replication_results.csv --record-overhead >>>[0m

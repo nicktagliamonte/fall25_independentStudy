@@ -1,0 +1,44 @@
+==========================================
+Swarm Comparison Test Summary Report
+==========================================
+Generated: Tue Apr 14 02:52:24 EDT 2026
+
+Test Configuration:
+  Node counts: 10
+  Payload sizes: 1024 10240 102400 1048576 bytes
+  Iterations per test: 1
+
+Upload Latency Test Results:
+----------------------------
+
+  Node count: 10
+    Results file: upload_n10_batch1.csv
+    Our system: 4 successful uploads
+    Swarm: 0 successful uploads
+
+  Node count: 10
+    Results file: upload_n10_batch5.csv
+    Our system: 4 successful uploads
+    Swarm: 0 successful uploads
+
+Download Latency Test Results:
+------------------------------
+
+  Node count: 10
+    Results file: download_n10_warm_raw.csv
+    Our system: 4 successful downloads
+    Swarm: 0 successful downloads
+
+Replication Speed Test Results:
+-------------------------------
+  Results file: replication_results.csv
+    our_system: time_to_R=TIMEOUT,8232971 (target R=2, payload=65536, nodes=10)
+
+Routing Overhead (Token vs Provider Announce):
+---------------------------------------------
+    our_system put: 3 msgs (token_lookup)
+    our_system get: 1 msgs (token_lookup)
+
+==========================================
+All results saved to: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260414_024508
+==========================================

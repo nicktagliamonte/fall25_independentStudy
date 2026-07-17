@@ -1,0 +1,758 @@
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 50 | Iterations: 50
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_140538/lookup_complexity_results.csv
+
+  iteration 1/50: put...
+  iteration 1/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:11:45 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42767->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:11:52 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40043->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:12:02 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42791->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:12:13 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45285->172.20.0.10:4001: i/o timeout
+  iteration 2/50: put...
+  iteration 2/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:12:19 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44231->172.20.0.10:4001: i/o timeout
+  iteration 3/50: put...
+  iteration 3/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:14:35 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46207->172.20.0.10:4001: i/o timeout
+  iteration 4/50: put...
+  iteration 4/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:16:51 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39887->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:16:58 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:32793->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:17:08 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34621->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:17:19 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44659->172.20.0.10:4001: i/o timeout
+  iteration 5/50: put...
+  iteration 5/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:17:25 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46551->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:17:32 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37669->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:17:41 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36127->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:17:53 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+  iteration 6/50: put...
+  iteration 6/50: cold lookup-key...
+  iteration 7/50: put...
+  iteration 7/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:08 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33419->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:15 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35627->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:24 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38419->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:36 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46293->172.20.0.10:4001: i/o timeout
+  iteration 8/50: put...
+  iteration 8/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:41 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45919->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:48 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45657->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:20:58 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46691->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:21:09 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+  iteration 9/50: put...
+  iteration 9/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:21:15 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34931->172.20.0.10:4001: i/o timeout
+  iteration 10/50: put...
+  iteration 10/50: cold lookup-key...
+  iteration 11/50: put...
+  iteration 11/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:25:36 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35319->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:25:43 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42039->172.20.0.10:4001: i/o timeout
+  iteration 12/50: put...
+  iteration 12/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:27:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42395->172.20.0.10:4001: i/o timeout
+  iteration 13/50: put...
+  iteration 13/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:09 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44179->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:16 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42229->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:26 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39313->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:37 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43677->172.20.0.10:4001: i/o timeout
+  iteration 14/50: put...
+  iteration 14/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:43 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39503->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:50 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33027->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:30:59 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41061->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:31:11 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42225->172.20.0.10:4001: i/o timeout
+  iteration 15/50: put...
+  iteration 15/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:31:16 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37479->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:31:24 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40941->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:31:33 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43921->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:31:44 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33477->172.20.0.10:4001: i/o timeout
+  iteration 16/50: put...
+  iteration 16/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:31:50 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33931->172.20.0.10:4001: i/o timeout
+  iteration 17/50: put...
+  iteration 17/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:02 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45387->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:10 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33837->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:19 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37711->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:30 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44407->172.20.0.10:4001: i/o timeout
+  iteration 18/50: put...
+  iteration 18/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:36 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46059->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:43 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40313->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:34:52 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45209->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:04 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38893->172.20.0.10:4001: i/o timeout
+  iteration 19/50: put...
+  iteration 19/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:09 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37319->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:17 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41771->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:26 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45601->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:37 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43519->172.20.0.10:4001: i/o timeout
+  iteration 20/50: put...
+  iteration 20/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:43 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33033->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:35:50 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43673->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:00 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39299->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:11 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34797->172.20.0.10:4001: i/o timeout
+  iteration 21/50: put...
+  iteration 21/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:16 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36459->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:24 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41033->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:33 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43169->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:44 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41509->172.20.0.10:4001: i/o timeout
+  iteration 22/50: put...
+  iteration 22/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:50 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41033->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:36:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:07 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45661->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:18 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44515->172.20.0.10:4001: i/o timeout
+  iteration 23/50: put...
+  iteration 23/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:24 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40903->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:31 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36449->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:40 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45157->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:52 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34075->172.20.0.10:4001: i/o timeout
+  iteration 24/50: put...
+  iteration 24/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:37:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42455->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:38:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42349->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:38:14 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36327->172.20.0.10:4001: i/o timeout
+  iteration 25/50: put...
+  iteration 25/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:40:34 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46407->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:40:42 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39073->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:40:51 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39703->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:02 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34907->172.20.0.10:4001: i/o timeout
+  iteration 26/50: put...
+  iteration 26/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:08 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39903->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:15 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43253->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:25 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33387->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:36 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43149->172.20.0.10:4001: i/o timeout
+  iteration 27/50: put...
+  iteration 27/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:42 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39061->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:49 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43525->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:41:58 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46201->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:10 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43141->172.20.0.10:4001: i/o timeout
+  iteration 28/50: put...
+  iteration 28/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:15 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38943->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:22 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35363->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:32 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43759->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:43 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41289->172.20.0.10:4001: i/o timeout
+  iteration 29/50: put...
+  iteration 29/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:49 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44713->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:42:56 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42847->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38113->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:17 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46221->172.20.0.10:4001: i/o timeout
+  iteration 30/50: put...
+  iteration 30/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:22 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:30 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45209->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:39 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34243->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:50 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40077->172.20.0.10:4001: i/o timeout
+  iteration 31/50: put...
+  iteration 31/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:43:56 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42435->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:03 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33547->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:13 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41489->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:24 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34789->172.20.0.10:4001: i/o timeout
+  iteration 32/50: put...
+  iteration 32/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:30 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40059->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:37 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34803->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:46 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35381->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:44:58 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42203->172.20.0.10:4001: i/o timeout
+  iteration 33/50: put...
+  iteration 33/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:03 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36713->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:11 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45165->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:20 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45621->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:31 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43323->172.20.0.10:4001: i/o timeout
+  iteration 34/50: put...
+  iteration 34/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:37 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40269->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:44 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35635->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:45:54 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36993->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:46:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37797->172.20.0.10:4001: i/o timeout
+  iteration 35/50: put...
+  iteration 35/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:46:10 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38167->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:46:18 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37519->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:46:27 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40161->172.20.0.10:4001: i/o timeout
+  iteration 36/50: put...
+  iteration 36/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:48:48 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42717->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:48:55 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43245->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:49:04 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41755->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:49:16 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44513->172.20.0.10:4001: i/o timeout
+  iteration 37/50: put...
+  iteration 37/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:49:21 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42221->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:49:29 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39903->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:49:38 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41041->172.20.0.10:4001: i/o timeout
+  iteration 38/50: put...
+  iteration 38/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:51:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44847->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37941->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:14 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33195->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:25 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43193->172.20.0.10:4001: i/o timeout
+  iteration 39/50: put...
+  iteration 39/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:31 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37881->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:38 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44369->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:48 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42297->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:52:59 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38975->172.20.0.10:4001: i/o timeout
+  iteration 40/50: put...
+  iteration 40/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:53:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41727->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:53:12 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37751->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:53:21 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36141->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:53:33 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45485->172.20.0.10:4001: i/o timeout
+  iteration 41/50: put...
+  iteration 41/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:53:38 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37905->172.20.0.10:4001: i/o timeout
+  iteration 42/50: put...
+  iteration 42/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:55:54 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42019->172.20.0.10:4001: i/o timeout
+  iteration 43/50: put...
+  iteration 43/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:58:06 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46391->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 18:58:14 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45467->172.20.0.10:4001: i/o timeout
+  iteration 44/50: put...
+  iteration 44/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:00:28 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33569->172.20.0.10:4001: i/o timeout
+  iteration 45/50: put...
+  iteration 45/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:02:43 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44013->172.20.0.10:4001: i/o timeout
+  iteration 46/50: put...
+  iteration 46/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:04:56 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45617->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:03 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41005->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:13 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36309->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:24 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33153->172.20.0.10:4001: i/o timeout
+  iteration 47/50: put...
+  iteration 47/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:30 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34473->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:37 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37021->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:46 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43403->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:05:58 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40283->172.20.0.10:4001: i/o timeout
+  iteration 48/50: put...
+  iteration 48/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:03 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38537->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:11 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39595->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:20 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40001->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:31 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39407->172.20.0.10:4001: i/o timeout
+  iteration 49/50: put...
+  iteration 49/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:37 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44235->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:44 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42379->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:06:54 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46469->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:07:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39155->172.20.0.10:4001: i/o timeout
+  iteration 50/50: put...
+  iteration 50/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:07:10 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34341->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:07:18 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35127->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:07:27 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38749->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:07:38 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+
+Results: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_140538/lookup_complexity_results.csv
+  Format: system,node_count,operation,hops,lookup_latency_ms,lookup_type
+==========================================
+Lookup Complexity Test (O(log N) verification)
+==========================================
+Put: fall25-bootstrap | Lookup: cold (one-off container, fresh DHT)
+Node count: 100 | Iterations: 50
+Output: /Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/test_results_20260407_140538/lookup_complexity_results.csv
+
+  iteration 1/50: put...
+  iteration 1/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:25:22 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42261->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:25:30 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33905->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:25:39 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36527->172.20.0.10:4001: i/o timeout
+  iteration 2/50: put...
+  iteration 2/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:27:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37377->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34969->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:14 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39037->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:25 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39171->172.20.0.10:4001: i/o timeout
+  iteration 3/50: put...
+  iteration 3/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:31 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36047->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:38 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35301->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:48 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36595->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:28:59 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:34079->172.20.0.10:4001: i/o timeout
+  iteration 4/50: put...
+  iteration 4/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:29:05 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45497->172.20.0.10:4001: i/o timeout
+  iteration 5/50: put...
+  iteration 5/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:31:18 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:44583->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:31:25 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37793->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:31:35 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:31:46 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33281->172.20.0.10:4001: i/o timeout
+  iteration 6/50: put...
+  iteration 6/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:31:52 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41643->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:31:59 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37711->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:09 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37163->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:20 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43097->172.20.0.10:4001: i/o timeout
+  iteration 7/50: put...
+  iteration 7/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:25 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38241->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:33 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40339->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:42 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:33241->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:53 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43079->172.20.0.10:4001: i/o timeout
+  iteration 8/50: put...
+  iteration 8/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:32:59 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38323->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:33:06 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:35431->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:33:16 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43387->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:33:27 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41107->172.20.0.10:4001: i/o timeout
+  iteration 9/50: put...
+  iteration 9/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:33:33 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36211->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:33:40 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38981->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:33:49 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36615->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:01 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:40829->172.20.0.10:4001: i/o timeout
+  iteration 10/50: put...
+  iteration 10/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:06 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:36165->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:14 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38575->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:23 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41549->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:34 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:45627->172.20.0.10:4001: i/o timeout
+  iteration 11/50: put...
+  iteration 11/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:40 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43271->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:47 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:46249->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:34:57 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:37033->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:08 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41189->172.20.0.10:4001: i/o timeout
+  iteration 12/50: put...
+  iteration 12/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:14 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42135->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:21 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:39279->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:31 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:42659->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:42 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 172.20.0.10:4001: i/o timeout
+  iteration 13/50: put...
+  iteration 13/50: cold lookup-key...
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:48 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:38313->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:35:55 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:41453->172.20.0.10:4001: i/o timeout
+cold lookup-key: empty or non-JSON stdout (bootstrap=/ip4/172.20.0.10/tcp/4001/p2p/12D3KooWPdpHY6qnLs...)
+2026/04/07 19:36:04 connect to bootstrap: failed to dial: failed to dial 12D3KooWPdpHY6qnLsaG7MYxqKdz9wqM4sDn9nJqcm2MqckygiPq: all dials failed
+  * [/ip4/172.20.0.10/tcp/4001] dial tcp4 0.0.0.0:43123->172.20.0.10:4001: i/o timeout

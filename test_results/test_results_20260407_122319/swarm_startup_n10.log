@@ -1,0 +1,91 @@
+Starting 10 Swarm/Bee Docker nodes...
+verify_generated_ips: OK (/Users/garrett/Projects/Temple/Shi/vnIPFS/fall25_independentStudy/docker-compose.swarm.yml)
+Pre-pulling Swarm Dockerfile bases (best-effort; warms cache, reduces apk/git flakes)...
+1.14-alpine: Pulling from library/golang
+Digest: sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+Status: Image is up to date for golang:1.14-alpine
+docker.io/library/golang:1.14-alpine
+3.21: Pulling from library/alpine
+Digest: sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+Status: Image is up to date for alpine:3.21
+docker.io/library/alpine:3.21
+Building Swarm Docker image (DOCKER_BUILDKIT=1)...
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.12kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.6s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 sha256:86ea2bbb0f9dfaf8a78dec7df55fe7dd9e6028a24b247597aca3aceb8b6ac240 0B / 13.00MB 0.2s
+#3 sha256:86ea2bbb0f9dfaf8a78dec7df55fe7dd9e6028a24b247597aca3aceb8b6ac240 3.15MB / 13.00MB 0.3s
+#3 sha256:86ea2bbb0f9dfaf8a78dec7df55fe7dd9e6028a24b247597aca3aceb8b6ac240 8.39MB / 13.00MB 0.5s
+#3 sha256:86ea2bbb0f9dfaf8a78dec7df55fe7dd9e6028a24b247597aca3aceb8b6ac240 12.58MB / 13.00MB 0.6s
+#3 sha256:86ea2bbb0f9dfaf8a78dec7df55fe7dd9e6028a24b247597aca3aceb8b6ac240 13.00MB / 13.00MB 0.6s done
+#3 extracting sha256:86ea2bbb0f9dfaf8a78dec7df55fe7dd9e6028a24b247597aca3aceb8b6ac240 0.1s done
+#3 DONE 0.7s
+
+#4 [auth] library/alpine:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/golang:1.14-alpine
+#5 DONE 0.2s
+
+#6 [internal] load metadata for docker.io/library/alpine:3.21
+#6 DONE 0.3s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [builder 1/6] FROM docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1
+#8 resolve docker.io/library/golang:1.14-alpine@sha256:e196a762bd349b188d66c539354fc23f0e5a0178c214e6dfe4d7894c3c2753f1 done
+#8 DONE 0.0s
+
+#9 [stage-1 1/8] FROM docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
+#9 resolve docker.io/library/alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709 0.0s done
+#9 DONE 0.0s
+
+#10 [builder 2/6] WORKDIR /build
+#10 CACHED
+
+#11 [builder 3/6] RUN set -e;   for _ in 1 2 3 4 5 6; do     apk add --no-cache git make gcc musl-dev linux-headers && break;     sleep 15;   done
+#11 CACHED
+
+#12 [builder 4/6] RUN set -e;   for _ in 1 2 3 4 5; do     git clone --depth 1 --branch v0.5.8 https://github.com/ethersphere/swarm.git && break;     sleep 15;   done
+#12 CACHED
+
+#13 [builder 5/6] WORKDIR /build/swarm
+#13 CACHED
+
+#14 [stage-1 2/8] RUN set -e;   for _ in 1 2 3 4 5 6; do     apk add --no-cache ca-certificates curl jq && break;     sleep 15;   done
+#14 CACHED
+
+#15 [stage-1 3/8] WORKDIR /app
+#15 CACHED
+
+#16 [internal] load build context
+#16 transferring context: 2.06kB done
+#16 DONE 0.0s
+
+#17 [builder 6/6] RUN make swarm
+#17 0.099 /bin/sh: make: not found
+#17 ERROR: process "/bin/sh -c make swarm" did not complete successfully: exit code: 127
+------
+ > [builder 6/6] RUN make swarm:
+0.099 /bin/sh: make: not found
+------
+Dockerfile:24
+--------------------
+  22 |     WORKDIR /build/swarm
+  23 |     
+  24 | >>> RUN make swarm
+  25 |     
+  26 |     FROM alpine:3.21
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c make swarm" did not complete successfully: exit code: 127
+ERROR: Docker build failed
