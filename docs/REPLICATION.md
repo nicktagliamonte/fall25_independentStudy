@@ -18,5 +18,5 @@ vn-IPFS uses a key-based token stored in the DHT (`TokenNamespace` + key hash) w
 
 ## Further reading
 
-- `docs/SWARM_COMPARISON_TESTS.md` — lookup complexity, catalog-growth upload/download vs object count, and interpretation. Catalog **download** for both stacks defaults to **host-wall** timing (`CATALOG_GROWTH_HOST_WALL_GET`, default **1**) so vn-IPFS and Swarm CSVs are comparable in magnitude (docker exec + request). Swarm **`CATALOG_GROWTH_SWARM_FETCH`**: **`latest`** vs **`first`** + pinning tradeoffs as documented there.
+- `docs/SWARM_COMPARISON_TESTS.md` — lookup complexity, catalog-growth upload/download vs object count, and interpretation. Catalog **download** for both stacks defaults to **host-wall** timing (`CATALOG_GROWTH_HOST_WALL_GET`, default **1**) so vn-IPFS and Swarm CSVs are comparable in magnitude (docker exec + request). Default catalog **payload** is **262144** bytes; multi-trial runs use **`catalog_growth_merge.sh`** for row-wise averages when **`CATALOG_GROWTH_TRIALS` > 1** with a clean store per trial. Swarm **`CATALOG_GROWTH_SWARM_FETCH`**: **`latest`** vs **`first`** + pinning tradeoffs as documented there.
 - `docs/API.md` — `network_hops`, PUT semantics, `/lookup`.

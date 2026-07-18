@@ -577,29 +577,38 @@ run_download_test() {
   fi
 }
 
-# Catalog growth: one row per object count. vn-IPFS (remote_only GET) and/or Swarm (GET from worker). Env: CATALOG_GROWTH_MAX_OBJECTS, CATALOG_GROWTH_PAYLOAD_BYTES.
+# Catalog growth: one row per object count. vn-IPFS (remote_only GET) and/or Swarm (GET from worker). Env: CATALOG_GROWTH_MAX_OBJECTS, CATALOG_GROWTH_PAYLOAD_BYTES, CATALOG_GROWTH_TRIALS (default 1 here; use 3 only with fresh stores between trials).
 run_catalog_growth_test() {
   local node_count="$1"
   local output_file="$OUTPUT_DIR/catalog_growth_n${node_count}.csv"
   local log_file="$OUTPUT_DIR/catalog_growth_n${node_count}.log"
-  echo -e "\n${GREEN}Running catalog growth test (N=$node_count label, CATALOG_GROWTH_MAX_OBJECTS=${CATALOG_GROWTH_MAX_OBJECTS:-256})...${NC}"
+  local cg_trials="${CATALOG_GROWTH_TRIALS:-1}"
+  local cg_payload="${CATALOG_GROWTH_PAYLOAD_BYTES:-262144}"
+  echo -e "\n${GREEN}Running catalog growth test (N=$node_count label, CATALOG_GROWTH_MAX_OBJECTS=${CATALOG_GROWTH_MAX_OBJECTS:-256}, trials=$cg_trials, payload=$cg_payload)...${NC}"
   if [[ "$RUN_VNIPFS" == "true" ]]; then
+    CATALOG_GROWTH_TRIALS="$cg_trials" CATALOG_GROWTH_PAYLOAD_BYTES="$cg_payload" \
     run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/catalog_growth_test.sh" \
       --node-count "$node_count" \
       --max-files "${CATALOG_GROWTH_MAX_OBJECTS:-256}" \
-      --payload-size "${CATALOG_GROWTH_PAYLOAD_BYTES:-8192}" \
+      --payload-size "$cg_payload" \
+      --trials "$cg_trials" \
       --output "$output_file" \
       2>&1 | tee "$log_file" || echo -e "  ${YELLOW}vn-IPFS catalog growth had errors${NC}" | tee -a "$log_file"
   fi
   if [[ "$RUN_SWARM" == "true" ]]; then
     local append_flag=()
+    local swarm_trials="$cg_trials"
     if [[ -f "$output_file" ]]; then
       append_flag=(--append)
+      swarm_trials=1
+      [[ "$cg_trials" -gt 1 ]] && echo "  (Swarm step uses trials=1 with --append; run Swarm benchmark alone for multi-trial Swarm averages.)" >&2
     fi
+    CATALOG_GROWTH_TRIALS="$swarm_trials" CATALOG_GROWTH_PAYLOAD_BYTES="$cg_payload" \
     run_with_timeout "$ROOT_DIR/scripts/tests/swarm_comparison/catalog_growth_swarm_test.sh" \
       --node-count "$node_count" \
       --max-files "${CATALOG_GROWTH_MAX_OBJECTS:-256}" \
-      --payload-size "${CATALOG_GROWTH_PAYLOAD_BYTES:-8192}" \
+      --payload-size "$cg_payload" \
+      --trials "$swarm_trials" \
       --output "$output_file" \
       "${append_flag[@]}" \
       2>&1 | tee -a "$log_file" || echo -e "  ${YELLOW}Swarm catalog growth had errors${NC}" | tee -a "$log_file"

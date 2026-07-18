@@ -17,7 +17,8 @@ set -euo pipefail
 #     as vn-IPFS catalog. Set to 0 for in-container curl time_total only. CATALOG_GROWTH_SWARM_HOST_WALL_GET=1
 #     still forces host wall if you only set the Swarm-specific name.
 #   - GET container: last healthy swarm-node*, else swarm-bootstrap.
-# Usage: ./catalog_growth_swarm_test.sh [--node-count 50] [--max-files 256] [--payload-size 8192] [--output file.csv] [--append]
+# Usage: ./catalog_growth_swarm_test.sh [--node-count 50] [--max-files 256] [--payload-size bytes] [--trials T] [--output file.csv] [--append]
+# Multi-trial: CATALOG_GROWTH_TRIALS>1 averages each CSV row across trials (use a clean Swarm store per trial).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
@@ -27,7 +28,8 @@ source "$SCRIPT_DIR/swarm_publish_url.sh"
 
 NODE_COUNT="${CATALOG_GROWTH_NODE_COUNT:-50}"
 MAX_FILES="${CATALOG_GROWTH_MAX_OBJECTS:-256}"
-PAYLOAD_SIZE="${CATALOG_GROWTH_PAYLOAD_BYTES:-8192}"
+PAYLOAD_SIZE="${CATALOG_GROWTH_PAYLOAD_BYTES:-262144}"
+TRIALS="${CATALOG_GROWTH_TRIALS:-1}"
 FETCH_MODE="${CATALOG_GROWTH_SWARM_FETCH:-latest}"
 OUTPUT_FILE="catalog_growth_results.csv"
 APPEND=false
@@ -38,11 +40,13 @@ while [[ $# -gt 0 ]]; do
     --node-count) NODE_COUNT="$2"; shift 2 ;;
     --max-files) MAX_FILES="$2"; shift 2 ;;
     --payload-size) PAYLOAD_SIZE="$2"; shift 2 ;;
+    --trials) TRIALS="$2"; shift 2 ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     --append) APPEND=true; shift ;;
     --help)
-      echo "Usage: $0 [--node-count N] [--max-files M] [--payload-size bytes] [--output file.csv] [--append]"
-      echo "Env: CATALOG_GROWTH_NODE_COUNT, CATALOG_GROWTH_MAX_OBJECTS, CATALOG_GROWTH_PAYLOAD_BYTES,"
+      echo "Usage: $0 [--node-count N] [--max-files M] [--payload-size bytes] [--trials T] [--output file.csv] [--append]"
+      echo "Env: CATALOG_GROWTH_NODE_COUNT, CATALOG_GROWTH_MAX_OBJECTS, CATALOG_GROWTH_PAYLOAD_BYTES (default 262144),"
+      echo "     CATALOG_GROWTH_TRIALS (default 1; row-wise mean of upload_ms and download_total_ms),"
       echo "     SWARM_API, CATALOG_GROWTH_SWARM_FETCH=latest|first,"
       echo "     CATALOG_GROWTH_HOST_WALL_GET=0|1 (default 1), CATALOG_GROWTH_SWARM_HOST_WALL_GET, CATALOG_GROWTH_SWARM_EVICT_SLEEP_SEC,"
       echo "     CATALOG_GROWTH_SWARM_GET_LOCALHOST=0|1, CATALOG_GROWTH_SWARM_BZZ_HTTP (override GET base)"
@@ -51,6 +55,15 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+if ! [[ "$TRIALS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: --trials / CATALOG_GROWTH_TRIALS must be a positive integer (got: $TRIALS)" >&2
+  exit 1
+fi
+if [[ "$APPEND" == true ]] && [[ "$TRIALS" -gt 1 ]]; then
+  echo "Error: --append is incompatible with CATALOG_GROWTH_TRIALS>1 (run Swarm trials to a temp file, merge, then append manually if needed)" >&2
+  exit 1
+fi
 
 case "$FETCH_MODE" in
   first|latest) ;;
@@ -129,7 +142,7 @@ generate_file() {
   dd if=/dev/urandom bs=1 count=$((sz - 8)) >>"$out" 2>/dev/null
 }
 
-# stdout: ms|hash64 — POST to bootstrap only.
+# stdout: ms|hash64 — same timing as vn-IPFS upload: time_starttransfer (first response byte)
 swarm_put_ms_hash() {
   local fp="$1"
   local body_tmp="$TEMP_DIR/sw_put_$$.bin"
@@ -139,7 +152,7 @@ swarm_put_ms_hash() {
     -H "Content-Type: application/octet-stream" \
     --data-binary "@$fp" \
     -o "$body_tmp" \
-    -w '%{time_total}' \
+    -w '%{time_starttransfer}' \
     "${SWARM_API%/}/bzz:/" 2>&1)
   rc=$?
   set -e
@@ -245,41 +258,64 @@ swarm_get_total_ms() {
   return 1
 }
 
-if [[ "$APPEND" != true ]]; then
-  echo "system,node_count,files_on_network,payload_size,upload_ms,download_total_ms" > "$OUTPUT_FILE"
-fi
+MERGE_SH="$SCRIPT_DIR/catalog_growth_merge.sh"
+[[ -x "$MERGE_SH" ]] || MERGE_SH="bash $MERGE_SH"
+
+run_one_swarm_catalog_pass() {
+  local out="$1"
+  local skip_header="${2:-}"
+  if [[ -z "$skip_header" ]]; then
+    echo "system,node_count,files_on_network,payload_size,upload_ms,download_total_ms" > "$out"
+  fi
+  local FIRST_HASH=""
+  local f fp up lat rh gkey dl_ms
+  for f in $(seq 1 "$MAX_FILES"); do
+    fp="$TEMP_DIR/blob_$f.bin"
+    generate_file "$fp" "$f"
+    up=$(swarm_put_ms_hash "$fp" 2>/dev/null) || true
+    if [[ -z "$up" || "$up" != *"|"* ]]; then
+      echo "swarm,$NODE_COUNT,$f,$PAYLOAD_SIZE,ERROR,ERROR" >> "$out"
+      echo "  stop: Swarm upload failed at files_on_network=$f" >&2
+      break
+    fi
+    lat=$(echo "$up" | cut -d'|' -f1)
+    rh=$(echo "$up" | cut -d'|' -f2)
+    [[ -z "$FIRST_HASH" ]] && FIRST_HASH="$rh"
+
+    gkey="$rh"
+    if [[ "$FETCH_MODE" == "first" ]]; then
+      gkey="$FIRST_HASH"
+      swarm_evict_local_best_effort "$gkey"
+    fi
+
+    dl_ms="ERROR"
+    if [[ -n "$gkey" ]]; then
+      dl_ms=$(swarm_get_total_ms "$gkey" 2>/dev/null) || dl_ms="ERROR"
+    fi
+    echo "swarm,$NODE_COUNT,$f,$PAYLOAD_SIZE,$lat,$dl_ms" >> "$out"
+    if (( f % 25 == 0 )) || [[ "$f" -eq 1 ]]; then
+      echo "  files_on_network=$f upload_ms=$lat download_total_ms=$dl_ms" >&2
+    fi
+  done
+}
 
 echo "Catalog growth (Swarm): PUT=swarm-bootstrap GET=$GET_CONTAINER bzz_base=$BZZ_GET_BASE fetch=$FETCH_MODE host_wall_get=${CATALOG_GROWTH_HOST_WALL_GET:-1} workers_ok=$nw"
-echo "  node_count=$NODE_COUNT (label), max_files=$MAX_FILES, payload=$PAYLOAD_SIZE"
+echo "  node_count=$NODE_COUNT (label), max_files=$MAX_FILES, payload=$PAYLOAD_SIZE, trials=$TRIALS"
 
-FIRST_HASH=""
-for f in $(seq 1 "$MAX_FILES"); do
-  fp="$TEMP_DIR/blob_$f.bin"
-  generate_file "$fp" "$f"
-  up=$(swarm_put_ms_hash "$fp" 2>/dev/null) || true
-  if [[ -z "$up" || "$up" != *"|"* ]]; then
-    echo "swarm,$NODE_COUNT,$f,$PAYLOAD_SIZE,ERROR,ERROR" >> "$OUTPUT_FILE"
-    echo "  stop: Swarm upload failed at files_on_network=$f" >&2
-    break
-  fi
-  lat=$(echo "$up" | cut -d'|' -f1)
-  rh=$(echo "$up" | cut -d'|' -f2)
-  [[ -z "$FIRST_HASH" ]] && FIRST_HASH="$rh"
-
-  gkey="$rh"
-  if [[ "$FETCH_MODE" == "first" ]]; then
-    gkey="$FIRST_HASH"
-    swarm_evict_local_best_effort "$gkey"
-  fi
-
-  dl_ms="ERROR"
-  if [[ -n "$gkey" ]]; then
-    dl_ms=$(swarm_get_total_ms "$gkey" 2>/dev/null) || dl_ms="ERROR"
-  fi
-  echo "swarm,$NODE_COUNT,$f,$PAYLOAD_SIZE,$lat,$dl_ms" >> "$OUTPUT_FILE"
-  if (( f % 25 == 0 )) || [[ "$f" -eq 1 ]]; then
-    echo "  files_on_network=$f upload_ms=$lat download_total_ms=$dl_ms" >&2
-  fi
-done
+if [[ "$APPEND" == true ]]; then
+  run_one_swarm_catalog_pass "$OUTPUT_FILE" 1
+elif [[ "$TRIALS" -gt 1 ]]; then
+  echo "  (trials>1: each trial should use an empty Swarm store; recreate volumes between trials.)" >&2
+  PASS_FILES=()
+  for ((t = 1; t <= TRIALS; t++)); do
+    echo "  --- trial $t/$TRIALS ---" >&2
+    pf="$TEMP_DIR/swarm_catalog_pass_${t}.csv"
+    run_one_swarm_catalog_pass "$pf"
+    PASS_FILES+=("$pf")
+  done
+  "$MERGE_SH" "$OUTPUT_FILE" "${PASS_FILES[@]}"
+else
+  run_one_swarm_catalog_pass "$OUTPUT_FILE"
+fi
 
 echo "Wrote $OUTPUT_FILE"
