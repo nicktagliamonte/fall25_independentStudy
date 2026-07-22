@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Purpose: Measure upload and download latency as the number of distinct objects on the network grows (1..N).
-# vn-IPFS only: PUT from bootstrap; GET (raw, remote_only=1) from a worker so each download runs DHT token resolution + peer fetch (not local replica fast path).
+# Purpose: Measure upload and download as catalog grows (1..N). Upload: host curl, same as Swarm, but
+#          -w time_starttransfer (ms to first response byte) — not full time_total. GET: remote_only worker.
 # Download timing: default CATALOG_GROWTH_HOST_WALL_GET=1 — host date +%s%N around the full docker exec + curl
 # (same order of magnitude as Swarm catalog host-wall GET). Set CATALOG_GROWTH_HOST_WALL_GET=0 for in-container curl time_total only.
-# Usage: ./catalog_growth_test.sh [--node-count 50] [--max-files 256] [--payload-size 8192] [--output file.csv] [--our-api container]
+# Usage: ./catalog_growth_test.sh [--node-count 50] [--max-files 256] [--payload-size bytes] [--trials T] [--output file.csv] [--our-api container]
+# Multi-trial: CATALOG_GROWTH_TRIALS>1 runs the sweep that many times and writes row-wise arithmetic means (expects a clean store per trial for valid results).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 NODE_COUNT="${CATALOG_GROWTH_NODE_COUNT:-50}"
 MAX_FILES="${CATALOG_GROWTH_MAX_OBJECTS:-256}"
-PAYLOAD_SIZE="${CATALOG_GROWTH_PAYLOAD_BYTES:-8192}"
+PAYLOAD_SIZE="${CATALOG_GROWTH_PAYLOAD_BYTES:-262144}"
+TRIALS="${CATALOG_GROWTH_TRIALS:-1}"
 OUTPUT_FILE="catalog_growth_results.csv"
 OUR_API=""
 
@@ -21,17 +23,24 @@ while [[ $# -gt 0 ]]; do
     --node-count) NODE_COUNT="$2"; shift 2 ;;
     --max-files) MAX_FILES="$2"; shift 2 ;;
     --payload-size) PAYLOAD_SIZE="$2"; shift 2 ;;
+    --trials) TRIALS="$2"; shift 2 ;;
     --output) OUTPUT_FILE="$2"; shift 2 ;;
     --our-api) OUR_API="$2"; shift 2 ;;
     --help)
-      echo "Usage: $0 [--node-count N] [--max-files M] [--payload-size bytes] [--output file.csv] [--our-api container]"
-      echo "Env: CATALOG_GROWTH_NODE_COUNT, CATALOG_GROWTH_MAX_OBJECTS (default 256), CATALOG_GROWTH_PAYLOAD_BYTES (default 8192),"
+      echo "Usage: $0 [--node-count N] [--max-files M] [--payload-size bytes] [--trials T] [--output file.csv] [--our-api container]"
+      echo "Env: CATALOG_GROWTH_NODE_COUNT, CATALOG_GROWTH_MAX_OBJECTS (default 256), CATALOG_GROWTH_PAYLOAD_BYTES (default 262144),"
+      echo "     CATALOG_GROWTH_TRIALS (default 1; mean upload_ms and download_total_ms per row across trials),"
       echo "     CATALOG_GROWTH_HOST_WALL_GET=0|1 (default 1: host wall around docker exec GET)"
       exit 0
       ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+if ! [[ "$TRIALS" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: --trials / CATALOG_GROWTH_TRIALS must be a positive integer (got: $TRIALS)" >&2
+  exit 1
+fi
 
 if ! command -v bc >/dev/null 2>&1; then
   echo "Error: bc required" >&2
@@ -119,25 +128,25 @@ generate_file() {
   dd if=/dev/urandom bs=1 count=$((sz - 8)) >>"$out" 2>/dev/null
 }
 
-# stdout: latency_ms|multihash_hex ; stderr on failure
+# stdout: latency_ms|multihash_hex; upload = curl time_starttransfer (ms to first response byte)
 our_put_timed_key() {
   local fp="$1"
   local rid="$RANDOM"
-  local data_b64 json_payload http_sec response key
-  data_b64=$(base64 -w 0 < "$fp" 2>/dev/null || base64 < "$fp" | tr -d '\n')
-  json_payload="$TEMP_DIR/put_${rid}.json"
-  echo "{\"data\":\"$data_b64\"}" > "$json_payload"
-  docker cp "$json_payload" "${OUR_CONTAINER}:/tmp/put_${rid}.json" >/dev/null 2>&1
-  http_sec=$(docker exec "$OUR_CONTAINER" curl -sSf -m 180 -X POST \
-    -H "Content-Type: application/json" \
-    -d "@/tmp/put_${rid}.json" \
-    -o "/tmp/put_resp_${rid}.json" \
-    -w '%{time_total}' \
-    "http://${OUR_API_ADDR}/put" 2>&1) || true
-  docker exec "$OUR_CONTAINER" rm -f "/tmp/put_${rid}.json" >/dev/null 2>&1 || true
-  response=$(docker exec "$OUR_CONTAINER" cat "/tmp/put_resp_${rid}.json" 2>/dev/null || echo "")
-  docker exec "$OUR_CONTAINER" rm -f "/tmp/put_resp_${rid}.json" >/dev/null 2>&1 || true
-  rm -f "$json_payload"
+  local body_out="$TEMP_DIR/put_resp_${rid}.json"
+  local line port put_url
+  line=$(docker port "$OUR_CONTAINER" 9400 2>/dev/null | head -1) || true
+  [[ -z "$line" ]] && line=$(docker port "$OUR_CONTAINER" 9400/tcp 2>/dev/null | head -1) || true
+  port=$(echo "$line" | grep -oE '[0-9]+$' | head -1)
+  put_url="http://127.0.0.1:${port:-9400}/put"
+  local http_sec response key
+  http_sec=$(curl -sSf -m 180 -X POST \
+    -H "Content-Type: application/octet-stream" \
+    --data-binary "@$fp" \
+    -o "$body_out" \
+    -w '%{time_starttransfer}' \
+    "$put_url" 2>&1) || true
+  response=$(cat "$body_out" 2>/dev/null || echo "")
+  rm -f "$body_out" 2>/dev/null || true
   key=$(echo "$response" | jq -r '.multihash_hex // empty' 2>/dev/null || echo "")
   if [[ -z "$key" || "$key" == "null" || ${#key} -ne 64 ]]; then
     return 1
@@ -145,7 +154,7 @@ our_put_timed_key() {
   http_sec=$(echo "$http_sec" | tr -d ' \n\r')
   [[ "$http_sec" =~ ^[0-9]+\.?[0-9]*$ ]] || return 1
   local latency_ms
-  latency_ms=$(echo "scale=2; $http_sec * 1000" | bc -l)
+  latency_ms=$(echo "scale=6; $http_sec * 1000" | bc -l)
   echo "${latency_ms}|${key}"
 }
 
@@ -208,30 +217,50 @@ download_total_ms() {
   echo "scale=6; $total_curl * 1000" | bc -l
 }
 
-echo "system,node_count,files_on_network,payload_size,upload_ms,download_total_ms" > "$OUTPUT_FILE"
+MERGE_SH="$SCRIPT_DIR/catalog_growth_merge.sh"
+[[ -x "$MERGE_SH" ]] || MERGE_SH="bash $MERGE_SH"
 
-echo "Catalog growth test: node_count=$NODE_COUNT (label), max_files=$MAX_FILES, payload=$PAYLOAD_SIZE, GET remote_only via $GET_CONTAINER"
-FIRST_KEY=""
-for f in $(seq 1 "$MAX_FILES"); do
-  fp="$TEMP_DIR/blob_$f.bin"
-  generate_file "$fp" "$f"
-  up=$(our_put_timed_key "$fp" 2>/dev/null) || true
-  if [[ -z "$up" || "$up" != *"|"* ]]; then
-    echo "our_system,$NODE_COUNT,$f,$PAYLOAD_SIZE,ERROR,ERROR" >> "$OUTPUT_FILE"
-    echo "  stop: upload failed at files_on_network=$f" >&2
-    break
-  fi
-  lat=$(echo "$up" | cut -d'|' -f1)
-  kh=$(echo "$up" | cut -d'|' -f2)
-  [[ -z "$FIRST_KEY" ]] && FIRST_KEY="$kh"
-  dl_ms="ERROR"
-  if [[ -n "$FIRST_KEY" ]]; then
-    dl_ms=$(download_total_ms "$FIRST_KEY" 2>/dev/null) || dl_ms="ERROR"
-  fi
-  echo "our_system,$NODE_COUNT,$f,$PAYLOAD_SIZE,$lat,$dl_ms" >> "$OUTPUT_FILE"
-  if (( f % 25 == 0 )) || [[ "$f" -eq 1 ]]; then
-    echo "  files_on_network=$f upload_ms=$lat download_total_ms=$dl_ms" >&2
-  fi
-done
+run_one_catalog_pass() {
+  local out="$1"
+  echo "system,node_count,files_on_network,payload_size,upload_ms,download_total_ms" > "$out"
+  local FIRST_KEY=""
+  local f fp up lat kh dl_ms
+  for f in $(seq 1 "$MAX_FILES"); do
+    fp="$TEMP_DIR/blob_$f.bin"
+    generate_file "$fp" "$f"
+    up=$(our_put_timed_key "$fp" 2>/dev/null) || true
+    if [[ -z "$up" || "$up" != *"|"* ]]; then
+      echo "our_system,$NODE_COUNT,$f,$PAYLOAD_SIZE,ERROR,ERROR" >> "$out"
+      echo "  stop: upload failed at files_on_network=$f" >&2
+      break
+    fi
+    lat=$(echo "$up" | cut -d'|' -f1)
+    kh=$(echo "$up" | cut -d'|' -f2)
+    [[ -z "$FIRST_KEY" ]] && FIRST_KEY="$kh"
+    dl_ms="ERROR"
+    if [[ -n "$FIRST_KEY" ]]; then
+      dl_ms=$(download_total_ms "$FIRST_KEY" 2>/dev/null) || dl_ms="ERROR"
+    fi
+    echo "our_system,$NODE_COUNT,$f,$PAYLOAD_SIZE,$lat,$dl_ms" >> "$out"
+    if (( f % 25 == 0 )) || [[ "$f" -eq 1 ]]; then
+      echo "  files_on_network=$f upload_ms=$lat download_total_ms=$dl_ms" >&2
+    fi
+  done
+}
+
+echo "Catalog growth test: node_count=$NODE_COUNT (label), max_files=$MAX_FILES, payload=$PAYLOAD_SIZE, trials=$TRIALS, GET remote_only via $GET_CONTAINER"
+if [[ "$TRIALS" -gt 1 ]]; then
+  echo "  (trials>1: each trial should use an empty store; use fresh volumes or separate benchmark invocations.)" >&2
+  PASS_FILES=()
+  for ((t = 1; t <= TRIALS; t++)); do
+    echo "  --- trial $t/$TRIALS ---" >&2
+    pf="$TEMP_DIR/catalog_pass_${t}.csv"
+    run_one_catalog_pass "$pf"
+    PASS_FILES+=("$pf")
+  done
+  "$MERGE_SH" "$OUTPUT_FILE" "${PASS_FILES[@]}"
+else
+  run_one_catalog_pass "$OUTPUT_FILE"
+fi
 
 echo "Wrote $OUTPUT_FILE"

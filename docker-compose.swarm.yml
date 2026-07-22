@@ -47,7 +47,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node1-data:/app/data
       - swarm-node1-logs:/app/logs
@@ -76,7 +76,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node2-data:/app/data
       - swarm-node2-logs:/app/logs
@@ -105,7 +105,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node3-data:/app/data
       - swarm-node3-logs:/app/logs
@@ -134,7 +134,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node4-data:/app/data
       - swarm-node4-logs:/app/logs
@@ -163,7 +163,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node5-data:/app/data
       - swarm-node5-logs:/app/logs
@@ -192,7 +192,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node6-data:/app/data
       - swarm-node6-logs:/app/logs
@@ -221,7 +221,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node7-data:/app/data
       - swarm-node7-logs:/app/logs
@@ -250,7 +250,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node8-data:/app/data
       - swarm-node8-logs:/app/logs
@@ -279,7 +279,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node9-data:/app/data
       - swarm-node9-logs:/app/logs
@@ -308,7 +308,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node10-data:/app/data
       - swarm-node10-logs:/app/logs
@@ -337,7 +337,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node11-data:/app/data
       - swarm-node11-logs:/app/logs
@@ -366,7 +366,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node12-data:/app/data
       - swarm-node12-logs:/app/logs
@@ -395,7 +395,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node13-data:/app/data
       - swarm-node13-logs:/app/logs
@@ -424,7 +424,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node14-data:/app/data
       - swarm-node14-logs:/app/logs
@@ -453,7 +453,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node15-data:/app/data
       - swarm-node15-logs:/app/logs
@@ -482,7 +482,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node16-data:/app/data
       - swarm-node16-logs:/app/logs
@@ -511,7 +511,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node17-data:/app/data
       - swarm-node17-logs:/app/logs
@@ -540,7 +540,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node18-data:/app/data
       - swarm-node18-logs:/app/logs
@@ -569,7 +569,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node19-data:/app/data
       - swarm-node19-logs:/app/logs
@@ -598,7 +598,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node20-data:/app/data
       - swarm-node20-logs:/app/logs
@@ -627,7 +627,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node21-data:/app/data
       - swarm-node21-logs:/app/logs
@@ -656,7 +656,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node22-data:/app/data
       - swarm-node22-logs:/app/logs
@@ -685,7 +685,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node23-data:/app/data
       - swarm-node23-logs:/app/logs
@@ -714,7 +714,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node24-data:/app/data
       - swarm-node24-logs:/app/logs
@@ -743,7 +743,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node25-data:/app/data
       - swarm-node25-logs:/app/logs
@@ -772,7 +772,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node26-data:/app/data
       - swarm-node26-logs:/app/logs
@@ -801,7 +801,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node27-data:/app/data
       - swarm-node27-logs:/app/logs
@@ -830,7 +830,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node28-data:/app/data
       - swarm-node28-logs:/app/logs
@@ -859,7 +859,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node29-data:/app/data
       - swarm-node29-logs:/app/logs
@@ -888,7 +888,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node30-data:/app/data
       - swarm-node30-logs:/app/logs
@@ -917,7 +917,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node31-data:/app/data
       - swarm-node31-logs:/app/logs
@@ -946,7 +946,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node32-data:/app/data
       - swarm-node32-logs:/app/logs
@@ -975,7 +975,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node33-data:/app/data
       - swarm-node33-logs:/app/logs
@@ -1004,7 +1004,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node34-data:/app/data
       - swarm-node34-logs:/app/logs
@@ -1033,7 +1033,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node35-data:/app/data
       - swarm-node35-logs:/app/logs
@@ -1062,7 +1062,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node36-data:/app/data
       - swarm-node36-logs:/app/logs
@@ -1091,7 +1091,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node37-data:/app/data
       - swarm-node37-logs:/app/logs
@@ -1120,7 +1120,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node38-data:/app/data
       - swarm-node38-logs:/app/logs
@@ -1149,7 +1149,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node39-data:/app/data
       - swarm-node39-logs:/app/logs
@@ -1178,7 +1178,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node40-data:/app/data
       - swarm-node40-logs:/app/logs
@@ -1207,7 +1207,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node41-data:/app/data
       - swarm-node41-logs:/app/logs
@@ -1236,7 +1236,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node42-data:/app/data
       - swarm-node42-logs:/app/logs
@@ -1265,7 +1265,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node43-data:/app/data
       - swarm-node43-logs:/app/logs
@@ -1294,7 +1294,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node44-data:/app/data
       - swarm-node44-logs:/app/logs
@@ -1323,7 +1323,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node45-data:/app/data
       - swarm-node45-logs:/app/logs
@@ -1352,7 +1352,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node46-data:/app/data
       - swarm-node46-logs:/app/logs
@@ -1381,7 +1381,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node47-data:/app/data
       - swarm-node47-logs:/app/logs
@@ -1410,7 +1410,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node48-data:/app/data
       - swarm-node48-logs:/app/logs
@@ -1439,7 +1439,7 @@ services:
       - SWARM_PASSWORD=swarm-test-password
       - SWARM_ENABLE_PINNING=true
       - SWARM_STORE_CACHE_CAPACITY=0
-      - SWARM_BOOTNODE=enode://1840d7495bc5d7c0beec7c65a498e012b6942a618953e313fc3dc7a5faea6ad2394f19bc9b21e778a80d62d3ff6d783c9cbb9e7f49c8494c00216e11d0d42be1@172.20.0.200:30399
+      - SWARM_BOOTNODE=enode://9085fb154dc7ef070326040409494c98823af47c3bbb5d289f6f733a178c3f0efba168c996276070161a0f9086597ba9a3167adf3ac6c8d728070cb836f9cd46@172.20.0.200:30399
     volumes:
       - swarm-node49-data:/app/data
       - swarm-node49-logs:/app/logs
