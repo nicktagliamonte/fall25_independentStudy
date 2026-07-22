@@ -18,13 +18,28 @@ const DefaultContentChunkSize = 4 * 1024
 
 // ChunkIndex stores payload chunk metadata keyed by the logical payload key.
 type ChunkIndex struct {
-	Version    int      `json:"version"`
-	ChunkSize  int      `json:"chunk_size"`
-	TotalBytes int      `json:"total_bytes"`
-	ChunkKeys  []string `json:"chunk_keys"`
+	// Version is the chunk index format version; must be > 0 to be considered valid.
+	Version int `json:"version"`
+	// ChunkSize is the fixed chunk size (in bytes) used when splitting the payload.
+	ChunkSize int `json:"chunk_size"`
+	// TotalBytes is the total length of the original, unchunked payload.
+	TotalBytes int `json:"total_bytes"`
+	// ChunkKeys is the ordered list of hex-encoded Keys for each chunk, in the
+	// order they must be concatenated to reassemble the original payload.
+	ChunkKeys []string `json:"chunk_keys"`
 }
 
 // SplitPayloadChunks splits payload bytes into fixed-size chunks.
+//
+// Parameters:
+//   - data ([]byte): the payload to split.
+//   - chunkSize (int): the maximum size of each chunk; values <= 0 fall back to
+//     DefaultContentChunkSize.
+//
+// Returns:
+//   - [][]byte: the ordered chunks (each a fresh copy of the underlying bytes);
+//     an empty (non-nil) slice if data is empty. The final chunk may be smaller
+//     than chunkSize.
 func SplitPayloadChunks(data []byte, chunkSize int) [][]byte {
 	if chunkSize <= 0 {
 		chunkSize = DefaultContentChunkSize
@@ -46,6 +61,15 @@ func SplitPayloadChunks(data []byte, chunkSize int) [][]byte {
 }
 
 // StoreChunkIndex stores a chunk index for the logical payload key.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the datastore write.
+//   - d (ds.Batching): the backing datastore; if nil, this is a silent no-op.
+//   - key (Key): the logical payload key; if zero, this is a silent no-op.
+//   - idx (ChunkIndex): the chunk index metadata to persist.
+//
+// Returns:
+//   - error: non-nil if JSON marshaling or the datastore Put fails.
 func StoreChunkIndex(ctx context.Context, d ds.Batching, key Key, idx ChunkIndex) error {
 	if d == nil || key.IsZero() {
 		return nil
@@ -58,6 +82,17 @@ func StoreChunkIndex(ctx context.Context, d ds.Batching, key Key, idx ChunkIndex
 }
 
 // GetChunkIndex retrieves a chunk index for a key. Returns (nil, nil) when absent.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the datastore read.
+//   - d (ds.Batching): the backing datastore; if nil, returns (nil, nil).
+//   - key (Key): the logical payload key; if zero, returns (nil, nil).
+//
+// Returns:
+//   - *ChunkIndex: the stored chunk index, or nil if not present, not readable,
+//     or if d/key are invalid.
+//   - error: non-nil only if the stored record exists but fails to unmarshal
+//     or fails basic sanity checks (Version > 0, TotalBytes >= 0, non-empty ChunkKeys).
 func GetChunkIndex(ctx context.Context, d ds.Batching, key Key) (*ChunkIndex, error) {
 	if d == nil || key.IsZero() {
 		return nil, nil
@@ -77,7 +112,23 @@ func GetChunkIndex(ctx context.Context, d ds.Batching, key Key) (*ChunkIndex, er
 }
 
 // ResolvePayloadByKeyLocal resolves a logical key from local storage.
-// It first tries direct single-block key mapping, then chunk-index reassembly.
+// It first tries direct single-block key mapping (GetBlockByKey), and if that
+// misses, falls back to chunk-index reassembly: loading the ChunkIndex for key,
+// fetching each listed chunk in order, concatenating them, and verifying the
+// reassembled payload's length and SHA256 hash match the index/key.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying reads.
+//   - d (ds.Batching): the backing datastore, used for chunk index lookup.
+//   - bsvc (*bserv.BlockService): the block service used to fetch block bytes by key.
+//   - key (Key): the logical payload key to resolve.
+//
+// Returns:
+//   - []byte: the resolved payload bytes, or nil if neither a direct block nor a
+//     chunk index exists for key.
+//   - error: non-nil if a chunk key fails to parse, a chunk is missing/unreadable,
+//     the reassembled size doesn't match the index's TotalBytes, or the
+//     reassembled payload's hash doesn't match key.
 func ResolvePayloadByKeyLocal(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, key Key) ([]byte, error) {
 	blockData, err := GetBlockByKey(ctx, d, bsvc, key)
 	if err == nil && blockData != nil {

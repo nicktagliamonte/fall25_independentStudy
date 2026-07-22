@@ -38,14 +38,37 @@ import (
 	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
 
+// stringSlice implements flag.Value to support repeatable string flags
+// (e.g. --listen, --seed), accumulating one entry per occurrence of the flag.
 type stringSlice []string
 
+// String returns the flag.Value textual representation of s, used by the
+// flag package when printing usage/defaults.
+//
+// Returns:
+//   - string: the Go-syntax representation of the underlying []string.
 func (s *stringSlice) String() string { return fmt.Sprint([]string(*s)) }
+
+// Set appends v to s. It implements flag.Value.Set and is called once per
+// occurrence of the flag on the command line, which is what makes the flag
+// repeatable.
+//
+// Parameters:
+//   - v (string): the flag value provided for this occurrence.
+//
+// Returns:
+//   - error: always nil.
 func (s *stringSlice) Set(v string) error {
 	*s = append(*s, v)
 	return nil
 }
 
+// printBanner prints the node's peer ID and listen addresses to stdout in the
+// CLI's standard "PeerID:"/"Addr:" line format.
+//
+// Parameters:
+//   - hID (string): the string-encoded peer ID to print.
+//   - addrs ([]string): the multiaddrs to print, one per line.
 func printBanner(hID string, addrs []string) {
 	fmt.Println("PeerID:", hID)
 	for _, a := range addrs {
@@ -53,7 +76,14 @@ func printBanner(hID string, addrs []string) {
 	}
 }
 
-// bestPublicIPv4 returns the first non-loopback, non-private IPv4 found on the machine.
+// bestPublicIPv4 returns a best-guess public IPv4 address for this machine.
+// It first scans local network interfaces for the first up, non-loopback
+// IPv4 address that is not RFC1918 private and not link-local; if none is
+// found, it falls back to fetchPublicIPv4 to query an external service for
+// the machine's public egress IP.
+//
+// Returns:
+//   - string: a public-looking IPv4 address, or "" if none could be determined.
 func bestPublicIPv4() string {
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
@@ -90,9 +120,15 @@ func bestPublicIPv4() string {
 	return ""
 }
 
-// printDerivedPublicAddrs emits derived public addrs by replacing the /ip4 component
-// in the host addrs with the detected public IPv4. This does not change what the
-// node listens on; it only prints human-usable remote addresses.
+// printDerivedPublicAddrs prints, for each addr containing an "/ip4/"
+// component, a derived "Public Addr:" line with that component's IP replaced
+// by the machine's detected public IPv4 (from bestPublicIPv4), keeping the
+// rest of the multiaddr (port/transport) unchanged. This is purely a display
+// helper: it does not change what the node actually listens on. If no public
+// IPv4 can be determined, nothing is printed.
+//
+// Parameters:
+//   - addrs ([]string): the host's listen multiaddrs to derive public-facing addresses from.
 func printDerivedPublicAddrs(addrs []string) {
 	pub := bestPublicIPv4()
 	if pub == "" {
@@ -114,8 +150,14 @@ func printDerivedPublicAddrs(addrs []string) {
 	}
 }
 
-// fetchPublicIPv4 contacts a simple web service to discover the public IPv4.
-// Uses short timeouts and falls back across providers.
+// fetchPublicIPv4 contacts a small list of external HTTP services in order
+// (api.ipify.org, then checkip.amazonaws.com), each with a 1.5s timeout,
+// returning the first response that parses as a public (non-private,
+// non-loopback) IPv4 address. Used as bestPublicIPv4's fallback when no
+// suitable address is found on local interfaces.
+//
+// Returns:
+//   - string: the discovered public IPv4 address, or "" if all endpoints fail or return an unusable address.
 func fetchPublicIPv4() string {
 	client := &http.Client{Timeout: 1500 * time.Millisecond}
 	endpoints := []string{
@@ -141,6 +183,14 @@ func fetchPublicIPv4() string {
 	return ""
 }
 
+// hostAddrsStrings returns the string encoding of every multiaddr h is
+// currently listening on/advertising.
+//
+// Parameters:
+//   - h (host.Host): the libp2p host to read listen addresses from.
+//
+// Returns:
+//   - []string: the string-encoded multiaddrs.
 func hostAddrsStrings(h host.Host) []string {
 	addrs := make([]string, 0, len(h.Addrs()))
 	for _, a := range h.Addrs() {
@@ -149,6 +199,14 @@ func hostAddrsStrings(h host.Host) []string {
 	return addrs
 }
 
+// minDuration returns the smaller of two durations.
+//
+// Parameters:
+//   - a (time.Duration): first duration to compare.
+//   - b (time.Duration): second duration to compare.
+//
+// Returns:
+//   - time.Duration: whichever of a or b is smaller.
 func minDuration(a, b time.Duration) time.Duration {
 	if a < b {
 		return a
@@ -156,12 +214,40 @@ func minDuration(a, b time.Duration) time.Duration {
 	return b
 }
 
+// dialWithTimeout attempts to connect h to info, bounding the attempt with a
+// derived context that times out after d.
+//
+// Parameters:
+//   - ctx (context.Context): parent context; a d-duration timeout is derived from it.
+//   - h (host.Host): the libp2p host performing the dial.
+//   - info (peer.AddrInfo): the peer and its addresses to connect to.
+//   - d (time.Duration): the dial timeout.
+//
+// Returns:
+//   - error: non-nil if the connection attempt fails or times out.
 func dialWithTimeout(ctx context.Context, h host.Host, info peer.AddrInfo, d time.Duration) error {
 	connectCtx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
 	return h.Connect(connectCtx, info)
 }
 
+// getHandshakePolicyFromEnv builds a myhost.HandshakePolicy for the inline
+// (non-daemon) CLI subcommands (put/connect/get/lookup-key), based on the
+// SNG40_ENV/SNG40_CA_PUBS/SNG40_TOKEN environment variables surfaced by Run.
+// pubs is parsed as a comma-separated list of base64-encoded 32-byte ed25519
+// CA public keys; malformed or wrong-length entries are silently skipped.
+// Credential enforcement (RequireCredential/AuthScheme/CAPubKeys/Token) is
+// enabled if require is true, or if at least one valid CA pubkey was parsed
+// and token is non-empty.
+//
+// Parameters:
+//   - require (bool): forces RequireCredential on regardless of pubs/token (from SNG40_ENV).
+//   - pubs (string): comma-separated base64-encoded 32-byte ed25519 CA public keys (from SNG40_CA_PUBS).
+//   - token (string): the credential token to present/require (from SNG40_TOKEN).
+//   - timeout (time.Duration): the handshake timeout to set on the returned policy.
+//
+// Returns:
+//   - myhost.HandshakePolicy: the constructed policy, with MinAgentVersion "sng40/0.1.0" and all services allowed.
 func getHandshakePolicyFromEnv(require bool, pubs string, token string, timeout time.Duration) myhost.HandshakePolicy {
 	var caPubs [][]byte
 	if pubs != "" {
@@ -182,7 +268,49 @@ func getHandshakePolicyFromEnv(require bool, pubs string, token string, timeout 
 	return policyBase
 }
 
-// Run executes the CLI behavior of the node and returns an error on failure.
+// Run is the entry point for the `node` CLI binary. It reads os.Args[1] as
+// the subcommand and os.Args[2:] as that subcommand's flags, then dispatches:
+//
+//   - "run": starts a long-running node. Builds (or loads) a host identity,
+//     an ephemeral or persistent blockstore, a peerstore seeded from
+//     defaults/CLI/env/file, and a DHT-backed storage stack
+//     (BuildStackWithDHT). Installs the handshake gate/responder, repair
+//     protocol, gateway, connectivity monitor, periodic reannounce, catalog
+//     IBLT exchange (InstallCatalogIBLT), peer pruning, connection-security
+//     verification, outbound dial maintenance (targeting
+//     effectiveOutboundTarget), and peer gossip as background goroutines.
+//     Starts the HTTP control server and writes its address to the
+//     --control file. With --daemon, instead re-execs itself in the
+//     background (redirecting stdout/stderr to --log or a default log file)
+//     and returns immediately. Blocks on ctx.Done() otherwise.
+//   - "put": stores a block (from --data or --file). With --daemon, POSTs to
+//     a running daemon's /put endpoint instead of running inline. In inline
+//     mode, builds a throwaway host+stack, stores the block, updates the
+//     routing table, and (with --serve) blocks forever serving inbound
+//     requests while periodically checking connection security.
+//   - "connect": dials a single peer by --addr/--peer, performing a
+//     handshake and an opportunistic suffix sync if the peer is ahead in
+//     state height. Delegates to a running daemon's /connect endpoint when
+//     --daemon is set.
+//   - "get": fetches a block by --cid from a specific --from-addr/--from-peer
+//     provider, verifying it and optionally writing it to --out. Delegates
+//     to a running daemon's /get endpoint when --daemon is set.
+//   - "shutdown": sends a shutdown signal to a running daemon via its
+//     control file.
+//   - "restore": submits a restore job (a CID or file of CIDs) to a running
+//     daemon's /restore endpoint with retries, then polls
+//     /restore/status until done and prints a final metrics snapshot.
+//   - "snapshot": proxies a running daemon's /snapshot endpoint (paginated
+//     CID listing) to stdout.
+//   - "neighbors": proxies a running daemon's /neighbors endpoint to stdout.
+//   - "keygen": generates (or loads) a persistent libp2p private key at
+//     --out and prints the derived peer ID.
+//   - "lookup-key": runs a one-off, stateless DHT lookup (runLookupKey) for
+//     a 64-hex-char key from a fresh node that only bootstraps against
+//     --bootstrap, printing hop count/latency/found as JSON.
+//
+// Returns:
+//   - error: a usage error if no subcommand (or an unknown one) is given, a flag-parsing/validation error, or any error from the dispatched subcommand's execution.
 func Run() error {
 	if len(os.Args) < 2 {
 		return fmt.Errorf("usage: %s <run|put|connect|get> [flags]", os.Args[0])
@@ -194,6 +322,7 @@ func Run() error {
 
 	subcmd := os.Args[1]
 	switch subcmd {
+	// "run" starts a long-running node with the full background subsystem set.
 	case "run":
 		fs := flag.NewFlagSet("run", flag.ExitOnError)
 		var listenAddrs stringSlice
@@ -744,6 +873,7 @@ func Run() error {
 		<-ctx.Done()
 		return nil
 
+	// "put" stores a block from --data or --file, optionally via a running daemon.
 	case "put":
 		fs := flag.NewFlagSet("put", flag.ExitOnError)
 		var listenAddrs stringSlice
@@ -893,6 +1023,7 @@ func Run() error {
 		}
 		return nil
 
+	// "connect" dials a single peer explicitly by address and peer ID.
 	case "connect":
 		fs := flag.NewFlagSet("connect", flag.ExitOnError)
 		var listenAddrs stringSlice
@@ -1025,6 +1156,7 @@ func Run() error {
 		}
 		return nil
 
+	// "get" fetches a single block from a specific known provider.
 	case "get":
 		fs := flag.NewFlagSet("get", flag.ExitOnError)
 		var listenAddrs stringSlice
@@ -1181,6 +1313,7 @@ func Run() error {
 		}
 		return nil
 
+	// "shutdown" signals a running daemon to stop gracefully.
 	case "shutdown":
 		fs := flag.NewFlagSet("shutdown", flag.ExitOnError)
 		var controlPath string
@@ -1208,6 +1341,7 @@ func Run() error {
 		fmt.Println("Shutdown signal sent.")
 		return nil
 
+	// "restore" submits and polls a bulk CID restore job on a running daemon.
 	case "restore":
 		fs := flag.NewFlagSet("restore", flag.ExitOnError)
 		var manifest string
@@ -1347,6 +1481,7 @@ func Run() error {
 		}
 		return nil
 
+	// "snapshot" proxies a running daemon's paginated CID listing to stdout.
 	case "snapshot":
 		fs := flag.NewFlagSet("snapshot", flag.ExitOnError)
 		var controlPath string
@@ -1382,6 +1517,7 @@ func Run() error {
 		_, err = io.Copy(os.Stdout, resp.Body)
 		return err
 
+	// "neighbors" proxies a running daemon's connected-peer listing to stdout.
 	case "neighbors":
 		fs := flag.NewFlagSet("neighbors", flag.ExitOnError)
 		var controlPath string
@@ -1409,6 +1545,7 @@ func Run() error {
 		_, err = io.Copy(os.Stdout, resp.Body)
 		return err
 
+	// "keygen" generates or loads a persistent libp2p private key.
 	case "keygen":
 		fs := flag.NewFlagSet("keygen", flag.ExitOnError)
 		var outPath string
@@ -1430,6 +1567,7 @@ func Run() error {
 		fmt.Println("PeerID:", pid.String())
 		return nil
 
+	// "lookup-key" performs a one-off, stateless DHT lookup from a fresh node.
 	case "lookup-key":
 		fs := flag.NewFlagSet("lookup-key", flag.ExitOnError)
 		var bootstrapAddr string
@@ -1453,6 +1591,16 @@ func Run() error {
 	}
 }
 
+// parseLookupKeyBootstrapPeers parses a comma-separated list of p2p
+// multiaddrs (each including a /p2p/<peerID> component) into peer.AddrInfo
+// values for use as "lookup-key" bootstrap targets.
+//
+// Parameters:
+//   - s (string): comma-separated multiaddrs, e.g. "/ip4/1.2.3.4/tcp/2893/p2p/Qm...".
+//
+// Returns:
+//   - []peer.AddrInfo: the parsed bootstrap peers, in input order.
+//   - error: non-nil if any entry fails to parse as a multiaddr or lacks a resolvable peer ID, or if s yields no entries.
 func parseLookupKeyBootstrapPeers(s string) ([]peer.AddrInfo, error) {
 	var out []peer.AddrInfo
 	for _, part := range strings.Split(s, ",") {
@@ -1479,6 +1627,13 @@ func parseLookupKeyBootstrapPeers(s string) ([]peer.AddrInfo, error) {
 // lookupKeyBootstrapDialTimeout is separate from --timeout (GetToken budget). Connect + DHT init can exceed 30s under load.
 const lookupKeyBootstrapDialTimeout = 120 * time.Second
 
+// lookupKeyConnectTimeout returns the dial timeout used when connecting to
+// "lookup-key" bootstrap peers: lookupKeyBootstrapDialTimeout by default, or
+// the value of LOOKUP_KEY_CONNECT_TIMEOUT (parsed as a duration) if it is set
+// to a valid positive duration.
+//
+// Returns:
+//   - time.Duration: the bootstrap connect timeout to use.
 func lookupKeyConnectTimeout() time.Duration {
 	d := lookupKeyBootstrapDialTimeout
 	if v := os.Getenv("LOOKUP_KEY_CONNECT_TIMEOUT"); v != "" {
@@ -1489,7 +1644,20 @@ func lookupKeyConnectTimeout() time.Duration {
 	return d
 }
 
-// connectLookupKeyBootstrapPeers dials each bootstrap until one succeeds, then best-effort dials the rest (same peer, alternate addrs).
+// connectLookupKeyBootstrapPeers dials every bootstrap peer in infos,
+// bounded per-dial by lookupKeyConnectTimeout. It does not stop at the first
+// success: it attempts all entries (so alternate addresses for the same
+// logical peer are also tried), logging failures at "bootstrap" severity
+// before the first success and "optional bootstrap" severity afterward. It
+// only returns an error if every dial in infos failed.
+//
+// Parameters:
+//   - ctxBg (context.Context): parent context each per-peer dial timeout is derived from.
+//   - h (host.Host): the libp2p host performing the dials.
+//   - infos ([]peer.AddrInfo): bootstrap peers to connect to.
+//
+// Returns:
+//   - error: non-nil if infos is empty or every dial attempt failed.
 func connectLookupKeyBootstrapPeers(ctxBg context.Context, h host.Host, infos []peer.AddrInfo) error {
 	if len(infos) == 0 {
 		return fmt.Errorf("no bootstrap addresses")
@@ -1521,8 +1689,34 @@ func connectLookupKeyBootstrapPeers(ctxBg context.Context, h host.Host, infos []
 	return nil
 }
 
-// runLookupKey runs a one-off DHT lookup from a fresh node (cold lookup).
-// The new node has no local token state, so GetToken traverses the DHT; hop count uses the same path as /lookup.
+// runLookupKey implements the "lookup-key" subcommand: it performs a single
+// cold DHT lookup for key from a throwaway, otherwise-empty node, and prints
+// a JSON result to stdout.
+//
+// It parses keyHex and bootstrapMultiaddrs, creates a TCP-only libp2p host
+// (avoiding QUIC UDP buffer issues in short-lived container runs), installs a
+// handshake responder using the SNG40_ENV/SNG40_CA_PUBS/SNG40_TOKEN env vars
+// (via getHandshakePolicyFromEnv), and connects to every bootstrap peer
+// (connectLookupKeyBootstrapPeers) before building a client-mode DHT seeded
+// with those same peers. It waits (up to 45s) for the DHT routing table to
+// become non-empty, then calls mystore.GetToken for key, counting
+// routing.SendingQuery events during the call as the network hop count (the
+// same accounting path used by the HTTP /lookup control endpoint, unlike
+// GetClosestPeers which often reported 0 hops). Because this node has no
+// local token state, GetToken is forced to traverse the DHT rather than
+// short-circuiting on a local hit, making the hop count meaningful. The
+// result (network_hops, lookup_latency_ms, found, and error/lookup_deadline
+// if applicable) is JSON-encoded to stdout; lookup_latency_ms is omitted
+// (null) when the lookup failed by hitting its deadline, since wall time in
+// that case reflects timeout saturation rather than round-trip latency.
+//
+// Parameters:
+//   - bootstrapMultiaddrs (string): comma-separated bootstrap peer multiaddrs (each with a /p2p/<peerID> component).
+//   - keyHex (string): the 64-hex-char key to look up.
+//   - lookupTimeout (time.Duration): budget for the GetToken call only (connect and DHT bootstrap use separate, larger budgets); values under 5s are raised to 30s.
+//
+// Returns:
+//   - error: non-nil if the key or bootstrap addresses are invalid, the host/DHT cannot be created, bootstrap connection fails, or the routing table never becomes non-empty; a failed or timed-out lookup itself is reported in the JSON output, not as a returned error.
 func runLookupKey(bootstrapMultiaddrs, keyHex string, lookupTimeout time.Duration) error {
 	ctxBg := context.Background()
 	if lookupTimeout < 5*time.Second {
@@ -1641,14 +1835,50 @@ func runLookupKey(bootstrapMultiaddrs, keyHex string, lookupTimeout time.Duratio
 	return enc.Encode(out)
 }
 
-// staticContentRouter implements routing.ContentRouting. Legacy stub; key-based token routing is primary.
+// staticContentRouter is a minimal routing.ContentRouting implementation
+// that always reports a single, fixed provider for any CID. It backs the
+// "get" subcommand's inline mode, where the caller already knows exactly
+// which peer to fetch from via --from-addr/--from-peer and does not need
+// real content routing. This is a legacy stub; key-based token routing
+// (via the DHT) is the primary lookup path elsewhere in the node.
 type staticContentRouter struct {
-	provider peer.AddrInfo
+	provider peer.AddrInfo // the single peer always returned as a "provider".
 }
 
-func (s *staticContentRouter) Provide(ctx context.Context, c cid.Cid, b bool) error  { return nil }
+// Provide is a no-op; staticContentRouter never announces providership for
+// content because it does not participate in real content routing.
+//
+// Parameters:
+//   - ctx (context.Context): unused.
+//   - c (cid.Cid): unused.
+//   - b (bool): unused.
+//
+// Returns:
+//   - error: always nil.
+func (s *staticContentRouter) Provide(ctx context.Context, c cid.Cid, b bool) error { return nil }
+
+// ProvideMany is a no-op, for the same reason as Provide.
+//
+// Parameters:
+//   - ctx (context.Context): unused.
+//   - keys ([]cid.Cid): unused.
+//
+// Returns:
+//   - error: always nil.
 func (s *staticContentRouter) ProvideMany(ctx context.Context, keys []cid.Cid) error { return nil }
 
+// FindProvidersAsync returns a buffered channel that yields s.provider
+// exactly once (for any CID, since this router has only the one configured
+// provider) and then closes, or closes without yielding if ctx is canceled
+// first.
+//
+// Parameters:
+//   - ctx (context.Context): if canceled before the send completes, no value is sent.
+//   - c (cid.Cid): unused; the same provider is returned regardless of which CID is requested.
+//   - count (int): unused; at most one provider is ever produced.
+//
+// Returns:
+//   - <-chan peer.AddrInfo: a channel yielding s.provider once, then closed.
 func (s *staticContentRouter) FindProvidersAsync(ctx context.Context, c cid.Cid, count int) <-chan peer.AddrInfo {
 	out := make(chan peer.AddrInfo, 1)
 	go func() {
@@ -1662,8 +1892,23 @@ func (s *staticContentRouter) FindProvidersAsync(ctx context.Context, c cid.Cid,
 	return out
 }
 
+// FindProviders synchronously returns a single-element slice containing
+// s.provider, regardless of which CID is requested.
+//
+// Parameters:
+//   - ctx (context.Context): unused.
+//   - c (cid.Cid): unused.
+//
+// Returns:
+//   - []peer.AddrInfo: always []peer.AddrInfo{s.provider}.
+//   - error: always nil.
 func (s *staticContentRouter) FindProviders(ctx context.Context, c cid.Cid) ([]peer.AddrInfo, error) {
 	return []peer.AddrInfo{s.provider}, nil
 }
 
+// Ready always reports true, since staticContentRouter has no real
+// initialization state to wait on.
+//
+// Returns:
+//   - bool: always true.
 func (s *staticContentRouter) Ready() bool { return true }

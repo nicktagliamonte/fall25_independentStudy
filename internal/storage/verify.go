@@ -53,21 +53,38 @@ type ProviderDistanceInfo struct {
 	RTT time.Duration
 }
 
-// VerifyKeyStateWithRepVector verifies key state against its replication vector.
-// Key is the primary identifier. Discovers providers via GetToken (key-based) when
-// tokenStore is set, merges routing table providers (multiple per key), and compares
-// actual vs expected distribution.
+// VerifyKeyStateWithRepVector verifies the actual replica distribution for Key k against its
+// expected replication vector. It first resolves the expected ReplicationVector from rt.Get(k)
+// (falling back to DefaultReplicationVector if rt is nil or has no entry for k) and computes
+// expected per-category counts by scaling replicationFactor (default 7 if <= 0) by each vector
+// component. It then discovers actual providers from two sources and merges them, de-duplicating
+// by provider ID (token-discovered entries take precedence; routing-table-only entries are
+// added afterward): (1) if tokenStore is non-nil, via GetToken(k), classifying each location's
+// distance using its stored RTT (or rttMeasurer if the stored RTT is 0) and thresholds; (2) any
+// providers in rt's entry for k not already seen via the token. Finally it compares actual vs
+// expected counts per category with a tolerance of ±1, setting IsSynchronized only if all three
+// categories (Near/Midrange/FarFlung) are within tolerance, and populates MissingCategories
+// with any category that is both out of tolerance and under-provisioned (actual < expected).
 //
 // Parameters:
-//   - k: The Key to verify (primary identifier)
-//   - rt: The routing table containing expected replication vector and providers
-//   - tokenStore: ValueStore for GetToken (key-based provider discovery); nil skips DHT lookup
-//   - providerID: The local provider ID (for RTT measurement reference)
-//   - rttMeasurer: Optional function to measure RTT to providers (nil uses 0)
-//   - replicationFactor: The total replication factor R (default 7 if <= 0)
-//   - thresholds: RTT thresholds for distance classification (nil uses defaults)
+//   - ctx (context.Context): passed through to GetToken for cancellation.
+//   - k (Key): the key to verify (primary identifier); must be non-zero.
+//   - rt (*RoutingTable): the routing table containing the expected replication vector and any
+//     locally-known providers; may be nil.
+//   - tokenStore (routing.ValueStore): used for GetToken-based provider discovery; nil skips
+//     this source entirely (only routing-table providers are considered).
+//   - providerID (peer.ID): the local provider ID (currently unused in the body; reserved for
+//     RTT measurement reference).
+//   - rttMeasurer (func(peer.ID) (time.Duration, error)): optional function to measure RTT to a
+//     token location when its stored RTT is 0; nil leaves RTT as 0 (unknown).
+//   - replicationFactor (int): the total replication factor R; values <= 0 default to 7.
+//   - thresholds (*RTTThresholds): RTT thresholds for distance classification; nil uses
+//     ClassifyDistanceByRTT's defaults.
 //
-// Returns: Verification result with actual vs expected distribution.
+// Returns:
+//   - *ReplicaStateVerification: the verification result with actual vs expected distribution,
+//     merged provider list, synchronization status, and missing categories.
+//   - error: non-nil only if k is zero.
 func VerifyKeyStateWithRepVector(
 	ctx context.Context,
 	k Key,
@@ -207,6 +224,12 @@ func VerifyKeyStateWithRepVector(
 }
 
 // abs returns the absolute value of an integer.
+//
+// Parameters:
+//   - x (int): the integer to take the absolute value of.
+//
+// Returns:
+//   - int: |x|.
 func abs(x int) int {
 	if x < 0 {
 		return -x

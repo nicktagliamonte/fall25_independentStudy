@@ -25,15 +25,35 @@ import (
 // RepairProtocolID is the libp2p protocol ID for repair replication.
 const RepairProtocolID = "/sng40/repair/1.0.0"
 
-// RepairProtocol handles automatic repair of missing replicas based on replication vector mismatches.
+// RepairProtocol handles automatic repair of missing replicas based on replication vector
+// mismatches: it discovers storage-available candidates, selects among them, and replicates
+// block content to close the gap between a key's expected and actual replica distribution.
 type RepairProtocol struct {
-	stack            *Stack
-	host             host.Host
+	// stack provides datastore/blockstore/routing-table/token-store access for repair.
+	stack *Stack
+	// host is the local libp2p host used to dial peers and open repair streams.
+	host host.Host
+	// storageAvailable discovers peers advertising spare storage capacity for replication targets.
 	storageAvailable *StorageAvailableProtocol
-	criteria         SelectionCriteria
+	// criteria are the weights used when selecting among storage-available candidates.
+	criteria SelectionCriteria
 }
 
-// NewRepairProtocol creates a new repair protocol handler.
+// NewRepairProtocol creates a new RepairProtocol bound to stack and host h. It builds an
+// internal StorageAvailableProtocol over the given tuple space, configuring its
+// PeerIDsToCheck to enumerate every peer in h's peerstore that has known addresses (excluding
+// h itself) — used when tokenized/DHT-backed tuple space lookups require an explicit peer
+// list rather than pattern matching. Selection criteria are derived from tokenized via
+// DefaultSelectionCriteria.
+//
+// Parameters:
+//   - stack (*Stack): the storage stack repair operations act against.
+//   - h (host.Host): the local libp2p host.
+//   - ts (tuplespace.TupleSpace): the tuple space used for storage-available advertisements.
+//   - tokenized (bool): whether the network uses staking/tokenized selection criteria.
+//
+// Returns:
+//   - *RepairProtocol: the constructed repair protocol handler.
 func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, tokenized bool) *RepairProtocol {
 	sap := NewStorageAvailableProtocol(ts)
 	sap.PeerIDsToCheck = func() []peer.ID {
@@ -60,8 +80,13 @@ func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, toke
 	}
 }
 
-// StartAdvertisingStorageAvailability advertises this peer's storage availability
-// immediately and periodically. Call once at node startup.
+// StartAdvertisingStorageAvailability advertises this peer's storage availability (a fixed
+// placeholder capacity of 1GiB, full reputation 1.0, 24h validity, 0 committed stake) once
+// immediately, then again every 30 seconds in a background goroutine until ctx is done. Call
+// once at node startup. No-op if rp.host or rp.storageAvailable is nil.
+//
+// Parameters:
+//   - ctx (context.Context): stops the periodic re-advertisement loop when done/canceled.
 func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Context) {
 	if rp.host == nil || rp.storageAvailable == nil {
 		return
@@ -81,7 +106,12 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 	}()
 }
 
-// getTokenStore returns the ValueStore for token operations (TokenStore or DHT).
+// getTokenStore returns the routing.ValueStore to use for token operations: rp.stack.TokenStore
+// if set, otherwise rp.stack.DHT, otherwise nil.
+//
+// Returns:
+//   - routing.ValueStore: the resolved token store, or nil if rp.stack is nil or neither
+//     TokenStore nor DHT is configured.
 func (rp *RepairProtocol) getTokenStore() routing.ValueStore {
 	if rp.stack == nil {
 		return nil
@@ -113,17 +143,30 @@ type RepairResult struct {
 	TotalReplicasCreated int
 }
 
-// TriggerRepair triggers automatic repair for a Key based on verification results.
-// Discovers missing replicas, finds storage-available candidates, replicates content,
-// updates token with new replica locations, and adds new providers to routing table.
+// TriggerRepair performs automatic repair for Key k based on a prior VerifyKeyStateWithRepVector
+// result. If verification.IsSynchronized is already true, it returns an empty (all-zero)
+// RepairResult with no work done. Otherwise it computes the shortfall per distance category
+// via calculateNeededReplicas, and for each category with a positive shortfall: finds
+// storage-available candidates via rp.storageAvailable.FindAndSelectReplicas, skips any
+// candidate already present in verification.Providers, replicates blockData to each remaining
+// candidate via rp.replicateToPeer, and on success records the peer in
+// RepairResult.ReplicatedPeers and adds it to rp.stack.RoutingTable as a provider for k at that
+// distance category. A category is recorded as repaired if at least one replication succeeded,
+// otherwise as failed. verification.CID is used if defined; otherwise the CID is resolved from
+// rp.stack.Datastore via GetCIDFromKey.
 //
 // Parameters:
-//   - ctx: Context for the repair operation
-//   - k: The Key to repair (primary identifier)
-//   - verification: Verification result showing missing categories
-//   - blockData: The block data to replicate (must be available locally)
+//   - ctx (context.Context): cancels candidate discovery and all peer replication attempts.
+//   - k (Key): the key to repair (primary identifier); must be non-zero.
+//   - verification (*ReplicaStateVerification): the verification result showing missing
+//     categories and existing providers; must be non-nil.
+//   - blockData ([]byte): the block content to replicate; must be non-empty and must already
+//     be available locally.
 //
-// Returns: Repair result with success/failure details.
+// Returns:
+//   - *RepairResult: per-category and per-peer success/failure details; nil on validation error.
+//   - error: non-nil if k is zero, verification is nil, blockData is empty, or rp.stack/rp.host
+//     is nil. Individual candidate/peer failures are recorded in the result, not returned here.
 func (rp *RepairProtocol) TriggerRepair(
 	ctx context.Context,
 	k Key,
@@ -223,7 +266,16 @@ func (rp *RepairProtocol) TriggerRepair(
 	return result, nil
 }
 
-// calculateNeededReplicas calculates how many replicas are needed for each missing category.
+// calculateNeededReplicas computes, for each distance category (Near/Midrange/FarFlung), the
+// positive shortfall between verification.ExpectedCounts and verification.ActualCounts.
+// Categories with a zero or negative shortfall are omitted from the result entirely.
+//
+// Parameters:
+//   - verification (*ReplicaStateVerification): the verification result to compute shortfalls from.
+//
+// Returns:
+//   - map[DistanceCategory]int: the number of additional replicas needed per category that has
+//     a shortfall.
 func (rp *RepairProtocol) calculateNeededReplicas(verification *ReplicaStateVerification) map[DistanceCategory]int {
 	needed := make(map[DistanceCategory]int)
 
@@ -246,8 +298,23 @@ func (rp *RepairProtocol) calculateNeededReplicas(verification *ReplicaStateVeri
 	return needed
 }
 
-// ReplicateToNPeers sends the block to n other nodes. Used after PUT to enforce replication.
-// Picks peers from connected network, then peerstore. Retries if no peers (waits for connections).
+// ReplicateToNPeers sends blockData to up to n other peers, used after a local Put to enforce
+// the replication factor policy. Peer candidates come from peersForReplication (connected
+// peers first, then peerstore entries with known addresses); if none are available yet, it
+// retries every 500ms for up to 20 attempts (returning 0 early if ctx is canceled first) to
+// give the node time to establish connections. For each candidate it calls replicateToPeer
+// with a 60s per-peer timeout; on success it registers the peer in rp.stack.RoutingTable at
+// DistanceMidrange and stops once n replicas have been created.
+//
+// Parameters:
+//   - ctx (context.Context): bounds the connection-wait retry loop; canceling it aborts early.
+//   - key (Key): the key being replicated, used for routing table bookkeeping.
+//   - c (cid.Cid): the CID of the block, sent to peers over the repair protocol.
+//   - blockData ([]byte): the block content to replicate; a no-op if empty.
+//   - n (int): the target number of successful replications; a no-op if <= 0.
+//
+// Returns:
+//   - int: the number of peers the block was successfully replicated to (<= n).
 func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.Cid, blockData []byte, n int) int {
 	if rp.host == nil || rp.stack == nil || n <= 0 || len(blockData) == 0 {
 		return 0
@@ -283,6 +350,16 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 	return replicated
 }
 
+// peersForReplication returns up to max candidate peer IDs for replication, excluding rp.host's
+// own ID and de-duplicating. It first collects currently-connected peers from
+// rp.host.Network().Peers(), then, if more are needed, falls back to peers known in
+// rp.host.Peerstore() that have at least one known address (not yet connected but dialable).
+//
+// Parameters:
+//   - max (int): the maximum number of peer IDs to return.
+//
+// Returns:
+//   - []peer.ID: up to max candidate peer IDs, connected peers first; nil if rp.host is nil.
 func (rp *RepairProtocol) peersForReplication(max int) []peer.ID {
 	if rp.host == nil {
 		return nil
@@ -318,8 +395,18 @@ func (rp *RepairProtocol) peersForReplication(max int) []peer.ID {
 	return out
 }
 
-// ReplicateToPeer replicates block content to a specific peer via the repair protocol.
-// Updates token with new replica location on success. Used for repair and testing.
+// ReplicateToPeer is the exported entry point for replicating blockData to targetPeer via the
+// repair protocol; it is a thin wrapper around the unexported replicateToPeer, exposed for use
+// by repair callers and tests.
+//
+// Parameters:
+//   - ctx (context.Context): cancels connection and stream operations.
+//   - c (cid.Cid): the CID of the block being replicated.
+//   - targetPeer (peer.ID): the peer to replicate the block to.
+//   - blockData ([]byte): the block content to send.
+//
+// Returns:
+//   - error: non-nil if replication fails at any step (see replicateToPeer).
 func (rp *RepairProtocol) ReplicateToPeer(
 	ctx context.Context,
 	c cid.Cid,
@@ -329,8 +416,21 @@ func (rp *RepairProtocol) ReplicateToPeer(
 	return rp.replicateToPeer(ctx, c, targetPeer, blockData)
 }
 
-// replicateToPeer replicates content to a peer using Bitswap or direct transfer.
-// This is the core replication operation.
+// replicateToPeer is the core replication operation: it ensures blockData is stored in the
+// local blockstore (storing it via PutRawBlock if not already present), connects to targetPeer
+// if not already connected (dialing addresses from the peerstore, or as a fallback, addresses
+// discovered by looking up blockData's key in the token store), and then hands off to
+// replicateViaDirectStream to actually transfer the block over a direct libp2p stream.
+//
+// Parameters:
+//   - ctx (context.Context): cancels the blockstore check, dial, and stream transfer.
+//   - c (cid.Cid): the CID of the block being replicated.
+//   - targetPeer (peer.ID): the peer to replicate the block to.
+//   - blockData ([]byte): the block content to send.
+//
+// Returns:
+//   - error: non-nil if the block service is unavailable, the local store check/write fails,
+//     no address for targetPeer can be found, connecting fails, or the direct stream transfer fails.
 func (rp *RepairProtocol) replicateToPeer(
 	ctx context.Context,
 	c cid.Cid,
@@ -405,8 +505,24 @@ func (rp *RepairProtocol) replicateToPeer(
 	return rp.replicateViaDirectStream(ctx, c, targetPeer, blockData)
 }
 
-// replicateViaDirectStream replicates content via a direct libp2p stream.
-// This is more reliable than relying on Bitswap discovery for repair operations.
+// replicateViaDirectStream replicates content to targetPeer via a direct libp2p stream on
+// RepairProtocolID (more reliable than relying on Bitswap discovery for repair operations). It
+// writes the CID string, then the decimal block size, then the raw block data, and expects an
+// "OK\n" acknowledgment in response (any other response is treated as failure). On success, it
+// determines targetPeer's best-known address (preferring a routable address from the
+// peerstore, falling back to the stream's remote multiaddr) and, if the token store is
+// available, calls SyncTokenOnReplication to record the new replica location in the key's
+// token.
+//
+// Parameters:
+//   - ctx (context.Context): cancels stream I/O.
+//   - c (cid.Cid): the CID sent to identify the block to the peer.
+//   - targetPeer (peer.ID): the peer receiving the replica.
+//   - blockData ([]byte): the block content to send.
+//
+// Returns:
+//   - error: non-nil if opening the stream, writing any part of the payload, or reading the
+//     acknowledgment fails, or if the acknowledgment is not "OK\n".
 func (rp *RepairProtocol) replicateViaDirectStream(
 	ctx context.Context,
 	c cid.Cid,
@@ -475,8 +591,25 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 	return nil
 }
 
-// HandleRepairStream handles incoming repair replication requests.
-// Should be registered as a stream handler on the host.
+// HandleRepairStream is the server-side handler for incoming repair replication requests on
+// RepairProtocolID; it should be registered as a stream handler on the host. Protocol: reads a
+// CID line, a decimal size line, and exactly that many bytes of block data (rejecting sizes
+// <= 0 or > 10MiB); stores the block via PutRawBlock and verifies the resulting CID matches
+// the one sent by the client; indexes the block via PutRawBlockIndexed (acquiring a per-key
+// lock when rp.stack.KeyLockManager and rp.host are set); updates rp.stack.RoutingTable to
+// record this node as a provider for the key (reusing an existing replication vector if the
+// key is already known, otherwise DefaultReplicationVector, and recording the stream's remote
+// peer as the source); and, if a token store is configured, syncs the token via SyncTokenOnPut
+// to record this node's own addresses as a new location. Writes "OK\n" on success or an
+// "ERROR: ...\n" line on failure, and always closes the stream before returning.
+//
+// Parameters:
+//   - stream (network.Stream): the inbound libp2p stream to read the request from and write
+//     the acknowledgment to.
+//
+// Returns:
+//   - error: non-nil if reading/parsing the request fails, the received data's CID doesn't
+//     match what the client claimed, or storing/indexing the block fails.
 func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 	defer stream.Close()
 

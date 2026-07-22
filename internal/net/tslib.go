@@ -1,3 +1,8 @@
+// Purpose: Go client for the legacy C "TSH" (tuple space host) daemon protocol,
+// reimplementing the wire format of tsh_put_it/tsh_get_it and related C structs
+// (see synergy.h) so this process can PUT/GET/READ tuples against an existing TSH
+// daemon over a plain TCP socket. This is unrelated to the content-addressed
+// storage system's own Put/Get flow; it is a bridge to an older tuple-space system.
 package net
 
 import (
@@ -11,86 +16,151 @@ import (
 
 // source ip, return port #, message id, content id, replication vector (local, mid, far)
 
-// Constants from synergy.h
+// Constants from synergy.h. TSH_OP_* are wire opcodes sent as the first field of
+// each request; FAILURE/SUCCESS are status codes returned by the daemon; TS*_ER
+// are the Go-side error codes returned by this client on failure (mirroring the
+// original C client's negative error constants); NAME_LEN2/TUPLENAME_LEN are the
+// fixed-size byte-array lengths used by the C wire structs.
 const (
-	TSH_OP_PUT     uint16 = 401
-	TSH_OP_GET     uint16 = 402
-	TSH_OP_READ    uint16 = 403
+	// TSH_OP_PUT is the opcode for a tuple PUT request.
+	TSH_OP_PUT uint16 = 401
+	// TSH_OP_GET is the opcode for a tuple GET (consuming) request.
+	TSH_OP_GET uint16 = 402
+	// TSH_OP_READ is the opcode for a tuple READ (non-consuming) request.
+	TSH_OP_READ uint16 = 403
+	// TSH_OP_UVRPut3 is the opcode for the phase-3 "store tuple" step of a PUT
+	// that fell through the UVR (unmatched-value-request) wait loop.
 	TSH_OP_UVRPut3 uint16 = 415
-	FAILURE        int32  = 0
-	SUCCESS        int32  = 1
-	TSPUT_ER       int    = -106
-	TSGET_ER       int    = -107
-	TSREAD_ER      int    = -108
+	// FAILURE is the daemon's status code indicating a request did not complete immediately.
+	FAILURE int32 = 0
+	// SUCCESS is the daemon's status code indicating a request completed immediately.
+	SUCCESS int32 = 1
+	// TSPUT_ER is the Go-side error/status code returned by TsPut on failure.
+	TSPUT_ER int = -106
+	// TSGET_ER is reserved for TsGet failure signaling (mirrors the C client's constant).
+	TSGET_ER int = -107
+	// TSREAD_ER is reserved for TsRead failure signaling (mirrors the C client's constant).
+	TSREAD_ER int = -108
 
-	NAME_LEN2     = 64
+	// NAME_LEN2 is the fixed byte length of the AppId field in the C wire structs.
+	NAME_LEN2 = 64
+	// TUPLENAME_LEN is the fixed byte length of the tuple name/expression field in the C wire structs.
 	TUPLENAME_LEN = 128
 )
 
 // TshPutIt corresponds to tsh_put_it C struct
-// Note: We use explicit padding to match C struct alignment (4-byte alignment typically)
+// Note: We use explicit padding to match C struct alignment (4-byte alignment typically).
+// It is the request header sent to TSH for a PUT operation, written field-by-field
+// via writeTshPutIt (not via binary.Write on the struct directly) to control padding
+// and byte order precisely.
 type TshPutIt struct {
-	AppId    [NAME_LEN2]byte
-	Name     [TUPLENAME_LEN]byte
+	// AppId is the requesting application's identifier, null-padded to NAME_LEN2 bytes.
+	AppId [NAME_LEN2]byte
+	// Name is the tuple's name, null-padded to TUPLENAME_LEN bytes.
+	Name [TUPLENAME_LEN]byte
+	// Priority is the tuple's priority (currently always set to 1; reserved for future use).
 	Priority uint16
 	_        [2]byte // Padding for alignment
-	Host     uint32
-	Port     uint16
-	_        [2]byte // Padding for alignment
-	Length   uint32
-	ProcId   int32
+	// Host is this client's IP address (as reported to TSH) in network byte order.
+	Host uint32
+	// Port is the local TCP port this client is listening on for the UVR return connection.
+	Port uint16
+	_    [2]byte // Padding for alignment
+	// Length is the byte length of the tuple value that follows the header on the wire.
+	Length uint32
+	// ProcId is this process's OS process ID, included for daemon-side bookkeeping.
+	ProcId int32
 }
 
-// TshGetIt corresponds to tsh_get_it C struct
+// TshGetIt corresponds to tsh_get_it C struct. It is the request header sent to
+// TSH for GET and READ operations, written field-by-field via writeTshGetIt.
 type TshGetIt struct {
-	AppId   [NAME_LEN2]byte
-	Expr    [TUPLENAME_LEN]byte
-	Host    uint32
-	Port    uint16
-	_       [2]byte // Padding for alignment (after port/before len)
-	Length  uint32
-	ProcId  int32
+	// AppId is the requesting application's identifier, null-padded to NAME_LEN2 bytes.
+	AppId [NAME_LEN2]byte
+	// Expr is the tuple name/expression to match, null-padded to TUPLENAME_LEN bytes.
+	Expr [TUPLENAME_LEN]byte
+	// Host is this client's IP address (as reported to TSH) in network byte order.
+	Host uint32
+	// Port is the local TCP port this client is listening on if the match is not immediate.
+	Port uint16
+	_    [2]byte // Padding for alignment (after port/before len)
+	// Length is unused by this client's GET/READ requests (kept for wire compatibility).
+	Length uint32
+	// ProcId is this process's OS process ID, included for daemon-side bookkeeping.
+	ProcId int32
+	// CidPort is reserved for a content-ID-based port, unused by this client.
 	CidPort uint16
 	_       [2]byte // Final padding to 212 bytes
 }
 
-// TshPutOt corresponds to tsh_put_ot C struct
+// TshPutOt corresponds to tsh_put_ot C struct. It is TSH's immediate response to a
+// PUT request.
 type TshPutOt struct {
+	// Status is FAILURE if the daemon could not satisfy the request immediately
+	// (requiring the phase-2 UVR wait loop), or a non-FAILURE code otherwise.
 	Status int32
-	Error  int32
+	// Error carries the daemon's result/error code for the request.
+	Error int32
 }
 
-// TshGetOt1 corresponds to tsh_get_ot1 C struct (same as TshPutOt)
+// TshGetOt1 corresponds to tsh_get_ot1 C struct (same as TshPutOt). It is TSH's
+// immediate response to a GET/READ request, indicating whether a match is
+// available now (SUCCESS) or the client must wait on its listener (otherwise).
 type TshGetOt1 struct {
+	// Status is SUCCESS if a matching tuple is immediately available on the
+	// existing connection, or a different value if the client must wait.
 	Status int32
-	Error  int32
+	// Error carries the daemon's result/error code for the request.
+	Error int32
 }
 
-// TshGetOt2 corresponds to tsh_get_ot2 C struct
+// TshGetOt2 corresponds to tsh_get_ot2 C struct. It describes the tuple actually
+// returned for a GET/READ request, read field-by-field from the data socket.
 type TshGetOt2 struct {
-	AppId    [NAME_LEN2]byte
-	Name     [TUPLENAME_LEN]byte
-	Length   uint32
+	// AppId is the owning application's identifier for the returned tuple.
+	AppId [NAME_LEN2]byte
+	// Name is the returned tuple's name.
+	Name [TUPLENAME_LEN]byte
+	// Length is the byte length of the tuple value that follows on the wire.
+	Length uint32
+	// Priority is the returned tuple's priority.
 	Priority uint16
 	_        [2]byte // Padding
 }
 
-// UvrReturnStruct corresponds to tsh_put3_it C struct
+// UvrReturnStruct corresponds to tsh_put3_it C struct. It is read from the
+// client's temporary listener during the phase-2 UVR (unmatched-value-request)
+// wait loop of TsPut, describing a waiting GET/READ requester to satisfy directly.
 type UvrReturnStruct struct {
-	Host    uint32
-	Port    uint16
-	_       [2]byte // Padding for alignment
+	// Host is the waiting requester's reported IP address.
+	Host uint32
+	// Port is the waiting requester's reported port.
+	Port uint16
+	_    [2]byte // Padding for alignment
+	// Request is the waiting requester's original opcode (e.g. TSH_OP_GET), used
+	// to decide whether the tuple is consumed after being delivered.
 	Request int32
-	Status  int32
+	// Status is FAILURE when there are no more waiting requesters (ends the UVR loop).
+	Status int32
 }
 
 // TupleSpaceClient holds configuration for the tuple space operations
 type TupleSpaceClient struct {
+	// TshAddr is the "host:port" address of the TSH daemon to connect to.
 	TshAddr string // "host:port" of the TSH daemon
-	HostIP  uint32 // Local IP address to report to TSH (ipv4 as int)
-	AppId   string
+	// HostIP is the local IP address to report to TSH, encoded as a big-endian uint32.
+	HostIP uint32 // Local IP address to report to TSH (ipv4 as int)
+	// AppId is this client's application identifier, sent with every request.
+	AppId string
 }
 
+// getTempListener binds a TCP listener on an OS-assigned ("any available") port,
+// used to receive the TSH daemon's UVR-return or delayed-match callback connection.
+//
+// Returns:
+//   - net.Listener: the bound listener; callers must Close it.
+//   - int: the OS-assigned local port number.
+//   - error: non-nil if binding the listener or reading its assigned port fails.
 func getTempListener() (net.Listener, int, error) {
 	listener, err := net.Listen("tcp", ":0") // bind to any available port
 	if err != nil {
@@ -108,7 +178,17 @@ func getTempListener() (net.Listener, int, error) {
 	return listener, localPort, nil
 }
 
-// writeStructManual writes struct fields manually to handle padding correctly
+// writeTshPutIt writes a TshPutIt's fields manually, in wire order with explicit
+// padding, to handle C struct alignment correctly (rather than relying on
+// binary.Write over the Go struct, whose layout is not guaranteed to match).
+// Write errors from the underlying binary.Write calls are not checked/propagated.
+//
+// Parameters:
+//   - w (io.Writer): destination for the encoded bytes (e.g. a net.Conn).
+//   - s (TshPutIt): the struct to encode.
+//
+// Returns:
+//   - error: always nil; present for interface consistency and future error propagation.
 func writeTshPutIt(w io.Writer, s TshPutIt) error {
 	binary.Write(w, binary.BigEndian, s.AppId)
 	binary.Write(w, binary.BigEndian, s.Name)
@@ -122,6 +202,16 @@ func writeTshPutIt(w io.Writer, s TshPutIt) error {
 	return nil
 }
 
+// writeTshGetIt writes a TshGetIt's fields manually, in wire order with explicit
+// padding, mirroring writeTshPutIt. Write errors from the underlying binary.Write
+// calls are not checked/propagated.
+//
+// Parameters:
+//   - w (io.Writer): destination for the encoded bytes (e.g. a net.Conn).
+//   - s (TshGetIt): the struct to encode.
+//
+// Returns:
+//   - error: always nil; present for interface consistency and future error propagation.
 func writeTshGetIt(w io.Writer, s TshGetIt) error {
 	binary.Write(w, binary.BigEndian, s.AppId)
 	binary.Write(w, binary.BigEndian, s.Expr)
@@ -135,8 +225,24 @@ func writeTshGetIt(w io.Writer, s TshGetIt) error {
 	return nil
 }
 
-// TsPut implements the tuple space put operation
-// Returns status/error code
+// TsPut implements the tuple space put operation. It follows the legacy C tsput
+// protocol in up to three phases: (1) send the PUT request and tuple value to TSH
+// on a fresh connection; if the daemon reports immediate completion (Status !=
+// FAILURE), returns its Error code directly; (2) otherwise, waits on a local
+// listener for TSH to relay pending GET/READ requesters one at a time (the "UVR
+// wait loop"), delivering the tuple header+value to each; if a requester is a
+// consuming GET (opcode TSH_OP_GET), the tuple is considered consumed and TsPut
+// returns immediately; (3) if the loop exhausts with no consuming GET, reconnects
+// to TSH and issues a TSH_OP_UVRPut3 request to durably store the tuple, returning
+// the daemon's final status.
+//
+// Parameters:
+//   - tpname (string): the tuple's name.
+//   - tpvalue ([]byte): the tuple's value/content.
+//
+// Returns:
+//   - int: TSPUT_ER on any local/transport error, otherwise the daemon-reported status/error code (semantics defined by the TSH protocol, not this package).
+//   - error: non-nil describing the failing step when a local/transport error occurs, nil otherwise (including the case where TsPut returns TSPUT_ER after a consumed GET, which mirrors the original C client's behavior and is not itself an error).
 func (c *TupleSpaceClient) TsPut(tpname string, tpvalue []byte) (int, error) {
 	tpsize := uint32(len(tpvalue))
 
@@ -292,9 +398,19 @@ func (c *TupleSpaceClient) TsPut(tpname string, tpvalue []byte) (int, error) {
 	return int(inFinal.Error), nil
 }
 
-// TsGet implements the tuple space get operation (consuming)
-// Returns the data in a newly allocated slice (like C tsgetv)
+// TsGet implements the tuple space get operation (consuming).
+// Returns the data in a newly allocated slice (like C tsgetv).
 // To mimic C tsget (buffer provided), one could use a different signature, but this is safer.
+// It sends a TSH_OP_GET request; if the daemon reports SUCCESS immediately, the
+// tuple header and value are read from the same connection, otherwise this client
+// waits on its local listener for TSH to deliver the match once available.
+//
+// Parameters:
+//   - tpname (string): the tuple name/expression to match.
+//
+// Returns:
+//   - []byte: the matched tuple's value, newly allocated.
+//   - error: non-nil describing the failing step if the request, wait, or read fails.
 func (c *TupleSpaceClient) TsGet(tpname string) ([]byte, error) {
 	// 1. Setup local listener just in case we need to wait
 	listener, localPort, err := getTempListener()
@@ -386,7 +502,16 @@ func (c *TupleSpaceClient) TsGet(tpname string) ([]byte, error) {
 	return data, nil
 }
 
-// TsRead implements the tuple space read operation (non-consuming)
+// TsRead implements the tuple space read operation (non-consuming). It behaves
+// identically to TsGet except it sends a TSH_OP_READ opcode, so a matched tuple
+// is left in the tuple space for future GET/READ calls.
+//
+// Parameters:
+//   - tpname (string): the tuple name/expression to match.
+//
+// Returns:
+//   - []byte: the matched tuple's value, newly allocated.
+//   - error: non-nil describing the failing step if the request, wait, or read fails.
 func (c *TupleSpaceClient) TsRead(tpname string) ([]byte, error) {
 	// 1. Setup local listener just in case we need to wait
 	listener, localPort, err := getTempListener()
@@ -471,7 +596,19 @@ func (c *TupleSpaceClient) TsRead(tpname string) ([]byte, error) {
 	return data, nil
 }
 
-// UvrCores calculates the total number of cores deployed at runtime based on the hosts file
+// UvrCores calculates the total number of cores deployed at runtime based on the hosts file.
+// The file is expected to contain whitespace-separated "<ip> <cores>" lines; parsing
+// stops at EOF or the first malformed line (mirroring the original C fscanf-based
+// loop, which also stops on the first non-matching read). A missing file is treated
+// as zero cores/nodes rather than an error.
+//
+// Parameters:
+//   - hostsPath (string): path to the hosts file listing "<ip> <cores>" per line.
+//
+// Returns:
+//   - int: total cores summed across all successfully parsed lines.
+//   - int: total number of successfully parsed lines (nodes).
+//   - error: non-nil if the file exists but cannot be opened for a reason other than not existing.
 func UvrCores(hostsPath string) (int, int, error) {
 	file, err := os.Open(hostsPath)
 	if err != nil {

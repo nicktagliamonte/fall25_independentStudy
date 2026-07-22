@@ -60,7 +60,10 @@ type locationJSON struct {
 }
 
 // Marshal serializes the Token to JSON bytes.
-// Returns the serialized token as []byte and any error encountered.
+//
+// Returns:
+//   - []byte: the JSON encoding of the token, or nil if t is nil.
+//   - error: non-nil if JSON marshaling fails.
 func (t *Token) Marshal() ([]byte, error) {
 	if t == nil {
 		return nil, nil
@@ -84,8 +87,14 @@ func (t *Token) Marshal() ([]byte, error) {
 	return json.Marshal(tj)
 }
 
-// Unmarshal deserializes JSON bytes into the Token.
-// Returns an error if the data cannot be unmarshaled or if validation fails.
+// Unmarshal deserializes JSON bytes into the Token, overwriting its fields in place.
+//
+// Parameters:
+//   - data ([]byte): the JSON-encoded token; a zero-length slice is treated as a no-op.
+//
+// Returns:
+//   - error: non-nil if data cannot be unmarshaled, or if the embedded key,
+//     provider ID, or address fail to parse.
 func (t *Token) Unmarshal(data []byte) error {
 	if len(data) == 0 {
 		return nil
@@ -130,7 +139,11 @@ func (t *Token) Unmarshal(data []byte) error {
 }
 
 // Validate checks that the Token is valid.
-// Returns an error if Key is zero or Locations is empty.
+//
+// Returns:
+//   - error: nil if t is nil (a nil token is considered valid) or if Key is
+//     non-zero and Locations is non-empty; otherwise a *TokenValidationError
+//     describing the offending field.
 func (t *Token) Validate() error {
 	if t == nil {
 		return nil // nil token is considered valid (no-op)
@@ -151,10 +164,16 @@ func (t *Token) Validate() error {
 
 // TokenValidationError represents a token validation error.
 type TokenValidationError struct {
-	Field  string
+	// Field is the name of the token field that failed validation.
+	Field string
+	// Reason is a human-readable description of why validation failed.
 	Reason string
 }
 
+// Error returns the formatted validation error message.
+//
+// Returns:
+//   - string: a message combining the invalid field and the reason.
 func (e *TokenValidationError) Error() string {
 	return "token validation error: " + e.Field + " - " + e.Reason
 }

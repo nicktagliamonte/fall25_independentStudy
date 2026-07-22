@@ -33,6 +33,9 @@ type ReplicationVector struct {
 
 // DefaultReplicationVector returns the default replication vector:
 // Near: 40%, Midrange: 30%, Far-flung: 30%
+//
+// Returns:
+//   - ReplicationVector: {Near: 0.4, Midrange: 0.3, FarFlung: 0.3}.
 func DefaultReplicationVector() ReplicationVector {
 	return ReplicationVector{
 		Near:     0.4,
@@ -54,6 +57,9 @@ const (
 )
 
 // String returns the string representation of the distance category.
+//
+// Returns:
+//   - string: "Near", "Midrange", "Far-flung", or "Unknown" for any other value.
 func (d DistanceCategory) String() string {
 	switch d {
 	case DistanceNear:
@@ -80,6 +86,9 @@ type RTTThresholds struct {
 
 // DefaultRTTThresholds returns default RTT thresholds for distance classification:
 // Near: < 50ms, Midrange: 50-200ms, Far-flung: >= 200ms
+//
+// Returns:
+//   - RTTThresholds: {NearThreshold: 50ms, FarThreshold: 200ms}.
 func DefaultRTTThresholds() RTTThresholds {
 	return RTTThresholds{
 		NearThreshold: 50 * time.Millisecond,
@@ -90,6 +99,14 @@ func DefaultRTTThresholds() RTTThresholds {
 // ClassifyDistanceByRTT classifies a peer's distance category based on its RTT from the provider node.
 // Uses the provided thresholds to determine Near, Midrange, or Far-flung classification.
 // If thresholds is nil, uses DefaultRTTThresholds().
+//
+// Parameters:
+//   - rtt (time.Duration): the measured round-trip time to the peer.
+//   - thresholds (*RTTThresholds): the classification thresholds; nil uses DefaultRTTThresholds().
+//
+// Returns:
+//   - DistanceCategory: DistanceNear, DistanceMidrange, or DistanceFarFlung
+//     depending on where rtt falls relative to the thresholds.
 func ClassifyDistanceByRTT(rtt time.Duration, thresholds *RTTThresholds) DistanceCategory {
 	if thresholds == nil {
 		defaults := DefaultRTTThresholds()
@@ -142,6 +159,13 @@ type SelectionCriteria struct {
 // DefaultSelectionCriteria returns default selection criteria weights.
 // For tokenized networks: Stake 30%, RTT 20%, Storage 20%, Reputation 30%.
 // For non-tokenized networks: Stake 0%, RTT 25%, Storage 25%, Reputation 50%.
+//
+// Parameters:
+//   - tokenized (bool): whether the network uses token-based (staked) selection.
+//
+// Returns:
+//   - SelectionCriteria: the corresponding default weight set, with Tokenized
+//     set to match the input.
 func DefaultSelectionCriteria(tokenized bool) SelectionCriteria {
 	if tokenized {
 		return SelectionCriteria{
@@ -162,6 +186,8 @@ func DefaultSelectionCriteria(tokenized bool) SelectionCriteria {
 }
 
 // normalizeWeights ensures weights sum to 1.0, adjusting proportionally if needed.
+// If the current total is <= 0, falls back to equal weights (0.25 each) rather
+// than dividing by zero. Mutates sc in place.
 func (sc *SelectionCriteria) normalizeWeights() {
 	total := sc.StakeWeight + sc.RTTWeight + sc.StorageWeight + sc.ReputationWeight
 	if total <= 0 {
@@ -182,7 +208,24 @@ func (sc *SelectionCriteria) normalizeWeights() {
 
 // ScoreCandidate computes a selection score for a peer candidate.
 // Higher scores indicate better candidates for replica placement.
-// Scores are normalized to [0.0, 1.0] range per factor, then weighted sum.
+// Each factor is normalized to [0.0, 1.0] against the supplied maxima (RTT is
+// inverted, since lower RTT is better), then combined via criteria's
+// (normalized) weights into a single weighted sum.
+//
+// Parameters:
+//   - candidate (PeerCandidate): the peer being scored.
+//   - criteria (SelectionCriteria): factor weights; normalized internally
+//     (criteria is passed by value, so the caller's copy is unaffected).
+//   - maxStake (uint64): the maximum CommittedStake among the candidate pool,
+//     used to normalize the stake component; ignored if criteria.Tokenized is false.
+//   - maxRTT (time.Duration): the maximum RTT among the candidate pool, used to
+//     normalize/invert the RTT component.
+//   - maxStorage (uint64): the maximum StorageAvailability among the candidate
+//     pool, used to normalize the storage component.
+//
+// Returns:
+//   - float64: the weighted score, generally in [0.0, 1.0] (stake/RTT/storage
+//     components are clamped to that range; the sum is not re-clamped).
 func ScoreCandidate(candidate PeerCandidate, criteria SelectionCriteria, maxStake uint64, maxRTT time.Duration, maxStorage uint64) float64 {
 	criteria.normalizeWeights()
 
@@ -235,16 +278,20 @@ func ScoreCandidate(candidate PeerCandidate, criteria SelectionCriteria, maxStak
 // SelectReplicaCandidates selects the best candidates for replica placement
 // based on the replication vector and selection criteria.
 //
-// Filters candidates by the desired distance category, then scores and ranks them.
-// Returns up to 'count' candidates sorted by score (highest first).
+// Filters candidates by the desired distance category, computes per-pool maxima
+// for stake/storage/RTT among the filtered set, scores each with ScoreCandidate,
+// then sorts by score descending (ties broken by higher ReputationScore, then
+// lower RTT), and returns up to count candidates.
 //
 // Parameters:
-//   - candidates: List of peer candidates to evaluate
-//   - desiredCategory: The distance category needed (Near/Midrange/Far-flung)
-//   - criteria: Selection criteria with weights
-//   - count: Maximum number of candidates to return
+//   - candidates ([]PeerCandidate): List of peer candidates to evaluate
+//   - desiredCategory (DistanceCategory): The distance category needed (Near/Midrange/Far-flung)
+//   - criteria (SelectionCriteria): Selection criteria with weights
+//   - count (int): Maximum number of candidates to return
 //
-// Returns: Sorted list of candidates (best first), or empty if no matches.
+// Returns:
+//   - []PeerCandidate: Sorted list of candidates (best first), or nil if
+//     candidates is empty, count <= 0, or no candidate matches desiredCategory.
 func SelectReplicaCandidates(candidates []PeerCandidate, desiredCategory DistanceCategory, criteria SelectionCriteria, count int) []PeerCandidate {
 	if len(candidates) == 0 || count <= 0 {
 		return nil

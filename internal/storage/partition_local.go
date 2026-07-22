@@ -20,12 +20,26 @@ const partitionLocalNS = "/partition/local/"
 
 // PartitionLocalOp records one operation performed while partitioned.
 type PartitionLocalOp struct {
-	Op    string
-	CID   cid.Cid
+	// Op is the operation name (e.g. "put").
+	Op string
+	// CID is the content identifier the operation applied to.
+	CID cid.Cid
+	// TsNano is the operation's timestamp in Unix nanoseconds.
 	TsNano int64
 }
 
 // RecordPartitionLocalOp appends an operation to the log. Call when partitioned.
+// The log entry's datastore key embeds the current timestamp and CID so entries
+// sort chronologically by key; the value is a tab-separated "op\tcid\tts" string.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the datastore write.
+//   - d (ds.Batching): the backing datastore; if nil, this is a silent no-op.
+//   - op (string): the operation name; if empty, this is a silent no-op.
+//   - c (cid.Cid): the CID the operation applies to; if undefined, this is a silent no-op.
+//
+// Returns:
+//   - error: non-nil if the underlying datastore Put fails.
 func RecordPartitionLocalOp(ctx context.Context, d ds.Batching, op string, c cid.Cid) error {
 	if d == nil || !c.Defined() || op == "" {
 		return nil
@@ -37,7 +51,23 @@ func RecordPartitionLocalOp(ctx context.Context, d ds.Batching, op string, c cid
 }
 
 // ListPartitionLocalOps returns operations from the log for reconciliation.
-// limit 0 means no limit. Results ordered by timestamp ascending.
+// Keys under partitionLocalNS are queried, sorted lexically, decoded, and
+// returned in ascending timestamp order. Lexical sort matches chronological
+// order here because UnixNano timestamps have a constant number of decimal
+// digits over the relevant time range; this would break if timestamps ever
+// spanned a digit-count boundary. Entries that fail to read, fail to parse,
+// or have an undecodable CID are silently skipped rather than causing the
+// whole call to fail.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the datastore query.
+//   - d (ds.Datastore): the backing datastore; if nil, returns (nil, nil).
+//   - limit (int): maximum number of operations to return; 0 means no limit.
+//
+// Returns:
+//   - []PartitionLocalOp: the decoded operations in ascending timestamp order,
+//     truncated to limit if positive.
+//   - error: non-nil if the initial datastore Query call fails.
 func ListPartitionLocalOps(ctx context.Context, d ds.Datastore, limit int) ([]PartitionLocalOp, error) {
 	if d == nil {
 		return nil, nil

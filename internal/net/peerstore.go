@@ -27,16 +27,27 @@ const (
 
 // PeerRecord captures persistent metadata for a known peer.
 type PeerRecord struct {
-	PeerID        string   `json:"peer_id"`
-	Addrs         []string `json:"addrs"`
-	Services      uint64   `json:"services"`
-	LastSeenUnix  int64    `json:"last_seen_unix"`
-	LastTriedUnix int64    `json:"last_tried_unix"`
-	LastSuccUnix  int64    `json:"last_succ_unix"`
-	FailureCount  int      `json:"failure_count"`
-	Source        string   `json:"source"`
-	Score         float64  `json:"score"`
-	ExpireAtUnix  int64    `json:"expire_at_unix"`
+	// PeerID is the peer's libp2p ID, string-encoded (peer.ID.String()).
+	PeerID string `json:"peer_id"`
+	// Addrs is the deduplicated set of known multiaddr strings for this peer.
+	Addrs []string `json:"addrs"`
+	// Services is a bitmask of services this peer is known to advertise.
+	Services uint64 `json:"services"`
+	// LastSeenUnix is the Unix timestamp (seconds) of the last Upsert for this peer.
+	LastSeenUnix int64 `json:"last_seen_unix"`
+	// LastTriedUnix is the Unix timestamp (seconds) of the last dial attempt.
+	LastTriedUnix int64 `json:"last_tried_unix"`
+	// LastSuccUnix is the Unix timestamp (seconds) of the last successful dial.
+	LastSuccUnix int64 `json:"last_succ_unix"`
+	// FailureCount is the number of consecutive dial failures since the last success.
+	FailureCount int `json:"failure_count"`
+	// Source describes where this peer was learned from (e.g. "handshake", "gossip").
+	Source string `json:"source"`
+	// Score is the last computed dial-candidate ranking score (see computeScoreLocked).
+	Score float64 `json:"score"`
+	// ExpireAtUnix is the Unix timestamp (seconds) after which this record is treated
+	// as expired/stale; 0 means it never expires on its own.
+	ExpireAtUnix int64 `json:"expire_at_unix"`
 }
 
 // PeerStore maintains an in-memory index backed by a datastore namespace.
@@ -53,6 +64,13 @@ type PeerStore struct {
 }
 
 // NewPeerStore constructs a PeerStore and loads existing records from ds under a private namespace.
+//
+// Parameters:
+//   - store (ds.Batching): the backing datastore; records are stored under the "/peers" namespace.
+//
+// Returns:
+//   - *PeerStore: an initialized store with defaults (defaultStaleAge, defaultMaxFail, maxKnown 5000) and existing records loaded.
+//   - error: non-nil if loading existing records from the datastore fails.
 func NewPeerStore(store ds.Batching) (*PeerStore, error) {
 	ns := dsnames.Wrap(store, ds.NewKey(peerstoreNS))
 	ps := &PeerStore{
@@ -69,7 +87,12 @@ func NewPeerStore(store ds.Batching) (*PeerStore, error) {
 	return ps, nil
 }
 
-// SetPolicy allows overriding defaults for pruning.
+// SetPolicy allows overriding defaults for pruning. Zero or negative values leave
+// the corresponding setting unchanged.
+//
+// Parameters:
+//   - staleAge (time.Duration): age after which a peer with no recent activity is considered stale; applied if positive.
+//   - maxFailures (int): consecutive dial-failure count at which a peer is pruned/excluded; applied if positive.
 func (ps *PeerStore) SetPolicy(staleAge time.Duration, maxFailures int) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -81,7 +104,11 @@ func (ps *PeerStore) SetPolicy(staleAge time.Duration, maxFailures int) {
 	}
 }
 
-// SetMaxKnown sets a soft cap for the number of peers tracked.
+// SetMaxKnown sets a soft cap for the number of peers tracked. Once reached,
+// Upsert refuses to add brand-new peer IDs but continues to update existing ones.
+//
+// Parameters:
+//   - n (int): the maximum number of distinct peer records to track.
 func (ps *PeerStore) SetMaxKnown(n int) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -89,6 +116,18 @@ func (ps *PeerStore) SetMaxKnown(n int) {
 }
 
 // Upsert records a peer with optional services and source. Addrs are merged and deduplicated.
+// If maxKnown is set and reached, new (previously unknown) peer IDs are silently
+// dropped rather than added; existing peers are always updated regardless of the cap.
+// LastSeenUnix and Score are refreshed on every call.
+//
+// Parameters:
+//   - p (peer.ID): the peer being recorded.
+//   - addrs ([]ma.Multiaddr): addresses to merge into the peer's known address set.
+//   - services (uint64): services bitmask; if non-zero, replaces the stored value.
+//   - source (string): provenance label; if non-empty, replaces the stored value.
+//
+// Returns:
+//   - error: non-nil if persisting the updated record to the datastore fails.
 func (ps *PeerStore) Upsert(p peer.ID, addrs []ma.Multiaddr, services uint64, source string) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -133,6 +172,12 @@ func (ps *PeerStore) Upsert(p peer.ID, addrs []ma.Multiaddr, services uint64, so
 }
 
 // RecordDialAttempt notes a connection attempt to the peer.
+//
+// Parameters:
+//   - p (peer.ID): the peer that was dialed.
+//
+// Returns:
+//   - error: an "unknown peer" error if p has no existing record, or a persistence error, nil on success.
 func (ps *PeerStore) RecordDialAttempt(p peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -146,6 +191,12 @@ func (ps *PeerStore) RecordDialAttempt(p peer.ID) error {
 }
 
 // RecordDialFailure increments failure counters and updates score.
+//
+// Parameters:
+//   - p (peer.ID): the peer whose dial attempt failed.
+//
+// Returns:
+//   - error: an "unknown peer" error if p has no existing record, or a persistence error, nil on success.
 func (ps *PeerStore) RecordDialFailure(p peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -160,6 +211,12 @@ func (ps *PeerStore) RecordDialFailure(p peer.ID) error {
 }
 
 // RecordDialSuccess resets failures, updates timestamps and score.
+//
+// Parameters:
+//   - p (peer.ID): the peer that was successfully dialed.
+//
+// Returns:
+//   - error: an "unknown peer" error if p has no existing record, or a persistence error, nil on success.
 func (ps *PeerStore) RecordDialSuccess(p peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -177,7 +234,19 @@ func (ps *PeerStore) RecordDialSuccess(p peer.ID) error {
 
 // GetDialCandidates returns up to limit peer infos, sorted by score and recency.
 // wantServices is a bitmask; if non-zero, candidates with matching services rank higher.
-// exclude contains peer IDs to skip.
+// exclude contains peer IDs to skip. Expired records (ExpireAtUnix reached),
+// records at or above the failure limit, and records whose peer ID fails to
+// decode are filtered out before ranking. Ties are broken by most recent success,
+// then most recent seen time, then fewest failures.
+//
+// Parameters:
+//   - limit (int): maximum number of candidates to return; 0 or negative returns all eligible candidates.
+//   - wantServices (uint64): services bitmask used to boost scoring for matching peers; 0 disables the boost.
+//   - exclude (map[peer.ID]bool): peer IDs to omit from the result, regardless of score.
+//
+// Returns:
+//   - []peer.AddrInfo: selected peers' addresses, parsed from their stored multiaddr strings.
+//   - []PeerRecord: the corresponding PeerRecord snapshots (with wantServices-adjusted Score), same order and length as the AddrInfo slice.
 func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude map[peer.ID]bool) ([]peer.AddrInfo, []PeerRecord) {
 	ps.mu.RLock()
 	// snapshot
@@ -248,6 +317,12 @@ func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude m
 }
 
 // CountKnownPeersWithAddrs returns how many distinct peers (excluding exclude) have at least one address and are not expired.
+//
+// Parameters:
+//   - exclude (peer.ID): a peer ID to omit from the count.
+//
+// Returns:
+//   - int: the number of matching peer records.
 func (ps *PeerStore) CountKnownPeersWithAddrs(exclude peer.ID) int {
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
@@ -270,6 +345,12 @@ func (ps *PeerStore) CountKnownPeersWithAddrs(exclude peer.ID) int {
 }
 
 // Remove deletes a peer from the store. Used when AddressBucketStore evicts due to Sybil limits.
+//
+// Parameters:
+//   - pid (peer.ID): the peer to remove.
+//
+// Returns:
+//   - error: non-nil if deleting the record from the datastore fails; nil (no-op) if pid was not present.
 func (ps *PeerStore) Remove(pid peer.ID) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -284,7 +365,13 @@ func (ps *PeerStore) Remove(pid peer.ID) error {
 	return nil
 }
 
-// Prune removes peers that exceed failure limits or are stale.
+// Prune removes peers that exceed failure limits or are stale. A peer is removed
+// if its FailureCount reaches maxFail, or its LastSeenUnix predates now-staleAge,
+// or its ExpireAtUnix has passed.
+//
+// Returns:
+//   - removed (int): the number of peer records deleted.
+//   - err (error): non-nil if deleting a record from the datastore fails (returns partial removed count so far).
 func (ps *PeerStore) Prune() (removed int, err error) {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
@@ -302,7 +389,15 @@ func (ps *PeerStore) Prune() (removed int, err error) {
 	return removed, nil
 }
 
-// loadAll loads all peer records from the namespaced datastore.
+// loadAll loads all peer records from the namespaced datastore into ps.byID. If a
+// stored record's PeerID field is empty (legacy data), it is derived from the
+// datastore key instead. Records that fail to unmarshal are silently skipped.
+//
+// Parameters:
+//   - ctx (context.Context): controls the datastore query lifetime.
+//
+// Returns:
+//   - error: non-nil if the underlying datastore query fails or returns a query-level error.
 func (ps *PeerStore) loadAll(ctx context.Context) error {
 	q, err := ps.nsp.Query(ctx, query.Query{Prefix: "/"})
 	if err != nil {
@@ -326,6 +421,14 @@ func (ps *PeerStore) loadAll(ctx context.Context) error {
 	return nil
 }
 
+// saveLocked marshals rec to JSON and writes it to the namespaced datastore under
+// its escaped peer ID key. Callers must hold ps.mu.
+//
+// Parameters:
+//   - rec (*PeerRecord): the record to persist.
+//
+// Returns:
+//   - error: non-nil if JSON marshaling or the datastore write fails.
 func (ps *PeerStore) saveLocked(rec *PeerRecord) error {
 	b, err := json.Marshal(rec)
 	if err != nil {
@@ -336,7 +439,17 @@ func (ps *PeerStore) saveLocked(rec *PeerRecord) error {
 }
 
 // computeScoreLocked calculates a score from metadata. If wantServices is non-zero,
-// matching services receive a large boost.
+// matching services receive a large boost (+100). Recent dial success contributes
+// up to 50 points, decaying 1 point per minute since LastSuccUnix; recent activity
+// contributes up to 20 points, decaying 1 point per 10 minutes since LastSeenUnix;
+// each recorded failure subtracts 5 points. Callers must hold ps.mu (read or write).
+//
+// Parameters:
+//   - rec (*PeerRecord): the record to score.
+//   - wantServices (uint64): services bitmask to check against rec.Services; 0 disables the service boost.
+//
+// Returns:
+//   - float64: the computed score (higher is more preferred as a dial candidate).
 func (ps *PeerStore) computeScoreLocked(rec *PeerRecord, wantServices uint64) float64 {
 	score := 0.0
 	// prefer service matches strongly
@@ -369,17 +482,44 @@ func (ps *PeerStore) computeScoreLocked(rec *PeerRecord, wantServices uint64) fl
 	return score
 }
 
+// escapeKey converts a peer ID string into a safe datastore key component by
+// replacing '/' with '_', since datastore keys are path-like.
+//
+// Parameters:
+//   - id (string): the peer ID string to escape.
+//
+// Returns:
+//   - string: the escaped key component.
 func escapeKey(id string) string {
 	// datastore keys are path-like; ensure no '/' from peer IDs
 	return strings.ReplaceAll(id, "/", "_")
 }
 
+// unescapeKey reverses escapeKey, converting a datastore key component back into
+// a peer ID string by replacing '_' with '/'.
+//
+// Parameters:
+//   - k (string): the escaped key component.
+//
+// Returns:
+//   - string: the original peer ID string.
 func unescapeKey(k string) string {
 	return strings.ReplaceAll(k, "_", "/")
 }
 
 // UpsertLearnedPeer records a peer learned from handshake or gossip. If AttackMitigation has
 // AddressBucketStore, adds to it for Sybil resistance; evicted peers are removed from PeerStore.
+//
+// Parameters:
+//   - ps (*PeerStore): the peer store to update.
+//   - am (*AttackMitigation): optional attack-mitigation bundle; if nil or its AddressBucketStore is nil, no Sybil-resistant bucketing is applied.
+//   - pid (peer.ID): the peer being recorded.
+//   - addrs ([]ma.Multiaddr): the peer's known addresses.
+//   - services (uint64): services bitmask advertised by the peer.
+//   - source (string): provenance label (e.g. "handshake", "gossip").
+//
+// Returns:
+//   - error: non-nil if the underlying PeerStore.Upsert fails to persist the record.
 func UpsertLearnedPeer(ps *PeerStore, am *AttackMitigation, pid peer.ID, addrs []ma.Multiaddr, services uint64, source string) error {
 	if am != nil && am.AddressBucketStore != nil {
 		evicted, _ := am.AddressBucketStore.Add(pid, addrs)

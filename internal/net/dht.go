@@ -6,11 +6,11 @@ import (
 	"context"
 
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
+	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
-	record "github.com/libp2p/go-libp2p-record"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -22,7 +22,11 @@ const TokenDHTProtocolPrefix protocol.ID = "/sng40/kad/1.0.0"
 type DHTMode int
 
 const (
+	// DHTModeServer runs the DHT as a full participant, storing and serving records
+	// for other peers in addition to querying.
 	DHTModeServer DHTMode = iota
+	// DHTModeClient runs the DHT in query-only mode, without storing or serving
+	// records for other peers.
 	DHTModeClient
 )
 
@@ -37,20 +41,37 @@ var DefaultDHTBootstrapAddrs = []string{
 
 // DHTConfig holds options for DHT initialization.
 type DHTConfig struct {
-	Mode               DHTMode
-	BootstrapAddrs     []string
-	BootstrapPeers     []peer.AddrInfo
-	BootstrapPeersFunc func() []peer.AddrInfo // if set, used for dynamic bootstrap (e.g. from PeerStore)
+	// Mode selects whether the DHT runs as a full server or a query-only client.
+	Mode DHTMode
+	// BootstrapAddrs are additional multiaddr strings (appended to DefaultDHTBootstrapAddrs)
+	// used to seed the routing table when BootstrapPeers/BootstrapPeersFunc are not set.
+	BootstrapAddrs []string
+	// BootstrapPeers is an explicit list of bootstrap peers to use instead of BootstrapAddrs.
+	BootstrapPeers []peer.AddrInfo
+	// BootstrapPeersFunc, if set, is used for dynamic bootstrap (e.g. from PeerStore) instead
+	// of the static BootstrapPeers/BootstrapAddrs lists.
+	BootstrapPeersFunc func() []peer.AddrInfo
 	// UseTokenDHT: when true, uses custom protocol prefix + /tokens/ validator for token storage.
 	// Incompatible with standard /ipfs DHT; use only for token-routing tests or isolated networks.
 	UseTokenDHT bool
 }
 
 // tokenRecordValidator validates /tokens/ namespace records for DHT token routing.
+// It accepts any non-empty value; token content integrity is verified by callers
+// via KeyFromData, not by this validator.
 type tokenRecordValidator struct{}
 
 var _ record.Validator = (*tokenRecordValidator)(nil)
 
+// Validate implements record.Validator for the /tokens/ namespace. It only checks
+// that the value is non-empty; it performs no schema or signature validation.
+//
+// Parameters:
+//   - key (string): the DHT record key (unused).
+//   - value ([]byte): the record value to validate.
+//
+// Returns:
+//   - error: routing.ErrNotFound if value is empty, nil otherwise.
 func (tokenRecordValidator) Validate(key string, value []byte) error {
 	if len(value) == 0 {
 		return routing.ErrNotFound
@@ -58,6 +79,17 @@ func (tokenRecordValidator) Validate(key string, value []byte) error {
 	return nil
 }
 
+// Select implements record.Validator for the /tokens/ namespace. It always picks
+// the first candidate value; callers are expected to merge/reconcile token
+// versions themselves (see token conflict resolution via version+timestamp).
+//
+// Parameters:
+//   - key (string): the DHT record key (unused).
+//   - values ([][]byte): candidate record values for the same key.
+//
+// Returns:
+//   - int: index of the selected value (always 0 when values is non-empty).
+//   - error: routing.ErrNotFound if values is empty, nil otherwise.
 func (tokenRecordValidator) Select(key string, values [][]byte) (int, error) {
 	if len(values) == 0 {
 		return -1, routing.ErrNotFound
@@ -66,11 +98,29 @@ func (tokenRecordValidator) Select(key string, values [][]byte) (int, error) {
 }
 
 // DefaultBootstrapPeerInfos returns parsed AddrInfos for DefaultDHTBootstrapAddrs.
+//
+// Returns:
+//   - []peer.AddrInfo: the parsed default bootstrap peers (entries that fail to parse are skipped).
 func DefaultBootstrapPeerInfos() []peer.AddrInfo {
 	return parseBootstrapAddrs(DefaultDHTBootstrapAddrs)
 }
 
-// NewDHT creates and bootstraps a Kademlia DHT.
+// NewDHT creates and bootstraps a Kademlia DHT on host h according to cfg. Mode
+// selects server vs. client participation; UseTokenDHT switches to the custom
+// /sng40/kad/1.0.0 protocol prefix with a permissive /tokens/ namespace validator
+// instead of the standard /ipfs DHT. Bootstrap peers are resolved in priority order:
+// BootstrapPeersFunc (dynamic), then explicit BootstrapPeers, then parsed
+// BootstrapAddrs merged with DefaultDHTBootstrapAddrs. The DHT is closed and an
+// error returned if Bootstrap fails.
+//
+// Parameters:
+//   - ctx (context.Context): controls the lifetime of DHT construction and bootstrap.
+//   - h (host.Host): the libp2p host the DHT attaches to.
+//   - cfg (DHTConfig): mode, protocol prefix, and bootstrap peer configuration.
+//
+// Returns:
+//   - *kaddht.IpfsDHT: the initialized and bootstrapped DHT.
+//   - error: non-nil if DHT construction or bootstrap fails.
 func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, error) {
 	opts := []kaddht.Option{}
 
@@ -111,6 +161,15 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 	return d, nil
 }
 
+// parseBootstrapAddrs parses multiaddr strings (each expected to include a /p2p/<peerID>
+// component) into peer.AddrInfo, deduplicating identical address strings and silently
+// skipping empty strings, unparseable multiaddrs, and multiaddrs without a valid peer ID.
+//
+// Parameters:
+//   - addrs ([]string): multiaddr strings to parse.
+//
+// Returns:
+//   - []peer.AddrInfo: successfully parsed, deduplicated bootstrap peer infos.
 func parseBootstrapAddrs(addrs []string) []peer.AddrInfo {
 	var out []peer.AddrInfo
 	seen := make(map[string]struct{})

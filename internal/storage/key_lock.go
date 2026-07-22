@@ -59,6 +59,10 @@ type keyLockJSON struct {
 }
 
 // Marshal serializes KeyLock to JSON bytes.
+//
+// Returns:
+//   - []byte: the JSON encoding of the lock, or nil if l is nil.
+//   - error: non-nil if JSON marshaling fails.
 func (l *KeyLock) Marshal() ([]byte, error) {
 	if l == nil {
 		return nil, nil
@@ -73,7 +77,14 @@ func (l *KeyLock) Marshal() ([]byte, error) {
 	return json.Marshal(j)
 }
 
-// Unmarshal deserializes JSON bytes into KeyLock.
+// Unmarshal deserializes JSON bytes into KeyLock, overwriting its fields in place.
+//
+// Parameters:
+//   - data ([]byte): the JSON-encoded lock; a zero-length slice is treated as a no-op.
+//
+// Returns:
+//   - error: non-nil if data cannot be unmarshaled, or if the embedded key or
+//     lock holder peer ID fail to parse.
 func (l *KeyLock) Unmarshal(data []byte) error {
 	if len(data) == 0 {
 		return nil
@@ -98,23 +109,57 @@ func (l *KeyLock) Unmarshal(data []byte) error {
 	return nil
 }
 
-// lockStore abstracts lock storage (DHT or datastore).
+// lockStore abstracts lock storage (DHT or datastore) so KeyLockManager can be
+// backed by either without duplicating lock logic.
 type lockStore interface {
+	// get retrieves the raw bytes stored at key, or (nil, nil) if absent.
 	get(ctx context.Context, key string) ([]byte, error)
+	// put stores val at key, overwriting any existing value.
 	put(ctx context.Context, key string, val []byte) error
 }
 
+// dhtLockStore implements lockStore on top of a libp2p DHT routing.ValueStore.
 type dhtLockStore struct{ dht routing.ValueStore }
 
+// get retrieves the value at key from the DHT.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the DHT read.
+//   - key (string): the DHT key to read.
+//
+// Returns:
+//   - []byte: the stored value.
+//   - error: non-nil if the underlying DHT GetValue call fails.
 func (s dhtLockStore) get(ctx context.Context, key string) ([]byte, error) {
 	return s.dht.GetValue(ctx, key)
 }
+
+// put stores val at key in the DHT.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the DHT write.
+//   - key (string): the DHT key to write.
+//   - val ([]byte): the value to store.
+//
+// Returns:
+//   - error: non-nil if the underlying DHT PutValue call fails.
 func (s dhtLockStore) put(ctx context.Context, key string, val []byte) error {
 	return s.dht.PutValue(ctx, key, val)
 }
 
+// dsLockStore implements lockStore on top of a local ds.Datastore.
 type dsLockStore struct{ d ds.Datastore }
 
+// get retrieves the value at key from the datastore, translating ds.ErrNotFound
+// into a (nil, nil) "absent" result rather than an error.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the datastore read.
+//   - key (string): the datastore key to read.
+//
+// Returns:
+//   - []byte: the stored value, or nil if not found.
+//   - error: non-nil if the read fails for a reason other than "not found".
 func (s dsLockStore) get(ctx context.Context, key string) ([]byte, error) {
 	val, err := s.d.Get(ctx, ds.NewKey(key))
 	if err == ds.ErrNotFound {
@@ -122,27 +167,54 @@ func (s dsLockStore) get(ctx context.Context, key string) ([]byte, error) {
 	}
 	return val, err
 }
+
+// put stores val at key in the datastore.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the datastore write.
+//   - key (string): the datastore key to write.
+//   - val ([]byte): the value to store.
+//
+// Returns:
+//   - error: non-nil if the underlying datastore Put call fails.
 func (s dsLockStore) put(ctx context.Context, key string, val []byte) error {
 	return s.d.Put(ctx, ds.NewKey(key), val)
 }
 
-// KeyLockManager manages locks for mutual exclusion.
+// KeyLockManager manages locks for mutual exclusion, backed by either a DHT or
+// a local datastore depending on how it was constructed.
 type KeyLockManager struct {
-	store      lockStore
+	store lockStore
+	// DefaultTTL is the lock duration used when callers pass ttl <= 0 to
+	// AcquireLock/AcquireLockWithRetry/ExtendLock.
 	DefaultTTL time.Duration
 }
 
-// KeyLockManagerOption configures KeyLockManager.
+// KeyLockManagerOption configures KeyLockManager at construction time.
 type KeyLockManagerOption func(*KeyLockManager)
 
-// WithDefaultTTL sets the default lock TTL.
+// WithDefaultTTL returns a KeyLockManagerOption that sets the manager's default lock TTL.
+//
+// Parameters:
+//   - ttl (time.Duration): the default TTL to apply when callers don't specify one.
+//
+// Returns:
+//   - KeyLockManagerOption: an option that sets m.DefaultTTL to ttl.
 func WithDefaultTTL(ttl time.Duration) KeyLockManagerOption {
 	return func(m *KeyLockManager) {
 		m.DefaultTTL = ttl
 	}
 }
 
-// NewKeyLockManager creates a KeyLockManager backed by DHT ValueStore.
+// NewKeyLockManager creates a KeyLockManager backed by a DHT ValueStore, so
+// locks are visible to (and contested by) all peers sharing the same DHT.
+//
+// Parameters:
+//   - dht (routing.ValueStore): the DHT value store to read/write lock records to.
+//   - opts (...KeyLockManagerOption): optional configuration, applied in order.
+//
+// Returns:
+//   - *KeyLockManager: a manager using DefaultLockTTL unless overridden by opts.
 func NewKeyLockManager(dht routing.ValueStore, opts ...KeyLockManagerOption) *KeyLockManager {
 	m := &KeyLockManager{store: dhtLockStore{dht: dht}, DefaultTTL: DefaultLockTTL}
 	for _, opt := range opts {
@@ -151,7 +223,16 @@ func NewKeyLockManager(dht routing.ValueStore, opts ...KeyLockManagerOption) *Ke
 	return m
 }
 
-// NewKeyLockManagerFromDatastore creates a KeyLockManager backed by local datastore.
+// NewKeyLockManagerFromDatastore creates a KeyLockManager backed by a local
+// datastore, suitable for single-node use or tests where locks need not be
+// shared across peers.
+//
+// Parameters:
+//   - d (ds.Datastore): the local datastore to read/write lock records to.
+//   - opts (...KeyLockManagerOption): optional configuration, applied in order.
+//
+// Returns:
+//   - *KeyLockManager: a manager using DefaultLockTTL unless overridden by opts.
 func NewKeyLockManagerFromDatastore(d ds.Datastore, opts ...KeyLockManagerOption) *KeyLockManager {
 	m := &KeyLockManager{store: dsLockStore{d: d}, DefaultTTL: DefaultLockTTL}
 	for _, opt := range opts {
@@ -160,10 +241,28 @@ func NewKeyLockManagerFromDatastore(d ds.Datastore, opts ...KeyLockManagerOption
 	return m
 }
 
+// lockDHTKey returns the storage key for a key's lock record.
+//
+// Parameters:
+//   - k (Key): the content key being locked.
+//
+// Returns:
+//   - string: the fully-qualified lock key ("/locks/" + hex(k)).
 func lockDHTKey(k Key) string {
 	return LockNamespace + k.String()
 }
 
+// getLock reads and unmarshals the current lock record for key, if any.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying read.
+//   - key (Key): the content key whose lock record to fetch; must be non-zero.
+//
+// Returns:
+//   - *KeyLock: the current lock record, or nil if none exists or the stored
+//     value is empty/unreadable (treated as "no lock" rather than an error).
+//   - error: non-nil if m.store is nil, key is zero, or the stored bytes fail
+//     to unmarshal into a KeyLock.
 func (m *KeyLockManager) getLock(ctx context.Context, key Key) (*KeyLock, error) {
 	if m.store == nil {
 		return nil, errors.New("lock store required")
@@ -182,6 +281,15 @@ func (m *KeyLockManager) getLock(ctx context.Context, key Key) (*KeyLock, error)
 	return &lock, nil
 }
 
+// putLock marshals and writes a lock record to the backing store.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying write.
+//   - lock (*KeyLock): the lock record to store; must be non-nil with a non-zero Key.
+//
+// Returns:
+//   - error: non-nil if m.store is nil, lock is invalid, marshaling fails, or
+//     the underlying store write fails.
 func (m *KeyLockManager) putLock(ctx context.Context, lock *KeyLock) error {
 	if m.store == nil {
 		return errors.New("lock store required")
@@ -196,7 +304,21 @@ func (m *KeyLockManager) putLock(ctx context.Context, lock *KeyLock) error {
 	return m.store.put(ctx, lockDHTKey(lock.Key), data)
 }
 
-// AcquireLock acquires a lock on the key for the holder. Returns error if already locked by another peer.
+// AcquireLock acquires a lock on the key for the holder, failing immediately
+// if another peer already holds an unexpired lock. If the current holder is
+// the same peer.ID (or no lock exists, or the existing lock has expired), a
+// new lock record is written with a bumped version and a fresh AcquiredAt/ExpiresAt.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying read/write.
+//   - key (Key): the content key to lock; must be non-zero.
+//   - holder (peer.ID): the peer requesting/renewing the lock.
+//   - ttl (time.Duration): lock duration; values <= 0 use m.DefaultTTL, falling
+//     back to DefaultLockTTL if that is also unset.
+//
+// Returns:
+//   - error: ErrLockHeldByAnother (wrapped) if an unexpired lock is held by a
+//     different peer; otherwise nil on success, or a store error if the read/write fails.
 func (m *KeyLockManager) AcquireLock(ctx context.Context, key Key, holder peer.ID, ttl time.Duration) error {
 	if key.IsZero() {
 		return errors.New("key cannot be zero")
@@ -231,14 +353,34 @@ func (m *KeyLockManager) AcquireLock(ctx context.Context, key Key, holder peer.I
 
 // LockRetryConfig configures exponential backoff for lock acquisition retries.
 type LockRetryConfig struct {
-	InitialBackoff time.Duration // first sleep between retries
-	MaxBackoff     time.Duration // cap on sleep
-	Timeout        time.Duration // fail if lock not acquired within this (0 = default)
+	// InitialBackoff is the first sleep duration between retries.
+	InitialBackoff time.Duration
+	// MaxBackoff caps the sleep duration; backoff doubles each retry up to this cap.
+	MaxBackoff time.Duration
+	// Timeout is the overall deadline for acquisition; 0 means use the default.
+	Timeout time.Duration
 }
 
 // AcquireLockWithRetry acquires a lock with exponential backoff retry on ErrLockHeldByAnother.
-// Non-retriable errors (e.g. key zero, store failure) return immediately.
-// Respects ctx cancellation. When cfg is nil, uses default backoff and 30s timeout.
+// Non-retriable errors (e.g. key zero, store failure) are returned immediately
+// without retrying. The effective deadline is the earlier of (now + timeout)
+// and ctx's own deadline, if any; retries stop and ErrLockTimeout is returned
+// once that deadline passes. Respects ctx cancellation during the backoff sleep.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation and can supply an earlier deadline.
+//   - key (Key): the content key to lock; must be non-zero.
+//   - holder (peer.ID): the peer requesting the lock.
+//   - ttl (time.Duration): lock duration passed through to each AcquireLock attempt.
+//   - cfg (*LockRetryConfig): backoff/timeout configuration; nil uses
+//     DefaultLockRetryInitialBackoff, DefaultLockRetryMaxBackoff, and
+//     DefaultLockRetryTimeout. Zero-valued fields within a non-nil cfg also
+//     fall back to those defaults individually.
+//
+// Returns:
+//   - error: nil on success; ErrLockTimeout (wrapped, with the last underlying
+//     error) if not acquired before the deadline; the ctx error (wrapped) if
+//     cancelled during backoff; or any non-retriable error from AcquireLock.
 func (m *KeyLockManager) AcquireLockWithRetry(ctx context.Context, key Key, holder peer.ID, ttl time.Duration, cfg *LockRetryConfig) error {
 	initial := DefaultLockRetryInitialBackoff
 	maxB := DefaultLockRetryMaxBackoff
@@ -283,6 +425,16 @@ func (m *KeyLockManager) AcquireLockWithRetry(ctx context.Context, key Key, hold
 }
 
 // ReleaseLock releases the lock on the key if the holder matches.
+// A no-op (nil error) if there is no lock, or the existing lock has already expired.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying read/write.
+//   - key (Key): the content key to release; must be non-zero.
+//   - holder (peer.ID): the peer that must match the current lock holder.
+//
+// Returns:
+//   - error: non-nil if key is zero, the lock read fails, or the lock is held
+//     by a different peer than holder; nil otherwise (including the no-op cases).
 func (m *KeyLockManager) ReleaseLock(ctx context.Context, key Key, holder peer.ID) error {
 	if key.IsZero() {
 		return errors.New("key cannot be zero")
@@ -300,7 +452,18 @@ func (m *KeyLockManager) ReleaseLock(ctx context.Context, key Key, holder peer.I
 	return m.store.put(ctx, lockDHTKey(key), []byte{})
 }
 
-// IsLocked returns whether the key is locked and the holder peer ID (empty if not locked or expired).
+// IsLocked returns whether the key is locked and the holder peer ID (empty if
+// not locked or expired). This always uses a fresh context.Background()
+// internally rather than accepting one from the caller, so it cannot be
+// cancelled or subjected to a caller-supplied timeout.
+//
+// Parameters:
+//   - key (Key): the content key to check.
+//
+// Returns:
+//   - bool: true if an unexpired lock record exists for key.
+//   - peer.ID: the current holder, or the empty peer.ID if not locked, expired,
+//     or the lookup errored.
 func (m *KeyLockManager) IsLocked(key Key) (bool, peer.ID) {
 	ctx := context.Background()
 	lock, err := m.getLock(ctx, key)
@@ -313,7 +476,19 @@ func (m *KeyLockManager) IsLocked(key Key) (bool, peer.ID) {
 	return true, lock.LockHolder
 }
 
-// ExtendLock extends the TTL of an existing lock held by the holder.
+// ExtendLock extends the TTL of an existing lock held by the holder, bumping
+// its version and refreshing ExpiresAt from now while preserving AcquiredAt.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying read/write.
+//   - key (Key): the content key whose lock to extend; must be non-zero.
+//   - holder (peer.ID): the peer that must match the current lock holder.
+//   - ttl (time.Duration): the new TTL duration from now; values <= 0 use
+//     m.DefaultTTL, falling back to DefaultLockTTL if that is also unset.
+//
+// Returns:
+//   - error: non-nil if key is zero, the lock read fails, no active
+//     (unexpired) lock exists, or the lock is held by a different peer than holder.
 func (m *KeyLockManager) ExtendLock(ctx context.Context, key Key, holder peer.ID, ttl time.Duration) error {
 	if key.IsZero() {
 		return errors.New("key cannot be zero")

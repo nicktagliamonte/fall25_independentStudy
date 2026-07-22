@@ -39,16 +39,18 @@ const (
 // NonceCache stores nonces per peer with auto-expunge of stale entries.
 // Peer entries with no activity for ExpungeAfter are removed. ExpungeAfter must be 1-5 min.
 type NonceCache struct {
-	mu               sync.RWMutex
-	byPeer           map[peer.ID]*peerNonceEntry
-	expungeAfter     time.Duration
-	expungeInterval  time.Duration
-	stop             chan struct{}
-	stopOnce         sync.Once
+	mu              sync.RWMutex
+	byPeer          map[peer.ID]*peerNonceEntry
+	expungeAfter    time.Duration
+	expungeInterval time.Duration
+	stop            chan struct{}
+	stopOnce        sync.Once
 }
 
+// peerNonceEntry tracks the set of nonces seen for a single peer and when that
+// peer's entry was last updated (used to decide when to expunge it).
 type peerNonceEntry struct {
-	nonces map[uint64]struct{}
+	nonces  map[uint64]struct{}
 	updated time.Time
 }
 
@@ -56,6 +58,13 @@ type peerNonceEntry struct {
 type NonceCacheOption func(*NonceCache)
 
 // NonceExpungeAfter sets the idle duration after which peer entries are expunged (1-5 min).
+// Values outside [MinNonceExpungeAfter, MaxNonceExpungeAfter] are clamped.
+//
+// Parameters:
+//   - d (time.Duration): desired idle duration; clamped to [MinNonceExpungeAfter, MaxNonceExpungeAfter].
+//
+// Returns:
+//   - NonceCacheOption: an option that applies the clamped duration to a NonceCache.
 func NonceExpungeAfter(d time.Duration) NonceCacheOption {
 	return func(c *NonceCache) {
 		if d < MinNonceExpungeAfter {
@@ -69,6 +78,12 @@ func NonceExpungeAfter(d time.Duration) NonceCacheOption {
 }
 
 // nonceExpungeAfterForTest sets expunge interval without clamping (test use only).
+//
+// Parameters:
+//   - d (time.Duration): the idle duration to apply verbatim if positive.
+//
+// Returns:
+//   - NonceCacheOption: an option that applies d to a NonceCache without clamping.
 func nonceExpungeAfterForTest(d time.Duration) NonceCacheOption {
 	return func(c *NonceCache) {
 		if d > 0 {
@@ -78,6 +93,12 @@ func nonceExpungeAfterForTest(d time.Duration) NonceCacheOption {
 }
 
 // NonceExpungeInterval sets how often the expunge loop runs.
+//
+// Parameters:
+//   - d (time.Duration): the polling interval for the expunge loop, applied if positive.
+//
+// Returns:
+//   - NonceCacheOption: an option that applies the interval to a NonceCache.
 func NonceExpungeInterval(d time.Duration) NonceCacheOption {
 	return func(c *NonceCache) {
 		if d > 0 {
@@ -87,6 +108,12 @@ func NonceExpungeInterval(d time.Duration) NonceCacheOption {
 }
 
 // NewNonceCache creates a per-peer nonce cache with auto-expunge.
+//
+// Parameters:
+//   - opts (...NonceCacheOption): functional options overriding the defaults (DefaultNonceExpungeAfter, DefaultNonceExpungeInterval).
+//
+// Returns:
+//   - *NonceCache: a configured cache; call Start to run its expunge loop.
 func NewNonceCache(opts ...NonceCacheOption) *NonceCache {
 	c := &NonceCache{
 		byPeer:          make(map[peer.ID]*peerNonceEntry),
@@ -100,7 +127,12 @@ func NewNonceCache(opts ...NonceCacheOption) *NonceCache {
 	return c
 }
 
-// Add records a nonce for the peer and updates last-access time.
+// Add records a nonce for the peer and updates last-access time. Unlike RecordNonce,
+// it does not report whether the nonce was already present.
+//
+// Parameters:
+//   - pid (peer.ID): the peer the nonce is associated with.
+//   - nonce (uint64): the nonce value to record.
 func (c *NonceCache) Add(pid peer.ID, nonce uint64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -114,6 +146,13 @@ func (c *NonceCache) Add(pid peer.ID, nonce uint64) {
 }
 
 // RecordNonce records a nonce for the peer. Returns ErrReusedNonce if already seen.
+//
+// Parameters:
+//   - pid (peer.ID): the peer the nonce is associated with.
+//   - nonce (uint64): the nonce value to check and record.
+//
+// Returns:
+//   - error: ErrReusedNonce if this nonce was already recorded for pid, nil otherwise.
 func (c *NonceCache) RecordNonce(pid peer.ID, nonce uint64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -130,7 +169,15 @@ func (c *NonceCache) RecordNonce(pid peer.ID, nonce uint64) error {
 	return nil
 }
 
-// Seen returns true if the nonce was already recorded for this peer.
+// Seen returns true if the nonce was already recorded for this peer. Unlike
+// RecordNonce, this is a read-only check that does not record the nonce.
+//
+// Parameters:
+//   - pid (peer.ID): the peer to check.
+//   - nonce (uint64): the nonce value to check.
+//
+// Returns:
+//   - bool: true if nonce has already been recorded for pid.
 func (c *NonceCache) Seen(pid peer.ID, nonce uint64) bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -142,7 +189,12 @@ func (c *NonceCache) Seen(pid peer.ID, nonce uint64) bool {
 	return seen
 }
 
-// Start runs the auto-expunge loop. It exits when ctx is cancelled.
+// Start runs the auto-expunge loop, removing peer entries idle for at least
+// expungeAfter on every tick of expungeInterval. It exits when ctx is cancelled or
+// Stop is called; intended to be run in its own goroutine.
+//
+// Parameters:
+//   - ctx (context.Context): cancelling ctx stops the loop.
 func (c *NonceCache) Start(ctx context.Context) {
 	ticker := time.NewTicker(c.expungeInterval)
 	defer ticker.Stop()
@@ -177,6 +229,9 @@ func (c *NonceCache) expunge() {
 }
 
 // Peers returns the current number of peer entries (for tests).
+//
+// Returns:
+//   - int: the number of distinct peers with tracked nonce entries.
 func (c *NonceCache) Peers() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -186,14 +241,16 @@ func (c *NonceCache) Peers() int {
 // MessageHashCache stores message hashes per peer and rejects duplicates.
 // Uses the same auto-expunge semantics as NonceCache (1-5 min).
 type MessageHashCache struct {
-	mu               sync.RWMutex
-	byPeer           map[peer.ID]*peerHashEntry
-	expungeAfter     time.Duration
-	expungeInterval  time.Duration
-	stop             chan struct{}
-	stopOnce         sync.Once
+	mu              sync.RWMutex
+	byPeer          map[peer.ID]*peerHashEntry
+	expungeAfter    time.Duration
+	expungeInterval time.Duration
+	stop            chan struct{}
+	stopOnce        sync.Once
 }
 
+// peerHashEntry tracks the set of hex-encoded message hashes seen for a single
+// peer and when that peer's entry was last updated.
 type peerHashEntry struct {
 	hashes  map[string]struct{}
 	updated time.Time
@@ -202,7 +259,14 @@ type peerHashEntry struct {
 // MessageHashCacheOption configures MessageHashCache.
 type MessageHashCacheOption func(*MessageHashCache)
 
-// MessageHashExpungeAfter sets the idle duration (1-5 min).
+// MessageHashExpungeAfter sets the idle duration (1-5 min). Values outside
+// [MinNonceExpungeAfter, MaxNonceExpungeAfter] are clamped.
+//
+// Parameters:
+//   - d (time.Duration): desired idle duration; clamped to [MinNonceExpungeAfter, MaxNonceExpungeAfter].
+//
+// Returns:
+//   - MessageHashCacheOption: an option that applies the clamped duration to a MessageHashCache.
 func MessageHashExpungeAfter(d time.Duration) MessageHashCacheOption {
 	return func(c *MessageHashCache) {
 		if d < MinNonceExpungeAfter {
@@ -215,6 +279,13 @@ func MessageHashExpungeAfter(d time.Duration) MessageHashCacheOption {
 	}
 }
 
+// messageHashExpungeAfterForTest sets the expunge duration without clamping (test use only).
+//
+// Parameters:
+//   - d (time.Duration): the idle duration to apply verbatim if positive.
+//
+// Returns:
+//   - MessageHashCacheOption: an option that applies d to a MessageHashCache without clamping.
 func messageHashExpungeAfterForTest(d time.Duration) MessageHashCacheOption {
 	return func(c *MessageHashCache) {
 		if d > 0 {
@@ -224,6 +295,12 @@ func messageHashExpungeAfterForTest(d time.Duration) MessageHashCacheOption {
 }
 
 // MessageHashExpungeInterval sets how often the expunge loop runs.
+//
+// Parameters:
+//   - d (time.Duration): the polling interval for the expunge loop, applied if positive.
+//
+// Returns:
+//   - MessageHashCacheOption: an option that applies the interval to a MessageHashCache.
 func MessageHashExpungeInterval(d time.Duration) MessageHashCacheOption {
 	return func(c *MessageHashCache) {
 		if d > 0 {
@@ -233,6 +310,12 @@ func MessageHashExpungeInterval(d time.Duration) MessageHashCacheOption {
 }
 
 // NewMessageHashCache creates a per-peer message-hash cache with auto-expunge.
+//
+// Parameters:
+//   - opts (...MessageHashCacheOption): functional options overriding the defaults (DefaultNonceExpungeAfter, DefaultNonceExpungeInterval).
+//
+// Returns:
+//   - *MessageHashCache: a configured cache; call Start to run its expunge loop.
 func NewMessageHashCache(opts ...MessageHashCacheOption) *MessageHashCache {
 	c := &MessageHashCache{
 		byPeer:          make(map[peer.ID]*peerHashEntry),
@@ -247,6 +330,14 @@ func NewMessageHashCache(opts ...MessageHashCacheOption) *MessageHashCache {
 }
 
 // RecordHash records a message hash for the peer. Returns ErrDuplicateMessageHash if already seen.
+// The hash bytes are hex-encoded for use as a map key.
+//
+// Parameters:
+//   - pid (peer.ID): the peer the message is associated with.
+//   - hash ([]byte): the message digest (e.g. SHA-256 sum) to check and record.
+//
+// Returns:
+//   - error: ErrDuplicateMessageHash if this hash was already recorded for pid, nil otherwise.
 func (c *MessageHashCache) RecordHash(pid peer.ID, hash []byte) error {
 	key := hex.EncodeToString(hash)
 	c.mu.Lock()
@@ -264,7 +355,15 @@ func (c *MessageHashCache) RecordHash(pid peer.ID, hash []byte) error {
 	return nil
 }
 
-// SeenHash returns true if the hash was already recorded for this peer.
+// SeenHash returns true if the hash was already recorded for this peer. Unlike
+// RecordHash, this is a read-only check that does not record the hash.
+//
+// Parameters:
+//   - pid (peer.ID): the peer to check.
+//   - hash ([]byte): the message digest to check.
+//
+// Returns:
+//   - bool: true if hash has already been recorded for pid.
 func (c *MessageHashCache) SeenHash(pid peer.ID, hash []byte) bool {
 	key := hex.EncodeToString(hash)
 	c.mu.RLock()
@@ -277,7 +376,12 @@ func (c *MessageHashCache) SeenHash(pid peer.ID, hash []byte) bool {
 	return seen
 }
 
-// Start runs the auto-expunge loop. Exits when ctx is cancelled.
+// Start runs the auto-expunge loop, removing peer entries idle for at least
+// expungeAfter on every tick of expungeInterval. Exits when ctx is cancelled or
+// Stop is called; intended to be run in its own goroutine.
+//
+// Parameters:
+//   - ctx (context.Context): cancelling ctx stops the loop.
 func (c *MessageHashCache) Start(ctx context.Context) {
 	ticker := time.NewTicker(c.expungeInterval)
 	defer ticker.Stop()
@@ -298,6 +402,7 @@ func (c *MessageHashCache) Stop() {
 	c.stopOnce.Do(func() { close(c.stop) })
 }
 
+// expunge removes peer entries that have been idle for at least expungeAfter.
 func (c *MessageHashCache) expunge() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -311,6 +416,9 @@ func (c *MessageHashCache) expunge() {
 }
 
 // HashPeers returns the current number of peer entries (for tests).
+//
+// Returns:
+//   - int: the number of distinct peers with tracked hash entries.
 func (c *MessageHashCache) HashPeers() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -320,7 +428,10 @@ func (c *MessageHashCache) HashPeers() int {
 // TimestampChecker validates message timestamps against a configurable window.
 // Rejects timestamps too far in the past (replay) or too far in the future (clock skew).
 type TimestampChecker struct {
-	Window      time.Duration
+	// Window is how far in the past a timestamp may be and still be accepted.
+	Window time.Duration
+	// FutureAllow is how far in the future a timestamp may be (to tolerate clock skew)
+	// and still be accepted.
 	FutureAllow time.Duration
 	nowFunc     func() time.Time
 }
@@ -329,6 +440,12 @@ type TimestampChecker struct {
 type TimestampCheckerOption func(*TimestampChecker)
 
 // TimestampWindow sets how far in the past timestamps are accepted.
+//
+// Parameters:
+//   - d (time.Duration): the acceptable past-window duration, applied if positive.
+//
+// Returns:
+//   - TimestampCheckerOption: an option that applies the window to a TimestampChecker.
 func TimestampWindow(d time.Duration) TimestampCheckerOption {
 	return func(c *TimestampChecker) {
 		if d > 0 {
@@ -338,6 +455,12 @@ func TimestampWindow(d time.Duration) TimestampCheckerOption {
 }
 
 // TimestampFutureAllow sets how far in the future to allow (clock skew).
+//
+// Parameters:
+//   - d (time.Duration): the acceptable future-skew duration, applied if non-negative.
+//
+// Returns:
+//   - TimestampCheckerOption: an option that applies the future allowance to a TimestampChecker.
 func TimestampFutureAllow(d time.Duration) TimestampCheckerOption {
 	return func(c *TimestampChecker) {
 		if d >= 0 {
@@ -347,6 +470,12 @@ func TimestampFutureAllow(d time.Duration) TimestampCheckerOption {
 }
 
 // timestampNowFuncForTest injects time for tests.
+//
+// Parameters:
+//   - fn (func() time.Time): replacement clock function, applied if non-nil.
+//
+// Returns:
+//   - TimestampCheckerOption: an option that overrides the checker's clock source.
 func timestampNowFuncForTest(fn func() time.Time) TimestampCheckerOption {
 	return func(c *TimestampChecker) {
 		if fn != nil {
@@ -356,6 +485,12 @@ func timestampNowFuncForTest(fn func() time.Time) TimestampCheckerOption {
 }
 
 // NewTimestampChecker creates a checker with configurable window.
+//
+// Parameters:
+//   - opts (...TimestampCheckerOption): functional options overriding the defaults (DefaultTimestampWindow, DefaultTimestampFutureAllow).
+//
+// Returns:
+//   - *TimestampChecker: a configured checker.
 func NewTimestampChecker(opts ...TimestampCheckerOption) *TimestampChecker {
 	c := &TimestampChecker{
 		Window:      DefaultTimestampWindow,
@@ -369,6 +504,12 @@ func NewTimestampChecker(opts ...TimestampCheckerOption) *TimestampChecker {
 }
 
 // RejectExpired returns ErrExpiredTimestamp if t is outside the acceptable window.
+//
+// Parameters:
+//   - t (time.Time): the timestamp to validate against [now-Window, now+FutureAllow].
+//
+// Returns:
+//   - error: ErrExpiredTimestamp if t is before the window's oldest bound or after its newest bound, nil otherwise.
 func (c *TimestampChecker) RejectExpired(t time.Time) error {
 	now := c.nowFunc()
 	oldest := now.Add(-c.Window)
@@ -380,6 +521,12 @@ func (c *TimestampChecker) RejectExpired(t time.Time) error {
 }
 
 // RejectExpiredUnix returns ErrExpiredTimestamp if the Unix timestamp (seconds) is outside the window.
+//
+// Parameters:
+//   - ts (int64): Unix timestamp in seconds to validate.
+//
+// Returns:
+//   - error: ErrExpiredTimestamp if the corresponding time is outside the acceptable window, nil otherwise.
 func (c *TimestampChecker) RejectExpiredUnix(ts int64) error {
 	return c.RejectExpired(time.Unix(ts, 0))
 }

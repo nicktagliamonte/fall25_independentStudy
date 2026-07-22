@@ -14,7 +14,11 @@ import (
 	"strings"
 )
 
-// Constants from synergy.h
+// Constants from synergy.h. TSH_OP_* are wire opcodes sent as the first field
+// of a request to the TSH daemon; FAILURE/SUCCESS are the status values used
+// in TSH response structs; NAME_LEN2/TUPLENAME_LEN are the fixed-size buffer
+// lengths (in bytes) for the AppId and Name/Expr fields respectively, matching
+// the C struct layout.
 const (
 	TSH_OP_PUT     uint16 = 401
 	TSH_OP_GET     uint16 = 402
@@ -27,7 +31,10 @@ const (
 	TUPLENAME_LEN = 128
 )
 
-// TshPutIt corresponds to tsh_put_it C struct
+// TshPutIt corresponds to tsh_put_it C struct: the request header sent to the
+// TSH daemon for a put operation, including the application id, tuple name,
+// priority, and the requester's return address (Host/Port) for phase-2 UVR
+// (unbound variable request) callbacks.
 // Note: We use explicit padding to match C struct alignment (4-byte alignment typically)
 type TshPutIt struct {
 	AppId    [NAME_LEN2]byte
@@ -41,7 +48,10 @@ type TshPutIt struct {
 	ProcId   int32
 }
 
-// TshGetIt corresponds to tsh_get_it C struct
+// TshGetIt corresponds to tsh_get_it C struct: the request header sent to the
+// TSH daemon for a get/read operation, including the application id, the
+// match expression (tuple name or pattern), and the requester's return
+// address for asynchronous delivery.
 type TshGetIt struct {
 	AppId   [NAME_LEN2]byte
 	Expr    [TUPLENAME_LEN]byte
@@ -54,19 +64,25 @@ type TshGetIt struct {
 	_       [2]byte // Final padding to 212 bytes
 }
 
-// TshPutOt corresponds to tsh_put_ot C struct
+// TshPutOt corresponds to tsh_put_ot C struct: the immediate status/error
+// response returned by the TSH daemon after a put request.
 type TshPutOt struct {
 	Status int32
 	Error  int32
 }
 
-// TshGetOt1 corresponds to tsh_get_ot1 C struct (same as TshPutOt)
+// TshGetOt1 corresponds to tsh_get_ot1 C struct (same as TshPutOt): the
+// immediate status/error response returned by the TSH daemon after a
+// get/read request, indicating whether the tuple was available immediately
+// or the caller must wait on its listener.
 type TshGetOt1 struct {
 	Status int32
 	Error  int32
 }
 
-// TshGetOt2 corresponds to tsh_get_ot2 C struct
+// TshGetOt2 corresponds to tsh_get_ot2 C struct: the tuple metadata header
+// (application id, name, length, priority) that precedes the tuple payload
+// bytes in a get/read response.
 type TshGetOt2 struct {
 	AppId    [NAME_LEN2]byte
 	Name     [TUPLENAME_LEN]byte
@@ -75,7 +91,11 @@ type TshGetOt2 struct {
 	_        [2]byte // Padding
 }
 
-// UvrReturnStruct corresponds to tsh_put3_it C struct
+// UvrReturnStruct corresponds to tsh_put3_it C struct: a callback message
+// received on the requester's temporary listener during the UVR (unbound
+// variable request) wait loop of TsPut, carrying the matched waiter's address
+// and whether traversal found another match (Status) and what operation it
+// is waiting on (Request).
 type UvrReturnStruct struct {
 	Host    uint32
 	Port    uint16
@@ -89,13 +109,28 @@ type UvrReturnStruct struct {
 // Supports regex matching at O(log_20 k) hops, O(N) messaging.
 // Used for KYC, administrative coordination, and non-exact-match operations.
 type P2PTupleSpace struct {
-	TshAddr           string // "host:port" of the TSH daemon
-	HostIP            uint32 // Local IP address to report to TSH (ipv4 as int)
-	AppId             string
+	// TshAddr is the "host:port" address of the TSH (tuple space handler) daemon.
+	TshAddr string // "host:port" of the TSH daemon
+	// HostIP is the local IPv4 address (as a big-endian-encoded uint32) that
+	// this client reports to the TSH daemon so it can call back with UVR
+	// notifications or deliver tuple data.
+	HostIP uint32 // Local IP address to report to TSH (ipv4 as int)
+	// AppId identifies the calling application to the TSH daemon.
+	AppId string
+	// PermissionChecker, if set, is consulted before TsPut/TsGet/TsRead to
+	// authorize the operation. Nil means no permission check is performed.
 	PermissionChecker PermissionChecker
 }
 
 // NewP2PTupleSpace creates a P2P tuple space client.
+//
+// Parameters:
+//   - tshAddr (string): "host:port" address of the TSH daemon.
+//   - hostIP (uint32): local IPv4 address to report to the TSH daemon.
+//   - appId (string): application identifier reported to the TSH daemon.
+//
+// Returns:
+//   - *P2PTupleSpace: the constructed client, with no PermissionChecker set.
 func NewP2PTupleSpace(tshAddr string, hostIP uint32, appId string) *P2PTupleSpace {
 	return &P2PTupleSpace{
 		TshAddr: tshAddr,
@@ -105,10 +140,21 @@ func NewP2PTupleSpace(tshAddr string, hostIP uint32, appId string) *P2PTupleSpac
 }
 
 // SetPermissionChecker sets the permission checker for TsPut, TsGet, TsRead.
+//
+// Parameters:
+//   - c (PermissionChecker): the checker to install; pass nil to disable permission checks.
 func (p *P2PTupleSpace) SetPermissionChecker(c PermissionChecker) {
 	p.PermissionChecker = c
 }
 
+// getTempListener opens a TCP listener on an OS-assigned ephemeral port, used
+// as the local return address a request registers with the TSH daemon so it
+// can deliver asynchronous responses (UVR callbacks, deferred get/read data).
+//
+// Returns:
+//   - net.Listener: the bound listener; caller is responsible for closing it.
+//   - int: the local port number the listener is bound to.
+//   - error: non-nil if binding the listener or parsing its assigned port failed.
 func getTempListener() (net.Listener, int, error) {
 	listener, err := net.Listen("tcp", ":0") // bind to any available port
 	if err != nil {
@@ -126,7 +172,17 @@ func getTempListener() (net.Listener, int, error) {
 	return listener, localPort, nil
 }
 
-// writeStructManual writes struct fields manually to handle padding correctly
+// writeTshPutIt writes a TshPutIt's fields manually (rather than via a single
+// binary.Write on the struct) so the wire layout precisely matches the C
+// struct's padding/alignment, field by field, in big-endian byte order.
+//
+// Parameters:
+//   - w (io.Writer): destination to write the encoded struct to (typically a net.Conn).
+//   - s (TshPutIt): the struct to encode.
+//
+// Returns:
+//   - error: always nil; retained for signature symmetry with other write helpers
+//     (individual binary.Write errors inside are not checked/propagated).
 func writeTshPutIt(w io.Writer, s TshPutIt) error {
 	binary.Write(w, binary.BigEndian, s.AppId)
 	binary.Write(w, binary.BigEndian, s.Name)
@@ -140,6 +196,17 @@ func writeTshPutIt(w io.Writer, s TshPutIt) error {
 	return nil
 }
 
+// writeTshGetIt writes a TshGetIt's fields manually (rather than via a single
+// binary.Write on the struct) so the wire layout precisely matches the C
+// struct's padding/alignment, field by field, in big-endian byte order.
+//
+// Parameters:
+//   - w (io.Writer): destination to write the encoded struct to (typically a net.Conn).
+//   - s (TshGetIt): the struct to encode.
+//
+// Returns:
+//   - error: always nil; retained for signature symmetry with other write helpers
+//     (individual binary.Write errors inside are not checked/propagated).
 func writeTshGetIt(w io.Writer, s TshGetIt) error {
 	binary.Write(w, binary.BigEndian, s.AppId)
 	binary.Write(w, binary.BigEndian, s.Expr)
@@ -153,8 +220,26 @@ func writeTshGetIt(w io.Writer, s TshGetIt) error {
 	return nil
 }
 
-// TsPut implements the tuple space put operation
+// TsPut implements the tuple space put operation against the TSH daemon,
+// following the legacy 3-phase TSH protocol: (1) send the put request and
+// read an immediate status — if not FAILURE, the tuple was stored or
+// consumed locally and the call returns immediately; (2) otherwise enter a
+// UVR (unbound variable request) wait loop, accepting callback connections on
+// a temporary listener and delivering the tuple directly to each waiter in
+// turn until traversal signals no more waiters; (3) if no waiter consumed the
+// tuple, store it permanently via a final TSH_OP_UVRPut3 request.
 // Returns status/error code
+//
+// Parameters:
+//   - tpname (string): the tuple name to store under.
+//   - tpvalue ([]byte): the tuple payload.
+//
+// Returns:
+//   - int: TSH-reported status/error code (0/TSPUT_ER-style semantics
+//     inherited from the C protocol; note phase 2's consumed-by-GET path
+//     returns TSPUT_ER with a nil error even though the operation succeeded).
+//   - error: non-nil if the permission check, listener setup, TSH connection,
+//     or any protocol read/write step failed.
 func (p *P2PTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 	if p.PermissionChecker != nil {
 		if err := p.PermissionChecker.CheckPermission(OpTsPut); err != nil {
@@ -315,9 +400,22 @@ func (p *P2PTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 	return int(inFinal.Error), nil
 }
 
-// TsGet implements the tuple space get operation (consuming)
+// TsGet implements the tuple space get operation (consuming) against the TSH
+// daemon: sends a get request and, if not immediately available, waits on a
+// temporary listener for the daemon (or a matching TsPut waiter) to deliver
+// the tuple metadata and payload asynchronously. The returned tuple name is
+// validated against tpname when tpname is a literal (non-pattern) expression.
 // Returns the data in a newly allocated slice (like C tsgetv)
 // To mimic C tsget (buffer provided), one could use a different signature, but this is safer.
+//
+// Parameters:
+//   - tpname (string): the tuple name or match expression to consume.
+//
+// Returns:
+//   - []byte: the consumed tuple's payload, newly allocated.
+//   - error: non-nil if the permission check, listener setup, TSH connection,
+//     any protocol read/write step failed, or (for literal patterns) the
+//     returned tuple's name does not match tpname.
 func (p *P2PTupleSpace) TsGet(tpname string) ([]byte, error) {
 	if p.PermissionChecker != nil {
 		if err := p.PermissionChecker.CheckPermission(OpTsGet); err != nil {
@@ -417,7 +515,19 @@ func (p *P2PTupleSpace) TsGet(tpname string) ([]byte, error) {
 	return data, nil
 }
 
-// TsRead implements the tuple space read operation (non-consuming)
+// TsRead implements the tuple space read operation (non-consuming) against
+// the TSH daemon: sends a read request and, if not immediately available,
+// waits on a temporary listener for the daemon to deliver the tuple metadata
+// and payload asynchronously. Unlike TsGet, the returned tuple name is not
+// validated against tpname.
+//
+// Parameters:
+//   - tpname (string): the tuple name or match expression to read.
+//
+// Returns:
+//   - []byte: the matched tuple's payload, newly allocated.
+//   - error: non-nil if the permission check, listener setup, TSH connection,
+//     or any protocol read/write step failed.
 func (p *P2PTupleSpace) TsRead(tpname string) ([]byte, error) {
 	if p.PermissionChecker != nil {
 		if err := p.PermissionChecker.CheckPermission(OpTsRead); err != nil {

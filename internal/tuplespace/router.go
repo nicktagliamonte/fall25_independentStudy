@@ -17,8 +17,13 @@ import (
 // Storage (exact match, simple wildcard via PHT) → DHT, no permission check.
 // Admin/coordination (complex regex) → P2P, permission checked by P2P.
 type Router struct {
-	dhtTS    *DHTTupleSpace
-	p2pTS    *P2PTupleSpace
+	// dhtTS is the exact-match, unpermissioned storage-layer tuple space.
+	dhtTS *DHTTupleSpace
+	// p2pTS is the permissioned tuple space used for complex regex patterns
+	// and as the fallback when PHT resolution is unavailable.
+	p2pTS *P2PTupleSpace
+	// phtStore is the DHT-backed ValueStore used to resolve simple wildcard
+	// (prefix/substring) patterns to concrete tuple names via the PHT.
 	phtStore pht.ValueStore // DHT-backed ValueStore for PHT queries
 }
 
@@ -26,6 +31,14 @@ type Router struct {
 var _ TupleSpace = (*Router)(nil)
 
 // NewRouter creates a router with DHT and P2P tuple space implementations.
+//
+// Parameters:
+//   - dhtTS (*DHTTupleSpace): backend for exact-match operations.
+//   - p2pTS (*P2PTupleSpace): backend for complex regex and PHT-unavailable fallback.
+//   - phtStore (pht.ValueStore): DHT-backed store used to resolve simple wildcard patterns via the PHT.
+//
+// Returns:
+//   - *Router: the constructed router.
 func NewRouter(dhtTS *DHTTupleSpace, p2pTS *P2PTupleSpace, phtStore pht.ValueStore) *Router {
 	return &Router{
 		dhtTS:    dhtTS,
@@ -36,6 +49,13 @@ func NewRouter(dhtTS *DHTTupleSpace, p2pTS *P2PTupleSpace, phtStore pht.ValueSto
 
 // isExactMatch checks if the pattern contains only simple wildcards (*) or is exact.
 // Returns true if pattern is exact (no wildcards) or simple wildcard (prefix/substring).
+//
+// Parameters:
+//   - pattern (string): the tuple name/pattern to classify.
+//
+// Returns:
+//   - bool: true if pattern has no wildcard/regex characters at all (i.e. is
+//     an exact tuple name); false if it contains "*" or any regex metacharacter.
 func isExactMatch(pattern string) bool {
 	// Check for complex regex patterns (beyond simple *)
 	// Simple wildcards: *, *pattern, pattern*, *pattern*
@@ -50,6 +70,14 @@ func isExactMatch(pattern string) bool {
 }
 
 // isSimpleWildcard checks if pattern uses only simple wildcards (prefix or substring).
+//
+// Parameters:
+//   - pattern (string): the tuple name/pattern to classify.
+//
+// Returns:
+//   - bool: true if pattern contains "*" and no regex metacharacters beyond
+//     "*" (i.e. it is a prefix/substring pattern resolvable via the PHT);
+//     false otherwise (no wildcard at all, or a complex regex pattern).
 func isSimpleWildcard(pattern string) bool {
 	if !strings.Contains(pattern, "*") {
 		return false
@@ -65,6 +93,14 @@ func isSimpleWildcard(pattern string) bool {
 // TsPut routes Put operations.
 // Exact tuple names → DHT tuple space.
 // Wildcard/regex patterns → P2P tuple space (for coordination/admin tasks).
+//
+// Parameters:
+//   - tpname (string): the tuple name or pattern to store under.
+//   - tpvalue ([]byte): the tuple payload.
+//
+// Returns:
+//   - int: status/error code from the chosen backend (DHTTupleSpace or P2PTupleSpace).
+//   - error: non-nil if the chosen backend's TsPut failed.
 func (r *Router) TsPut(tpname string, tpvalue []byte) (int, error) {
 	if isExactMatch(tpname) {
 		// Exact match: use DHT tuple space
@@ -79,6 +115,16 @@ func (r *Router) TsPut(tpname string, tpvalue []byte) (int, error) {
 // Prefix wildcard (pattern*) → PHT to find matches, then DHT to retrieve.
 // Substring wildcard (*pattern*) → PHT with Bloom filters, then DHT to retrieve.
 // Complex regex → P2P tuple space.
+//
+// Parameters:
+//   - tpname (string): the tuple name or pattern to consume.
+//
+// Returns:
+//   - []byte: the consumed tuple data (first matching name whose DHT TsGet
+//     succeeds, when resolved via PHT; otherwise straight from the chosen backend).
+//   - error: non-nil if PHT resolution fails, no matching tuple names are
+//     found, all resolved names fail to consume from the DHT, or the
+//     underlying backend's TsGet fails.
 func (r *Router) TsGet(tpname string) ([]byte, error) {
 	if isExactMatch(tpname) {
 		// Exact match: use DHT tuple space
@@ -141,6 +187,16 @@ func (r *Router) TsGet(tpname string) ([]byte, error) {
 // Prefix wildcard (pattern*) → PHT to find matches, then DHT to read.
 // Substring wildcard (*pattern*) → PHT with Bloom filters, then DHT to read.
 // Complex regex → P2P tuple space.
+//
+// Parameters:
+//   - tpname (string): the tuple name or pattern to read.
+//
+// Returns:
+//   - []byte: the tuple data (first matching name whose DHT TsRead
+//     succeeds, when resolved via PHT; otherwise straight from the chosen backend).
+//   - error: non-nil if PHT resolution fails, no matching tuple names are
+//     found, all resolved names fail to read from the DHT, or the
+//     underlying backend's TsRead fails.
 func (r *Router) TsRead(tpname string) ([]byte, error) {
 	if isExactMatch(tpname) {
 		// Exact match: use DHT tuple space

@@ -35,6 +35,12 @@ import (
 // getRemoteOnlyQuery reports whether the client requested a network path for /get (skip local chunk
 // index, local payload resolution, and gateway shortcut so stack.GetBlock runs). This is largely
 // used in testing scripts to measure the network path.
+//
+// Parameters:
+//   - r (*http.Request): the incoming request; the "remote_only" query parameter is inspected.
+//
+// Returns:
+//   - (bool): true if remote_only is "1", "true", or "yes" (case-insensitive, trimmed).
 func getRemoteOnlyQuery(r *http.Request) bool {
 	v := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("remote_only")))
 	return v == "1" || v == "true" || v == "yes"
@@ -43,22 +49,39 @@ func getRemoteOnlyQuery(r *http.Request) bool {
 // ReplicationFactorR is the enforced minimum replicas per file (Near 40%, Midrange 30%, Far 30%).
 const ReplicationFactorR = 7
 
+// PutRequest is the JSON request body for POST /put when Content-Type is not
+// application/octet-stream (the raw-bytes path bypasses this struct entirely).
 type PutRequest struct {
+	// Data is the block payload, either a raw string or base64-encoded bytes
+	// depending on client convention; it is used verbatim as []byte(Data).
 	Data string `json:"data"`
 }
 
+// PutResponse is the JSON response body for a successful POST /put.
 type PutResponse struct {
-	CID          string `json:"cid"`
+	// CID is the IPFS-compatible content ID of the stored block, kept for
+	// blockstore compatibility; new code should prefer MultihashHex (Key).
+	CID string `json:"cid"`
+	// MultihashHex is the 64-hex-char content Key (SHA256 of the stored
+	// data), the primary identifier for subsequent /get, /lookup, and
+	// /replication/status calls.
 	MultihashHex string `json:"multihash_hex"`
-	NetworkHops  *int   `json:"network_hops,omitempty"`
+	// NetworkHops is always 0 for /put (token DHT sync is asynchronous and
+	// not instrumented); present for symmetry with GetResponse.
+	NetworkHops *int `json:"network_hops,omitempty"`
 }
 
+// ConnectRequest is the JSON request body for POST /connect.
 type ConnectRequest struct {
-	Addr    string `json:"addr"`
-	Peer    string `json:"peer"`
+	// Addr is the multiaddr string of the peer to dial.
+	Addr string `json:"addr"`
+	// Peer is the base58/CID-encoded libp2p peer ID to connect to.
+	Peer string `json:"peer"`
+	// Timeout is an optional Go duration string (e.g. "10s") bounding the dial; defaults to 10s if empty or unparsable.
 	Timeout string `json:"timeout"`
 }
 
+// GetRequest is the JSON request body for POST /get.
 type GetRequest struct {
 	Key     string `json:"key"` // Key (hex string) - primary identifier for token-based routing
 	CID     string `json:"cid"` // CID (deprecated, kept for backward compatibility)
@@ -67,12 +90,26 @@ type GetRequest struct {
 	Timeout string `json:"timeout"`
 }
 
+// GetResponse is the JSON response body for a successful, non-raw POST /get.
 type GetResponse struct {
-	Bytes       int    `json:"bytes"`
-	DataB64     string `json:"data_b64"`
-	NetworkHops *int   `json:"network_hops,omitempty"`
+	// Bytes is the length of the returned block payload.
+	Bytes int `json:"bytes"`
+	// DataB64 is the block payload, base64 standard-encoded.
+	DataB64 string `json:"data_b64"`
+	// NetworkHops is the DHT lookup hop count when the block was resolved via
+	// GetToken/DirectFetch; 0 when served from the local store or gateway
+	// shortcut; nil (omitted) if not tracked for the path taken.
+	NetworkHops *int `json:"network_hops,omitempty"`
 }
 
+// wantsRawGetResponse reports whether /get should stream raw bytes
+// (application/octet-stream) instead of the JSON GetResponse envelope.
+//
+// Parameters:
+//   - r (*http.Request): the incoming request; the "format" query parameter and "Accept" header are inspected.
+//
+// Returns:
+//   - (bool): true if format=raw (case-insensitive) or the Accept header contains "application/octet-stream".
 func wantsRawGetResponse(r *http.Request) bool {
 	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("format")), "raw") {
 		return true
@@ -81,18 +118,30 @@ func wantsRawGetResponse(r *http.Request) bool {
 	return strings.Contains(accept, "application/octet-stream")
 }
 
+// DeleteRequest is the JSON request body for POST /delete.
 type DeleteRequest struct {
+	// CID is the IPFS-compatible content ID of the block to delete
+	// (key-based delete is not currently supported; see docs/API.md).
 	CID string `json:"cid"`
 }
 
+// DeleteResponse is the JSON response body for a successful POST /delete.
 type DeleteResponse struct {
-	CID     string `json:"cid"`
-	Deleted bool   `json:"deleted"`
+	// CID echoes the deleted block's content ID.
+	CID string `json:"cid"`
+	// Deleted is true if the delete succeeded.
+	Deleted bool `json:"deleted"`
 }
 
-// simulatedRTTForPeer returns a deterministic RTT for a peer when simulate_distances=1.
+// simulatedRTTByIndex returns a deterministic RTT for a peer when simulate_distances=1.
 // Uses index within sorted provider list to guarantee at least one Near, Midrange, Farflung.
 // Caller must pass sorted provider IDs and index; returns 10ms/75ms/250ms by round-robin.
+//
+// Parameters:
+//   - index (int): the peer's position in a sorted provider list.
+//
+// Returns:
+//   - (time.Duration): 10ms if index%3==0 (Near), 75ms if index%3==1 (Midrange), 250ms otherwise (FarFlung).
 func simulatedRTTByIndex(index int) time.Duration {
 	switch index % 3 {
 	case 0:
@@ -105,7 +154,20 @@ func simulatedRTTByIndex(index int) time.Duration {
 }
 
 // fetchBlockFromToken fetches block data from token locations in parallel.
-// Returns first successful result or error if all fail.
+// Returns first successful result or error if all fail. Every location is
+// raced concurrently and the function waits for all of them to finish (even
+// after a winner is found) before returning, so it does not race-cancel the
+// slower attempts.
+//
+// Parameters:
+//   - ctx (context.Context): context passed to each DirectFetch attempt.
+//   - stack (*mystore.Stack): storage stack providing DirectFetch and the optional MessageSink for message-count metrics.
+//   - token (mystore.Token): the token whose Locations are attempted in parallel.
+//   - key (mystore.Key): the content key being fetched.
+//
+// Returns:
+//   - ([]byte): the block bytes from the first location to succeed.
+//   - (error): non-nil if stack is nil, token has no locations, or every location's DirectFetch failed (error aggregates all per-location failures).
 func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystore.Token, key mystore.Key) ([]byte, error) {
 	if stack == nil || len(token.Locations) == 0 {
 		return nil, fmt.Errorf("stack and token locations required")
@@ -147,11 +209,32 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 }
 
 // Start launches the control server and returns the bound address and a shutdown func.
-// onShutdown: optional callback to trigger graceful node stop when /shutdown is called.
-// explicitRouter: optional; when non-nil, used for DynamicRouter fallback and composed with stack's router (e.g. via NewFallbackContentRouter).
-// repairProtocol: optional repair protocol for automatic repair on vector mismatch (nil disables repair).
-// gateway: optional; when non-nil, used for token routing and query operations (Phase 5.3).
-// storePath: optional path to persistent blockstore; when non-empty, /storage/stats returns disk_bytes for that dir.
+// It wires up an http.ServeMux with every documented control endpoint
+// (/health, /metrics, /storage/stats, /replication/status, /lookup, /has_key,
+// /restore, /restore/status, /shutdown, /neighbors, /id, /events, /put,
+// /delete, /peers, /connect, /get, /snapshot, plus the /namespace/* routes
+// registered via registerNamespaceHandlers), registers libp2p stream handlers
+// for repair and direct-fetch protocols when available, binds a TCP listener,
+// and starts serving in a background goroutine. Each handler closure captures
+// the parameters below directly rather than through a struct, since no
+// persistent server struct is required.
+//
+// Parameters:
+//   - ctx (context.Context): reserved for future use in the listen/setup path; not currently used to bound the server's lifetime (Shutdown does that).
+//   - h (host.Host): the libp2p host; used for peer info, dialing, stream handler registration, and routing-table updates. Several endpoints degrade gracefully or are skipped if nil, but most assume non-nil.
+//   - stack (*mystore.Stack): the storage/routing stack backing put/get/delete/snapshot/replication/lookup and namespace operations.
+//   - peers (*mynet.PeerStore): supplies dial candidates for the /peers endpoint.
+//   - metrics (*NodeMetrics): metrics sink updated by handlers and exposed via /metrics; a nil value will panic in handlers that call methods on it unconditionally (e.g. /put's putHops logic assumes non-nil metrics via NetworkHops).
+//   - onShutdown (func()): optional callback invoked ~100ms after /shutdown responds, to trigger graceful node stop.
+//   - explicitRouter (*DynamicRouter): optional; when non-nil, used for DynamicRouter fallback and composed with stack's router (e.g. via NewFallbackContentRouter). When nil, a fresh DynamicRouter is created internally.
+//   - repairProtocol (*mystore.RepairProtocol): optional repair protocol for automatic repair on vector mismatch (nil disables repair and the repair stream handler).
+//   - gateway (*mygateway.Gateway): optional; when non-nil, used for token routing and query operations in /get (Phase 5.3).
+//   - storePath (string): optional path to persistent blockstore; when non-empty, /storage/stats returns disk_bytes for that dir; when empty, /storage/stats reports an ephemeral store.
+//
+// Returns:
+//   - (string): the bound listen address (127.0.0.1:<port>), normalized from any 0.0.0.0 bind.
+//   - (func(context.Context) error): a shutdown function that stops the HTTP server (wraps http.Server.Shutdown).
+//   - (error): non-nil if the TCP listener could not be created.
 func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func(), explicitRouter *DynamicRouter, repairProtocol *mystore.RepairProtocol, gateway *mygateway.Gateway, storePath string) (string, func(context.Context) error, error) {
 	mux := http.NewServeMux()
 	router := explicitRouter
@@ -174,21 +257,47 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		})
 	}
 	// restore job manager (in-memory)
+	//
+	// restoreStats tracks the progress of one async /restore job: how many
+	// blocks succeeded/failed, total bytes restored, and whether the job has
+	// finished. Instances are shared via the jobs map and guarded by jobsMu.
 	type restoreStats struct {
-		OK     int   `json:"ok"`
-		Failed int   `json:"failed"`
-		Bytes  int64 `json:"bytes"`
-		Done   bool  `json:"done"`
+		// OK is the count of blocks restored successfully so far.
+		OK int `json:"ok"`
+		// Failed is the count of blocks that failed to restore (decode or fetch error).
+		Failed int `json:"failed"`
+		// Bytes is the total size of successfully restored blocks so far.
+		Bytes int64 `json:"bytes"`
+		// Done is true once all workers have finished processing the job's CID list.
+		Done bool `json:"done"`
 	}
+	// jobsMu guards jobs against concurrent access from the HTTP handlers and
+	// the background restore worker goroutines.
 	var jobsMu sync.Mutex
+	// jobs maps a restore job ID (from /restore) to its live restoreStats, so
+	// /restore/status can report progress while the job runs asynchronously.
 	jobs := make(map[string]*restoreStats)
 
-	// Health endpoint
+	// GET /health is a liveness probe; always responds 200 "ok".
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes the literal body "ok".
+	//   - r (*http.Request): unused.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// Metrics endpoint (JSON)
+	// GET /metrics returns the node's current metrics as JSON (see
+	// NodeMetrics.Snapshot / MetricsSnapshot). Before encoding, it refreshes
+	// ProviderRecordsCount from stack.ProviderRecords if both are available.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes the MetricsSnapshot JSON.
+	//   - r (*http.Request): unused.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		if metrics != nil && stack != nil && stack.ProviderRecords != nil {
 			metrics.SetProviderRecordsCount(int64(stack.ProviderRecords.Len()))
@@ -197,7 +306,18 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(metrics.Snapshot())
 	})
 
-	// Storage stats endpoint: returns disk_bytes for persistent store path (storage efficiency tests).
+	// GET /storage/stats returns disk_bytes for the persistent store path
+	// (storage efficiency tests). If storePath is empty, reports an
+	// ephemeral store (disk_bytes=null). If storePath is a single file, uses
+	// its size directly; if a directory, walks it recursively summing file
+	// sizes (walk errors are swallowed per-entry so partial results are
+	// still returned).
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes JSON {"disk_bytes": ...} or {"reason": "ephemeral"} or {"error": ...}.
+	//   - r (*http.Request): unused.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/storage/stats", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if storePath == "" {
@@ -226,7 +346,26 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(map[string]int64{"disk_bytes": total})
 	})
 
-	// Replication status: returns replica count for a key (polls DHT token for locations).
+	// GET /replication/status returns the current replica count and
+	// distance-class breakdown for a key by fetching its DHT token
+	// (GetToken) and classifying each location's RTT (near/midrange/
+	// farflung) via mystore.ClassifyDistanceByRTT. If GetToken fails, still
+	// responds 200 with replica_count=0 and an error_reason/error_detail for
+	// diagnostics rather than a non-2xx error. Not currently documented in
+	// docs/API.md.
+	//
+	// Query parameters:
+	//   - key (string, required): 64-hex-char content key to look up.
+	//   - simulate_distances ("1" to enable): when set, provider RTTs are
+	//     replaced with deterministic values from simulatedRTTByIndex (over
+	//     providers sorted by peer ID string) so tests can exercise all three
+	//     distance classes even with real RTT=0 locations.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes the JSON response described above.
+	//   - r (*http.Request): must be a GET; key and simulate_distances are read from the query string.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/replication/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -314,7 +453,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		})
 	})
 
-	// Lookup: isolated token lookup (GetToken only, no fetch). Returns lookup_latency_ms and network_hops for comparison.
+	// GET /lookup?key=... or POST /lookup with JSON {"key": ...} performs an
+	// isolated token lookup (GetToken only, no block fetch). It registers for
+	// routing.SendingQuery events during the lookup to count network_hops,
+	// and times the call for lookup_latency_ms. If
+	// SNG40_LOG_LOOKUP_PATHS=1, logs hops/latency/error per request.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes {"lookup_latency_ms", "network_hops", "found"} JSON on success.
+	//   - r (*http.Request): must be GET (key via query string) or POST (key via JSON body); other methods are rejected.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/lookup", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -394,7 +543,15 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		})
 	})
 
-	// HasKey: returns whether this node holds the key locally (for polling replica count across nodes).
+	// GET /has_key?key=... returns whether this node holds the key locally
+	// (for polling replica count across nodes by querying each node
+	// individually). Not currently documented in docs/API.md.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes {"key", "has_key"} JSON.
+	//   - r (*http.Request): must be a GET with "key" query parameter.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/has_key", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -427,12 +584,32 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	})
 
 	// Restore endpoints
+	//
+	// restoreReq is the JSON request body for POST /restore.
 	type restoreReq struct {
-		CIDs        []string `json:"cids"`
-		Concurrency int      `json:"concurrency"`
-		Timeout     string   `json:"timeout"`
-		ByteBudget  int64    `json:"byte_budget"`
+		// CIDs is the list of IPFS CID strings to restore (required, non-empty).
+		CIDs []string `json:"cids"`
+		// Concurrency is the number of parallel worker goroutines; defaults to 4 if <= 0.
+		Concurrency int `json:"concurrency"`
+		// Timeout is a Go duration string bounding each individual block fetch; defaults to 20s if empty or unparsable.
+		Timeout string `json:"timeout"`
+		// ByteBudget caps total restored bytes for the job; <= 0 means unbounded. Enforced approximately (checked between tasks, not preemptively).
+		ByteBudget int64 `json:"byte_budget"`
 	}
+	// POST /restore starts an asynchronous job that fetches each CID in
+	// req.CIDs (via stack.GetBlock BlockSvc) using a worker pool of
+	// req.Concurrency goroutines, respecting req.ByteBudget as a soft cap
+	// (workers stop pulling new tasks once accumulated bytes meet/exceed the
+	// budget) and req.Timeout per fetch. Progress is tracked in the jobs map
+	// under a generated job ID and can be polled via GET /restore/status.
+	// Responds 202 Accepted immediately with {"job": "<job id>"}; the job
+	// itself completes in the background.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes {"job": "<id>"} JSON with status 202 on success.
+	//   - r (*http.Request): must be a POST with JSON body per restoreReq.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/restore", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -542,7 +719,15 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 	})
 
-	// Restore status endpoint (separate route for GET requests)
+	// GET /restore/status?id=... returns the current restoreStats for a job
+	// previously started via POST /restore (separate route since it's a
+	// GET-only lookup rather than a mutating action).
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes the job's restoreStats JSON on success.
+	//   - r (*http.Request): must be a GET with "id" query parameter naming a known job.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/restore/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -566,7 +751,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(js)
 	})
 
-	// Shutdown endpoint (graceful stop)
+	// GET /shutdown triggers a graceful node stop. It responds 200
+	// immediately, then invokes onShutdown (if non-nil) after a 100ms delay
+	// on a separate goroutine so the HTTP response is flushed to the client
+	// before the process begins tearing down (avoiding a client hang on a
+	// connection that gets torn down mid-response).
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes status 200 with an empty body.
+	//   - r (*http.Request): must be a GET.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -582,7 +777,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}()
 	})
 
-	// Neighbors endpoint: returns currently connected peers (IDs and addrs)
+	// GET /neighbors returns the peers this host is currently connected to
+	// (via h.Network().Peers()), each with their known multiaddrs, excluding
+	// the local host itself and deduplicated by peer ID. Despite the
+	// docs/API.md description ("DHT neighbors"), this reflects live libp2p
+	// connections, not a DHT routing-table view.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes a JSON array of {"peer", "addrs"} objects.
+	//   - r (*http.Request): must be a GET.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/neighbors", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -613,7 +818,13 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(out)
 	})
 
-	// ID endpoint: returns this node's PeerID and current addrs
+	// GET /id returns this node's own PeerID and current listen addrs.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes {"peer", "addrs"} JSON.
+	//   - r (*http.Request): must be a GET.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/id", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -631,7 +842,18 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(self{Peer: h.ID().String(), Addrs: addrs})
 	})
 
-	// Events endpoint (recent peer_added events; newest-first)
+	// GET /events returns the most recent events recorded in the append-only
+	// event log (walked backward from HEAD via ListRecentFromHead),
+	// newest-first, up to "limit" entries (default 50, max 1000). Despite
+	// docs/API.md listing this as an "Event stream (SSE)", the handler here
+	// returns a single JSON array response, not a Server-Sent-Events stream
+	// (no text/event-stream content type or chunked keep-alive).
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes a JSON array of {"cid", "type", "ts", "peer", "prev"} objects.
+	//   - r (*http.Request): must be a GET; optional "limit" query parameter (1-1000).
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -677,7 +899,32 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	// Synchronous (included in upload latency): JSON decode or raw body read, PutBlock (local blockstore),
 	// in-memory routing table Set. Asynchronous (not included): Key→provider datastore mapping,
 	// SyncTokenOnPut (DHT), ReplicateToNPeers.
+	//
+	// maxPutBodyBytes bounds the accepted raw-bytes /put body size (64 MiB);
+	// larger bodies are rejected with 413.
 	const maxPutBodyBytes = 64 << 20
+	// POST /put stores a block, deriving its content Key as SHA256(data).
+	// Body is read as raw bytes when Content-Type is
+	// application/octet-stream, otherwise as JSON PutRequest. Payloads larger
+	// than mystore.DefaultContentChunkSize are split into fixed-size chunks
+	// (mystore.SplitPayloadChunks), each stored individually via
+	// PutRawBlockIndexed, with a ChunkIndex recording the ordered chunk keys
+	// under the overall content key; smaller payloads go through
+	// stack.PutBlock directly. After storing, the routing table is updated
+	// asynchronously (UpdateRoutingTableOnPutAsync) and, if repairProtocol
+	// and h are available, replication to peers is scheduled on a background
+	// goroutine with a 4-minute budget (independent of the request's/test's
+	// deadline, since large clusters need time to pick connected peers and
+	// complete sequential transfers). The HTTP response is written before
+	// replication starts, matching Swarm's "return after first copy" timing
+	// semantics. If SNG40_LOG_PUT_PHASES=1, logs the PutBlock vs
+	// routing-table+mapping phase durations.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes PutResponse JSON on success.
+	//   - r (*http.Request): must be a POST; body per Content-Type as described above (max 64 MiB for raw bytes).
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/put", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -774,7 +1021,16 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 	})
 
-	// Delete endpoint
+	// POST /delete removes a block (identified by CID, not yet by Key — see
+	// docs/API.md note on a possible future key-based delete) from the local
+	// store and routing table via stack.DeleteBlock, and clears any explicit
+	// DynamicRouter provider hint for that CID.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes DeleteResponse JSON on success.
+	//   - r (*http.Request): must be a POST with JSON body {"cid": "..."}.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/delete", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -807,7 +1063,15 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(resp)
 	})
 
-	// Peers endpoint
+	// GET /peers returns up to "limit" dial candidates from the PeerStore
+	// (peers.GetDialCandidates), including each candidate's score and dial
+	// history metadata.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes a JSON array of {"peer", "addrs", "score", "last_seen_unix", "last_tried_unix", "last_succ_unix", "failure_count", "source"} objects.
+	//   - r (*http.Request): must be a GET; optional "limit" query parameter (1-200, default 20).
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/peers", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -843,7 +1107,15 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_ = json.NewEncoder(w).Encode(out)
 	})
 
-	// Connect endpoint
+	// POST /connect dials a specific peer at a specific multiaddr
+	// (h.Connect). If the target peer ID equals this host's own ID, it
+	// short-circuits to success without dialing.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes status 200 on success (no body).
+	//   - r (*http.Request): must be a POST with JSON body per ConnectRequest {"addr", "peer", "timeout"}.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/connect", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -889,7 +1161,36 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Get endpoint
+	// POST /get fetches a block by content Key (preferred) or CID (deprecated,
+	// requires a routing-table entry to resolve to a Key). Resolution order,
+	// unless remote_only is set: (1) chunk-indexed raw streaming shortcut when
+	// format=raw and a ChunkIndex exists — flushes the first chunk immediately
+	// then streams the rest; (2) local store via
+	// ResolvePayloadByKeyLocal (networkHops=0); (3) gateway.Query → token →
+	// fetchBlockFromToken (DirectFetch) when a Gateway is configured
+	// (networkHops=0, DHT hops not tracked on this path); (4) stack.GetBlock,
+	// which itself performs GetToken (DHT) + DirectFetch and reports real
+	// networkHops. When remote_only=1/true/yes, steps (1)-(3) are skipped
+	// entirely and stack.GetBlock is called with mystore.WithRemoteOnlyGet so
+	// even its internal local-blockstore fast path is bypassed, giving a
+	// cold-fetch timing measurement. Response is either a JSON GetResponse or,
+	// when format=raw or Accept: application/octet-stream is requested, a raw
+	// application/octet-stream body with Content-Length and X-Network-Hops
+	// headers (chunked first-4KiB flush to reduce time-to-first-byte).
+	//
+	// After the response is sent, if the block was fetched remotely, a
+	// detached background goroutine persists it locally (PutBlock), then
+	// verifies replication health (VerifyKeyStateWithRepVector) and, if
+	// under-replicated and repairProtocol is configured, triggers a repair
+	// (TriggerRepair) — none of this delays the first byte written to the
+	// client (curl time_starttransfer and other clients would otherwise
+	// include this work in their measured latency).
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes either GetResponse JSON or a raw octet-stream body, per the rules above.
+	//   - r (*http.Request): must be a POST with JSON body per GetRequest; recognizes "format=raw" and "remote_only" query parameters and the "Accept" header.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -1115,7 +1416,16 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}()
 	})
 
-	// Snapshot endpoint: returns local indexed Keys/CIDs (Key-based storage; CID for compatibility)
+	// GET /snapshot returns locally indexed block identifiers
+	// (mystore.ListIndexedCIDs), paginated by an opaque cursor. Storage is
+	// Key-based internally but this endpoint surfaces CIDs for
+	// IPFS-blockstore compatibility.
+	//
+	// Parameters:
+	//   - w (http.ResponseWriter): writes {"cids", "next", "count"} JSON.
+	//   - r (*http.Request): must be a GET; optional "limit" (1-100000, default 1000) and "cursor" (start-after) query parameters.
+	//
+	// Returns: (none — writes directly to w)
 	mux.HandleFunc("/snapshot", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)

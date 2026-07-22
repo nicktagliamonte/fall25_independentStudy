@@ -13,18 +13,36 @@ import (
 
 // TokenConflictError represents a conflict detected during token update.
 type TokenConflictError struct {
+	// ExpectedVersion is the version the caller believed was current.
 	ExpectedVersion int
-	ActualVersion   int
-	Message         string
+	// ActualVersion is the version actually found in the store.
+	ActualVersion int
+	// Message is a human-readable description of the conflict.
+	Message string
 }
 
+// Error returns the formatted conflict error message, including expected and actual versions.
+//
+// Returns:
+//   - string: a message describing the version mismatch.
 func (e *TokenConflictError) Error() string {
 	return fmt.Sprintf("token conflict: %s (expected version %d, got %d)", e.Message, e.ExpectedVersion, e.ActualVersion)
 }
 
 // ResolveTokenConflict resolves conflicts between two token versions.
 // Strategy: Merge locations from both versions, use higher version number, use later timestamp.
-// Returns a merged token with combined locations (deduplicated by ProviderID).
+// If local and remote have different Keys, local is returned unchanged as a defensive
+// fallback (this should not happen in practice, since conflicts only arise between two
+// versions of the token for the same key).
+//
+// Parameters:
+//   - local (Token): the caller's in-memory/candidate token version.
+//   - remote (Token): the token version read from the DHT.
+//
+// Returns:
+//   - Token: a merged token with combined Locations (deduplicated by ProviderID,
+//     preferring the remote entry on collision), the higher of the two Version
+//     values incremented by one, and the later of the two Timestamp values.
 func ResolveTokenConflict(local Token, remote Token) Token {
 	if local.Key != remote.Key {
 		// Different keys - shouldn't happen, but return local as fallback
@@ -78,8 +96,22 @@ func ResolveTokenConflict(local Token, remote Token) Token {
 }
 
 // PutTokenWithConflictResolution stores a token in DHT with conflict resolution.
-// Implements optimistic concurrency control: reads current token, checks version,
-// resolves conflicts if detected, then writes back.
+// Implements optimistic concurrency control: reads the current token, checks its
+// version against newToken's version, resolves conflicts if the versions differ
+// (via ResolveTokenConflict), then writes back. If no token currently exists for
+// key, newToken is written directly via PutToken. Retries on write failure with
+// a linear backoff of 50ms * attempt number.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of DHT reads and writes.
+//   - dht (routing.ValueStore): the DHT value store backing token storage.
+//   - key (Key): the token's key; must be non-zero.
+//   - newToken (Token): the candidate token to store or merge in.
+//   - maxRetries (int): maximum write attempts on failure; values < 1 default to 3.
+//
+// Returns:
+//   - error: non-nil if dht is nil, key is zero, or the put fails after
+//     maxRetries attempts (wrapping the underlying error).
 func PutTokenWithConflictResolution(ctx context.Context, dht routing.ValueStore, key Key, newToken Token, maxRetries int) error {
 	if dht == nil {
 		return fmt.Errorf("DHT ValueStore required")
@@ -139,7 +171,23 @@ func PutTokenWithConflictResolution(ctx context.Context, dht routing.ValueStore,
 }
 
 // UpdateTokenWithConflictResolution updates a token with conflict resolution.
-// Helper function that reads current token, applies update function, and writes back with conflict resolution.
+// Reads the current token, applies updateFunc to produce a new version (bumping
+// Version and Timestamp), then writes it back through PutTokenWithConflictResolution
+// with a single internal attempt. The outer retry loop re-reads and re-applies
+// updateFunc on failure, so updateFunc should be idempotent/pure with respect to
+// its input token.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of DHT reads and writes.
+//   - dht (routing.ValueStore): the DHT value store backing token storage.
+//   - key (Key): the token's key; must be non-zero.
+//   - updateFunc (func(Token) Token): transforms the current token into the desired
+//     next state; must be non-nil.
+//   - maxRetries (int): maximum read-modify-write attempts; values < 1 default to 3.
+//
+// Returns:
+//   - error: non-nil if dht is nil, key is zero, updateFunc is nil, the initial
+//     GetToken fails, or the update fails after maxRetries attempts.
 func UpdateTokenWithConflictResolution(
 	ctx context.Context,
 	dht routing.ValueStore,

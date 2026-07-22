@@ -32,20 +32,28 @@ const (
 
 // Query holds a query with pattern and type for routing.
 type Query struct {
+	// Pattern is the raw (or, after OptimizeQuery, normalized) query string.
 	Pattern string
-	Type    QueryType
+	// Type classifies Pattern for routing purposes.
+	Type QueryType
 }
 
 // SubQuery is a single sub-query from a broken-down query.
 type SubQuery struct {
+	// Pattern is one individual (non-OR) query pattern.
 	Pattern string
-	Type    QueryType
+	// Type classifies Pattern for routing purposes.
+	Type QueryType
 }
 
-// QueryOptimizer parses, breaks down, and optimizes queries.
+// QueryOptimizer parses, breaks down, and optimizes queries. It is stateless;
+// all methods depend only on their arguments.
 type QueryOptimizer struct{}
 
 // NewQueryOptimizer creates a QueryOptimizer.
+//
+// Returns:
+//   - *QueryOptimizer: a new, stateless optimizer instance.
 func NewQueryOptimizer() *QueryOptimizer {
 	return &QueryOptimizer{}
 }
@@ -56,6 +64,14 @@ const regexMetachars = ".+?^$[]{}|()\\"
 // ParseQuery classifies the pattern and returns a Query with Type set.
 // Exact: no wildcards. Prefix: simple * (trailing or surrounding).
 // Regex: contains .+?^$[]{}|()\  MultiPartition: contains | as OR separator.
+//
+// Parameters:
+//   - query (string): the raw query string; leading/trailing whitespace is trimmed.
+//
+// Returns:
+//   - Query: the classified query. Precedence when multiple features are
+//     present: "|" → QueryMultiPartition, else regex metachars → QueryRegex,
+//     else "*" → QueryPrefix, else QueryExact.
 func (o *QueryOptimizer) ParseQuery(query string) Query {
 	q := Query{Pattern: strings.TrimSpace(query)}
 	if q.Pattern == "" {
@@ -79,6 +95,15 @@ func (o *QueryOptimizer) ParseQuery(query string) Query {
 
 // BreakDownQuery splits a query into sub-queries. For QueryMultiPartition,
 // splits on |. Otherwise returns a single SubQuery.
+//
+// Parameters:
+//   - query (Query): the query to break down.
+//
+// Returns:
+//   - []SubQuery: for QueryMultiPartition with "|" present, one SubQuery per
+//     trimmed, deduplicated, non-empty part (each re-classified via
+//     ParseQuery); nil if query.Pattern is empty; otherwise a single-element
+//     slice containing query unchanged.
 func (o *QueryOptimizer) BreakDownQuery(query Query) []SubQuery {
 	if query.Pattern == "" {
 		return nil
@@ -104,6 +129,13 @@ func (o *QueryOptimizer) BreakDownQuery(query Query) []SubQuery {
 // RouteTarget returns the routing target for a query. Exact→DHT, Prefix→PHT+DHT,
 // Regex→P2P, MultiPartition→partition. Used for observability; actual routing
 // happens when TupleSpace.TsRead is called (tuplespace.Router routes by pattern).
+//
+// Parameters:
+//   - query (Query): the query whose Type determines the routing target.
+//
+// Returns:
+//   - string: one of the RouteDHT/RoutePHTDHT/RouteP2P/RoutePartition
+//     constants; defaults to RouteDHT for an unrecognized Type.
 func (o *QueryOptimizer) RouteTarget(query Query) string {
 	switch query.Type {
 	case QueryExact:
@@ -122,6 +154,18 @@ func (o *QueryOptimizer) RouteTarget(query Query) string {
 // RouteForQuery returns the routing target for a query. Used for documentation
 // and routing decisions. Exact→DHT token lookup; Prefix→PHT+DHT token lookup;
 // Regex→P2P tuple space; MultiPartition→break down and route each part.
+//
+// Note: functionally near-identical to RouteTarget, but returns different
+// literal strings ("multi-partition", "unknown") rather than the RouteTarget
+// constants — callers comparing routing target strings should be careful
+// which of the two methods produced the value.
+//
+// Parameters:
+//   - query (Query): the query whose Type determines the routing target.
+//
+// Returns:
+//   - string: "DHT", "PHT+DHT", "P2P", "multi-partition", or "unknown" for an
+//     unrecognized Type.
 func (o *QueryOptimizer) RouteForQuery(query Query) string {
 	switch query.Type {
 	case QueryExact:
@@ -139,6 +183,17 @@ func (o *QueryOptimizer) RouteForQuery(query Query) string {
 
 // OptimizeQuery rewrites a query for efficiency. Trims whitespace, deduplicates
 // OR parts, and normalizes the pattern.
+//
+// Parameters:
+//   - query (Query): the query to optimize.
+//
+// Returns:
+//   - Query: query unchanged if Pattern is empty; otherwise a copy with
+//     Pattern trimmed. For QueryMultiPartition with "|" present, OR parts are
+//     trimmed and deduplicated (order-preserving); if exactly one distinct
+//     part remains, the result collapses to that part's own Type (via
+//     ParseQuery) instead of QueryMultiPartition; if multiple remain, they
+//     are rejoined with "|" and Type stays QueryMultiPartition.
 func (o *QueryOptimizer) OptimizeQuery(query Query) Query {
 	if query.Pattern == "" {
 		return query

@@ -18,7 +18,16 @@ import (
 )
 
 // pickRoutableAddr returns the first address that is routable by other peers.
-// Skips /ip4/0.0.0.0 (listen-all, not reachable). Prefers /ip4/172.x, /ip4/10.x, /ip4/127.0.0.1.
+// Skips /ip4/0.0.0.0 (listen-all, not reachable). Otherwise returns addresses
+// in the order given, so any preference among routable addresses (e.g. private
+// vs loopback ranges) must come from the ordering of addrs.
+//
+// Parameters:
+//   - addrs ([]multiaddr.Multiaddr): candidate addresses, typically from host.Addrs().
+//
+// Returns:
+//   - multiaddr.Multiaddr: the first non-"0.0.0.0" address found, or nil if addrs
+//     is empty or every address is a 0.0.0.0 listen-all address.
 func pickRoutableAddr(addrs []multiaddr.Multiaddr) multiaddr.Multiaddr {
 	for _, a := range addrs {
 		s := a.String()
@@ -31,6 +40,13 @@ func pickRoutableAddr(addrs []multiaddr.Multiaddr) multiaddr.Multiaddr {
 }
 
 // isTokenAbsent reports whether err means no token record exists yet (vs transient DHT failure).
+//
+// Parameters:
+//   - err (error): the error returned from a token lookup (e.g. GetToken).
+//
+// Returns:
+//   - bool: true if err is routing.ErrNotFound or its message contains
+//     "token not found"; false if err is nil or looks like some other failure.
 func isTokenAbsent(err error) bool {
 	if err == nil {
 		return false
@@ -43,9 +59,27 @@ func isTokenAbsent(err error) bool {
 }
 
 // SyncTokenOnPut creates or updates a token when data is stored locally.
-// Creates a token with the current peer as a location, or updates existing token
-// to include this peer if not already present.
-// sink is optional; when non-nil, P2P message counts (lookup, put) are recorded.
+// Creates a token with the current peer as a location, or updates an existing
+// token to include this peer if not already present. The token read is retried
+// up to 5 times with increasing backoff (100ms * 2^attempt) to tolerate transient
+// DHT propagation races in large clusters; a definitive "token absent" result
+// short-circuits the retry loop.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the overall sync;
+//     each token read additionally uses its own 20s sub-timeout.
+//   - dht (routing.ValueStore): the DHT value store backing token storage; must be non-nil.
+//   - h (host.Host): the local libp2p host, used for peer ID and addresses; must be non-nil.
+//   - key (Key): the content key being stored; must be non-zero.
+//   - c (cid.Cid): the CID corresponding to key (currently unused in the body but
+//     accepted for future use / caller symmetry with the routing table).
+//   - sink (MessageMetricsSink): optional; when non-nil, records one lookup-out and
+//     one lookup-in for the read, and one put-out for the resulting write.
+//
+// Returns:
+//   - error: non-nil if dht/h are nil, key is zero, the host has no addresses,
+//     the token read fails with a non-"absent" error, or the subsequent
+//     put/update fails.
 func SyncTokenOnPut(ctx context.Context, dht routing.ValueStore, h host.Host, key Key, c cid.Cid, sink MessageMetricsSink) error {
 	if dht == nil {
 		return fmt.Errorf("DHT required for token sync")
@@ -141,7 +175,20 @@ func SyncTokenOnPut(ctx context.Context, dht routing.ValueStore, h host.Host, ke
 }
 
 // SyncTokenOnDelete removes a token when data is deleted locally.
-// Removes this peer from token locations. If this was the last location, removes the token entirely.
+// Removes this peer from the token's Locations. If this was the last location,
+// the token is written back with an empty Locations slice rather than deleted
+// outright; the DHT's own TTL handles eventual cleanup. If no token exists at
+// all, this is treated as a successful no-op.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the update.
+//   - dht (routing.ValueStore): the DHT value store backing token storage; must be non-nil.
+//   - h (host.Host): the local libp2p host, used to identify this peer; must be non-nil.
+//   - key (Key): the content key being deleted; must be non-zero.
+//
+// Returns:
+//   - error: nil if dht/h/key are valid and either the update succeeds or the
+//     token does not exist; otherwise the wrapped update error.
 func SyncTokenOnDelete(ctx context.Context, dht routing.ValueStore, h host.Host, key Key) error {
 	if dht == nil {
 		return fmt.Errorf("DHT required for token sync")
@@ -188,8 +235,24 @@ func SyncTokenOnDelete(ctx context.Context, dht routing.ValueStore, h host.Host,
 
 // SyncTokenOnReplication updates a token with new replica locations when replication occurs.
 // Per newReqs.txt: "the only function of the token is to sync with the data".
-// Adds new replica peer to token Locations. Does not require routing table—the node
-// that replicates (e.g. worker that fetched from bootstrap) may not have the key locally.
+// Adds the new replica peer to the token's Locations. Does not require the routing
+// table—the node that replicates (e.g. a worker that fetched from bootstrap) may not
+// have the key locally. If no token exists yet, creates one with the new replica as
+// the sole location.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the update.
+//   - dht (routing.ValueStore): the DHT value store backing token storage; must be non-nil.
+//   - routingTable (*RoutingTable): accepted for interface symmetry/future use; not
+//     consulted by this function.
+//   - key (Key): the content key being replicated; must be non-zero.
+//   - newReplicaPeerID (peer.ID): the peer ID of the new replica holder.
+//   - newReplicaAddr (multiaddr.Multiaddr): the dialable address of the new replica;
+//     must be non-nil.
+//
+// Returns:
+//   - error: non-nil if dht is nil, key is zero, newReplicaAddr is nil, or both the
+//     conflict-resolved update and the fallback token creation fail.
 func SyncTokenOnReplication(ctx context.Context, dht routing.ValueStore, routingTable *RoutingTable, key Key, newReplicaPeerID peer.ID, newReplicaAddr multiaddr.Multiaddr) error {
 	if dht == nil {
 		return fmt.Errorf("DHT required for token sync")

@@ -19,11 +19,29 @@ import (
 )
 
 const (
-	stateHeadKey   = "/gset/head"
+	// stateHeadKey is the datastore key storing the current chain head CID (as a string).
+	stateHeadKey = "/gset/head"
+	// stateHeightKey is the datastore key storing the current chain height (as a decimal string).
 	stateHeightKey = "/gset/height"
 )
 
-// AppendPeerAdded appends a peer_added event, updating head and height.
+// AppendPeerAdded appends a new peer_added event to the local G-set event log: it reads the
+// current head/height via GetHead, builds a PeerAddedGo event linking to the previous head (if
+// any) with the current Unix timestamp, encodes it to DAG-CBOR (encodePeerAddedToCBOR), stores
+// it as a block via bsvc.AddBlock (retrying once on failure), and then persists the new head
+// CID and incremented height to the datastore.
+//
+// Parameters:
+//   - ctx (context.Context): cancels the datastore/blockservice operations.
+//   - d (ds.Batching): the datastore used to read/write head and height.
+//   - bsvc (*bserv.BlockService): the block service used to store the encoded event block.
+//   - peerID (string): the identifier of the peer being recorded as added.
+//
+// Returns:
+//   - cid.Cid: the CID of the newly appended event block.
+//   - int64: the new chain height after the append.
+//   - error: non-nil if bsvc is nil, encoding fails, both block-store attempts fail, or
+//     persisting the new head/height fails.
 func AppendPeerAdded(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, peerID string) (cid.Cid, int64, error) {
 	if bsvc == nil {
 		return cid.Cid{}, 0, errors.New("nil blockservice")
@@ -65,7 +83,18 @@ func AppendPeerAdded(ctx context.Context, d ds.Batching, bsvc *bserv.BlockServic
 	return c, newHeight, nil
 }
 
-// GetHead returns the current head CID and height, or zero values if none.
+// GetHead reads the current chain head CID and height from the datastore (stateHeadKey and
+// stateHeightKey). Missing values (ds.ErrNotFound) are treated as zero values rather than
+// errors; a malformed stored head CID is silently ignored and reported as the zero CID.
+//
+// Parameters:
+//   - ctx (context.Context): cancels the datastore reads.
+//   - d (ds.Batching): the datastore to read from; nil returns an error.
+//
+// Returns:
+//   - cid.Cid: the current head CID, or the zero CID if none is set or it fails to decode.
+//   - int64: the current height, or 0 if none is set.
+//   - error: non-nil if d is nil or an unexpected (non-not-found) datastore error occurs.
 func GetHead(ctx context.Context, d ds.Batching) (cid.Cid, int64, error) {
 	if d == nil {
 		return cid.Cid{}, 0, errors.New("nil datastore")
@@ -88,7 +117,18 @@ func GetHead(ctx context.Context, d ds.Batching) (cid.Cid, int64, error) {
 	return head, height, nil
 }
 
-// SetHead stores the provided head CID and height as the current local state.
+// SetHead stores head and height as the current local chain state (stateHeadKey and
+// stateHeightKey). If head is undefined, the stored head key is deleted instead (clearing it),
+// tolerating an already-absent key; height is always written regardless.
+//
+// Parameters:
+//   - ctx (context.Context): cancels the datastore writes/delete.
+//   - d (ds.Batching): the datastore to write to; nil returns an error.
+//   - head (cid.Cid): the head CID to store, or the zero CID to clear it.
+//   - height (int64): the chain height to store.
+//
+// Returns:
+//   - error: non-nil if d is nil or any underlying datastore operation fails.
 func SetHead(ctx context.Context, d ds.Batching, head cid.Cid, height int64) error {
 	if d == nil {
 		return errors.New("nil datastore")
@@ -106,8 +146,21 @@ func SetHead(ctx context.Context, d ds.Batching, head cid.Cid, height int64) err
 	return d.Put(ctx, ds.NewKey(stateHeightKey), []byte(fmtInt64(height)))
 }
 
-// ApplyEventsFrom walks backward from head up to limit, verifying prev links.
-// Returns the number of events verified/applied.
+// ApplyEventsFrom walks the event chain backward from start, following each event's "prev"
+// field (decoded generically via dagcbor/basicnode rather than the typed PeerAddedGo struct),
+// for up to limit steps or until an event with no "prev" field is reached. It does not persist
+// or otherwise apply state beyond counting; the walk itself serves as validation that the
+// prev-link chain is well-formed and fetchable.
+//
+// Parameters:
+//   - ctx (context.Context): cancels each block fetch.
+//   - bsvc (*bserv.BlockService): the block service used to fetch each event block.
+//   - start (cid.Cid): the CID to start walking backward from; a no-op if undefined.
+//   - limit (int): the maximum number of events to walk; a no-op if <= 0.
+//
+// Returns:
+//   - int: the number of events successfully walked/verified.
+//   - error: non-nil if fetching or decoding any block in the chain fails.
 func ApplyEventsFrom(ctx context.Context, bsvc *bserv.BlockService, start cid.Cid, limit int) (int, error) {
 	if !start.Defined() || limit <= 0 {
 		return 0, nil
@@ -139,9 +192,24 @@ func ApplyEventsFrom(ctx context.Context, bsvc *bserv.BlockService, start cid.Ci
 	return count, nil
 }
 
-// Helpers: tiny int64 encode/decode and map field extraction.
+// fmtInt64 formats n as a decimal string, for storing height values as datastore byte values.
+//
+// Parameters:
+//   - n (int64): the value to format.
+//
+// Returns:
+//   - string: the decimal string representation of n.
 func fmtInt64(n int64) string { return fmt.Sprintf("%d", n) }
 
+// parseInt64 parses s as a decimal int64, the inverse of fmtInt64. An empty string or a
+// malformed value both yield 0 (Sscanf's error is ignored, so malformed input silently
+// produces the zero value rather than an error).
+//
+// Parameters:
+//   - s (string): the decimal string to parse.
+//
+// Returns:
+//   - int64: the parsed value, or 0 if s is empty or fails to parse.
 func parseInt64(s string) int64 {
 	var out int64
 	if s == "" {
@@ -151,6 +219,16 @@ func parseInt64(s string) int64 {
 	return out
 }
 
+// getMapString extracts the string value of key from an IPLD map node n, used to read fields
+// (like "prev") out of a generically-decoded DAG-CBOR event without needing the typed
+// PeerAddedGo struct. Returns "" if n is not a map, key is absent, or its value is not a string.
+//
+// Parameters:
+//   - n (datamodel.Node): the IPLD node to read from; expected to be a map.
+//   - key (string): the map key to look up.
+//
+// Returns:
+//   - string: the string value at key, or "" if not found or not a string.
 func getMapString(n datamodel.Node, key string) string {
 	if n.Kind() != datamodel.Kind_Map {
 		return ""
@@ -167,16 +245,44 @@ func getMapString(n datamodel.Node, key string) string {
 	return ""
 }
 
-// SyncOptions constrains a suffix sync attempt.
+// SyncOptions constrains a SyncSuffix attempt, bounding how far back and how much data it is
+// willing to walk/fetch when reconciling a remote chain with the local one.
 type SyncOptions struct {
-	MaxDepth      int
+	// MaxDepth is the maximum number of blocks to walk backward from remoteHead; <= 0 defaults to 512.
+	MaxDepth int
+	// MaxBlockBytes is the maximum size allowed for any single fetched event block; <= 0 means no limit.
 	MaxBlockBytes int64
-	Timeout       time.Duration
+	// Timeout bounds the wall-clock time spent walking the remote chain; <= 0 means no deadline.
+	Timeout time.Duration
 }
 
-// SyncSuffix validates and applies a suffix from remoteHead down to the local head (common ancestor).
-// It walks back up to MaxDepth within Timeout and per-block MaxBlockBytes limits. Returns number of
-// applied entries and the new head/height.
+// SyncSuffix reconciles the local event chain with a remote chain by validating and applying
+// the suffix of events from remoteHead back down to the local head (the common ancestor). If
+// remoteHeight is not greater than the local height, it does nothing and reports the local
+// head/height unchanged. Otherwise it walks backward from remoteHead (bounded by
+// opts.MaxDepth, opts.MaxBlockBytes per block, and opts.Timeout), decoding each block as a
+// typed peer_added event and following its "prev" link, stopping once it reaches the current
+// local head (or, if there is no local head yet, accepting the walked chain as a valid new
+// history). If no common ancestor is found within the configured limits, it returns an error
+// without applying anything. On success, it advances the local head/height for each entry in
+// the validated suffix (oldest to newest) via SetHead.
+//
+// Parameters:
+//   - ctx (context.Context): cancels block fetches during the walk.
+//   - d (ds.Batching): the datastore used to read the local head and persist the new head/height.
+//   - bsvc (*bserv.BlockService): the block service used to fetch remote chain blocks.
+//   - remoteHead (cid.Cid): the head CID of the remote chain to sync from; must be defined.
+//   - remoteHeight (int64): the remote chain's height, compared against the local height to
+//     decide whether syncing is needed.
+//   - opts (SyncOptions): limits on walk depth, per-block size, and wall-clock time.
+//
+// Returns:
+//   - int: the number of new entries applied to the local chain.
+//   - cid.Cid: the resulting local head CID after applying the suffix (unchanged on no-op or error).
+//   - int64: the resulting local height after applying the suffix.
+//   - error: non-nil if bsvc/d is nil, remoteHead is undefined, a remote block exceeds
+//     MaxBlockBytes, a block fails to fetch/decode or contains an invalid event, or no common
+//     ancestor is found within the configured limits.
 func SyncSuffix(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, remoteHead cid.Cid, remoteHeight int64, opts SyncOptions) (int, cid.Cid, int64, error) {
 	if bsvc == nil {
 		return 0, cid.Cid{}, 0, errors.New("nil blockservice")
@@ -270,9 +376,24 @@ func SyncSuffix(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, re
 	return applied, localHead, localHeight, nil
 }
 
-// AppendPeerAddedIfNew scans the local chain to see if peerID was already added.
-// If not found, it appends a new peer_added event and returns (cid, height, true, nil).
-// If found, it returns the current head/height with appended=false and no error.
+// AppendPeerAddedIfNew scans the local chain backward from the current head to check whether
+// peerID has already been recorded via a peer_added event. If found, it returns the current
+// head/height unchanged with appended=false. If not found (including if the scan is cut short
+// by a fetch/decode error partway through, which is treated the same as "not found" and simply
+// stops the scan), it appends a new peer_added event via AppendPeerAdded and returns
+// appended=true.
+//
+// Parameters:
+//   - ctx (context.Context): cancels the scan and the append operation.
+//   - d (ds.Batching): the datastore holding head/height state.
+//   - bsvc (*bserv.BlockService): the block service used to fetch and store event blocks.
+//   - peerID (string): the peer identifier to check for and possibly append.
+//
+// Returns:
+//   - cid.Cid: the resulting head CID (unchanged if already present, new event CID otherwise).
+//   - int64: the resulting height.
+//   - bool: true if a new event was appended, false if peerID was already present.
+//   - error: non-nil if d or bsvc is nil, GetHead fails, or the append fails.
 func AppendPeerAddedIfNew(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, peerID string) (cid.Cid, int64, bool, error) {
 	if d == nil {
 		return cid.Cid{}, 0, false, errors.New("nil datastore")
@@ -314,14 +435,29 @@ func AppendPeerAddedIfNew(ctx context.Context, d ds.Batching, bsvc *bserv.BlockS
 	return c, newHeight, true, nil
 }
 
-// PeerAddedEntry represents a decoded peer_added event along with its CID.
+// PeerAddedEntry pairs a decoded peer_added event with the CID of the block it was decoded from.
 type PeerAddedEntry struct {
-	CID   cid.Cid
+	// CID is the content identifier of the event block.
+	CID cid.Cid
+	// Event is the decoded peer_added event payload.
 	Event *PeerAddedGo
 }
 
-// ListRecentFromHead returns up to limit most recent peer_added entries walking backward from current head.
-// If no head is present or limit <= 0, returns an empty slice.
+// ListRecentFromHead returns up to limit of the most recent peer_added entries, walking
+// backward from the current head via GetHead and following each event's "prev" link. The walk
+// stops early (without error) if the head is undefined, an event fails to fetch or decode, an
+// event's type is not "peer_added", or a "prev" link is absent/undecodable — in all such cases
+// the entries collected so far are returned.
+//
+// Parameters:
+//   - ctx (context.Context): cancels the head lookup and block fetches.
+//   - d (ds.Batching): the datastore holding head/height state.
+//   - bsvc (*bserv.BlockService): the block service used to fetch event blocks.
+//   - limit (int): the maximum number of entries to return; <= 0 returns (nil, nil).
+//
+// Returns:
+//   - []PeerAddedEntry: up to limit entries, most recent first.
+//   - error: non-nil if d or bsvc is nil, or GetHead fails.
 func ListRecentFromHead(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService, limit int) ([]PeerAddedEntry, error) {
 	if limit <= 0 {
 		return nil, nil

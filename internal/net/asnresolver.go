@@ -19,6 +19,7 @@ const (
 	asnCacheSize = 1024
 )
 
+// asnCacheEntry holds a cached ASN lookup result and its expiry time.
 type asnCacheEntry struct {
 	asn uint32
 	exp time.Time
@@ -26,7 +27,9 @@ type asnCacheEntry struct {
 
 // CymruASNResolver resolves ASN for public IPs using Team Cymru DNS (origin.asn.cymru.com
 // and origin6.asn.cymru.com). Loopback, link-local, and private IPs return (0, false).
-// Implements ASNResolver for use with EclipseLimiter.
+// Implements ASNResolver for use with EclipseLimiter. Results are cached in memory
+// with a TTL (asnCacheTTL) and a soft size cap (asnCacheSize); the cache is safe for
+// concurrent use.
 type CymruASNResolver struct {
 	mu    sync.RWMutex
 	cache map[string]asnCacheEntry
@@ -34,6 +37,9 @@ type CymruASNResolver struct {
 }
 
 // NewCymruASNResolver creates a resolver that uses Team Cymru's free DNS-based ASN lookup.
+//
+// Returns:
+//   - *CymruASNResolver: a resolver with an empty cache, ready for concurrent use.
 func NewCymruASNResolver() *CymruASNResolver {
 	return &CymruASNResolver{
 		cache: make(map[string]asnCacheEntry, asnCacheSize),
@@ -41,7 +47,18 @@ func NewCymruASNResolver() *CymruASNResolver {
 	}
 }
 
-// ResolveASN implements ASNResolver. Returns (0, false) for private/loopback IPs or lookup failure.
+// ResolveASN implements ASNResolver. It checks a private in-memory cache first (evicting
+// expired entries once the cache reaches asnCacheSize), and on a miss performs a Team
+// Cymru DNS TXT lookup via resolveCymru, caching the outcome (including failures) for
+// asnCacheTTL. Returns (0, false) for private/loopback/link-local IPs or lookup failure.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying DNS lookup.
+//   - ip (net.IP): the address to resolve; nil or private/loopback/link-local addresses short-circuit to (0, false).
+//
+// Returns:
+//   - uint32: the resolved autonomous system number, or 0 if unknown.
+//   - bool: true if an ASN was successfully resolved (including from cache), false otherwise.
 func (r *CymruASNResolver) ResolveASN(ctx context.Context, ip net.IP) (uint32, bool) {
 	if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsPrivate() {
 		return 0, false
@@ -65,6 +82,8 @@ func (r *CymruASNResolver) ResolveASN(ctx context.Context, ip net.IP) (uint32, b
 	return asn, ok
 }
 
+// evictExpiredLocked removes all cache entries whose expiry has passed. Callers must
+// hold r.mu for writing.
 func (r *CymruASNResolver) evictExpiredLocked() {
 	now := r.now()
 	for k, e := range r.cache {
@@ -74,6 +93,18 @@ func (r *CymruASNResolver) evictExpiredLocked() {
 	}
 }
 
+// resolveCymru performs the actual Team Cymru DNS TXT lookup for ip: it builds the
+// reversed-octet query name under origin.asn.cymru.com (IPv4) or origin6.asn.cymru.com
+// (IPv6), issues a TXT lookup, and parses the leading "AS<number>" field from the first
+// response record.
+//
+// Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the DNS lookup.
+//   - ip (net.IP): the address to resolve.
+//
+// Returns:
+//   - uint32: the parsed ASN, or 0 if the lookup or parse failed.
+//   - bool: true if an ASN was successfully parsed from the response.
 func (r *CymruASNResolver) resolveCymru(ctx context.Context, ip net.IP) (uint32, bool) {
 	ip = ip.To16()
 	if ip == nil {
@@ -111,10 +142,26 @@ func (r *CymruASNResolver) resolveCymru(ctx context.Context, ip net.IP) (uint32,
 	return uint32(asn), true
 }
 
+// cymruReverseV4 formats a 4-byte IPv4 address in reverse-octet dotted notation
+// (e.g. 1.2.3.4 becomes "4.3.2.1"), as required for a Team Cymru DNS query name.
+//
+// Parameters:
+//   - ip (net.IP): a 4-byte (To4-form) IPv4 address.
+//
+// Returns:
+//   - string: the reverse-octet dotted representation.
 func cymruReverseV4(ip net.IP) string {
 	return fmt.Sprintf("%d.%d.%d.%d", ip[3], ip[2], ip[1], ip[0])
 }
 
+// cymruReverseV6 formats a 16-byte IPv6 address as reversed, dot-separated nibbles
+// (each byte split into two hex digits), as required for a Team Cymru DNS query name.
+//
+// Parameters:
+//   - ip (net.IP): a 16-byte IPv6 address.
+//
+// Returns:
+//   - string: the reversed nibble-dotted representation.
 func cymruReverseV6(ip net.IP) string {
 	var sb strings.Builder
 	for i := 15; i >= 0; i-- {

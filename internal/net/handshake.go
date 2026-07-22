@@ -21,55 +21,107 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
+// HandshakeProtocolID is the libp2p protocol ID for the version/verack handshake
+// exchanged immediately after a connection is established.
 const HandshakeProtocolID = "/sng40/handshake/1.0.0"
 
+// VersionMsg is the first message exchanged by both sides of the handshake. It
+// advertises the sender's identity/capabilities and optionally carries admission
+// credentials, a state summary, a peer-discovery request/response, and a
+// challenge-response signature.
 type VersionMsg struct {
-	Nonce       uint64 `json:"nonce"`
-	Services    uint64 `json:"services"`
-	Agent       string `json:"agent"`
-	StartHeight int64  `json:"start_height"`
-	Timestamp   int64  `json:"timestamp"`
+	// Nonce is a per-message random value (derived from UnixNano) used for
+	// anti-replay (NonceCache) and as the challenge value signed by the responder.
+	Nonce uint64 `json:"nonce"`
+	// Services is a bitmask of services the sender offers.
+	Services uint64 `json:"services"`
+	// Agent identifies the sender's software/version, e.g. "sng40/0.1.0".
+	Agent string `json:"agent"`
+	// StartHeight is the sender's reported chain/log height at connection time.
+	StartHeight int64 `json:"start_height"`
+	// Timestamp is the sender's Unix time (seconds) when the message was created;
+	// checked by TimestampChecker if configured.
+	Timestamp int64 `json:"timestamp"`
 	// Optional state summary
+	// StateHeadCID is the sender's advertised state root/head identifier, if any.
 	StateHeadCID string `json:"state_head,omitempty"`
-	StateHeight  int64  `json:"state_height,omitempty"`
+	// StateHeight is the height associated with StateHeadCID.
+	StateHeight int64 `json:"state_height,omitempty"`
 	// Admission extension
+	// AuthScheme names the credential scheme in use (e.g. "token-ed25519-v1").
 	AuthScheme string `json:"auth_scheme,omitempty"`
-	AuthProof  string `json:"auth_proof,omitempty"` // carries signed token
+	// AuthProof carries the signed token proving admission, format defined by AuthScheme.
+	AuthProof string `json:"auth_proof,omitempty"` // carries signed token
 	// Optional discovery extensions
-	WantPeerlist bool     `json:"want_peerlist,omitempty"`
-	ListenAddrs  []string `json:"listen_addrs,omitempty"`
-	Peers        []string `json:"peers,omitempty"` // multiaddrs with /p2p/<peerID>
+	// WantPeerlist requests that the responder include a peer sample in its own VersionMsg.
+	WantPeerlist bool `json:"want_peerlist,omitempty"`
+	// ListenAddrs are the sender's own advertised listen multiaddrs.
+	ListenAddrs []string `json:"listen_addrs,omitempty"`
+	// Peers is a sample of other known peers, encoded as multiaddrs with a
+	// trailing /p2p/<peerID> component.
+	Peers []string `json:"peers,omitempty"` // multiaddrs with /p2p/<peerID>
 	// Challenge-response: base64(sign(remote_nonce)) proving possession of private key
+	// ChallengeResponse is base64(sign(remote's Nonce)), proving the sender controls
+	// the private key behind its libp2p peer ID.
 	ChallengeResponse string `json:"challenge_response,omitempty"`
 }
 
+// VerAckMsg is the final acknowledgement message of the handshake. It carries no
+// payload; its receipt simply confirms the sender accepted the peer's VersionMsg.
 type VerAckMsg struct{}
 
+// HandshakeLocal holds the local node's parameters advertised during the handshake.
 type HandshakeLocal struct {
-	Agent        string
-	Services     uint64
-	StartHeight  int64
+	// Agent identifies this node's software/version, e.g. "sng40/0.1.0".
+	Agent string
+	// Services is the bitmask of services this node offers.
+	Services uint64
+	// StartHeight is this node's reported chain/log height.
+	StartHeight int64
+	// WantPeerlist requests a peer sample from the remote responder.
 	WantPeerlist bool
-	ListenAddrs  []string
+	// ListenAddrs are this node's own advertised listen multiaddrs.
+	ListenAddrs []string
 	// Optional state summary to advertise
+	// StateHeadCID is this node's advertised state root/head identifier, if any.
 	StateHeadCID string
-	StateHeight  int64
+	// StateHeight is the height associated with StateHeadCID.
+	StateHeight int64
 }
 
+// HandshakePolicy configures validation, credential requirements, anti-replay, and
+// attack-mitigation checks applied during the handshake.
 type HandshakePolicy struct {
+	// MinAgentVersion is the minimum accepted Agent version tail (e.g. "0.1.0");
+	// "" disables the version check.
 	MinAgentVersion string // "" to disable version check
-	ServicesAllow   uint64 // 0 means allow any, else remoteServices must be subset of this mask
-	Timeout         time.Duration
+	// ServicesAllow is a bitmask; 0 means allow any services, otherwise the
+	// remote's advertised Services must be a subset of this mask.
+	ServicesAllow uint64 // 0 means allow any, else remoteServices must be subset of this mask
+	// Timeout bounds each side of the handshake exchange; policyTimeout defaults
+	// this to 5s when Timeout is zero or negative.
+	Timeout time.Duration
 	// Admission controls (token-based)
+	// RequireCredential, when true, requires both sides to present a valid
+	// AuthScheme/AuthProof matching this policy's configuration.
 	RequireCredential bool
-	AuthScheme        string   // "token-ed25519-v1"
-	CAPubKeys         [][]byte // one or more ed25519 public keys
-	Token             string   // signed token carried in AuthProof
+	// AuthScheme names the required credential scheme, e.g. "token-ed25519-v1".
+	AuthScheme string // "token-ed25519-v1"
+	// CAPubKeys are one or more Ed25519 public keys accepted as token issuers;
+	// a token is valid if it verifies against any key in this list.
+	CAPubKeys [][]byte // one or more ed25519 public keys
+	// Token is this node's own signed admission token, sent as AuthProof.
+	Token string // signed token carried in AuthProof
 	// Anti-replay (optional; nil = skip)
-	NonceCache       *NonceCache
+	// NonceCache, if set, rejects VersionMsg nonces already seen from the same peer.
+	NonceCache *NonceCache
+	// MessageHashCache, if set, rejects VersionMsg payloads already seen from the same peer.
 	MessageHashCache *MessageHashCache
+	// TimestampChecker, if set, rejects VersionMsg timestamps outside the acceptable window.
 	TimestampChecker *TimestampChecker
 	// Attack mitigation (optional; nil = skip)
+	// AttackMitigation, if set, applies ban-list, rate-limit, eclipse, misbehavior,
+	// and resource-cap protections around the handshake and its resulting connection.
 	AttackMitigation *AttackMitigation
 }
 
@@ -78,6 +130,13 @@ type PeerProvider func(max int) []peer.AddrInfo
 
 // EnableAntiReplay adds NonceCache, MessageHashCache, and TimestampChecker to the policy
 // and starts their expunge loops. Returns a cleanup func to call on shutdown.
+//
+// Parameters:
+//   - ctx (context.Context): controls the lifetime of the NonceCache and MessageHashCache expunge goroutines.
+//   - policy (*HandshakePolicy): policy to populate with newly created anti-replay components.
+//
+// Returns:
+//   - cleanup (func()): stops the NonceCache and MessageHashCache expunge loops; call on shutdown.
 func EnableAntiReplay(ctx context.Context, policy *HandshakePolicy) (cleanup func()) {
 	nc := NewNonceCache()
 	mhc := NewMessageHashCache()
@@ -96,6 +155,13 @@ func EnableAntiReplay(ctx context.Context, policy *HandshakePolicy) (cleanup fun
 // EnableAttackMitigation adds BanList, EclipseLimiter, PeerRateLimiter, and PeerMisbehaviorScorer
 // to the policy. Starts a decay loop for misbehavior scores. Returns a cleanup func (no-op; decay
 // exits when ctx is cancelled).
+//
+// Parameters:
+//   - ctx (context.Context): controls the lifetime of the misbehavior-score decay goroutine.
+//   - policy (*HandshakePolicy): policy to populate with a newly created AttackMitigation bundle.
+//
+// Returns:
+//   - cleanup (func()): a no-op; the decay loop instead exits when ctx is cancelled.
 func EnableAttackMitigation(ctx context.Context, policy *HandshakePolicy) (cleanup func()) {
 	am := &AttackMitigation{
 		BanList:            NewBanList(),
@@ -122,6 +188,11 @@ func EnableAttackMitigation(ctx context.Context, policy *HandshakePolicy) (clean
 }
 
 // RegisterHandshake installs a responder handler on the host.
+//
+// Parameters:
+//   - h (host.Host): the host to register the handshake stream handler on.
+//   - local (HandshakeLocal): this node's parameters advertised to initiators.
+//   - policy (HandshakePolicy): validation, anti-replay, and attack-mitigation policy applied to incoming handshakes.
 func RegisterHandshake(h host.Host, local HandshakeLocal, policy HandshakePolicy) {
 	h.SetStreamHandler(HandshakeProtocolID, func(s network.Stream) {
 		defer s.Close()
@@ -130,6 +201,12 @@ func RegisterHandshake(h host.Host, local HandshakeLocal, policy HandshakePolicy
 }
 
 // RegisterHandshakeWithPeers installs a responder that can include a peer sample.
+//
+// Parameters:
+//   - h (host.Host): the host to register the handshake stream handler on.
+//   - local (HandshakeLocal): this node's parameters advertised to initiators.
+//   - policy (HandshakePolicy): validation, anti-replay, and attack-mitigation policy applied to incoming handshakes.
+//   - provider (PeerProvider): supplies a peer sample when the initiator sets WantPeerlist.
 func RegisterHandshakeWithPeers(h host.Host, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) {
 	h.SetStreamHandler(HandshakeProtocolID, func(s network.Stream) {
 		defer s.Close()
@@ -139,12 +216,27 @@ func RegisterHandshakeWithPeers(h host.Host, local HandshakeLocal, policy Handsh
 
 // HandshakeResult reports the responder's advertised state and any peers learned.
 type HandshakeResult struct {
-	Learned           []peer.AddrInfo
-	RemoteStateHead   string
+	// Learned is the set of peer addresses parsed from the responder's Peers list.
+	Learned []peer.AddrInfo
+	// RemoteStateHead is the responder's advertised state root/head identifier, if any.
+	RemoteStateHead string
+	// RemoteStateHeight is the height associated with RemoteStateHead.
 	RemoteStateHeight int64
 }
 
 // PerformHandshakeWithState dials the peer and returns learned peers and remote state summary.
+// On success, tags the peer in the host's connection manager with handshakeOkTag.
+//
+// Parameters:
+//   - ctx (context.Context): controls the lifetime of the handshake stream.
+//   - h (host.Host): the local host used to dial and to sign/verify challenge responses.
+//   - p (peer.ID): the peer to handshake with.
+//   - policy (HandshakePolicy): validation, credential, anti-replay, and attack-mitigation policy.
+//   - local (HandshakeLocal): this node's parameters advertised to the responder.
+//
+// Returns:
+//   - *HandshakeResult: learned peers and the responder's advertised state summary.
+//   - error: non-nil if the stream cannot be opened or the handshake exchange/validation fails.
 func PerformHandshakeWithState(ctx context.Context, h host.Host, p peer.ID, policy HandshakePolicy, local HandshakeLocal) (*HandshakeResult, error) {
 	s, err := h.NewStream(ctx, p, HandshakeProtocolID)
 	if err != nil {
@@ -160,6 +252,19 @@ func PerformHandshakeWithState(ctx context.Context, h host.Host, p peer.ID, poli
 }
 
 // PerformHandshake dials the peer and runs the initiator side. Returns any peers learned.
+// On success, tags the peer in the host's connection manager with handshakeOkTag,
+// marking it verified for downstream gating/policy.
+//
+// Parameters:
+//   - ctx (context.Context): controls the lifetime of the handshake stream.
+//   - h (host.Host): the local host used to dial and to sign/verify challenge responses.
+//   - p (peer.ID): the peer to handshake with.
+//   - policy (HandshakePolicy): validation, credential, anti-replay, and attack-mitigation policy.
+//   - local (HandshakeLocal): this node's parameters advertised to the responder.
+//
+// Returns:
+//   - []peer.AddrInfo: peer addresses learned from the responder's Peers list.
+//   - error: non-nil if the stream cannot be opened or the handshake exchange/validation fails.
 func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy HandshakePolicy, local HandshakeLocal) ([]peer.AddrInfo, error) {
 	s, err := h.NewStream(ctx, p, HandshakeProtocolID)
 	if err != nil {
@@ -175,7 +280,23 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 	return learned, nil
 }
 
-// initiatorWithState returns learned peers and the responder's VersionMsg for state summary.
+// initiatorWithState runs the initiator side of the handshake protocol over an
+// already-opened stream: it sends a VersionMsg (including credentials if
+// RequireCredential), receives and validates the responder's VersionMsg (anti-replay,
+// version/services, credential verification, and challenge-response verification),
+// then exchanges VerAckMsg in both directions. Returns learned peers and the
+// responder's VersionMsg for state summary.
+//
+// Parameters:
+//   - s (network.Stream): the open handshake stream to the responder.
+//   - h (host.Host): the local host, used to sign the challenge and look up peerstore keys.
+//   - local (HandshakeLocal): this node's parameters to advertise.
+//   - policy (HandshakePolicy): validation, credential, anti-replay policy.
+//
+// Returns:
+//   - []peer.AddrInfo: peer addresses learned from the responder's Peers list.
+//   - VersionMsg: the responder's full VersionMsg (used by callers for state summary).
+//   - error: non-nil if encoding/decoding fails or any validation step rejects the responder.
 func initiatorWithState(s network.Stream, h host.Host, local HandshakeLocal, policy HandshakePolicy) ([]peer.AddrInfo, VersionMsg, error) {
 	deadline := time.Now().Add(policyTimeout(policy))
 	_ = s.SetDeadline(deadline)
@@ -247,6 +368,23 @@ func initiatorWithState(s network.Stream, h host.Host, local HandshakeLocal, pol
 	return learned, remote, nil
 }
 
+// responder runs the responder side of the handshake protocol over an incoming
+// stream: applies ban-list/rate-limit checks (recording misbehavior and possibly
+// banning on failure, via a deferred func), receives and validates the initiator's
+// VersionMsg (anti-replay, version/services, credential scheme), sends its own
+// VersionMsg (including a signed challenge response and, if requested, a peer
+// sample from provider), then exchanges VerAckMsg in both directions. On success,
+// registers the peer with the eclipse limiter if AttackMitigation is configured.
+//
+// Parameters:
+//   - s (network.Stream): the incoming handshake stream from the initiator.
+//   - h (host.Host): the local host, used to sign the challenge and look up peerstore addresses.
+//   - local (HandshakeLocal): this node's parameters to advertise.
+//   - policy (HandshakePolicy): validation, credential, anti-replay, and attack-mitigation policy.
+//   - provider (PeerProvider): supplies a peer sample when the initiator sets WantPeerlist; may be nil.
+//
+// Returns:
+//   - err (error): non-nil if any protocol step fails or the initiator is rejected; on non-nil error with AttackMitigation configured, the peer's misbehavior score is incremented.
 func responder(s network.Stream, h host.Host, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) (err error) {
 	pid := s.Conn().RemotePeer()
 	if am := policy.AttackMitigation; am != nil {
@@ -348,6 +486,18 @@ func responder(s network.Stream, h host.Host, local HandshakeLocal, policy Hands
 	return nil
 }
 
+// applyAntiReplay runs the configured anti-replay checks against an incoming
+// VersionMsg, in order: timestamp window, nonce reuse, and duplicate message hash
+// (computed via SHA-256 over the JSON-marshaled message). Any configured checker
+// left nil is skipped.
+//
+// Parameters:
+//   - policy (HandshakePolicy): supplies the optional TimestampChecker, NonceCache, and MessageHashCache.
+//   - pid (peer.ID): the peer the message was received from.
+//   - remote (VersionMsg): the message to check.
+//
+// Returns:
+//   - error: ErrExpiredTimestamp, ErrReusedNonce, ErrDuplicateMessageHash, a JSON marshaling error, or nil if all configured checks pass.
 func applyAntiReplay(policy HandshakePolicy, pid peer.ID, remote VersionMsg) error {
 	if policy.TimestampChecker != nil {
 		if err := policy.TimestampChecker.RejectExpiredUnix(remote.Timestamp); err != nil {
@@ -373,6 +523,18 @@ func applyAntiReplay(policy HandshakePolicy, pid peer.ID, remote VersionMsg) err
 	return nil
 }
 
+// validateVersion checks a received VersionMsg against policy: services must be a
+// subset of ServicesAllow (if non-zero), Agent must meet MinAgentVersion (if set),
+// and if RequireCredential is true, AuthScheme must match policy.AuthScheme and
+// AuthProof must be non-empty. It does not verify the credential's cryptographic
+// validity; that is done separately (see verifyTokenAny).
+//
+// Parameters:
+//   - v (VersionMsg): the message to validate.
+//   - policy (HandshakePolicy): the policy to validate against.
+//
+// Returns:
+//   - error: describes the first validation failure encountered, nil if v passes all checks.
 func validateVersion(v VersionMsg, policy HandshakePolicy) error {
 	if policy.ServicesAllow != 0 {
 		if v.Services&^policy.ServicesAllow != 0 {
@@ -395,6 +557,14 @@ func validateVersion(v VersionMsg, policy HandshakePolicy) error {
 	return nil
 }
 
+// policyTimeout returns the effective handshake timeout for a policy, defaulting
+// to 5 seconds when Timeout is unset or non-positive.
+//
+// Parameters:
+//   - p (HandshakePolicy): the policy whose Timeout field is read.
+//
+// Returns:
+//   - time.Duration: p.Timeout if positive, otherwise 5 seconds.
 func policyTimeout(p HandshakePolicy) time.Duration {
 	if p.Timeout > 0 {
 		return p.Timeout
@@ -403,12 +573,27 @@ func policyTimeout(p HandshakePolicy) time.Duration {
 }
 
 // agentOK expects agent like "sng40/0.1.0"; compares the numeric tail against min.
+//
+// Parameters:
+//   - agent (string): the remote's advertised agent string, e.g. "sng40/0.1.0".
+//   - min (string): the minimum acceptable agent string in the same format.
+//
+// Returns:
+//   - bool: true if agent's version tail is >= min's version tail.
 func agentOK(agent string, min string) bool {
 	have := tailSemver(agent)
 	want := tailSemver(min)
 	return semverGTE(have, want)
 }
 
+// tailSemver extracts the version suffix after the last '/' in an agent string
+// (e.g. "sng40/0.1.0" -> "0.1.0"); returns s unchanged if it contains no '/'.
+//
+// Parameters:
+//   - s (string): the agent string to extract from.
+//
+// Returns:
+//   - string: the version tail, or s if there is no '/' separator.
 func tailSemver(s string) string {
 	i := strings.LastIndexByte(s, '/')
 	if i >= 0 && i+1 < len(s) {
@@ -417,6 +602,15 @@ func tailSemver(s string) string {
 	return s
 }
 
+// semverGTE compares two 3-component version strings (as parsed by parse3) and
+// reports whether a >= b, comparing major, then minor, then patch components in order.
+//
+// Parameters:
+//   - a (string): the version string to test.
+//   - b (string): the version string to compare against.
+//
+// Returns:
+//   - bool: true if a's version is greater than or equal to b's.
 func semverGTE(a, b string) bool {
 	ap := parse3(a)
 	bp := parse3(b)
@@ -429,6 +623,15 @@ func semverGTE(a, b string) bool {
 	return ap[2] >= bp[2]
 }
 
+// parse3 parses up to the first three dot-separated numeric components of s into
+// a [3]int (e.g. "1.2.3" -> [1,2,3]). Missing components default to 0; components
+// that fail to parse as integers also default to 0 (strconv.Atoi errors are ignored).
+//
+// Parameters:
+//   - s (string): a dot-separated version string.
+//
+// Returns:
+//   - [3]int: the parsed major, minor, and patch components.
 func parse3(s string) [3]int {
 	var out [3]int
 	parts := strings.SplitN(s, ".", 3)
@@ -439,7 +642,15 @@ func parse3(s string) [3]int {
 	return out
 }
 
-// parsePeerlist converts string multiaddrs with /p2p into AddrInfos.
+// parsePeerlist converts string multiaddrs with /p2p into AddrInfos. Entries that
+// fail to parse as multiaddrs or lack a valid /p2p/<peerID> component are silently
+// skipped.
+//
+// Parameters:
+//   - in ([]string): multiaddr strings, each expected to include a /p2p/<peerID> component.
+//
+// Returns:
+//   - []peer.AddrInfo: successfully parsed peer address infos.
 func parsePeerlist(in []string) []peer.AddrInfo {
 	var out []peer.AddrInfo
 	for _, s := range in {
@@ -454,10 +665,19 @@ func parsePeerlist(in []string) []peer.AddrInfo {
 	return out
 }
 
-// computeHMACProof returns base64(HMAC-SHA256(secret, encode(iNonce||rNonce||peerID))).
-// verifyToken expects AuthProof to be base64 of a signed token that covers the peer ID and an expiry.
-// Token format (base64-encoded bytes): CBOR or JSON with fields {pid, exp, sig}, where sig = ed25519.Sign(CA, canonical(pid||exp)).
-// For simplicity here, we define proof as base64( ed25519.Sign(CA, []byte(peerID)) ) and verify against CAPubKey.
+// verifyToken checks that proof is a base64-encoded Ed25519 signature over the raw
+// peer ID bytes, valid under caPub. Note: despite the doc comments elsewhere
+// describing a richer token format (CBOR/JSON with {pid, exp, sig} and HMAC-based
+// proofs), this implementation only verifies the simplified format actually used:
+// base64(ed25519.Sign(CA, []byte(peerID))), with no expiry field.
+//
+// Parameters:
+//   - caPub ([]byte): the Ed25519 public key bytes of the certificate authority to verify against.
+//   - pid (peer.ID): the peer ID the token is expected to cover.
+//   - proof (string): base64-encoded signature to verify.
+//
+// Returns:
+//   - bool: true if proof is a valid signature over pid's bytes under caPub.
 func verifyToken(caPub []byte, pid peer.ID, proof string) bool {
 	pub := ed25519.PublicKey(caPub)
 	sig, err := base64.StdEncoding.DecodeString(proof)
@@ -468,6 +688,16 @@ func verifyToken(caPub []byte, pid peer.ID, proof string) bool {
 	return ed25519.Verify(pub, msg, sig)
 }
 
+// verifyTokenAny reports whether proof verifies against any of the given CA public
+// keys, via verifyToken.
+//
+// Parameters:
+//   - caPubs ([][]byte): candidate Ed25519 public keys to check against.
+//   - pid (peer.ID): the peer ID the token is expected to cover.
+//   - proof (string): base64-encoded signature to verify.
+//
+// Returns:
+//   - bool: true if proof verifies under at least one key in caPubs.
 func verifyTokenAny(caPubs [][]byte, pid peer.ID, proof string) bool {
 	for _, k := range caPubs {
 		if verifyToken(k, pid, proof) {
@@ -477,12 +707,31 @@ func verifyTokenAny(caPubs [][]byte, pid peer.ID, proof string) bool {
 	return false
 }
 
+// nonceBytes encodes a uint64 nonce as 8 big-endian bytes, the canonical form
+// signed/verified for challenge-response.
+//
+// Parameters:
+//   - n (uint64): the nonce value to encode.
+//
+// Returns:
+//   - []byte: the 8-byte big-endian encoding of n.
 func nonceBytes(n uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, n)
 	return b
 }
 
+// signChallenge signs the given nonce (as produced by nonceBytes) using the local
+// host's own private key from its peerstore, proving possession of the private key
+// behind this node's peer ID.
+//
+// Parameters:
+//   - h (host.Host): the local host whose peerstore holds its own private key.
+//   - nonce (uint64): the nonce to sign (typically the remote peer's advertised Nonce).
+//
+// Returns:
+//   - []byte: the signature bytes.
+//   - error: non-nil if no private key is found in the peerstore or signing fails.
 func signChallenge(h host.Host, nonce uint64) ([]byte, error) {
 	priv := h.Peerstore().PrivKey(h.ID())
 	if priv == nil {
@@ -491,6 +740,18 @@ func signChallenge(h host.Host, nonce uint64) ([]byte, error) {
 	return priv.Sign(nonceBytes(nonce))
 }
 
+// verifyChallengeResponse verifies that proofB64 is a valid base64-encoded
+// signature by remote over nonce, using remote's public key as recorded in the
+// local host's peerstore.
+//
+// Parameters:
+//   - h (host.Host): the local host whose peerstore holds remote's public key.
+//   - remote (peer.ID): the peer that allegedly produced the signature.
+//   - nonce (uint64): the nonce that was signed (typically this node's own Nonce sent to remote).
+//   - proofB64 (string): base64-encoded signature to verify.
+//
+// Returns:
+//   - error: non-nil if remote's public key is unknown, proofB64 fails to decode, or the signature does not verify.
 func verifyChallengeResponse(h host.Host, remote peer.ID, nonce uint64, proofB64 string) error {
 	pub := h.Peerstore().PubKey(remote)
 	if pub == nil {

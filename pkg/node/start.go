@@ -35,23 +35,52 @@ import (
 	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
 
+// service is the concrete Service implementation returned by Start. It holds
+// the running node's libp2p host, DHT, storage stack, and peerstore, plus the
+// bookkeeping needed to stop all background goroutines and the control server
+// on Close. Service methods that perform data-plane operations (PutRaw,
+// GetRawFrom, RestoreFromManifest) do so by issuing HTTP requests to the
+// node's own local control server rather than calling into the stack
+// directly, so behavior matches the CLI's --daemon mode.
 type service struct {
-	h               host.Host
-	dht             *kaddht.IpfsDHT
-	stack           *mystore.Stack
-	peerStore       *myhost.PeerStore
-	metrics         *ctrl.NodeMetrics
-	cancel          context.CancelFunc
-	basePolicy      myhost.HandshakePolicy
-	onHandshake     func(peerID string, info map[string]any)
-	onAck           func(peerID string, status string)
-	wg              sync.WaitGroup
-	controlAddr     string
-	controlShutdown func(context.Context) error
-	stopIBLT        func()
+	h               host.Host                                // the libp2p host for this node.
+	dht             *kaddht.IpfsDHT                          // the Kademlia DHT instance backing routing/token storage; may be nil.
+	stack           *mystore.Stack                           // the storage stack (blockstore, routing table, locks).
+	peerStore       *myhost.PeerStore                        // known peers and dial-candidate bookkeeping.
+	metrics         *ctrl.NodeMetrics                        // counters exposed via Status and the control server's /metrics endpoint.
+	cancel          context.CancelFunc                       // cancels the context all background goroutines and the DHT/host share.
+	basePolicy      myhost.HandshakePolicy                   // the handshake/admission policy applied to inbound and outbound connections.
+	onHandshake     func(peerID string, info map[string]any) // optional hook invoked after each handshake; copied from Options.OnHandshake.
+	onAck           func(peerID string, status string)       // optional hook invoked after a successful outbound handshake; copied from Options.OnAck.
+	wg              sync.WaitGroup                           // tracks background goroutines (pruning, security check, dialer, gossip) so Close can wait for them to exit.
+	controlAddr     string                                   // "host:port" of the node's local HTTP control server.
+	controlShutdown func(context.Context) error              // shuts down the control server; set by ctrl.Start.
+	stopIBLT        func()                                   // stops the periodic catalog IBLT exchange loop; set by InstallCatalogIBLT.
 }
 
-// Start launches the node with the provided options and returns a Service.
+// Start assembles and launches an embedded node: it creates (or loads) the
+// libp2p host identity, opens the blockstore/datastore, seeds the peerstore,
+// builds the DHT-backed storage stack (BuildStackWithDHT), configures the
+// handshake/admission policy, wires the repair protocol and gateway, and
+// starts all background maintenance loops (peer pruning, connection security
+// verification, outbound dial maintenance, peer gossip, and periodic catalog
+// IBLT exchange). It then starts the node's local HTTP control server, which
+// backs the Service methods (PutRaw, GetRawFrom, etc.). On any failure it
+// unwinds whatever was already created (closing the host, stack, and DHT as
+// applicable) before returning the error.
+//
+// Defaults applied when the corresponding Options field is unset: listen
+// addrs default to TCP/2893 + QUIC/2894; ClusterNodeCount falls back to the
+// CLUSTER_NODE_COUNT environment variable; PerIPDialLimit defaults to 3;
+// DialTimeout defaults to 10s.
+//
+// Parameters:
+//   - parent (context.Context): parent context; a child context is derived and canceled on Close.
+//   - opts (Options): configuration for identity, networking, storage, admission, and control-plane hooks.
+//
+// Returns:
+//   - Service: the running node handle, or nil on error.
+//   - error: non-nil if any subsystem (host, blockstore, peerstore, DHT/stack, control server) fails to start.
 func Start(parent context.Context, opts Options) (Service, error) {
 	// Defaults
 	if len(opts.ListenMultiaddrs) == 0 {
@@ -443,6 +472,16 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	return s, nil
 }
 
+// Close shuts down the node in dependency order: it stops the control server,
+// stops the catalog IBLT exchange loop, cancels the shared context (signaling
+// all background goroutines to exit), waits for those goroutines to finish,
+// closes the storage stack and DHT, and finally closes the libp2p host.
+//
+// Parameters:
+//   - ctx (context.Context): passed through to the control server's shutdown; not otherwise used to bound this call.
+//
+// Returns:
+//   - error: the result of closing the libp2p host; errors from the control server shutdown and DHT close are ignored.
 func (s *service) Close(ctx context.Context) error {
 	if s.controlShutdown != nil {
 		_ = s.controlShutdown(ctx)
@@ -459,6 +498,15 @@ func (s *service) Close(ctx context.Context) error {
 	return s.h.Close()
 }
 
+// Status reports this node's peer ID, listen addresses, current state
+// head/height, and a snapshot of its running metrics counters.
+//
+// Parameters:
+//   - ctx (context.Context): used to read the current state head from the datastore.
+//
+// Returns:
+//   - Status: the populated status snapshot.
+//   - error: always nil; reserved for future use and interface-compatibility with Service.
 func (s *service) Status(ctx context.Context) (Status, error) {
 	head, height, _ := mystore.GetHead(ctx, s.stack.Datastore)
 	st := Status{
@@ -478,6 +526,18 @@ func (s *service) Status(ctx context.Context) (Status, error) {
 	return st, nil
 }
 
+// PutRaw stores data as a new block by POSTing it to this node's own local
+// control server's /put endpoint (JSON body, base string-encoded data), then
+// decodes the resulting CID from the response.
+//
+// Parameters:
+//   - ctx (context.Context): accepted for interface compatibility; not used to bound the HTTP call (a fixed 15s client timeout is used instead).
+//   - data ([]byte): the raw bytes to store as a block.
+//
+// Returns:
+//   - string: the string-encoded CID of the stored block.
+//   - int: the number of bytes stored (len(data)).
+//   - error: non-nil if the HTTP request fails, returns non-200, or the response cannot be decoded.
 func (s *service) PutRaw(ctx context.Context, data []byte) (string, int, error) {
 	req := struct {
 		Data string `json:"data"`
@@ -501,6 +561,20 @@ func (s *service) PutRaw(ctx context.Context, data []byte) (string, int, error) 
 	return out.CID, len(data), nil
 }
 
+// GetRawFrom fetches the block identified by cidStr from the given provider
+// by POSTing the request to this node's own local control server's /get
+// endpoint, then base64-decodes the returned data.
+//
+// Parameters:
+//   - ctx (context.Context): accepted for interface compatibility; not used to bound the HTTP call directly (the client timeout is timeout+5s instead).
+//   - providerAddr (string): the provider's multiaddr to fetch from.
+//   - providerPeer (string): the provider's string-encoded peer ID.
+//   - cidStr (string): the string-encoded CID to fetch.
+//   - timeout (time.Duration): the fetch budget passed through to the control server; the HTTP client timeout is set to timeout+5s to allow for that budget plus overhead.
+//
+// Returns:
+//   - []byte: the fetched block bytes.
+//   - error: non-nil if the HTTP request fails, returns non-200, or the response cannot be decoded.
 func (s *service) GetRawFrom(ctx context.Context, providerAddr string, providerPeer string, cidStr string, timeout time.Duration) ([]byte, error) {
 	req := struct {
 		CID     string `json:"cid"`
@@ -527,6 +601,17 @@ func (s *service) GetRawFrom(ctx context.Context, providerAddr string, providerP
 	return base64.StdEncoding.DecodeString(out.DataB64)
 }
 
+// ListImmediatePeerIDs returns the string-encoded peer IDs of all peers this
+// node's libp2p network layer currently reports as connected, excluding this
+// node's own ID. Unlike PutRaw/GetRawFrom, this reads directly from the local
+// host rather than going through the control server.
+//
+// Parameters:
+//   - ctx (context.Context): accepted for interface compatibility; not used.
+//
+// Returns:
+//   - []string: string-encoded peer IDs of connected neighbors.
+//   - error: always nil; reserved for future use and interface-compatibility with Service.
 func (s *service) ListImmediatePeerIDs(ctx context.Context) ([]string, error) {
 	var ids []string
 	for _, pid := range s.h.Network().Peers() {
@@ -537,6 +622,22 @@ func (s *service) ListImmediatePeerIDs(ctx context.Context) ([]string, error) {
 	return ids, nil
 }
 
+// RestoreFromManifest submits a restore job (a set of CIDs to fetch) to this
+// node's own local control server's /restore endpoint, then polls
+// /restore/status until the job reports done or the poll deadline elapses.
+// The poll deadline is timeout multiplied by len(cids)+1, so it scales with
+// the size of the manifest.
+//
+// Parameters:
+//   - ctx (context.Context): checked between polls; if canceled, the method returns immediately with ctx.Err().
+//   - cids ([]string): string-encoded CIDs to fetch.
+//   - concurrency (int): how many CIDs the restore job should fetch in parallel.
+//   - timeout (time.Duration): per-job budget hint sent to the server; also used to size the client-side poll deadline.
+//   - byteBudget (int64): optional cap on total bytes fetched by the job; 0 means no cap.
+//
+// Returns:
+//   - RestoreStats: the OK/Failed/Bytes counts once the job reports done.
+//   - error: non-nil if job submission fails, decoding fails, ctx is canceled, or the poll deadline is reached before the job finishes.
 func (s *service) RestoreFromManifest(ctx context.Context, cids []string, concurrency int, timeout time.Duration, byteBudget int64) (RestoreStats, error) {
 	req := struct {
 		CIDs        []string `json:"cids"`

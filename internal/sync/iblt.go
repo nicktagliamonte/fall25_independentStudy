@@ -13,31 +13,55 @@ const DefaultHashCount = 3
 
 // KeyHash returns the 64-bit FNV-1a hash used for IBLT keys. Use for building
 // hash-to-key maps when reconciling (e.g. Negative keyHashes -> resolve from peer).
+//
+// Parameters:
+//   - key ([]byte): the key bytes to hash (e.g. a CID's string encoding).
+//
+// Returns:
+//   - uint64: the FNV-1a hash of key.
 func KeyHash(key []byte) uint64 {
 	h := fnv.New64a()
 	h.Write(key)
 	return h.Sum64()
 }
 
-// IBLTCell holds the accumulator for one cell in the IBLT. Multiple keys can hash
-// to the same cell; XOR accumulation allows recovery via peeling when count is 1.
+// IBLTCell holds the accumulator for one cell in the IBLT. Multiple keys can
+// hash to the same cell; XOR accumulation allows recovery via peeling when
+// count is 1 (or -1 after a Subtract).
 type IBLTCell struct {
-	Count   int    // number of items hashed to this cell
-	KeySum  uint64 // XOR of all keys (or hash(key)) mapped to this cell
-	HashSum uint64 // XOR of all key hashes (checksum for verification)
+	// Count is the number of items hashed into this cell (Insert increments,
+	// Delete decrements; after Subtract it can be negative).
+	Count int
+	// KeySum is the XOR of the keyHash of every key mapped to this cell.
+	KeySum uint64
+	// HashSum is the XOR of the verification checksum (hashSum) of every key
+	// mapped to this cell, used by Peel to confirm a recovered key is correct.
+	HashSum uint64
 }
 
-// IBLT is an Invertible Bloom Lookup Table: an array of cells indexed by hash
-// functions, used for set reconciliation with compact difference representation.
+// IBLT is an Invertible Bloom Lookup Table: an array of cells indexed by k
+// hash functions, used for set reconciliation with a compact representation
+// of the symmetric difference between two sets.
 type IBLT struct {
-	CellCount int        // number of cells
-	Cells     []IBLTCell // cell array
-	HashCount int        // number of hash functions (k)
-	h1        hash.Hash64
-	h2        hash.Hash64
+	// CellCount is the number of cells in the Cells array.
+	CellCount int
+	// Cells is the cell array; Insert/Delete/Subtract/Peel operate on it.
+	Cells []IBLTCell
+	// HashCount is the number of hash functions (k) used to map a key to
+	// cell indices; each key is inserted into and removed from exactly k cells.
+	HashCount int
+	h1        hash.Hash64 // scratch FNV-1a hash used for keyHash and cell-index derivation.
+	h2        hash.Hash64 // scratch FNV-1 hash used for the verification checksum (hashSum).
 }
 
-// NewIBLT creates an IBLT with the given number of cells.
+// NewIBLT creates an empty IBLT with the given number of cells and
+// DefaultHashCount hash functions. A cellCount <= 0 is replaced with 1024.
+//
+// Parameters:
+//   - cellCount (int): number of cells to allocate; <= 0 defaults to 1024.
+//
+// Returns:
+//   - *IBLT: a newly allocated, empty IBLT.
 func NewIBLT(cellCount int) *IBLT {
 	if cellCount <= 0 {
 		cellCount = 1024
@@ -52,13 +76,28 @@ func NewIBLT(cellCount int) *IBLT {
 	}
 }
 
-// cellIndex returns the cell index for hash function i given the key bytes.
+// cellIndex returns the cell index that hash function i maps key to.
+//
+// Parameters:
+//   - key ([]byte): the key bytes to locate.
+//   - i (int): which of the t.HashCount hash functions to use (0-indexed).
+//
+// Returns:
+//   - int: the cell index in [0, t.CellCount).
 func (t *IBLT) cellIndex(key []byte, i int) int {
 	return t.cellIndexFromHash(t.keyHash(key), i)
 }
 
-// cellIndexFromHash returns the cell index for hash function i given keyHash.
-// Allows Peel to compute which cells to update when recovering keyHash.
+// cellIndexFromHash returns the cell index that hash function i maps keyHash
+// to, without needing the original key bytes. This lets Peel compute which
+// cells to update when it has only recovered a keyHash (not the key itself).
+//
+// Parameters:
+//   - keyHash (uint64): the key's keyHash value (as produced by t.keyHash).
+//   - i (int): which of the t.HashCount hash functions to use (0-indexed).
+//
+// Returns:
+//   - int: the cell index in [0, t.CellCount).
 func (t *IBLT) cellIndexFromHash(keyHash uint64, i int) int {
 	t.h1.Reset()
 	var buf [16]byte
@@ -69,20 +108,43 @@ func (t *IBLT) cellIndexFromHash(keyHash uint64, i int) int {
 	return int(h % uint64(t.CellCount))
 }
 
-// keyHash returns the 64-bit representation for KeySum (XOR accumulation).
+// keyHash returns the 64-bit FNV-1a value of key used to XOR-accumulate into
+// each cell's KeySum, and as the canonical identifier recovered by Peel.
+//
+// Parameters:
+//   - key ([]byte): the key bytes to hash.
+//
+// Returns:
+//   - uint64: the FNV-1a hash of key using t's scratch hasher.
 func (t *IBLT) keyHash(key []byte) uint64 {
 	t.h1.Reset()
 	t.h1.Write(key)
 	return t.h1.Sum64()
 }
 
-// hashSum returns the 64-bit checksum for HashSum (XOR accumulation).
-// Uses keyHash so Peel can verify recovered keys without the original bytes.
+// hashSum returns the 64-bit verification checksum for key, XOR-accumulated
+// into each cell's HashSum. It is derived from keyHash (not the raw key
+// bytes) so Peel can independently recompute and verify it after recovering
+// only a keyHash value.
+//
+// Parameters:
+//   - key ([]byte): the key bytes to compute a checksum for.
+//
+// Returns:
+//   - uint64: the verification checksum for key.
 func (t *IBLT) hashSum(key []byte) uint64 {
 	return t.hashSumFromKeyHash(t.keyHash(key))
 }
 
-// hashSumFromKeyHash returns the checksum for a keyHash (used for verification in Peel).
+// hashSumFromKeyHash returns the verification checksum for a given keyHash,
+// used by Peel to confirm a recovered KeySum actually corresponds to a valid
+// single key (rather than an unlucky XOR collision of multiple keys).
+//
+// Parameters:
+//   - keyHash (uint64): the candidate key's keyHash value.
+//
+// Returns:
+//   - uint64: the checksum that should match the cell's HashSum if keyHash is genuine.
 func (t *IBLT) hashSumFromKeyHash(keyHash uint64) uint64 {
 	t.h2.Reset()
 	var buf [8]byte
@@ -91,8 +153,12 @@ func (t *IBLT) hashSumFromKeyHash(keyHash uint64) uint64 {
 	return t.h2.Sum64()
 }
 
-// Insert adds key to the IBLT. The key is hashed to k cells; each cell's count is
-// incremented and KeySum/HashSum are XOR-accumulated.
+// Insert adds key to the IBLT. The key is hashed to t.HashCount cells; each
+// such cell's Count is incremented and its KeySum/HashSum are XOR-accumulated
+// with key's keyHash/hashSum. A nil receiver or empty Cells is a no-op.
+//
+// Parameters:
+//   - key ([]byte): the key bytes to insert (e.g. a CID's string encoding).
 func (t *IBLT) Insert(key []byte) {
 	if t == nil || len(t.Cells) == 0 {
 		return
@@ -111,8 +177,13 @@ func (t *IBLT) Insert(key []byte) {
 	}
 }
 
-// Delete removes key from the IBLT. The key is hashed to k cells; each cell's count
-// is decremented and KeySum/HashSum are XOR-removed (XOR is self-inverse).
+// Delete removes key from the IBLT. The key is hashed to the same
+// t.HashCount cells Insert would have used; each cell's Count is decremented
+// and its KeySum/HashSum are XOR-removed (XOR is its own inverse, so this
+// undoes a prior Insert). A nil receiver or empty Cells is a no-op.
+//
+// Parameters:
+//   - key ([]byte): the key bytes to remove; must match a previously Inserted key for correctness.
 func (t *IBLT) Delete(key []byte) {
 	if t == nil || len(t.Cells) == 0 {
 		return
@@ -131,10 +202,19 @@ func (t *IBLT) Delete(key []byte) {
 	}
 }
 
-// Subtract returns a new IBLT representing the cell-wise difference (t - other).
-// Encodes the symmetric set difference: keys in t but not other, minus keys in other
-// but not t. Both IBLTs must have the same CellCount and HashCount. Returns nil if
-// incompatible.
+// Subtract returns a new IBLT representing the cell-wise difference (t -
+// other): each cell's Count is subtracted and KeySum/HashSum are XORed
+// together. The result encodes the symmetric set difference between the two
+// original sets — after Peel, Positive keys are those in t but not other, and
+// Negative keys are those in other but not t. Both IBLTs must share the same
+// CellCount and HashCount and have equal-length Cells; otherwise nil is
+// returned.
+//
+// Parameters:
+//   - other (*IBLT): the IBLT to subtract from t; must be structurally compatible with t.
+//
+// Returns:
+//   - *IBLT: a new IBLT holding the cell-wise difference, or nil if t or other is nil or they are incompatible.
 func (t *IBLT) Subtract(other *IBLT) *IBLT {
 	if t == nil || other == nil {
 		return nil
@@ -154,17 +234,29 @@ func (t *IBLT) Subtract(other *IBLT) *IBLT {
 	return diff
 }
 
-// PeelResult holds recovered key hashes from Peel. Positive = keys in (t - other),
-// Negative = keys in (other - t).
+// PeelResult holds the key hashes recovered from peeling a difference IBLT
+// (typically the result of IBLT.Subtract).
 type PeelResult struct {
+	// Positive holds recovered keyHash values for keys present in the
+	// minuend set but not the subtrahend (i.e. keys in t but not other, for
+	// diff := t.Subtract(other)).
 	Positive []uint64
+	// Negative holds recovered keyHash values for keys present in the
+	// subtrahend set but not the minuend (i.e. keys in other but not t).
 	Negative []uint64
 }
 
-// Peel recovers pure keys from the difference IBLT. Iteratively finds cells with
-// count 1 or -1 (pure cells), recovers keyHash from KeySum, verifies HashSum, removes
-// the key from its k cells, and repeats until no progress. Returns recovered key
-// hashes; caller maps these to actual keys. Modifies t in place.
+// Peel recovers pure keys from a difference IBLT (as produced by Subtract) by
+// iteratively finding "pure" cells — those with Count == 1 or Count == -1 —
+// recovering the candidate keyHash from KeySum, verifying it against HashSum
+// via hashSumFromKeyHash, and, if valid, removing that key's contribution
+// from all t.HashCount cells it maps to. This can turn previously impure
+// cells pure, so the process repeats until no cell yields a new key. Peel
+// modifies t in place and is typically called on the result of Subtract, not
+// on a live (non-difference) IBLT.
+//
+// Returns:
+//   - PeelResult: the keyHash values recovered as Positive or Negative; the caller must map these back to actual keys/CIDs via its own key inventory (KeyHash is not invertible).
 func (t *IBLT) Peel() PeelResult {
 	var pos, neg []uint64
 	if t == nil || len(t.Cells) == 0 {
@@ -228,8 +320,13 @@ func (t *IBLT) Peel() PeelResult {
 	return PeelResult{Positive: pos, Negative: neg}
 }
 
-// HasUnpeeled returns true if any cell has non-zero Count, KeySum, or HashSum.
-// Used to detect incomplete peel (difference too large for IBLT capacity).
+// HasUnpeeled reports whether any cell still has a non-zero Count, KeySum, or
+// HashSum after a Peel pass. A true result means the peel was incomplete —
+// the encoded difference was too large for the IBLT's capacity — and the
+// caller should retry with a larger IBLT or fall back to a full sync.
+//
+// Returns:
+//   - bool: true if at least one cell is non-empty; false if t is nil or fully peeled.
 func (t *IBLT) HasUnpeeled() bool {
 	if t == nil {
 		return false

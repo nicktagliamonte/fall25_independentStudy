@@ -52,7 +52,15 @@ type StorageAvailableProtocol struct {
 	RTTThresholds *RTTThresholds
 }
 
-// NewStorageAvailableProtocol creates a new storage-available protocol handler.
+// NewStorageAvailableProtocol creates a new StorageAvailableProtocol backed by tuple space ts,
+// with RTTThresholds left nil (so ClassifyDistanceByRTT will use its default thresholds).
+// Callers typically set PeerIDsToCheck and/or RTTMeasurer on the returned value afterward.
+//
+// Parameters:
+//   - ts (tuplespace.TupleSpace): the tuple space used to store/read storage-available offers.
+//
+// Returns:
+//   - *StorageAvailableProtocol: the constructed protocol handler.
 func NewStorageAvailableProtocol(ts tuplespace.TupleSpace) *StorageAvailableProtocol {
 	return &StorageAvailableProtocol{
 		ts:            ts,
@@ -60,9 +68,20 @@ func NewStorageAvailableProtocol(ts tuplespace.TupleSpace) *StorageAvailableProt
 	}
 }
 
-// AdvertiseStorageAvailable advertises this peer's storage availability.
-// Creates a tuple in the tuple space that other peers can discover.
-// Returns error if tuple space operation fails.
+// AdvertiseStorageAvailable advertises this peer's storage availability by writing a
+// StorageAvailableOffer (JSON-encoded) into the tuple space under the name
+// StorageAvailableTuplePrefix+peerID, timestamped with the current Unix time, so other peers
+// can discover it (via FindStorageAvailableCandidates).
+//
+// Parameters:
+//   - peerID (peer.ID): the advertising peer's ID.
+//   - committedStake (uint64): the amount of stake committed (0 if not tokenized).
+//   - storageAvailability (uint64): available storage capacity, in bytes.
+//   - reputationScore (float64): the peer's reputation score (0.0 to 1.0).
+//   - availabilityDuration (time.Duration): how long the storage will remain available.
+//
+// Returns:
+//   - error: non-nil if sap.ts is nil, JSON marshaling fails, or the tuple space write fails.
 func (sap *StorageAvailableProtocol) AdvertiseStorageAvailable(
 	peerID peer.ID,
 	committedStake uint64,
@@ -97,8 +116,15 @@ func (sap *StorageAvailableProtocol) AdvertiseStorageAvailable(
 	return nil
 }
 
-// WithdrawStorageAvailable removes this peer's storage-available advertisement.
-// Uses TsGet (consuming) to remove the tuple.
+// WithdrawStorageAvailable removes this peer's storage-available advertisement by consuming
+// (via TsGet, which removes the tuple as it reads it) the tuple named
+// StorageAvailableTuplePrefix+peerID.
+//
+// Parameters:
+//   - peerID (peer.ID): the peer whose advertisement should be withdrawn.
+//
+// Returns:
+//   - error: non-nil if sap.ts is nil or the tuple space get/consume fails (e.g. no such tuple).
 func (sap *StorageAvailableProtocol) WithdrawStorageAvailable(peerID peer.ID) error {
 	if sap.ts == nil {
 		return errors.New("tuple space required")
@@ -113,16 +139,25 @@ func (sap *StorageAvailableProtocol) WithdrawStorageAvailable(peerID peer.ID) er
 	return nil
 }
 
-// FindStorageAvailableCandidates finds storage-available peers matching the desired distance category.
-// When PeerIDsToCheck is set (DHT tuple space): iterates over those peers and TsRead each
-// "storage-available:<peer_id>". When nil: uses pattern matching (P2P tuple space supports regex).
+// FindStorageAvailableCandidates finds storage-available peers matching desiredCategory. When
+// sap.PeerIDsToCheck is set (used for a DHT-backed tuple space, which has no pattern-matching
+// support), it iterates each returned peer ID, does a direct TsRead of
+// "storage-available:<peer_id>", and returns an error if zero candidates matched after
+// checking every peer. When sap.PeerIDsToCheck is nil (P2P tuple space, which supports
+// wildcard reads), it instead repeatedly TsReads the pattern "storage-available:*", stopping
+// after 2*maxCandidates iterations or once maxCandidates distinct matches are collected. In
+// both modes, offers are decoded from JSON, de-duplicated by peer ID, converted to a
+// PeerCandidate via offerToCandidate (which classifies distance using RTTMeasurer/RTTThresholds),
+// and only candidates whose DistanceCategory equals desiredCategory are kept.
 //
 // Parameters:
-//   - providerID: The provider node's peer ID (for RTT measurement)
-//   - desiredCategory: The distance category needed (Near/Midrange/Far-flung)
-//   - maxCandidates: Maximum number of candidates to return
+//   - providerID (peer.ID): the provider node's peer ID (passed through for RTT measurement context).
+//   - desiredCategory (DistanceCategory): the distance category needed (Near/Midrange/Far-flung).
+//   - maxCandidates (int): maximum number of candidates to return.
 //
-// Returns: List of PeerCandidate structs, sorted by selection score.
+// Returns:
+//   - []PeerCandidate: matching candidates (not explicitly sorted by this function).
+//   - error: non-nil if sap.ts is nil, or no matching offers are found in either mode.
 func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	providerID peer.ID,
 	desiredCategory DistanceCategory,
@@ -198,17 +233,20 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	return candidates, nil
 }
 
-// FindAndSelectReplicas finds storage-available candidates and selects the best ones
-// using the replica selection algorithm.
+// FindAndSelectReplicas finds storage-available candidates for desiredCategory (requesting up
+// to count*3 candidates via FindStorageAvailableCandidates to give the selection algorithm a
+// pool to choose from) and then narrows them to count using SelectReplicaCandidates and criteria.
 //
 // Parameters:
-//   - providerID: The provider node's peer ID
-//   - desiredCategory: The distance category needed
-//   - repVector: The replication vector for the key
-//   - criteria: Selection criteria with weights
-//   - count: Number of replicas needed
+//   - providerID (peer.ID): the provider node's peer ID.
+//   - desiredCategory (DistanceCategory): the distance category needed.
+//   - criteria (SelectionCriteria): selection weights used to rank candidates.
+//   - count (int): number of replicas needed.
 //
-// Returns: Selected peer candidates, sorted by score (best first).
+// Returns:
+//   - []PeerCandidate: selected peer candidates, sorted by score (best first) per
+//     SelectReplicaCandidates.
+//   - error: non-nil if candidate discovery fails or returns zero candidates.
 func (sap *StorageAvailableProtocol) FindAndSelectReplicas(
 	providerID peer.ID,
 	desiredCategory DistanceCategory,
@@ -230,8 +268,19 @@ func (sap *StorageAvailableProtocol) FindAndSelectReplicas(
 	return selected, nil
 }
 
-// offerToCandidate converts a StorageAvailableOffer to a PeerCandidate.
-// Measures RTT if RTTMeasurer is set, otherwise uses 0.
+// offerToCandidate converts a decoded StorageAvailableOffer into a PeerCandidate: it decodes
+// the offer's peer ID string, measures RTT via sap.RTTMeasurer if set (0/unknown if unset or
+// measurement fails), classifies the resulting distance category via ClassifyDistanceByRTT
+// using sap.RTTThresholds, and copies over stake/availability/reputation fields.
+//
+// Parameters:
+//   - offer (StorageAvailableOffer): the decoded offer to convert.
+//   - _ (peer.ID): unused (reserved for future RTT-measurement context relative to a requesting
+//     provider).
+//
+// Returns:
+//   - PeerCandidate: the resulting candidate with RTT and distance classification populated.
+//   - error: non-nil if offer.PeerID fails to decode as a peer.ID.
 func (sap *StorageAvailableProtocol) offerToCandidate(
 	offer StorageAvailableOffer,
 	_ peer.ID,
@@ -262,8 +311,20 @@ func (sap *StorageAvailableProtocol) offerToCandidate(
 	}, nil
 }
 
-// UpdateOffer updates an existing storage-available advertisement.
-// Useful when storage availability or reputation changes.
+// UpdateOffer replaces an existing storage-available advertisement with new values, useful
+// when storage availability or reputation changes. It first calls WithdrawStorageAvailable
+// (ignoring any error, e.g. if no prior offer existed) and then re-advertises via
+// AdvertiseStorageAvailable with the new parameters.
+//
+// Parameters:
+//   - peerID (peer.ID): the advertising peer's ID.
+//   - committedStake (uint64): the amount of stake committed (0 if not tokenized).
+//   - storageAvailability (uint64): available storage capacity, in bytes.
+//   - reputationScore (float64): the peer's reputation score (0.0 to 1.0).
+//   - availabilityDuration (time.Duration): how long the storage will remain available.
+//
+// Returns:
+//   - error: non-nil if the re-advertisement (AdvertiseStorageAvailable) fails.
 func (sap *StorageAvailableProtocol) UpdateOffer(
 	peerID peer.ID,
 	committedStake uint64,

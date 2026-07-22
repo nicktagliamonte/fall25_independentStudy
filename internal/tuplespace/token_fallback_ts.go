@@ -9,22 +9,49 @@ import (
 	"errors"
 )
 
+// tokenNamespace is the DHT/ValueStore key prefix under which token records
+// (content-addressed block location metadata) are stored, e.g. "/tokens/<hex key>".
 const tokenNamespace = "/tokens/"
 
 // TokenFallbackTupleSpace implements TupleSpace by checking /tokens/ first for hex keys, then delegating.
 var _ TupleSpace = (*TokenFallbackTupleSpace)(nil)
 
+// TokenFallbackTupleSpace wraps a ValueStore and a fallback TupleSpace so that
+// exact 64-character hex tuple names (vn-IPFS content keys) are served
+// directly from the /tokens/ namespace of the ValueStore, while every other
+// tuple name/pattern is delegated to the fallback TupleSpace (typically a
+// Router). This lets Gateway.Query resolve token lookups for exact keys
+// without requiring every TupleSpace implementation to understand tokens.
 type TokenFallbackTupleSpace struct {
-	store   ValueStore
+	// store is the token-specific backing store consulted for hex keys.
+	store ValueStore
+	// fallback is the TupleSpace used for non-hex-key operations and for
+	// TsGet (tokens are never consumed via TsGet).
 	fallback TupleSpace
 }
 
 // NewTokenFallbackTupleSpace creates a TupleSpace that reads tokens for exact hex keys, else falls back.
+//
+// Parameters:
+//   - store (ValueStore): backing store used for /tokens/ reads and writes on hex keys.
+//   - fallback (TupleSpace): tuple space used for all other operations.
+//
+// Returns:
+//   - *TokenFallbackTupleSpace: the constructed wrapper.
 func NewTokenFallbackTupleSpace(store ValueStore, fallback TupleSpace) *TokenFallbackTupleSpace {
 	return &TokenFallbackTupleSpace{store: store, fallback: fallback}
 }
 
 // TsPut writes to /tokens/ for hex keys (token storage), else delegates to fallback.
+//
+// Parameters:
+//   - tpname (string): tuple name; if a 64-character hex string, treated as a token key.
+//   - tpvalue ([]byte): tuple payload to store.
+//
+// Returns:
+//   - int: 0 on success when written via store; otherwise the fallback's status code,
+//     or TSPUT_ER if store/fallback is unavailable or the store write failed.
+//   - error: non-nil on failure (missing store/fallback, or underlying write error).
 func (t *TokenFallbackTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 	if t.store == nil {
 		return TSPUT_ER, errors.New("store required for TsPut")
@@ -42,6 +69,13 @@ func (t *TokenFallbackTupleSpace) TsPut(tpname string, tpvalue []byte) (int, err
 }
 
 // TsGet delegates to fallback; tokens are not consumed via TsGet.
+//
+// Parameters:
+//   - tpname (string): tuple name/pattern to consume.
+//
+// Returns:
+//   - []byte: the consumed tuple data, from the fallback TupleSpace.
+//   - error: non-nil if no fallback is configured or the fallback's TsGet failed.
 func (t *TokenFallbackTupleSpace) TsGet(tpname string) ([]byte, error) {
 	if t.fallback == nil {
 		return nil, errors.New("fallback required for TsGet")
@@ -50,6 +84,16 @@ func (t *TokenFallbackTupleSpace) TsGet(tpname string) ([]byte, error) {
 }
 
 // TsRead checks /tokens/ for hex keys (64 chars), else delegates to fallback.
+//
+// Parameters:
+//   - tpname (string): tuple name/pattern; if a 64-character hex string, the
+//     /tokens/ store is checked first.
+//
+// Returns:
+//   - []byte: the tuple data, from the token store if found for a hex key,
+//     otherwise from the fallback TupleSpace.
+//   - error: non-nil if store/fallback are unavailable, or if both the token
+//     lookup (when applicable) and the fallback lookup fail.
 func (t *TokenFallbackTupleSpace) TsRead(tpname string) ([]byte, error) {
 	if t.store == nil || t.fallback == nil {
 		return nil, errors.New("store and fallback required")
@@ -63,6 +107,15 @@ func (t *TokenFallbackTupleSpace) TsRead(tpname string) ([]byte, error) {
 	return t.fallback.TsRead(tpname)
 }
 
+// isHexKey reports whether s is a 64-character lowercase/uppercase hex string,
+// the shape of a vn-IPFS content key (SHA-256 hex digest), used to decide
+// whether a tuple name should be treated as a token lookup.
+//
+// Parameters:
+//   - s (string): candidate tuple name.
+//
+// Returns:
+//   - bool: true if s is exactly 64 hex characters.
 func isHexKey(s string) bool {
 	if len(s) != 64 {
 		return false

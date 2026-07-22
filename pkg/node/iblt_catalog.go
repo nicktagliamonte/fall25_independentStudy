@@ -16,16 +16,30 @@ import (
 )
 
 const (
-	catalogIBLTCellCount  = 256
-	catalogIBLTInterval   = 5 * time.Minute
-	catalogIBLTTimeout    = 30 * time.Second
+	// catalogIBLTCellCount is the number of cells in each periodic catalog
+	// IBLT snapshot; larger values tolerate bigger set differences before
+	// Peel fails to fully recover the difference.
+	catalogIBLTCellCount = 256
+	// catalogIBLTInterval is how often this node initiates an IBLT exchange
+	// with each connected neighbor.
+	catalogIBLTInterval = 5 * time.Minute
+	// catalogIBLTTimeout bounds a single IBLT exchange (stream open, write,
+	// read) with one neighbor.
+	catalogIBLTTimeout = 30 * time.Second
 )
 
-// catalogNeighborProvider returns connected peer IDs for IBLT exchange.
+// catalogNeighborProvider implements mysync.NeighborProvider by returning the
+// string-encoded peer IDs of all currently connected peers (excluding self).
 type catalogNeighborProvider struct {
-	h host.Host
+	h host.Host // libp2p host used to enumerate connected peers.
 }
 
+// Neighbors returns the string-encoded peer IDs of all peers this host is
+// currently connected to, excluding its own peer ID. It implements
+// mysync.NeighborProvider for the periodic IBLT exchange loop.
+//
+// Returns:
+//   - []string: string-encoded peer IDs of connected neighbors.
 func (p *catalogNeighborProvider) Neighbors() []string {
 	peers := p.h.Network().Peers()
 	out := make([]string, 0, len(peers))
@@ -37,11 +51,23 @@ func (p *catalogNeighborProvider) Neighbors() []string {
 	return out
 }
 
-// catalogIBLTStreamOpener opens a stream for IBLT exchange.
+// catalogIBLTStreamOpener implements mysync.IBLTStreamOpener by opening a
+// libp2p stream on the IBLT exchange protocol to a given peer.
 type catalogIBLTStreamOpener struct {
-	h host.Host
+	h host.Host // libp2p host used to dial the IBLT protocol stream.
 }
 
+// OpenIBLTStream opens a new libp2p stream to peerID on mysync.IBLTProtocolID,
+// decoding peerID from its string form first. It implements
+// mysync.IBLTStreamOpener for the periodic IBLT exchange loop.
+//
+// Parameters:
+//   - ctx (context.Context): bounds the stream-open attempt.
+//   - peerID (string): string-encoded libp2p peer ID to connect to.
+//
+// Returns:
+//   - mysync.IBLTStream: the opened bidirectional stream.
+//   - error: non-nil if peerID cannot be decoded or the stream cannot be opened.
 func (o *catalogIBLTStreamOpener) OpenIBLTStream(ctx context.Context, peerID string) (mysync.IBLTStream, error) {
 	pid, err := peer.Decode(peerID)
 	if err != nil {
@@ -50,13 +76,28 @@ func (o *catalogIBLTStreamOpener) OpenIBLTStream(ctx context.Context, peerID str
 	return o.h.NewStream(ctx, pid, mysync.IBLTProtocolID)
 }
 
-// catalogFetchRequester opens a fetch stream, requests CIDs for keyHashes, fetches blocks.
+// catalogFetchRequester implements mysync.FetchRequester: given key hashes a
+// peer has that we're missing (per IBLT reconciliation), it connects to the
+// peer, asks it to resolve those key hashes to CIDs over the IBLT fetch
+// protocol, and then fetches each returned block via the block service so it
+// lands in the local store and provider records.
 type catalogFetchRequester struct {
-	h     host.Host
-	bsvc  *bserv.BlockService
-	stack *mystore.Stack
+	h     host.Host           // libp2p host used to dial the peer and open the fetch stream.
+	bsvc  *bserv.BlockService // block service used to fetch resolved blocks by CID.
+	stack *mystore.Stack      // storage stack whose ProviderRecords are updated for fetched CIDs.
 }
 
+// RequestFetch resolves keyHashes to CIDs via peerID's IBLT fetch protocol
+// responder, then fetches each resolved block through r.bsvc so it is stored
+// locally, recording each fetched CID in r.stack.ProviderRecords. All errors
+// are handled by returning early; this is a best-effort background repair
+// path and has no return value to report failure through. It implements
+// mysync.FetchRequester.
+//
+// Parameters:
+//   - ctx (context.Context): parent context; a 60s timeout is derived from it for the whole operation.
+//   - peerID (string): string-encoded peer ID of the neighbor that reported these key hashes as Negative (peer has, we don't).
+//   - keyHashes ([]uint64): IBLT key hashes to resolve to CIDs and fetch.
 func (r *catalogFetchRequester) RequestFetch(ctx context.Context, peerID string, keyHashes []uint64) {
 	if len(keyHashes) == 0 || r.bsvc == nil || r.stack == nil {
 		return
@@ -96,16 +137,50 @@ func (r *catalogFetchRequester) RequestFetch(ctx context.Context, peerID string,
 	}
 }
 
-// CatalogIBLTOption customizes InstallCatalogIBLT behavior (e.g. for tests).
+// CatalogIBLTOption customizes InstallCatalogIBLT's mysync.ExchangerConfig
+// before periodic exchange starts (e.g. for tests that need a shorter
+// interval).
 type CatalogIBLTOption func(*mysync.ExchangerConfig)
 
-// CatalogIBLTInterval overrides the exchange interval.
+// CatalogIBLTInterval returns a CatalogIBLTOption that overrides the periodic
+// exchange interval (default catalogIBLTInterval) in the config passed to
+// InstallCatalogIBLT.
+//
+// Parameters:
+//   - d (time.Duration): the interval to use between IBLT exchange rounds.
+//
+// Returns:
+//   - CatalogIBLTOption: an option that sets ExchangerConfig.Interval to d.
 func CatalogIBLTInterval(d time.Duration) CatalogIBLTOption {
 	return func(c *mysync.ExchangerConfig) { c.Interval = d }
 }
 
-// InstallCatalogIBLT installs IBLT and fetch stream handlers and starts periodic exchange.
-// Stops when ctx is done. Returns a stop function to cancel the exchange loop.
+// InstallCatalogIBLT wires this node into the IBLT-based catalog
+// reconciliation protocol (internal/sync). It registers two libp2p stream
+// handlers:
+//   - mysync.IBLTProtocolID: on an inbound stream, reads the remote's IBLT,
+//     builds a local IBLT snapshot from stack.ProviderRecords, and writes it
+//     back (the passive side of a pairwise exchange).
+//   - mysync.IBLTFetchProtocolID: on an inbound stream, reads requested key
+//     hashes, resolves them against the local provider-record snapshot, and
+//     writes back the matching CIDs (the passive side of key-hash-to-CID
+//     resolution).
+//
+// It then starts mysync.StartPeriodicExchange, which actively initiates IBLT
+// exchanges with connected neighbors (catalogNeighborProvider) on
+// catalogIBLTInterval, using catalogIBLTStreamOpener to dial and
+// catalogFetchRequester to fetch blocks the exchange reveals this node is
+// missing. If stack or stack.ProviderRecords is nil, this is a no-op and
+// returns a no-op stop function.
+//
+// Parameters:
+//   - ctx (context.Context): governs the periodic exchange loop; canceling it also stops the loop.
+//   - h (host.Host): libp2p host on which stream handlers are registered and exchanges are dialed.
+//   - stack (*mystore.Stack): storage stack supplying the provider-record catalog and block service.
+//   - opts (...CatalogIBLTOption): optional overrides applied to the exchange config (e.g. CatalogIBLTInterval).
+//
+// Returns:
+//   - func(): a stop function that cancels the periodic exchange loop and waits for it to exit.
 func InstallCatalogIBLT(ctx context.Context, h host.Host, stack *mystore.Stack, opts ...CatalogIBLTOption) func() {
 	if stack == nil || stack.ProviderRecords == nil {
 		return func() {}
