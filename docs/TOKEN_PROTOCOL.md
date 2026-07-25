@@ -57,6 +57,8 @@ When a block is stored locally:
 3. If token exists: add current peer to Locations (deduplicated)
 4. If token absent: create token with current peer as sole location
 
+The initial `GetToken` read retries up to 5 times with exponential backoff (100ms · 2^attempt) before giving up, purely to tolerate DHT propagation races in large clusters — a token just written by another peer may not be immediately visible. A "token not found" result is not retried (it short-circuits to the create-new-token path); only other transient errors are retried.
+
 ### Delete (SyncTokenOnDelete)
 
 When a block is deleted locally:
@@ -138,3 +140,5 @@ After GetToken, the client fetches block data directly from providers.
 ## Gateway Integration
 
 When Gateway is configured, TokenStore routes `/tokens/` keys through the tuple space. Query by key pattern returns token JSON (Locations); caller performs DirectFetch. Gateway never fetches or transfers block data.
+
+**`Stack.TokenStore` takes priority over the DHT.** Every token operation on `Stack` — `SyncTokenOnPut`, `SyncTokenOnDelete`/`SyncTokenOnDeleteByKey`, and replication's token updates — checks `Stack.TokenStore` first and only falls back to `Stack.DHT` if `TokenStore` is nil. This is how the Gateway path (routing tokens through `internal/tuplespace` instead of the DHT) is wired in: setting `Stack.TokenStore` to the Gateway's `TokenStore()` transparently redirects all token sync through the tuple space without changing any Put/Delete/replication call sites.

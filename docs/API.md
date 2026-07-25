@@ -225,19 +225,70 @@ Returns disk usage for the node's persistent blockstore directory (when started 
 
 ---
 
+## GET /replication/status
+
+Reports how many replicas of a key's token are currently known, broken down by RTT distance class.
+
+**Query params:**
+- `key` (required): 64 hex chars.
+- `simulate_distances` (`1` to enable): replaces zero-RTT locations with deterministic simulated values (sorted by provider ID string) so tests can exercise all three distance classes even with real RTT=0 locations.
+
+**Response:** `200 OK`
+```json
+{
+  "key": "<64 hex>",
+  "replica_count": 3,
+  "providers": ["<peer.ID>", "..."],
+  "timestamp": 1234567890000000000,
+  "near_count": 1,
+  "midrange_count": 1,
+  "farflung_count": 1
+}
+```
+
+If the token cannot be found (or the key is invalid), still responds `200 OK` with `replica_count: 0` and diagnostic fields:
+```json
+{ "key": "<64 hex>", "replica_count": 0, "providers": [], "error_reason": "token_not_found", "error_detail": "..." }
+```
+
+**Errors:** `400` missing/invalid key; `503` no token store (DHT/Gateway) available.
+
+---
+
+## GET /has_key
+
+Returns whether this node holds the given key locally. Intended for polling replica placement by querying each node individually.
+
+**Query params:** `key` (required, 64 hex chars).
+
+**Response:** `200 OK`
+```json
+{ "key": "<64 hex>", "has_key": true }
+```
+
+**Errors:** `400` missing/invalid key.
+
+---
+
 ## Other Endpoints
 
-| Endpoint       | Method | Purpose                    |
-|----------------|--------|----------------------------|
-| /health        | GET    | Liveness (returns "ok")    |
-| /metrics       | GET    | Node metrics (JSON)        |
-| /storage/stats | GET    | Disk bytes for blockstore  |
-| /restore       | POST   | Restore blocks by CID list |
-| /restore/status| GET    | Restore job status         |
-| /shutdown      | POST   | Graceful node stop         |
-| /peers         | GET    | Dial candidates            |
-| /connect       | POST   | Connect to peer            |
-| /neighbors     | GET    | DHT neighbors              |
-| /id            | GET    | Peer ID                    |
-| /events        | GET    | Event stream (SSE)         |
-| /lookup        | GET/POST | Token lookup only (hops + ms) |
+| Endpoint            | Method   | Purpose                                                        |
+|---------------------|----------|------------------------------------------------------------------|
+| /health             | GET      | Liveness (returns "ok")                                        |
+| /metrics            | GET      | Node metrics (JSON)                                            |
+| /storage/stats      | GET      | Disk bytes for blockstore                                      |
+| /replication/status | GET      | Replica count and near/midrange/farflung breakdown for a key   |
+| /has_key            | GET      | Whether this node holds a key locally                           |
+| /restore            | POST     | Restore blocks by CID list                                     |
+| /restore/status     | GET      | Restore job status                                              |
+| /shutdown           | POST     | Graceful node stop                                              |
+| /peers              | GET      | Dial candidates                                                 |
+| /connect            | POST     | Connect to peer                                                 |
+| /neighbors          | GET      | Live libp2p connections (**not** a DHT routing-table view — see note below) |
+| /id                 | GET      | Peer ID                                                         |
+| /events             | GET      | Most recent append-only-log events, newest-first (single JSON array response — **not** an SSE stream; see note below) |
+| /lookup             | GET/POST | Token lookup only (hops + ms)                                  |
+
+**Note on `/neighbors`:** returns `h.Network().Peers()` — the peers this host currently has an open libp2p connection to — deduplicated, each with known multiaddrs. This is a live connection list, not a walk of the DHT routing table.
+
+**Note on `/events`:** despite the name, this is a single JSON-array response (`Content-Type: application/json`), not a Server-Sent-Events stream — there is no `text/event-stream` content type or chunked/keep-alive behavior. Accepts an optional `limit` query parameter (default 50, max 1000) and returns entries `{"cid", "type", "ts", "peer", "prev"}` walked backward from the log HEAD.

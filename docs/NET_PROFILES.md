@@ -126,6 +126,16 @@ Profiles are automatically cleaned up on harness exit. If cleanup fails:
 sudo tc qdisc del dev lo root
 ```
 
+## Go-level partition detection (separate from simulation)
+
+Everything above is shell/Makefile-level network *simulation* (`tc netem`). Separately, `internal/net/partition.go` implements Go-level partition *detection* that runs inside the node process itself, independent of whether a simulated profile is active:
+
+- **`PeerConnectivityMonitor`**: samples the libp2p host's connected-peer count on an interval (default 10s) and fires a `PartitionEvent` (kind `PartitionEventConnectivity`) when the count drops by at least a configured percentage from a floor of at least `minPeers`. A subsequent rise is treated as recovery.
+- **`DHTNeighborMonitor`**: same idea, but samples DHT routing-table k-bucket size (via `KBucketLastSeenTracker`) instead of raw connection count, firing `PartitionEventDHTNeighbors`.
+- Both report through the same `OnPartitionEvent` callback type, carrying `{PrevCount, NowCount, Kind}`, so upper layers can react to partition detection uniformly regardless of which signal triggered it.
+
+This is a live signal a running node can act on (e.g. to trigger more aggressive dial maintenance or repair); it is not affected by, and does not require, the `tc netem` simulation described above — you can exercise it against real network conditions in a multi-host deployment, or use `NET_PROFILE=partition` to provoke it in a local test. See `docs/HANDSHAKE_PROTOCOL.md` for the related (but distinct) connection-admission layer.
+
 ## Future Improvements
 
 - Per-node network namespaces with automatic setup

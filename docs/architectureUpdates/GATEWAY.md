@@ -39,6 +39,36 @@ optimizer breaks down queries involving multiple partitions and routes each part
    - TupleSpace: for TsRead/TsPut. When tuplespace.Router, routes by pattern type.
    - TokenStore(): returns routing.ValueStore delegating Put/Get to TupleSpace for /tokens/ keys.
 
+2b. TupleSpace Implementations (internal/tuplespace)
+    -------------------------------------------------
+   - DHTTupleSpace (dht_ts.go): exact-match tuple names, backed by the Kademlia DHT.
+     No permission checks. O(log N). "Consumption" (TsGet) is emulated via tombstone
+     markers since the DHT has no native delete; cleanup relies on the 48h libp2p TTL.
+   - P2PTupleSpace (p2p_ts.go): complex regex/wildcard patterns and admin/coordination
+     ops (KYC, application management), speaking the legacy TSH wire protocol over TCP.
+     Permissioned via an optional PermissionChecker (permission.go); O(log_20 k)-hop
+     routing, O(N) messaging.
+   - Router (router.go): the concrete TupleSpace most Gateways use. Dispatches by
+     pattern shape: exact name -> DHTTupleSpace; simple wildcard (prefix*, *substring*)
+     -> resolved via internal/pht to candidate names, then fetched from DHTTupleSpace;
+     complex regex -> P2PTupleSpace. Falls back to P2PTupleSpace for wildcards if no
+     pht.ValueStore was supplied at construction.
+   - TokenFallbackTupleSpace (token_fallback_ts.go): wraps another TupleSpace (typically
+     a Router). 64-hex-char tuple names are read/written directly under /tokens/ on a
+     ValueStore; everything else delegates to the wrapped TupleSpace. This is the piece
+     that lets exact-key Gateway.Query calls resolve to token JSON.
+   - PermissionChecker (permission.go): pluggable auth hook consulted by P2PTupleSpace;
+     nil means allow-all.
+
+2c. PHT (internal/pht) - Prefix Hash Tree
+    --------------------------------------
+   - Backs Router's resolution of simple-wildcard (QueryPrefix) patterns to concrete
+     tuple names before they're fetched from the DHT tuple space.
+   - tree.go: PHT node/tree structure. query.go: ParseQuery/ExecutePrefixQuery (tree
+     descent)/ExecuteSubstringQuery (Bloom-pruned substring search). bloom.go: Bloom
+     filters that prune substring-query candidates before DHT lookups. dht.go: DHT-backed
+     storage of PHT tree nodes.
+
 3. Query Types (QueryOptimizer)
    ----------------------------
    QueryExact: No wildcards. Route -> DHT token lookup.

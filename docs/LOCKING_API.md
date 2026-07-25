@@ -112,6 +112,8 @@ locked, holder := mgr.IsLocked(key)
 
 Returns `(false, "")` if unlocked or expired.
 
+**Note:** unlike every other `KeyLockManager` method, `IsLocked` takes no `context.Context` parameter — it uses `context.Background()` internally, so the read cannot be cancelled or bounded by a caller-supplied timeout/deadline.
+
 ---
 
 ## Errors
@@ -126,6 +128,8 @@ Returns `(false, "")` if unlocked or expired.
 ---
 
 ## Integration with Put/Delete
+
+Locking is **opt-in**: `PutBlock`/`DeleteBlock` only acquire locks when both `Stack.KeyLockManager` and `Stack.Host` are non-nil. If either is unset, Put/Delete proceed without any locking at all (no mutual exclusion), which is the default for single-writer or test setups that never construct a `KeyLockManager`.
 
 When `Stack.KeyLockManager` and `Stack.Host` are set:
 
