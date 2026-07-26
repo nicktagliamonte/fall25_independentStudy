@@ -32,6 +32,22 @@ import (
 
 // no persistent server struct is required
 
+// writeError writes status to w's header and msg as the plain-text response
+// body, matching the ad-hoc `w.WriteHeader(status); w.Write([]byte(msg))`
+// pattern used throughout this package's handlers (as distinct from the JSON
+// error bodies some endpoints, like /replication/status, write directly).
+//
+// Parameters:
+//   - w (http.ResponseWriter): the response writer.
+//   - status (int): the HTTP status code to write.
+//   - msg (string): the plain-text error message body.
+//
+// Returns: (none — writes directly to w)
+func writeError(w http.ResponseWriter, status int, msg string) {
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(msg))
+}
+
 // getRemoteOnlyQuery reports whether the client requested a network path for /get (skip local chunk
 // index, local payload resolution, and gateway shortcut so stack.GetBlock runs). This is largely
 // used in testing scripts to measure the network path.
@@ -155,12 +171,15 @@ func simulatedRTTByIndex(index int) time.Duration {
 
 // fetchBlockFromToken fetches block data from token locations in parallel.
 // Returns first successful result or error if all fail. Every location is
-// raced concurrently and the function waits for all of them to finish (even
-// after a winner is found) before returning, so it does not race-cancel the
-// slower attempts.
+// raced concurrently; as soon as one DirectFetch succeeds, a shared
+// cancellation context is canceled so the remaining in-flight attempts can
+// stop working, but the function still waits (via wg.Wait) for every
+// goroutine to observe that cancellation and return before it returns itself
+// — the return value and error semantics are unchanged from before, only how
+// quickly the losing goroutines stop working.
 //
 // Parameters:
-//   - ctx (context.Context): context passed to each DirectFetch attempt.
+//   - ctx (context.Context): base context; a derived, cancelable context is passed to each DirectFetch attempt instead.
 //   - stack (*mystore.Stack): storage stack providing DirectFetch and the optional MessageSink for message-count metrics.
 //   - token (mystore.Token): the token whose Locations are attempted in parallel.
 //   - key (mystore.Key): the content key being fetched.
@@ -172,6 +191,8 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 	if stack == nil || len(token.Locations) == 0 {
 		return nil, fmt.Errorf("stack and token locations required")
 	}
+	fanCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var result []byte
@@ -182,7 +203,7 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			data, fetchErr := mystore.DirectFetch(ctx, stack, loc, key)
+			data, fetchErr := mystore.DirectFetch(fanCtx, stack, loc, key)
 			if fetchErr == nil && stack.MessageSink != nil {
 				stack.MessageSink.AddGetMessagesOut(1)
 				stack.MessageSink.AddGetMessagesIn(1)
@@ -197,6 +218,9 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 			if !success && data != nil {
 				result = data
 				success = true
+				// Cancel the fan-out so the remaining, slower attempts stop
+				// working; wg.Wait below still waits for them to unwind.
+				cancel()
 			}
 			mu.Unlock()
 		}()
@@ -206,6 +230,112 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 		return nil, fmt.Errorf("direct fetch failed from all %d locations: %v", len(token.Locations), fetchErrors)
 	}
 	return result, nil
+}
+
+// restoreStats tracks the progress of one async /restore job: how many
+// blocks succeeded/failed, total bytes restored, and whether the job has
+// finished. Instances are shared via the Start's jobs map and guarded by its
+// jobsMu, and are also passed directly to runRestoreJob as the shared
+// progress counters for one job's worker pool.
+type restoreStats struct {
+	// OK is the count of blocks restored successfully so far.
+	OK int `json:"ok"`
+	// Failed is the count of blocks that failed to restore (decode or fetch error).
+	Failed int `json:"failed"`
+	// Bytes is the total size of successfully restored blocks so far.
+	Bytes int64 `json:"bytes"`
+	// Done is true once all workers have finished processing the job's CID list.
+	Done bool `json:"done"`
+}
+
+// runRestoreJob fetches each CID in cids (via mystore.GetBlockByCID against
+// stack.BlockSvc) using a worker pool of concurrency goroutines, respecting
+// byteBudget as a soft cap (workers stop pulling new tasks once accumulated
+// bytes meet/exceed the budget, checked between tasks rather than
+// preemptively) and timeout per-block fetch (each fetch gets its own
+// context.WithTimeout(context.Background(), timeout), independent of any
+// caller context). Progress is recorded into stats — OK/Failed/Bytes are
+// incremented as tasks complete, and Done is set true once every worker has
+// exited — with all reads/writes to stats guarded by statsMu, which the
+// caller must also hold when reading stats concurrently (e.g. from an
+// HTTP status-polling endpoint). Per-item AddRestoresOK/AddRestoresFailed/
+// AddRestoreBytes counters are updated on metrics for fetch outcomes (CID
+// decode failures increment stats.Failed but are not reflected in metrics,
+// matching the original inline behavior). This function
+// blocks until every worker has finished; callers that want async behavior
+// (as the /restore HTTP handler does) should invoke it from a goroutine.
+//
+// Parameters:
+//   - stack (*mystore.Stack): storage stack providing BlockSvc for GetBlockByCID.
+//   - metrics (*NodeMetrics): per-item fetch outcome counters; like the rest of this package, a nil metrics will panic on the first recorded outcome (see Start's metrics parameter doc).
+//   - stats (*restoreStats): shared progress counters for this job, mutated in place.
+//   - statsMu (*sync.Mutex): mutex guarding stats; also used by the caller for concurrent reads.
+//   - cids ([]string): the CID strings to fetch/restore, in order.
+//   - concurrency (int): number of parallel worker goroutines; values <= 0 are treated as 1.
+//   - timeout (time.Duration): per-item fetch timeout.
+//   - byteBudget (int64): soft cap on total restored bytes; <= 0 means unbounded.
+//
+// Returns: (none — mutates stats in place; blocks until the job completes)
+func runRestoreJob(stack *mystore.Stack, metrics *NodeMetrics, stats *restoreStats, statsMu *sync.Mutex, cids []string, concurrency int, timeout time.Duration, byteBudget int64) {
+	if concurrency <= 0 {
+		concurrency = 1
+	}
+	type task struct{ c string }
+	todo := make(chan task)
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for t := range todo {
+				// budget check
+				statsMu.Lock()
+				curBytes := stats.Bytes
+				statsMu.Unlock()
+				if byteBudget > 0 && curBytes >= byteBudget {
+					return
+				}
+				c, err := cid.Decode(t.c)
+				if err != nil {
+					statsMu.Lock()
+					stats.Failed++
+					statsMu.Unlock()
+					continue
+				}
+				ctx2, cancel2 := context.WithTimeout(context.Background(), timeout)
+				b, err := mystore.GetBlockByCID(ctx2, stack.BlockSvc, c)
+				cancel2()
+				statsMu.Lock()
+				if err != nil {
+					stats.Failed++
+					metrics.AddRestoresFailed(1)
+				} else {
+					stats.OK++
+					sz := int64(len(b))
+					stats.Bytes += sz
+					metrics.AddRestoresOK(1)
+					metrics.AddRestoreBytes(sz)
+				}
+				statsMu.Unlock()
+			}
+		}()
+	}
+	go func() {
+		defer close(todo)
+		for _, s := range cids {
+			todo <- task{c: s}
+			statsMu.Lock()
+			over := byteBudget > 0 && stats.Bytes >= byteBudget
+			statsMu.Unlock()
+			if over {
+				return
+			}
+		}
+	}()
+	wg.Wait()
+	statsMu.Lock()
+	stats.Done = true
+	statsMu.Unlock()
 }
 
 // Start launches the control server and returns the bound address and a shutdown func.
@@ -256,21 +386,10 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_ = mystore.HandleDirectFetchStream(stream, stack)
 		})
 	}
-	// restore job manager (in-memory)
+	// restore job manager (in-memory); restoreStats and runRestoreJob (the
+	// worker pool that populates it) are defined at package scope above so
+	// they're usable/testable independent of this HTTP layer.
 	//
-	// restoreStats tracks the progress of one async /restore job: how many
-	// blocks succeeded/failed, total bytes restored, and whether the job has
-	// finished. Instances are shared via the jobs map and guarded by jobsMu.
-	type restoreStats struct {
-		// OK is the count of blocks restored successfully so far.
-		OK int `json:"ok"`
-		// Failed is the count of blocks that failed to restore (decode or fetch error).
-		Failed int `json:"failed"`
-		// Bytes is the total size of successfully restored blocks so far.
-		Bytes int64 `json:"bytes"`
-		// Done is true once all workers have finished processing the job's CID list.
-		Done bool `json:"done"`
-	}
 	// jobsMu guards jobs against concurrent access from the HTTP handlers and
 	// the background restore worker goroutines.
 	var jobsMu sync.Mutex
@@ -373,14 +492,12 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		keyHex := r.URL.Query().Get("key")
 		if keyHex == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("missing key (query param)"))
+			writeError(w, http.StatusBadRequest, "missing key (query param)")
 			return
 		}
 		key, err := mystore.ParseKey(keyHex)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid key: %v", err))
 			return
 		}
 		var tokenStore routing.ValueStore
@@ -391,8 +508,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			}
 		}
 		if tokenStore == nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("token store not available"))
+			writeError(w, http.StatusServiceUnavailable, "token store not available")
 			return
 		}
 		ctxGet, cancel := context.WithTimeout(r.Context(), 10*time.Second)
@@ -477,21 +593,18 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 				Key string `json:"key"`
 			}
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(err.Error()))
+				writeError(w, http.StatusBadRequest, err.Error())
 				return
 			}
 			keyHex = req.Key
 		}
 		if keyHex == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("missing key"))
+			writeError(w, http.StatusBadRequest, "missing key")
 			return
 		}
 		key, err := mystore.ParseKey(keyHex)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid key: %v", err))
 			return
 		}
 		var tokenStore routing.ValueStore
@@ -502,8 +615,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			}
 		}
 		if tokenStore == nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte("token store not available"))
+			writeError(w, http.StatusServiceUnavailable, "token store not available")
 			return
 		}
 		ctxLookup, cancel := context.WithTimeout(r.Context(), 15*time.Second)
@@ -531,8 +643,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			log.Printf("control /lookup: hops=%d latency_ms=%d token_err=%v", int(hops), latencyMs, err)
 		}
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -559,14 +670,12 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		keyHex := r.URL.Query().Get("key")
 		if keyHex == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("missing key (query param)"))
+			writeError(w, http.StatusBadRequest, "missing key (query param)")
 			return
 		}
 		key, err := mystore.ParseKey(keyHex)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid key: %v", err))
 			return
 		}
 		hasKey := false
@@ -615,13 +724,11 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		case http.MethodPost:
 			var req restoreReq
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(err.Error()))
+				writeError(w, http.StatusBadRequest, err.Error())
 				return
 			}
 			if len(req.CIDs) == 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("missing cids"))
+				writeError(w, http.StatusBadRequest, "missing cids")
 				return
 			}
 			concurrency := req.Concurrency
@@ -636,81 +743,14 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			}
 			// create job
 			jobID := fmt.Sprintf("r-%d", time.Now().UnixNano())
+			stats := &restoreStats{}
 			jobsMu.Lock()
-			jobs[jobID] = &restoreStats{}
+			jobs[jobID] = stats
 			jobsMu.Unlock()
 			metrics.IncRestoresStarted()
-			// run async
-			go func(job string, cids []string, conc int, timeout time.Duration, budget int64) {
-				// execute similar to Service.RestoreFromManifest using local stack
-				type task struct{ c string }
-				todo := make(chan task)
-				var wg sync.WaitGroup
-				var mu sync.Mutex
-				for i := 0; i < conc; i++ {
-					wg.Add(1)
-					go func() {
-						defer wg.Done()
-						for t := range todo {
-							// budget check
-							jobsMu.Lock()
-							st0 := jobs[job]
-							curBytes := st0.Bytes
-							jobsMu.Unlock()
-							if budget > 0 && curBytes >= budget {
-								return
-							}
-							c, err := cid.Decode(t.c)
-							if err != nil {
-								mu.Lock()
-								jobsMu.Lock()
-								st1 := jobs[job]
-								st1.Failed++
-								jobsMu.Unlock()
-								mu.Unlock()
-								continue
-							}
-							ctx2, cancel2 := context.WithTimeout(context.Background(), timeout)
-							b, err := mystore.GetBlockByCID(ctx2, stack.BlockSvc, c)
-							cancel2()
-							mu.Lock()
-							jobsMu.Lock()
-							st2 := jobs[job]
-							if err != nil {
-								st2.Failed++
-								metrics.AddRestoresFailed(1)
-							} else {
-								st2.OK++
-								sz := int64(len(b))
-								st2.Bytes += sz
-								metrics.AddRestoresOK(1)
-								metrics.AddRestoreBytes(sz)
-							}
-							jobsMu.Unlock()
-							mu.Unlock()
-						}
-					}()
-				}
-				go func() {
-					defer close(todo)
-					for _, s := range cids {
-						todo <- task{c: s}
-						jobsMu.Lock()
-						st3 := jobs[job]
-						over := budget > 0 && st3.Bytes >= budget
-						jobsMu.Unlock()
-						if over {
-							return
-						}
-					}
-				}()
-				wg.Wait()
-				jobsMu.Lock()
-				if st, ok := jobs[job]; ok {
-					st.Done = true
-				}
-				jobsMu.Unlock()
-			}(jobID, req.CIDs, concurrency, to, req.ByteBudget)
+			// run the worker pool async; jobsMu doubles as the stats mutex here
+			// since /restore/status reads job stats through the same map/lock.
+			go runRestoreJob(stack, metrics, stats, &jobsMu, req.CIDs, concurrency, to, req.ByteBudget)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusAccepted)
 			_ = json.NewEncoder(w).Encode(map[string]string{"job": jobID})
@@ -735,16 +775,14 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		id := r.URL.Query().Get("id")
 		if id == "" {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("missing id"))
+			writeError(w, http.StatusBadRequest, "missing id")
 			return
 		}
 		jobsMu.Lock()
 		js, ok := jobs[id]
 		jobsMu.Unlock()
 		if !ok {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte("unknown job"))
+			writeError(w, http.StatusNotFound, "unknown job")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -867,8 +905,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		entries, err := mystore.ListRecentFromHead(r.Context(), stack.Datastore, stack.BlockSvc, limit)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		type eventOut struct {
@@ -937,20 +974,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			limited := io.LimitReader(r.Body, maxPutBodyBytes+1)
 			blockData, err = io.ReadAll(limited)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(err.Error()))
+				writeError(w, http.StatusBadRequest, err.Error())
 				return
 			}
 			if len(blockData) > maxPutBodyBytes {
-				w.WriteHeader(http.StatusRequestEntityTooLarge)
-				_, _ = w.Write([]byte("body too large"))
+				writeError(w, http.StatusRequestEntityTooLarge, "body too large")
 				return
 			}
 		} else {
 			var req PutRequest
 			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(err.Error()))
+				writeError(w, http.StatusBadRequest, err.Error())
 				return
 			}
 			blockData = []byte(req.Data)
@@ -965,8 +999,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			for i := range chunks {
 				chunkKey, chunkCID, putErr := mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, chunks[i], nil)
 				if putErr != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					_, _ = w.Write([]byte(putErr.Error()))
+					writeError(w, http.StatusInternalServerError, putErr.Error())
 					return
 				}
 				if !c.Defined() {
@@ -981,8 +1014,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 				ChunkKeys:  chunkKeys,
 			}
 			if idxErr := mystore.StoreChunkIndex(r.Context(), stack.Datastore, key, idx); idxErr != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(idxErr.Error()))
+				writeError(w, http.StatusInternalServerError, idxErr.Error())
 				return
 			}
 		} else {
@@ -990,8 +1022,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		t1 := time.Now()
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		if h != nil {
@@ -1038,20 +1069,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		var req DeleteRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		c, err := cid.Decode(req.CID)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		err = stack.DeleteBlock(r.Context(), c)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		// Clear explicit provider hint (if dynamic router is used)
@@ -1123,20 +1151,17 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		var req ConnectRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		maddr, err := multiaddr.NewMultiaddr(req.Addr)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		pid, err := peer.Decode(req.Peer)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		info := peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{maddr}}
@@ -1154,8 +1179,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		ctxDial, cancel := context.WithTimeout(r.Context(), d)
 		defer cancel()
 		if err := h.Connect(ctxDial, info); err != nil {
-			w.WriteHeader(http.StatusBadGateway)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadGateway, err.Error())
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -1201,8 +1225,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		var req GetRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -1213,16 +1236,14 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			var err error
 			key, err = mystore.ParseKey(req.Key)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(fmt.Sprintf("invalid key: %v", err)))
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid key: %v", err))
 				return
 			}
 		} else if req.CID != "" {
 			// CID provided (backward compatibility) - convert to Key via routing table
 			c, err := cid.Decode(req.CID)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte(fmt.Sprintf("invalid identifier: %v", err)))
+				writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid identifier: %v", err))
 				return
 			}
 			// Get Key from routing table entry (if available)
@@ -1231,18 +1252,15 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 				if entry != nil && !entry.Key.IsZero() {
 					key = entry.Key
 				} else {
-					w.WriteHeader(http.StatusBadRequest)
-					_, _ = w.Write([]byte("key not found in routing table"))
+					writeError(w, http.StatusBadRequest, "key not found in routing table")
 					return
 				}
 			} else {
-				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("routing table not available"))
+				writeError(w, http.StatusBadRequest, "routing table not available")
 				return
 			}
 		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("key or cid required"))
+			writeError(w, http.StatusBadRequest, "key or cid required")
 			return
 		}
 
@@ -1323,8 +1341,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			}
 		}
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusNotFound, err.Error())
 			return
 		}
 
@@ -1440,8 +1457,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		startAfter := r.URL.Query().Get("cursor")
 		cids, err := mystore.ListIndexedCIDs(r.Context(), stack.Datastore, limit, startAfter)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
+			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

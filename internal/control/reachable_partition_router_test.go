@@ -17,7 +17,7 @@ type staticRouter struct {
 	peers []peer.AddrInfo
 }
 
-func (s *staticRouter) Provide(ctx context.Context, c cid.Cid, b bool) error   { return nil }
+func (s *staticRouter) Provide(ctx context.Context, c cid.Cid, b bool) error  { return nil }
 func (s *staticRouter) ProvideMany(ctx context.Context, keys []cid.Cid) error { return nil }
 func (s *staticRouter) FindProvidersAsync(ctx context.Context, c cid.Cid, count int) <-chan peer.AddrInfo {
 	out := make(chan peer.AddrInfo, len(s.peers)+1)

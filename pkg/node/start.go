@@ -7,32 +7,20 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"sync"
 	"time"
 
-	stded25519 "crypto/ed25519"
-	"crypto/sha256"
-
-	bstore "github.com/ipfs/boxo/blockstore"
-	ds "github.com/ipfs/go-datastore"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
-	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
-	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
 
 // service is the concrete Service implementation returned by Start. It holds
@@ -104,365 +92,96 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	}
 
 	ctx, cancel := context.WithCancel(parent)
-	metrics := &ctrl.NodeMetrics{}
+	s := &service{cancel: cancel}
 
-	// Host
-	var h host.Host
-	if opts.KeyPath != "" {
-		priv, err := myhost.LoadOrCreatePrivateKey(opts.KeyPath)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		hh, err := myhost.NewHostWithPriv(ctx, opts.ListenMultiaddrs, priv)
-		if err != nil {
-			cancel()
-			return nil, err
-		}
-		h = hh
-	} else {
-		if opts.EphemeralSeed != "" {
-			sum := sha256.Sum256([]byte(opts.EphemeralSeed))
-			key := stded25519.NewKeyFromSeed(sum[:])
-			priv, err := crypto.UnmarshalEd25519PrivateKey([]byte(key))
-			if err != nil {
-				cancel()
-				return nil, err
+	subs, err := buildNodeSubsystems(ctx, nodeSubsystemsConfig{
+		KeyPath:               opts.KeyPath,
+		EphemeralSeed:         opts.EphemeralSeed,
+		ListenMultiaddrs:      opts.ListenMultiaddrs,
+		StorePath:             opts.StorePath,
+		BootstrapPeers:        opts.BootstrapPeers,
+		DHTClientMode:         opts.DHTClientMode,
+		MinOutbound:           opts.MinOutbound,
+		ClusterNodeCount:      opts.ClusterNodeCount,
+		RequireToken:          opts.RequireToken,
+		Token:                 opts.Token,
+		CAPubKeysB64:          opts.CAPubKeysB64,
+		TSHAddr:               opts.TSHAddr,
+		ReportBootstrapMetric: true,
+		OnGateHandshake: func(pid peer.ID) {
+			if opts.OnHandshake != nil {
+				opts.OnHandshake(pid.String(), map[string]any{"direction": "inbound"})
 			}
-			hh, err := myhost.NewHostWithPriv(ctx, opts.ListenMultiaddrs, priv)
-			if err != nil {
-				cancel()
-				return nil, err
-			}
-			h = hh
-		} else {
-			hh, err := myhost.NewHost(ctx, opts.ListenMultiaddrs)
-			if err != nil {
-				cancel()
-				return nil, err
-			}
-			h = hh
-		}
-	}
-
-	// Datastore + blockstore
-	var bs bstore.Blockstore
-	var datastore ds.Batching
-	if opts.StorePath != "" {
-		var err error
-		bs, datastore, err = mystore.NewPersistentBlockstore(opts.StorePath)
-		if err != nil {
-			_ = h.Close()
-			cancel()
-			return nil, err
-		}
-	} else {
-		bs, datastore = mystore.NewEphemeralBlockstore()
-	}
-
-	// Peer store (before DHT so we can bootstrap from handshake discoveries)
-	peerStore, err := myhost.NewPeerStore(datastore)
+		},
+		Cancel: cancel,
+		WG:     &s.wg,
+	})
 	if err != nil {
-		_ = h.Close()
-		cancel()
 		return nil, err
 	}
 
-	// Seeds: DHT bootstrap peers + opts.BootstrapPeers (populate PeerStore before DHT)
-	seedAddrs := append([]string{}, myhost.DefaultDHTBootstrapAddrs...)
-	seedAddrs = append(seedAddrs, opts.BootstrapPeers...)
-	seenSeeds := make(map[string]struct{})
-	for _, saddr := range seedAddrs {
-		if saddr == "" {
-			continue
-		}
-		if _, ok := seenSeeds[saddr]; ok {
-			continue
-		}
-		seenSeeds[saddr] = struct{}{}
-		if maddr, err := multiaddr.NewMultiaddr(saddr); err == nil {
-			if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil && info.ID != h.ID() {
-				_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
-			}
-		}
-	}
+	s.h = subs.Host
+	s.dht = subs.DHT
+	s.stack = subs.Stack
+	s.peerStore = subs.PeerStore
+	s.metrics = subs.Metrics
+	s.basePolicy = subs.PolicyBase
+	s.onHandshake = opts.OnHandshake
+	s.onAck = opts.OnAck
+	s.stopIBLT = subs.StopIBLT
 
-	// Storage stack: DHT with DynamicRouter fallback. Token routing (key-based) is primary.
-	stack, d, dynamicRouter, err := BuildStackWithDHT(ctx, h, bs, datastore, peerStore, opts.DHTClientMode)
-	metrics.SetDHTBootstrapPeers(int64(len(myhost.DefaultDHTBootstrapAddrs) + len(opts.BootstrapPeers)))
-	if err != nil {
-		_ = h.Close()
-		cancel()
-		return nil, err
-	}
-
-	// Admission policy
-	basePolicy := myhost.HandshakePolicy{Timeout: 10 * time.Second, MinAgentVersion: "sng40/0.1.0", ServicesAllow: ^uint64(0)}
-	if opts.RequireToken || (len(opts.CAPubKeysB64) > 0 && opts.Token != "") {
-		basePolicy.RequireCredential = true
-		basePolicy.AuthScheme = "token-ed25519-v1"
-		for _, s := range opts.CAPubKeysB64 {
-			b, err := base64.StdEncoding.DecodeString(s)
-			if err != nil || len(b) != 32 {
-				stack.Close()
-				_ = h.Close()
-				cancel()
-				return nil, errors.New("invalid CAPubKeysB64 entry")
-			}
-			basePolicy.CAPubKeys = append(basePolicy.CAPubKeys, b)
-		}
-		basePolicy.Token = opts.Token
-	}
-	stopAntiReplay := myhost.EnableAntiReplay(ctx, &basePolicy)
-	defer stopAntiReplay()
-	_ = myhost.EnableAttackMitigation(ctx, &basePolicy)
+	// stopAntiReplay is deferred at Start()'s own return (this preserves the
+	// original, possibly-accidental behavior of stopping the anti-replay
+	// tracker almost immediately, rather than waiting for Close(); see
+	// nodeSubsystems.StopAntiReplay's doc comment).
+	defer subs.StopAntiReplay()
 
 	// Register handshake and gate with current state
-	head, height, _ := mystore.GetHead(ctx, stack.Datastore)
-	headStr := ""
-	if head.Defined() {
-		headStr = head.String()
-	}
-	myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, basePolicy)
-	_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, basePolicy, func(pid peer.ID) {
-		_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
-		if opts.OnHandshake != nil {
-			opts.OnHandshake(pid.String(), map[string]any{"direction": "inbound"})
-		}
-	})
-	myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(h)}, basePolicy, func(max int) []peer.AddrInfo {
-		infos, _ := peerStore.GetDialCandidates(max, 0, nil)
+	myhost.RegisterHandshake(s.h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: subs.HeadStr, StateHeight: subs.Height, ListenAddrs: hostAddrsStrings(s.h)}, s.basePolicy)
+	myhost.RegisterHandshakeWithPeers(s.h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(s.h)}, s.basePolicy, func(max int) []peer.AddrInfo {
+		infos, _ := s.peerStore.GetDialCandidates(max, 0, nil)
 		return infos
 	})
 
-	s := &service{h: h, dht: d, stack: stack, peerStore: peerStore, metrics: metrics, cancel: cancel, basePolicy: basePolicy, onHandshake: opts.OnHandshake, onAck: opts.OnAck}
-
-	providerRecords := mystore.NewLocalProviderRecords()
-	providerRecords.AddAllFromDatastore(ctx, stack.Datastore)
-	stack.ProviderRecords = providerRecords
-	aq := mystore.NewAnnounceQueue()
-	stack.AnnounceQueue = aq
-
-	// Create repair protocol and gateway using DHT tuple space (before recovery callback setup)
-	var repairProtocol *mystore.RepairProtocol
-	var gateway *mygateway.Gateway
-	if d != nil {
-		dhtAdapter := mytuplespace.NewDHTValueStoreAdapter(d)
-		dhtTS := mytuplespace.NewDHTTupleSpace(dhtAdapter)
-		tokenized := opts.RequireToken || (len(opts.CAPubKeysB64) > 0 && opts.Token != "")
-		repairProtocol = mystore.NewRepairProtocol(stack, h, dhtTS, tokenized)
-
-		var baseTS mytuplespace.TupleSpace = dhtTS
-		if opts.TSHAddr != "" {
-			p2pTS := mytuplespace.NewP2PTupleSpace(opts.TSHAddr, 0x7f000001, "sng40")
-			p2pTS.SetPermissionChecker(myhost.NewHandshakePermissionChecker(basePolicy))
-			router := mytuplespace.NewRouter(dhtTS, p2pTS, nil)
-			baseTS = router
-		}
-		tokenTS := mytuplespace.NewTokenFallbackTupleSpace(dhtAdapter, baseTS)
-		gateway = mygateway.NewGateway(stack.Router, tokenTS)
-		if ts := gateway.TokenStore(); ts != nil {
-			stack.TokenStore = ts
-		}
-	}
-	if repairProtocol != nil {
-		repairProtocol.StartAdvertisingStorageAvailability(ctx)
-	}
-
-	pcm := myhost.NewPeerConnectivityMonitor(h,
-		myhost.PartitionMonitorOnPartitionEvent(func(e myhost.PartitionEvent) { aq.SetPartitioned(true) }),
-		myhost.PartitionMonitorOnRecovery(func() {
-			aq.SetPartitioned(false)
-			stack.FlushQueuedAnnouncements(ctx)
-			// Trigger repair protocol for missing replicas after partition recovery
-			if repairProtocol != nil {
-				stack.TriggerRepairForAllCIDsOnRecovery(ctx, h, repairProtocol)
-			}
-		}))
-	go pcm.Start(ctx)
-	mystore.StartPeriodicReannounce(ctx, providerRecords, stack.Blockstore, mystore.DefaultReannounceInterval, ctrl.NodeMetricsProviderSink(metrics))
-	s.stopIBLT = InstallCatalogIBLT(ctx, h, stack)
-
-	// Pruning loop
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		t := time.NewTicker(5 * time.Minute)
-		defer t.Stop()
-		for {
-			select {
-			case <-t.C:
-				removed, _ := peerStore.Prune()
-				metrics.AddPeersPruned(removed)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	// Connection security verification (ECDH/encryption)
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		t := time.NewTicker(5 * time.Minute)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-				if err := myhost.VerifyECDHKeyDerivationUsed(h); err != nil {
-					log.Printf("connection security: %v", err)
-				}
-				if err := myhost.EnsureAllTrafficEncrypted(h); err != nil {
-					log.Printf("connection security: %v", err)
-				}
-			}
-		}
-	}()
-
 	// Dial maintenance loop
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		backoffBase := time.Second
-		maxBackoff := 5 * time.Minute
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
+	startDialMaintenanceLoop(ctx, s.h, s.peerStore, s.basePolicy, s.metrics, dialLoopConfig{
+		MinOutbound:      opts.MinOutbound,
+		ClusterNodeCount: opts.ClusterNodeCount,
+		PerIPDialLimit:   opts.PerIPDialLimit,
+		DialTimeout:      opts.DialTimeout,
+		OnHandshakeSuccess: func(pid peer.ID, res *myhost.HandshakeResult) {
+			if opts.OnHandshake != nil {
+				opts.OnHandshake(pid.String(), map[string]any{"direction": "outbound", "remote_height": res.RemoteStateHeight})
 			}
-			conns := h.Network().Conns()
-			outbound := 0
-			exclude := make(map[peer.ID]bool)
-			for _, c := range conns {
-				if c.Stat().Direction == network.DirOutbound {
-					outbound++
-				}
-				exclude[c.RemotePeer()] = true
+			if opts.OnAck != nil {
+				opts.OnAck(pid.String(), "ok")
 			}
-			target := effectiveOutboundTarget(opts.MinOutbound, opts.ClusterNodeCount, peerStore.CountKnownPeersWithAddrs(h.ID()))
-			if outbound >= target {
-				time.Sleep(2 * time.Second)
-				continue
-			}
-			needed := target - outbound
-			cands, metas := peerStore.GetDialCandidates(needed*2, 0, exclude)
-			if len(cands) == 0 {
-				time.Sleep(5 * time.Second)
-				continue
-			}
-			perIP := make(map[string]int)
-			for i, info := range cands {
-				// enforce per-IP dial limit
-				for _, a := range info.Addrs {
-					if v, err := a.ValueForProtocol(multiaddr.P_IP4); err == nil && v != "" {
-						if perIP[v] >= opts.PerIPDialLimit {
-							continue
-						}
-						perIP[v]++
-						break
-					}
-					if v, err := a.ValueForProtocol(multiaddr.P_IP6); err == nil && v != "" {
-						if perIP[v] >= opts.PerIPDialLimit {
-							continue
-						}
-						perIP[v]++
-						break
-					}
-				}
-				pid := info.ID
-				if am := basePolicy.AttackMitigation; am != nil {
-					if am.BanList.IsBanned(pid) {
-						continue
-					}
-					if ok, _ := am.Eclipse.CanAllow(ctx, pid, info.Addrs); !ok {
-						continue
-					}
-				}
-				_ = peerStore.RecordDialAttempt(pid)
-				metrics.IncDialsAttempted()
-				ctxDial, cancelDial := context.WithTimeout(ctx, opts.DialTimeout)
-				err := h.Connect(ctxDial, info)
-				cancelDial()
-				if err != nil {
-					_ = peerStore.RecordDialFailure(pid)
-					metrics.IncDialsFailed()
-					bo := time.Duration(1+metas[i].FailureCount) * backoffBase
-					if bo > maxBackoff {
-						bo = maxBackoff
-					}
-					time.Sleep(bo)
-					continue
-				}
-				_ = peerStore.RecordDialSuccess(pid)
-				metrics.IncDialsSucceeded()
-				// Non-fatal handshake + peerlist
-				pol := basePolicy
-				pol.Timeout = opts.DialTimeout
-				if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
-					if opts.OnHandshake != nil {
-						opts.OnHandshake(pid.String(), map[string]any{"direction": "outbound", "remote_height": res.RemoteStateHeight})
-					}
-					if opts.OnAck != nil {
-						opts.OnAck(pid.String(), "ok")
-					}
-				}
-				outbound++
-				if outbound >= effectiveOutboundTarget(opts.MinOutbound, opts.ClusterNodeCount, peerStore.CountKnownPeersWithAddrs(h.ID())) {
-					break
-				}
-			}
-			time.Sleep(2 * time.Second)
-		}
-	}()
+		},
+		WG: &s.wg,
+	})
 
 	// Gossip loop
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		ticker := time.NewTicker(2 * time.Minute)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				peers := h.Network().Peers()
-				for _, pid := range peers {
-					if pid == h.ID() {
-						continue
-					}
-					pol := basePolicy
-					pol.Timeout = 5 * time.Second
-					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
-						for _, info := range res.Learned {
-							if info.ID == h.ID() {
-								continue
-							}
-							_ = myhost.UpsertLearnedPeer(peerStore, basePolicy.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
-						}
-						metrics.AddGossipLearned(len(res.Learned))
-						if opts.OnHandshake != nil {
-							opts.OnHandshake(pid.String(), map[string]any{"direction": "gossip", "remote_height": res.RemoteStateHeight})
-						}
-					}
-				}
+	startGossipLoop(ctx, s.h, s.basePolicy, func(pid peer.ID, res *myhost.HandshakeResult) {
+		for _, info := range res.Learned {
+			if info.ID == s.h.ID() {
+				continue
 			}
+			_ = myhost.UpsertLearnedPeer(s.peerStore, s.basePolicy.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
 		}
-	}()
-
-	// Wire message metrics for P2P message counting (put, get, lookup)
-	stack.MessageSink = ctrl.NodeMetricsMessageSink(metrics)
-	stack.HopSink = ctrl.NodeMetricsHopSink(metrics)
+		s.metrics.AddGossipLearned(len(res.Learned))
+		if opts.OnHandshake != nil {
+			opts.OnHandshake(pid.String(), map[string]any{"direction": "gossip", "remote_height": res.RemoteStateHeight})
+		}
+	}, &s.wg)
 
 	// Control server
-	addr, shutdown, err := ctrl.Start(ctx, h, stack, peerStore, metrics, func() { cancel() }, dynamicRouter, repairProtocol, gateway, "")
+	addr, shutdown, err := ctrl.Start(ctx, s.h, s.stack, s.peerStore, s.metrics, func() { cancel() }, subs.DynamicRouter, subs.RepairProtocol, subs.Gateway, "")
 	if err != nil {
-		stack.Close()
-		_ = d.Close()
-		_ = h.Close()
+		s.stack.Close()
+		if s.dht != nil {
+			_ = s.dht.Close()
+		}
+		_ = s.h.Close()
 		cancel()
 		return nil, err
 	}

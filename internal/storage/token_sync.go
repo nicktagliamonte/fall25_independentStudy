@@ -178,7 +178,8 @@ func SyncTokenOnPut(ctx context.Context, dht routing.ValueStore, h host.Host, ke
 // Removes this peer from the token's Locations. If this was the last location,
 // the token is written back with an empty Locations slice rather than deleted
 // outright; the DHT's own TTL handles eventual cleanup. If no token exists at
-// all, this is treated as a successful no-op.
+// all, this is treated as a successful no-op (UpdateTokenWithConflictResolution
+// itself detects the absent token and returns nil; there's nothing to delete).
 //
 // Parameters:
 //   - ctx (context.Context): controls cancellation/timeout of the update.
@@ -221,12 +222,9 @@ func SyncTokenOnDelete(ctx context.Context, dht routing.ValueStore, h host.Host,
 	}, 3)
 
 	if err != nil {
-		// If token doesn't exist, that's fine - nothing to delete
-		// Check if error is "token not found" and ignore it
-		if _, getErr := GetToken(ctx, dht, key); getErr != nil {
-			// Token doesn't exist - nothing to do
-			return nil
-		}
+		// UpdateTokenWithConflictResolution already treats an absent token as a
+		// successful no-op ("nothing to delete"), so any error reaching here is
+		// a genuine failure.
 		return fmt.Errorf("sync token on delete: %w", err)
 	}
 
@@ -264,36 +262,11 @@ func SyncTokenOnReplication(ctx context.Context, dht routing.ValueStore, routing
 		return fmt.Errorf("address required for new replica")
 	}
 
-	// Use conflict resolution to update token
-	// This handles concurrent updates from multiple peers
-	err := UpdateTokenWithConflictResolution(ctx, dht, key, func(currentToken Token) Token {
-		// Check if new replica is already present
-		for _, loc := range currentToken.Locations {
-			if loc.ProviderID == newReplicaPeerID {
-				// Already present, return unchanged
-				return currentToken
-			}
-		}
-
-		// Add new replica location if address is provided
-		if newReplicaAddr == nil {
-			return currentToken
-		}
-
-		updatedToken := currentToken
-		updatedToken.Locations = append(updatedToken.Locations, Location{
-			ProviderID: newReplicaPeerID,
-			Address:    newReplicaAddr,
-			RTT:        0,
-		})
-		return updatedToken
-	}, 3)
-
-	if err != nil {
-		// If token doesn't exist, create it with new replica location
-		if newReplicaAddr == nil {
-			return fmt.Errorf("no address provided for new replica")
-		}
+	// Check for token absence up front: UpdateTokenWithConflictResolution
+	// treats a missing token as "nothing to update" and returns nil (see
+	// SyncTokenOnDelete, which relies on that no-op), so its return value
+	// alone can no longer be used to detect "no token yet, must create one."
+	if _, err := GetToken(ctx, dht, key); err != nil && isTokenAbsent(err) {
 		newToken := Token{
 			Key: key,
 			Locations: []Location{
@@ -310,6 +283,31 @@ func SyncTokenOnReplication(ctx context.Context, dht routing.ValueStore, routing
 			return fmt.Errorf("create token after replication: %w", err)
 		}
 		return nil
+	}
+
+	// Token exists (or existence is uncertain due to a transient error, in
+	// which case UpdateTokenWithConflictResolution's own retries apply): use
+	// conflict resolution to add the new replica location. This handles
+	// concurrent updates from multiple peers.
+	err := UpdateTokenWithConflictResolution(ctx, dht, key, func(currentToken Token) Token {
+		// Check if new replica is already present
+		for _, loc := range currentToken.Locations {
+			if loc.ProviderID == newReplicaPeerID {
+				// Already present, return unchanged
+				return currentToken
+			}
+		}
+
+		updatedToken := currentToken
+		updatedToken.Locations = append(updatedToken.Locations, Location{
+			ProviderID: newReplicaPeerID,
+			Address:    newReplicaAddr,
+			RTT:        0,
+		})
+		return updatedToken
+	}, 3)
+	if err != nil {
+		return fmt.Errorf("update token on replication: %w", err)
 	}
 
 	return nil

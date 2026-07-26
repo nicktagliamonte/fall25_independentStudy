@@ -63,13 +63,14 @@ type Result struct {
 // tuplespace.Router): exact key→DHT token lookup; prefix→PHT+DHT token lookup;
 // regex→P2P tuple space; multi-partition→break down and route each part.
 //
-// Note: sub-patterns produced by breakDownQuery are looked up sequentially
-// (via TsRead) and deduplicated by the trimmed pattern string, not run in
-// parallel — QueryMultiPartition/ExecuteSubQueriesParallel is the parallel,
-// optimizer-driven counterpart to this method.
+// This is a thin wrapper around QueryMultiPartition with a default
+// QueryOptimizer: a single (non-OR) pattern takes ExecuteSubQueriesParallel's
+// synchronous single-sub-query path, and an OR-separated pattern is optimized
+// (deduplicated), broken down, and its sub-queries run in parallel — the same
+// pipeline QueryMultiPartition uses directly.
 //
 // Parameters:
-//   - ctx (context.Context): cancels the query; checked before starting and before each sub-pattern.
+//   - ctx (context.Context): cancels the query; checked before starting.
 //   - query (Query): the pattern (and, unused here, Type) to execute. query.Pattern
 //     may contain "|"-separated sub-patterns.
 //
@@ -88,51 +89,7 @@ func (g *Gateway) Query(ctx context.Context, query Query) ([]Result, error) {
 	if query.Pattern == "" {
 		return nil, nil
 	}
-
-	patterns := breakDownQuery(query.Pattern)
-	var results []Result
-	seen := make(map[string]bool)
-
-	for _, p := range patterns {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		data, err := g.TupleSpace.TsRead(p)
-		if err != nil {
-			continue
-		}
-		if data == nil {
-			continue
-		}
-		key := p
-		if seen[key] {
-			continue
-		}
-		seen[key] = true
-		results = append(results, Result{Key: key, Value: data})
-	}
-
-	return results, nil
-}
-
-// breakDownQuery splits a query into sub-queries when needed.
-// Supports | as OR separator for multiple patterns.
-//
-// Parameters:
-//   - pattern (string): the raw query pattern, possibly containing "|"-separated parts.
-//
-// Returns:
-//   - []string: the individual (untrimmed, not deduplicated) sub-patterns; a
-//     single-element slice containing pattern unchanged if it has no "|".
-func breakDownQuery(pattern string) []string {
-	if strings.Contains(pattern, "|") {
-		return strings.Split(pattern, "|")
-	}
-	return []string{pattern}
+	return g.QueryMultiPartition(ctx, query.Pattern, nil)
 }
 
 // QueryMultiPartition breaks down a query involving multiple partitions, executes
@@ -262,10 +219,10 @@ func (s *gatewayTokenStore) SearchValue(ctx context.Context, key string, opts ..
 //
 // Returns:
 //   - []Result: aggregated, deduplicated-by-pattern results.
-//   - error: non-nil if ctx is already/subsequently done, TupleSpace is
-//     unset, or (single-sub-query case only) the TsRead call itself failed.
-//     For the multi-sub-query case, individual TsRead errors are swallowed
-//     (that sub-query contributes no result).
+//   - error: non-nil if ctx is already/subsequently done or TupleSpace is
+//     unset. Individual sub-query TsRead errors (in both the single- and
+//     multi-sub-query cases) are swallowed — that sub-query simply
+//     contributes no result.
 func (g *Gateway) ExecuteSubQueriesParallel(ctx context.Context, subs []SubQuery) ([]Result, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -277,14 +234,15 @@ func (g *Gateway) ExecuteSubQueriesParallel(ctx context.Context, subs []SubQuery
 		return nil, nil
 	}
 	if len(subs) == 1 {
-		data, err := g.TupleSpace.TsRead(subs[0].Pattern)
-		if err != nil {
-			return nil, err
-		}
-		if data == nil {
+		p := strings.TrimSpace(subs[0].Pattern)
+		if p == "" {
 			return nil, nil
 		}
-		return []Result{{Key: subs[0].Pattern, Value: data}}, nil
+		data, err := g.TupleSpace.TsRead(p)
+		if err != nil || data == nil {
+			return nil, nil
+		}
+		return []Result{{Key: p, Value: data}}, nil
 	}
 
 	var mu sync.Mutex

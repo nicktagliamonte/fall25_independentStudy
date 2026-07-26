@@ -107,12 +107,10 @@ err := mgr.ExtendLock(ctx, key, holder, ttl)
 Check whether a key is locked and who holds it.
 
 ```go
-locked, holder := mgr.IsLocked(key)
+locked, holder := mgr.IsLocked(ctx, key)
 ```
 
 Returns `(false, "")` if unlocked or expired.
-
-**Note:** unlike every other `KeyLockManager` method, `IsLocked` takes no `context.Context` parameter — it uses `context.Background()` internally, so the read cannot be cancelled or bounded by a caller-supplied timeout/deadline.
 
 ---
 

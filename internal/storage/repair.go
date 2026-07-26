@@ -456,7 +456,7 @@ func (rp *RepairProtocol) replicateToPeer(
 	}
 
 	// Connect to target peer if not already connected
-	if rp.host.Network().Connectedness(targetPeer) != 2 { // 2 = Connected
+	if rp.host.Network().Connectedness(targetPeer) != network.Connected {
 		addrs := rp.host.Peerstore().Addrs(targetPeer)
 		if len(addrs) == 0 {
 			// Try to find peer address from token (key-based)

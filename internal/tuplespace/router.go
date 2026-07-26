@@ -110,25 +110,32 @@ func (r *Router) TsPut(tpname string, tpvalue []byte) (int, error) {
 	return r.p2pTS.TsPut(tpname, tpvalue)
 }
 
-// TsGet routes Get operations (consuming).
-// Exact match → DHT tuple space.
-// Prefix wildcard (pattern*) → PHT to find matches, then DHT to retrieve.
-// Substring wildcard (*pattern*) → PHT with Bloom filters, then DHT to retrieve.
-// Complex regex → P2P tuple space.
+// tupleSpaceOp performs a single named tuple space operation (either
+// DHTTupleSpace.TsGet/TsRead or P2PTupleSpace.TsGet/TsRead) against name.
+type tupleSpaceOp func(name string) ([]byte, error)
+
+// resolveAndCall implements the routing logic shared by TsGet and TsRead:
+// exact match → dhtOp(tpname) directly; simple wildcard (prefix/substring)
+// with a configured PHT store → resolve tpname to candidate tuple names via
+// the PHT, then try dhtOp on each candidate in turn until one succeeds;
+// complex regex, or a wildcard with no PHT store configured → p2pOp(tpname).
 //
 // Parameters:
-//   - tpname (string): the tuple name or pattern to consume.
+//   - tpname (string): the tuple name or pattern to resolve.
+//   - dhtOp (tupleSpaceOp): the DHT tuple space operation to apply (TsGet or TsRead).
+//   - p2pOp (tupleSpaceOp): the P2P tuple space operation to apply as fallback
+//     (TsGet or TsRead; must match dhtOp's operation kind).
 //
 // Returns:
-//   - []byte: the consumed tuple data (first matching name whose DHT TsGet
-//     succeeds, when resolved via PHT; otherwise straight from the chosen backend).
+//   - []byte: the tuple data (first matching name whose dhtOp call succeeds,
+//     when resolved via PHT; otherwise straight from the chosen backend).
 //   - error: non-nil if PHT resolution fails, no matching tuple names are
-//     found, all resolved names fail to consume from the DHT, or the
-//     underlying backend's TsGet fails.
-func (r *Router) TsGet(tpname string) ([]byte, error) {
+//     found, all resolved names fail dhtOp, or the underlying backend's
+//     operation fails.
+func (r *Router) resolveAndCall(tpname string, dhtOp, p2pOp tupleSpaceOp) ([]byte, error) {
 	if isExactMatch(tpname) {
 		// Exact match: use DHT tuple space
-		return r.dhtTS.TsGet(tpname)
+		return dhtOp(tpname)
 	}
 
 	if isSimpleWildcard(tpname) && r.phtStore != nil {
@@ -148,7 +155,7 @@ func (r *Router) TsGet(tpname string) ([]byte, error) {
 			matchingNames, err = pht.ExecuteSubstringQuery(ctx, r.phtStore, parsed.Substring, 0)
 		default:
 			// Fall through to P2P
-			return r.p2pTS.TsGet(tpname)
+			return p2pOp(tpname)
 		}
 
 		if err != nil {
@@ -159,11 +166,11 @@ func (r *Router) TsGet(tpname string) ([]byte, error) {
 			return nil, errors.New("no matching tuples found")
 		}
 
-		// Try to get the first matching tuple from DHT
-		// In tuple space semantics, Get consumes the first available match
+		// Try the first matching tuple name that dhtOp succeeds on. In tuple
+		// space semantics, Get consumes (and Read returns) the first available match.
 		var lastErr error
 		for _, name := range matchingNames {
-			data, err := r.dhtTS.TsGet(name)
+			data, err := dhtOp(name)
 			if err == nil {
 				return data, nil
 			}
@@ -179,7 +186,26 @@ func (r *Router) TsGet(tpname string) ([]byte, error) {
 	}
 
 	// Complex regex or PHT unavailable: use P2P tuple space
-	return r.p2pTS.TsGet(tpname)
+	return p2pOp(tpname)
+}
+
+// TsGet routes Get operations (consuming).
+// Exact match → DHT tuple space.
+// Prefix wildcard (pattern*) → PHT to find matches, then DHT to retrieve.
+// Substring wildcard (*pattern*) → PHT with Bloom filters, then DHT to retrieve.
+// Complex regex → P2P tuple space.
+//
+// Parameters:
+//   - tpname (string): the tuple name or pattern to consume.
+//
+// Returns:
+//   - []byte: the consumed tuple data (first matching name whose DHT TsGet
+//     succeeds, when resolved via PHT; otherwise straight from the chosen backend).
+//   - error: non-nil if PHT resolution fails, no matching tuple names are
+//     found, all resolved names fail to consume from the DHT, or the
+//     underlying backend's TsGet fails.
+func (r *Router) TsGet(tpname string) ([]byte, error) {
+	return r.resolveAndCall(tpname, r.dhtTS.TsGet, r.p2pTS.TsGet)
 }
 
 // TsRead routes Read operations (non-consuming).
@@ -198,58 +224,5 @@ func (r *Router) TsGet(tpname string) ([]byte, error) {
 //     found, all resolved names fail to read from the DHT, or the
 //     underlying backend's TsRead fails.
 func (r *Router) TsRead(tpname string) ([]byte, error) {
-	if isExactMatch(tpname) {
-		// Exact match: use DHT tuple space
-		return r.dhtTS.TsRead(tpname)
-	}
-
-	if isSimpleWildcard(tpname) && r.phtStore != nil {
-		// Simple wildcard: use PHT to find matching tuple names
-		parsed := pht.ParseQuery(tpname)
-		ctx := context.Background()
-
-		var matchingNames []string
-		var err error
-
-		switch parsed.Kind {
-		case pht.QueryPrefix:
-			// Prefix query: use PHT tree descent
-			matchingNames, err = pht.ExecutePrefixQuery(ctx, r.phtStore, parsed.Prefix)
-		case pht.QuerySubstring:
-			// Substring query: use PHT with Bloom filter pruning
-			matchingNames, err = pht.ExecuteSubstringQuery(ctx, r.phtStore, parsed.Substring, 0)
-		default:
-			// Fall through to P2P
-			return r.p2pTS.TsRead(tpname)
-		}
-
-		if err != nil {
-			return nil, err
-		}
-
-		if len(matchingNames) == 0 {
-			return nil, errors.New("no matching tuples found")
-		}
-
-		// Try to read the first matching tuple from DHT
-		// In tuple space semantics, Read returns the first available match
-		var lastErr error
-		for _, name := range matchingNames {
-			data, err := r.dhtTS.TsRead(name)
-			if err == nil {
-				return data, nil
-			}
-			lastErr = err
-			// Continue to next match if this one fails
-		}
-
-		// No matches found in DHT (all were consumed or missing)
-		if lastErr != nil {
-			return nil, lastErr
-		}
-		return nil, errors.New("no matching tuples found")
-	}
-
-	// Complex regex or PHT unavailable: use P2P tuple space
-	return r.p2pTS.TsRead(tpname)
+	return r.resolveAndCall(tpname, r.dhtTS.TsRead, r.p2pTS.TsRead)
 }

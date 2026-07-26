@@ -175,7 +175,13 @@ func PutTokenWithConflictResolution(ctx context.Context, dht routing.ValueStore,
 // Version and Timestamp), then writes it back through PutTokenWithConflictResolution
 // with a single internal attempt. The outer retry loop re-reads and re-applies
 // updateFunc on failure, so updateFunc should be idempotent/pure with respect to
-// its input token.
+// its input token. If no token currently exists for key (isTokenAbsent(err) on the
+// GetToken read), there is nothing to update, so this returns nil as a successful
+// no-op rather than an error — consistent with how PutTokenWithConflictResolution
+// treats an absent token as safe to proceed, but without fabricating a new token
+// from nothing. Callers that need update-or-create semantics must create the
+// token themselves when this returns nil with no prior token present (see
+// SyncTokenOnReplication for an example of that pattern).
 //
 // Parameters:
 //   - ctx (context.Context): controls cancellation/timeout of DHT reads and writes.
@@ -187,7 +193,8 @@ func PutTokenWithConflictResolution(ctx context.Context, dht routing.ValueStore,
 //
 // Returns:
 //   - error: non-nil if dht is nil, key is zero, updateFunc is nil, the initial
-//     GetToken fails, or the update fails after maxRetries attempts.
+//     GetToken fails for a reason other than the token being absent, or the update
+//     fails after maxRetries attempts. Returns nil (no-op) if key has no existing token.
 func UpdateTokenWithConflictResolution(
 	ctx context.Context,
 	dht routing.ValueStore,
@@ -212,6 +219,10 @@ func UpdateTokenWithConflictResolution(
 		// Read current token
 		currentToken, err := GetToken(ctx, dht, key)
 		if err != nil {
+			if isTokenAbsent(err) {
+				// Nothing to update.
+				return nil
+			}
 			return fmt.Errorf("get token: %w", err)
 		}
 

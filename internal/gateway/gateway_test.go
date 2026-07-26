@@ -16,7 +16,7 @@ type mockTupleSpace struct {
 }
 
 func (m *mockTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) { return 0, nil }
-func (m *mockTupleSpace) TsGet(tpname string) ([]byte, error)               { return nil, nil }
+func (m *mockTupleSpace) TsGet(tpname string) ([]byte, error)              { return nil, nil }
 func (m *mockTupleSpace) TsRead(tpname string) ([]byte, error) {
 	if m.readFunc != nil {
 		return m.readFunc(tpname)

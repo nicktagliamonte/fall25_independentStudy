@@ -36,22 +36,146 @@ const (
 	DefaultTimestampFutureAllow = 1 * time.Minute
 )
 
-// NonceCache stores nonces per peer with auto-expunge of stale entries.
-// Peer entries with no activity for ExpungeAfter are removed. ExpungeAfter must be 1-5 min.
-type NonceCache struct {
+// peerSetEntry tracks the set of items (nonces, hex-encoded hashes, ...) seen
+// for a single peer and when that peer's entry was last updated (used to
+// decide when to expunge it).
+type peerSetEntry[K comparable] struct {
+	items   map[K]struct{}
+	updated time.Time
+}
+
+// expiringPeerCache is the shared per-peer, auto-expunging set implementation
+// backing both NonceCache (K = uint64) and MessageHashCache (K = string, the
+// hex-encoded message digest). It holds one set of K per peer.ID and removes a
+// peer's entire entry once it has been idle for expungeAfter, checked every
+// expungeInterval by Start's loop. NonceCache and MessageHashCache embed this
+// type and expose their own typed, documented methods (RecordNonce/Add/Seen,
+// RecordHash/SeenHash) on top of it; the exported Start/Stop are promoted
+// as-is since expunge timing is identical for both.
+type expiringPeerCache[K comparable] struct {
 	mu              sync.RWMutex
-	byPeer          map[peer.ID]*peerNonceEntry
+	byPeer          map[peer.ID]*peerSetEntry[K]
 	expungeAfter    time.Duration
 	expungeInterval time.Duration
 	stop            chan struct{}
 	stopOnce        sync.Once
 }
 
-// peerNonceEntry tracks the set of nonces seen for a single peer and when that
-// peer's entry was last updated (used to decide when to expunge it).
-type peerNonceEntry struct {
-	nonces  map[uint64]struct{}
-	updated time.Time
+// add records key for pid and updates the peer's last-access time, without
+// reporting whether key was already present.
+//
+// Parameters:
+//   - pid (peer.ID): the peer the key is associated with.
+//   - key (K): the item to record.
+func (c *expiringPeerCache[K]) add(pid peer.ID, key K) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.byPeer[pid]
+	if !ok {
+		e = &peerSetEntry[K]{items: make(map[K]struct{})}
+		c.byPeer[pid] = e
+	}
+	e.items[key] = struct{}{}
+	e.updated = time.Now()
+}
+
+// recordIfNew records key for pid unless already present.
+//
+// Parameters:
+//   - pid (peer.ID): the peer the key is associated with.
+//   - key (K): the item to check and record.
+//
+// Returns:
+//   - bool: true if key was already recorded for pid (and thus was not re-recorded), false if it was newly recorded.
+func (c *expiringPeerCache[K]) recordIfNew(pid peer.ID, key K) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.byPeer[pid]
+	if !ok {
+		e = &peerSetEntry[K]{items: make(map[K]struct{})}
+		c.byPeer[pid] = e
+	}
+	if _, seen := e.items[key]; seen {
+		return true
+	}
+	e.items[key] = struct{}{}
+	e.updated = time.Now()
+	return false
+}
+
+// seen reports whether key has already been recorded for pid, without
+// recording it.
+//
+// Parameters:
+//   - pid (peer.ID): the peer to check.
+//   - key (K): the item to check.
+//
+// Returns:
+//   - bool: true if key has already been recorded for pid.
+func (c *expiringPeerCache[K]) seen(pid peer.ID, key K) bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	e, ok := c.byPeer[pid]
+	if !ok {
+		return false
+	}
+	_, seen := e.items[key]
+	return seen
+}
+
+// peerCount returns the current number of peer entries.
+//
+// Returns:
+//   - int: the number of distinct peers with tracked entries.
+func (c *expiringPeerCache[K]) peerCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.byPeer)
+}
+
+// Start runs the auto-expunge loop, removing peer entries idle for at least
+// expungeAfter on every tick of expungeInterval. It exits when ctx is
+// cancelled or Stop is called; intended to be run in its own goroutine.
+//
+// Parameters:
+//   - ctx (context.Context): cancelling ctx stops the loop.
+func (c *expiringPeerCache[K]) Start(ctx context.Context) {
+	ticker := time.NewTicker(c.expungeInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-c.stop:
+			return
+		case <-ticker.C:
+			c.expunge()
+		}
+	}
+}
+
+// Stop stops the auto-expunge loop. Idempotent.
+func (c *expiringPeerCache[K]) Stop() {
+	c.stopOnce.Do(func() { close(c.stop) })
+}
+
+// expunge removes peer entries that have been idle for at least expungeAfter.
+func (c *expiringPeerCache[K]) expunge() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	now := time.Now()
+	cutoff := now.Add(-c.expungeAfter)
+	for pid, e := range c.byPeer {
+		if e.updated.Before(cutoff) {
+			delete(c.byPeer, pid)
+		}
+	}
+}
+
+// NonceCache stores nonces per peer with auto-expunge of stale entries.
+// Peer entries with no activity for ExpungeAfter are removed. ExpungeAfter must be 1-5 min.
+type NonceCache struct {
+	expiringPeerCache[uint64]
 }
 
 // NonceCacheOption configures NonceCache.
@@ -116,10 +240,12 @@ func NonceExpungeInterval(d time.Duration) NonceCacheOption {
 //   - *NonceCache: a configured cache; call Start to run its expunge loop.
 func NewNonceCache(opts ...NonceCacheOption) *NonceCache {
 	c := &NonceCache{
-		byPeer:          make(map[peer.ID]*peerNonceEntry),
-		expungeAfter:    DefaultNonceExpungeAfter,
-		expungeInterval: DefaultNonceExpungeInterval,
-		stop:            make(chan struct{}),
+		expiringPeerCache: expiringPeerCache[uint64]{
+			byPeer:          make(map[peer.ID]*peerSetEntry[uint64]),
+			expungeAfter:    DefaultNonceExpungeAfter,
+			expungeInterval: DefaultNonceExpungeInterval,
+			stop:            make(chan struct{}),
+		},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -134,15 +260,7 @@ func NewNonceCache(opts ...NonceCacheOption) *NonceCache {
 //   - pid (peer.ID): the peer the nonce is associated with.
 //   - nonce (uint64): the nonce value to record.
 func (c *NonceCache) Add(pid peer.ID, nonce uint64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	e, ok := c.byPeer[pid]
-	if !ok {
-		e = &peerNonceEntry{nonces: make(map[uint64]struct{})}
-		c.byPeer[pid] = e
-	}
-	e.nonces[nonce] = struct{}{}
-	e.updated = time.Now()
+	c.add(pid, nonce)
 }
 
 // RecordNonce records a nonce for the peer. Returns ErrReusedNonce if already seen.
@@ -154,18 +272,9 @@ func (c *NonceCache) Add(pid peer.ID, nonce uint64) {
 // Returns:
 //   - error: ErrReusedNonce if this nonce was already recorded for pid, nil otherwise.
 func (c *NonceCache) RecordNonce(pid peer.ID, nonce uint64) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	e, ok := c.byPeer[pid]
-	if !ok {
-		e = &peerNonceEntry{nonces: make(map[uint64]struct{})}
-		c.byPeer[pid] = e
-	}
-	if _, seen := e.nonces[nonce]; seen {
+	if c.recordIfNew(pid, nonce) {
 		return ErrReusedNonce
 	}
-	e.nonces[nonce] = struct{}{}
-	e.updated = time.Now()
 	return nil
 }
 
@@ -179,53 +288,7 @@ func (c *NonceCache) RecordNonce(pid peer.ID, nonce uint64) error {
 // Returns:
 //   - bool: true if nonce has already been recorded for pid.
 func (c *NonceCache) Seen(pid peer.ID, nonce uint64) bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	e, ok := c.byPeer[pid]
-	if !ok {
-		return false
-	}
-	_, seen := e.nonces[nonce]
-	return seen
-}
-
-// Start runs the auto-expunge loop, removing peer entries idle for at least
-// expungeAfter on every tick of expungeInterval. It exits when ctx is cancelled or
-// Stop is called; intended to be run in its own goroutine.
-//
-// Parameters:
-//   - ctx (context.Context): cancelling ctx stops the loop.
-func (c *NonceCache) Start(ctx context.Context) {
-	ticker := time.NewTicker(c.expungeInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-c.stop:
-			return
-		case <-ticker.C:
-			c.expunge()
-		}
-	}
-}
-
-// Stop stops the auto-expunge loop. Idempotent.
-func (c *NonceCache) Stop() {
-	c.stopOnce.Do(func() { close(c.stop) })
-}
-
-// expunge removes peer entries that have been idle for at least expungeAfter.
-func (c *NonceCache) expunge() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	now := time.Now()
-	cutoff := now.Add(-c.expungeAfter)
-	for pid, e := range c.byPeer {
-		if e.updated.Before(cutoff) {
-			delete(c.byPeer, pid)
-		}
-	}
+	return c.seen(pid, nonce)
 }
 
 // Peers returns the current number of peer entries (for tests).
@@ -233,27 +296,13 @@ func (c *NonceCache) expunge() {
 // Returns:
 //   - int: the number of distinct peers with tracked nonce entries.
 func (c *NonceCache) Peers() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.byPeer)
+	return c.peerCount()
 }
 
 // MessageHashCache stores message hashes per peer and rejects duplicates.
 // Uses the same auto-expunge semantics as NonceCache (1-5 min).
 type MessageHashCache struct {
-	mu              sync.RWMutex
-	byPeer          map[peer.ID]*peerHashEntry
-	expungeAfter    time.Duration
-	expungeInterval time.Duration
-	stop            chan struct{}
-	stopOnce        sync.Once
-}
-
-// peerHashEntry tracks the set of hex-encoded message hashes seen for a single
-// peer and when that peer's entry was last updated.
-type peerHashEntry struct {
-	hashes  map[string]struct{}
-	updated time.Time
+	expiringPeerCache[string]
 }
 
 // MessageHashCacheOption configures MessageHashCache.
@@ -318,10 +367,12 @@ func MessageHashExpungeInterval(d time.Duration) MessageHashCacheOption {
 //   - *MessageHashCache: a configured cache; call Start to run its expunge loop.
 func NewMessageHashCache(opts ...MessageHashCacheOption) *MessageHashCache {
 	c := &MessageHashCache{
-		byPeer:          make(map[peer.ID]*peerHashEntry),
-		expungeAfter:    DefaultNonceExpungeAfter,
-		expungeInterval: DefaultNonceExpungeInterval,
-		stop:            make(chan struct{}),
+		expiringPeerCache: expiringPeerCache[string]{
+			byPeer:          make(map[peer.ID]*peerSetEntry[string]),
+			expungeAfter:    DefaultNonceExpungeAfter,
+			expungeInterval: DefaultNonceExpungeInterval,
+			stop:            make(chan struct{}),
+		},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -339,19 +390,9 @@ func NewMessageHashCache(opts ...MessageHashCacheOption) *MessageHashCache {
 // Returns:
 //   - error: ErrDuplicateMessageHash if this hash was already recorded for pid, nil otherwise.
 func (c *MessageHashCache) RecordHash(pid peer.ID, hash []byte) error {
-	key := hex.EncodeToString(hash)
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	e, ok := c.byPeer[pid]
-	if !ok {
-		e = &peerHashEntry{hashes: make(map[string]struct{})}
-		c.byPeer[pid] = e
-	}
-	if _, seen := e.hashes[key]; seen {
+	if c.recordIfNew(pid, hex.EncodeToString(hash)) {
 		return ErrDuplicateMessageHash
 	}
-	e.hashes[key] = struct{}{}
-	e.updated = time.Now()
 	return nil
 }
 
@@ -365,54 +406,7 @@ func (c *MessageHashCache) RecordHash(pid peer.ID, hash []byte) error {
 // Returns:
 //   - bool: true if hash has already been recorded for pid.
 func (c *MessageHashCache) SeenHash(pid peer.ID, hash []byte) bool {
-	key := hex.EncodeToString(hash)
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	e, ok := c.byPeer[pid]
-	if !ok {
-		return false
-	}
-	_, seen := e.hashes[key]
-	return seen
-}
-
-// Start runs the auto-expunge loop, removing peer entries idle for at least
-// expungeAfter on every tick of expungeInterval. Exits when ctx is cancelled or
-// Stop is called; intended to be run in its own goroutine.
-//
-// Parameters:
-//   - ctx (context.Context): cancelling ctx stops the loop.
-func (c *MessageHashCache) Start(ctx context.Context) {
-	ticker := time.NewTicker(c.expungeInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-c.stop:
-			return
-		case <-ticker.C:
-			c.expunge()
-		}
-	}
-}
-
-// Stop stops the auto-expunge loop. Idempotent.
-func (c *MessageHashCache) Stop() {
-	c.stopOnce.Do(func() { close(c.stop) })
-}
-
-// expunge removes peer entries that have been idle for at least expungeAfter.
-func (c *MessageHashCache) expunge() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	now := time.Now()
-	cutoff := now.Add(-c.expungeAfter)
-	for pid, e := range c.byPeer {
-		if e.updated.Before(cutoff) {
-			delete(c.byPeer, pid)
-		}
-	}
+	return c.seen(pid, hex.EncodeToString(hash))
 }
 
 // HashPeers returns the current number of peer entries (for tests).
@@ -420,9 +414,7 @@ func (c *MessageHashCache) expunge() {
 // Returns:
 //   - int: the number of distinct peers with tracked hash entries.
 func (c *MessageHashCache) HashPeers() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.byPeer)
+	return c.peerCount()
 }
 
 // TimestampChecker validates message timestamps against a configurable window.

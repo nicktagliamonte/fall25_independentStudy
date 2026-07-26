@@ -453,19 +453,17 @@ func (m *KeyLockManager) ReleaseLock(ctx context.Context, key Key, holder peer.I
 }
 
 // IsLocked returns whether the key is locked and the holder peer ID (empty if
-// not locked or expired). This always uses a fresh context.Background()
-// internally rather than accepting one from the caller, so it cannot be
-// cancelled or subjected to a caller-supplied timeout.
+// not locked or expired).
 //
 // Parameters:
+//   - ctx (context.Context): controls cancellation/timeout of the underlying read.
 //   - key (Key): the content key to check.
 //
 // Returns:
 //   - bool: true if an unexpired lock record exists for key.
 //   - peer.ID: the current holder, or the empty peer.ID if not locked, expired,
 //     or the lookup errored.
-func (m *KeyLockManager) IsLocked(key Key) (bool, peer.ID) {
-	ctx := context.Background()
+func (m *KeyLockManager) IsLocked(ctx context.Context, key Key) (bool, peer.ID) {
 	lock, err := m.getLock(ctx, key)
 	if err != nil || lock == nil {
 		return false, ""

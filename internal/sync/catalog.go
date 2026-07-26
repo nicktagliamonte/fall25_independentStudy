@@ -140,8 +140,9 @@ func ReadFetchRequest(r io.Reader, maxCount int) ([]uint64, error) {
 // WriteFetchResponse encodes cids to w in the fetch-response wire format: a
 // little-endian uint32 count, followed by, for each CID, a little-endian
 // uint32 length and that many bytes of its string encoding. Any individual
-// CID whose string encoding exceeds 65535 bytes is silently skipped (not
-// counted against the emitted count, which is fixed to len(cids) up front).
+// CID whose string encoding exceeds 65535 bytes is excluded up front so the
+// emitted count always matches the number of entries actually written
+// (ReadFetchResponse relies on the count being exact to know when to stop).
 //
 // Parameters:
 //   - w (io.Writer): destination for the encoded response.
@@ -150,17 +151,20 @@ func ReadFetchRequest(r io.Reader, maxCount int) ([]uint64, error) {
 // Returns:
 //   - error: any underlying write error.
 func WriteFetchResponse(w io.Writer, cids []cid.Cid) error {
-	var buf [4]byte
-	binary.LittleEndian.PutUint32(buf[:], uint32(len(cids)))
-	if _, err := w.Write(buf[:]); err != nil {
-		return err
-	}
+	encoded := make([][]byte, 0, len(cids))
 	for _, c := range cids {
-		s := c.String()
-		b := []byte(s)
+		b := []byte(c.String())
 		if len(b) > 65535 {
 			continue
 		}
+		encoded = append(encoded, b)
+	}
+	var buf [4]byte
+	binary.LittleEndian.PutUint32(buf[:], uint32(len(encoded)))
+	if _, err := w.Write(buf[:]); err != nil {
+		return err
+	}
+	for _, b := range encoded {
 		binary.LittleEndian.PutUint32(buf[:], uint32(len(b)))
 		if _, err := w.Write(buf[:]); err != nil {
 			return err

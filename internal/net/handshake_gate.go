@@ -14,6 +14,15 @@ import (
 
 const handshakeOkTag = "handshake_ok"
 
+// DefaultMaxInFlightHandshakes bounds the number of responder handshakes
+// HandshakeGate will run concurrently (one goroutine per inbound connection).
+// It is a DoS backstop, not a normal-path throttle: the per-peer rate limiter
+// (AttackMitigation.RateLimiter) already gates new handshake *attempts*, but
+// nothing previously capped how many could be in flight at once across all
+// peers. This default is generous enough that legitimate bursts of inbound
+// connections are never throttled by it in normal operation.
+const DefaultMaxInFlightHandshakes = 256
+
 // HandshakeGate installs network notifications that
 // - run the handshake when a connection is established, closing the peer on failure
 // - reset any non-handshake streams until the peer is verified
@@ -29,6 +38,13 @@ type HandshakeGate struct {
 	onVerified func(peer.ID)
 
 	capIncremented sync.Map // map[network.Stream]struct{} for streams we Increment'd
+
+	// handshakeSem bounds the number of concurrent in-flight responder
+	// handshake goroutines spawned by Connected. Acquiring is non-blocking:
+	// a connection notifiee callback must never block, so when the semaphore
+	// is full the new connection is simply skipped (closed) rather than
+	// queued. Sized by MaxInFlightHandshakes (default DefaultMaxInFlightHandshakes).
+	handshakeSem chan struct{}
 }
 
 // InstallHandshakeGate registers the notifiee on the host and returns the gate instance.
@@ -44,10 +60,11 @@ type HandshakeGate struct {
 //   - *HandshakeGate: the installed gate, tracking verified peers and stream resource usage.
 func InstallHandshakeGate(h host.Host, local HandshakeLocal, policy HandshakePolicy) *HandshakeGate {
 	g := &HandshakeGate{
-		h:        h,
-		local:    local,
-		policy:   policy,
-		verified: make(map[peer.ID]struct{}),
+		h:            h,
+		local:        local,
+		policy:       policy,
+		verified:     make(map[peer.ID]struct{}),
+		handshakeSem: make(chan struct{}, DefaultMaxInFlightHandshakes),
 	}
 
 	// Implement a custom notifiee to avoid relying on NotifyBundle field names.
@@ -82,6 +99,12 @@ type handshakeNotifiee struct{ gate *HandshakeGate }
 // closes the connection; on success it registers the peer with the eclipse limiter
 // (if configured) and marks the peer verified via markVerified.
 //
+// The handshake goroutine only runs while a slot is available in the gate's
+// handshakeSem; this bounds the number of concurrent in-flight handshakes as a
+// DoS backstop. Acquisition is non-blocking (this callback must not block), so
+// if the semaphore is full the connection is closed immediately instead of
+// spawning an unbounded goroutine.
+//
 // Parameters:
 //   - _ (network.Network): the network the connection belongs to; unused.
 //   - c (network.Conn): the newly established connection.
@@ -98,9 +121,18 @@ func (n *handshakeNotifiee) Connected(_ network.Network, c network.Conn) {
 			return
 		}
 	}
+	select {
+	case g.handshakeSem <- struct{}{}:
+	default:
+		// Too many handshakes in flight; drop this connection rather than
+		// spawning an unbounded goroutine or blocking the notifiee callback.
+		g.h.Network().ClosePeer(pid)
+		return
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), policyTimeout(g.policy))
 	go func() {
 		defer cancel()
+		defer func() { <-g.handshakeSem }()
 		if _, err := PerformHandshake(ctx, g.h, pid, g.policy, g.local); err != nil {
 			if am := g.policy.AttackMitigation; am != nil {
 				am.Misbehavior.AddMisbehavior(pid, 20)

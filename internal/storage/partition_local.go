@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -50,14 +51,42 @@ func RecordPartitionLocalOp(ctx context.Context, d ds.Batching, op string, c cid
 	return d.Put(ctx, key, []byte(val))
 }
 
+// partitionLocalOpTimestamp extracts the UnixNano timestamp embedded in a
+// partition-local-op datastore key (partitionLocalNS + "<ts>_<cid>"), so keys
+// can be sorted numerically by timestamp rather than lexically by string. This
+// avoids relying on all timestamps having the same decimal digit count (which
+// lexical sort of the raw key would require). Keys that don't match the
+// expected prefix/format sort as timestamp 0 (i.e. first).
+//
+// Parameters:
+//   - key (string): a full datastore key as returned by the partitionLocalNS query.
+//
+// Returns:
+//   - int64: the parsed UnixNano timestamp, or 0 if key is malformed.
+func partitionLocalOpTimestamp(key string) int64 {
+	if len(key) <= len(partitionLocalNS) {
+		return 0
+	}
+	rest := key[len(partitionLocalNS):]
+	idx := strings.IndexByte(rest, '_')
+	if idx < 0 {
+		return 0
+	}
+	ts, err := strconv.ParseInt(rest[:idx], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return ts
+}
+
 // ListPartitionLocalOps returns operations from the log for reconciliation.
-// Keys under partitionLocalNS are queried, sorted lexically, decoded, and
-// returned in ascending timestamp order. Lexical sort matches chronological
-// order here because UnixNano timestamps have a constant number of decimal
-// digits over the relevant time range; this would break if timestamps ever
-// spanned a digit-count boundary. Entries that fail to read, fail to parse,
-// or have an undecodable CID are silently skipped rather than causing the
-// whole call to fail.
+// Keys under partitionLocalNS are queried, sorted numerically by their embedded
+// UnixNano timestamp (via partitionLocalOpTimestamp, not lexically by the raw
+// key string, so ordering is correct regardless of timestamp digit count),
+// decoded, and returned in ascending timestamp order. This sorts the on-disk
+// key strings themselves; it does not change the stored key format. Entries
+// that fail to read, fail to parse, or have an undecodable CID are silently
+// skipped rather than causing the whole call to fail.
 //
 // Parameters:
 //   - ctx (context.Context): controls cancellation/timeout of the datastore query.
@@ -85,7 +114,9 @@ func ListPartitionLocalOps(ctx context.Context, d ds.Datastore, limit int) ([]Pa
 		}
 		keys = append(keys, r.Key)
 	}
-	sort.Strings(keys)
+	sort.Slice(keys, func(i, j int) bool {
+		return partitionLocalOpTimestamp(keys[i]) < partitionLocalOpTimestamp(keys[j])
+	})
 	var out []PartitionLocalOp
 	for _, k := range keys {
 		if limit > 0 && len(out) >= limit {

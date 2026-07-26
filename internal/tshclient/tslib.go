@@ -1,9 +1,14 @@
-// Purpose: Go client for the legacy C "TSH" (tuple space host) daemon protocol,
-// reimplementing the wire format of tsh_put_it/tsh_get_it and related C structs
-// (see synergy.h) so this process can PUT/GET/READ tuples against an existing TSH
-// daemon over a plain TCP socket. This is unrelated to the content-addressed
-// storage system's own Put/Get flow; it is a bridge to an older tuple-space system.
-package net
+// Package tshclient is a Go client for the legacy C "TSH" (tuple space host)
+// daemon protocol, reimplementing the wire format of tsh_put_it/tsh_get_it and
+// related C structs (see synergy.h) so this process can PUT/GET/READ tuples
+// against an existing TSH daemon over a plain TCP socket. This is unrelated to
+// the content-addressed storage system's own Put/Get flow, and unrelated to
+// internal/tuplespace's DHT/P2P-backed TupleSpace implementations; it is a
+// standalone bridge to an older, separate tuple-space system. As of this
+// package's introduction it has no callers elsewhere in this module (verified
+// via repo-wide grep) — it is kept for potential future use bridging to a live
+// TSH daemon, not currently wired into any running node.
+package tshclient
 
 import (
 	"bytes"
@@ -181,47 +186,50 @@ func getTempListener() (net.Listener, int, error) {
 // writeTshPutIt writes a TshPutIt's fields manually, in wire order with explicit
 // padding, to handle C struct alignment correctly (rather than relying on
 // binary.Write over the Go struct, whose layout is not guaranteed to match).
-// Write errors from the underlying binary.Write calls are not checked/propagated.
+// Stops and returns the first error encountered from the underlying
+// binary.Write calls, leaving the write partially complete on the wire.
 //
 // Parameters:
 //   - w (io.Writer): destination for the encoded bytes (e.g. a net.Conn).
 //   - s (TshPutIt): the struct to encode.
 //
 // Returns:
-//   - error: always nil; present for interface consistency and future error propagation.
+//   - error: non-nil if any field write fails, nil if all fields were written successfully.
 func writeTshPutIt(w io.Writer, s TshPutIt) error {
-	binary.Write(w, binary.BigEndian, s.AppId)
-	binary.Write(w, binary.BigEndian, s.Name)
-	binary.Write(w, binary.BigEndian, s.Priority)
-	binary.Write(w, binary.BigEndian, [2]byte{}) // Padding
-	binary.Write(w, binary.BigEndian, s.Host)
-	binary.Write(w, binary.BigEndian, s.Port)
-	binary.Write(w, binary.BigEndian, [2]byte{}) // Padding
-	binary.Write(w, binary.BigEndian, s.Length)
-	binary.Write(w, binary.BigEndian, s.ProcId)
+	fields := []interface{}{
+		s.AppId, s.Name, s.Priority, [2]byte{}, // Padding
+		s.Host, s.Port, [2]byte{}, // Padding
+		s.Length, s.ProcId,
+	}
+	for _, f := range fields {
+		if err := binary.Write(w, binary.BigEndian, f); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 // writeTshGetIt writes a TshGetIt's fields manually, in wire order with explicit
-// padding, mirroring writeTshPutIt. Write errors from the underlying binary.Write
-// calls are not checked/propagated.
+// padding, mirroring writeTshPutIt. Stops and returns the first error
+// encountered from the underlying binary.Write calls, leaving the write
+// partially complete on the wire.
 //
 // Parameters:
 //   - w (io.Writer): destination for the encoded bytes (e.g. a net.Conn).
 //   - s (TshGetIt): the struct to encode.
 //
 // Returns:
-//   - error: always nil; present for interface consistency and future error propagation.
+//   - error: non-nil if any field write fails, nil if all fields were written successfully.
 func writeTshGetIt(w io.Writer, s TshGetIt) error {
-	binary.Write(w, binary.BigEndian, s.AppId)
-	binary.Write(w, binary.BigEndian, s.Expr)
-	binary.Write(w, binary.BigEndian, s.Host)
-	binary.Write(w, binary.BigEndian, s.Port)
-	binary.Write(w, binary.BigEndian, [2]byte{}) // Padding
-	binary.Write(w, binary.BigEndian, s.Length)
-	binary.Write(w, binary.BigEndian, s.ProcId)
-	binary.Write(w, binary.BigEndian, s.CidPort)
-	binary.Write(w, binary.BigEndian, [2]byte{}) // Padding
+	fields := []interface{}{
+		s.AppId, s.Expr, s.Host, s.Port, [2]byte{}, // Padding
+		s.Length, s.ProcId, s.CidPort, [2]byte{}, // Padding
+	}
+	for _, f := range fields {
+		if err := binary.Write(w, binary.BigEndian, f); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -241,8 +249,10 @@ func writeTshGetIt(w io.Writer, s TshGetIt) error {
 //   - tpvalue ([]byte): the tuple's value/content.
 //
 // Returns:
-//   - int: TSPUT_ER on any local/transport error, otherwise the daemon-reported status/error code (semantics defined by the TSH protocol, not this package).
-//   - error: non-nil describing the failing step when a local/transport error occurs, nil otherwise (including the case where TsPut returns TSPUT_ER after a consumed GET, which mirrors the original C client's behavior and is not itself an error).
+//   - int: TSPUT_ER on any local/transport error; 0 on a successful consumed-by-GET
+//     handoff (phase 2); otherwise the daemon-reported status/error code from
+//     phase 1 or phase 3 (semantics defined by the TSH protocol, not this package).
+//   - error: non-nil describing the failing step when a local/transport error occurs, nil otherwise.
 func (c *TupleSpaceClient) TsPut(tpname string, tpvalue []byte) (int, error) {
 	tpsize := uint32(len(tpvalue))
 
@@ -343,7 +353,10 @@ func (c *TupleSpaceClient) TsPut(tpname string, tpvalue []byte) (int, error) {
 		// uvrReturn Match found
 		// Send tuple header to client
 		buf := new(bytes.Buffer)
-		writeTshPutIt(buf, out)
+		if err := writeTshPutIt(buf, out); err != nil {
+			clientConn.Close()
+			return TSPUT_ER, fmt.Errorf("Direct send to client header encode failure: %w", err)
+		}
 
 		if _, err := clientConn.Write(buf.Bytes()); err != nil {
 			clientConn.Close()
@@ -357,9 +370,12 @@ func (c *TupleSpaceClient) TsPut(tpname string, tpvalue []byte) (int, error) {
 		}
 
 		if uvrReturn.Request == int32(TSH_OP_GET) {
-			// Consumed
+			// Consumed: the tuple was handed off directly to a waiting GET, which
+			// is a successful Put outcome. Return 0 (success), not TSPUT_ER, so
+			// callers checking the numeric code (not just err) don't misread a
+			// successful handoff as a failure.
 			clientConn.Close()
-			return TSPUT_ER, nil // Technically TSPUT_ER is what C returns, which is confusing if success. Assuming caller handles.
+			return 0, nil
 		}
 
 		clientConn.Close()

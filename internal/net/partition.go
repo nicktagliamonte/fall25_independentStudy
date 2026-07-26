@@ -37,20 +37,100 @@ const (
 // this to react to partition detection.
 type OnPartitionEvent func(PartitionEvent)
 
+// partitionMonitorCore holds the sampling/threshold/callback logic shared by
+// PeerConnectivityMonitor and DHTNeighborMonitor. The two monitors differ only
+// in where their peer/neighbor count comes from (host connection count vs.
+// DHT k-bucket size); countFunc abstracts that away to a plain func() int so
+// this type can implement the sampling loop, drop-percentage threshold check,
+// and recovery/partition-event dispatch exactly once. kind is the
+// PartitionEvent.Kind value this core reports (PartitionEventConnectivity or
+// PartitionEventDHTNeighbors).
+type partitionMonitorCore struct {
+	countFunc        func() int
+	kind             string
+	interval         time.Duration
+	minPeers         int
+	dropPct          int
+	onThreshold      func(prev, now int)
+	onPartitionEvent OnPartitionEvent
+	onRecovery       func()
+	mu               sync.Mutex
+	prev             int
+}
+
+// newPartitionMonitorCore creates a core with the default interval (10s),
+// minPeers (2), and dropPct (50), sampling via countFunc and tagging emitted
+// PartitionEvents with kind.
+//
+// Parameters:
+//   - countFunc (func() int): returns the current peer/neighbor count when called.
+//   - kind (string): the PartitionEvent.Kind to attach to emitted events.
+//
+// Returns:
+//   - *partitionMonitorCore: a configured, unstarted core.
+func newPartitionMonitorCore(countFunc func() int, kind string) *partitionMonitorCore {
+	return &partitionMonitorCore{
+		countFunc: countFunc,
+		kind:      kind,
+		interval:  10 * time.Second,
+		minPeers:  2,
+		dropPct:   50,
+	}
+}
+
+// Start runs the monitoring loop: it records the initial count, then on each
+// tick of the configured interval compares the new count against the previous
+// sample. A drop meeting both minPeers and dropPct thresholds triggers
+// onThreshold and onPartitionEvent (tagged with kind); an increase over the
+// previous sample triggers onRecovery. Stops when ctx is done; intended to be
+// run in its own goroutine.
+//
+// Parameters:
+//   - ctx (context.Context): cancelling ctx stops the monitoring loop.
+func (c *partitionMonitorCore) Start(ctx context.Context) {
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+	c.mu.Lock()
+	c.prev = c.countFunc()
+	c.mu.Unlock()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			now := c.countFunc()
+			c.mu.Lock()
+			prev := c.prev
+			c.prev = now
+			c.mu.Unlock()
+			if prev >= c.minPeers && now < prev {
+				drop := prev - now
+				pct := 0
+				if prev > 0 {
+					pct = (drop * 100) / prev
+				}
+				if pct >= c.dropPct {
+					if c.onThreshold != nil {
+						c.onThreshold(prev, now)
+					}
+					if c.onPartitionEvent != nil {
+						c.onPartitionEvent(PartitionEvent{PrevCount: prev, NowCount: now, Kind: c.kind})
+					}
+				}
+			} else if now > prev && c.onRecovery != nil {
+				c.onRecovery()
+			}
+		}
+	}
+}
+
 // PeerConnectivityMonitor samples connected peer count and detects sudden loss (partition).
 // Uses host.Network() only. No Phase 2 dependencies. A drop is significant when the
 // previous count was at least minPeers and the percentage lost in one sampling
 // interval is at least dropPct; an increase after a drop is treated as recovery.
 type PeerConnectivityMonitor struct {
-	h                host.Host
-	interval         time.Duration
-	minPeers         int
-	dropPct          int
-	onDrop           func(prev, now int)
-	onPartitionEvent OnPartitionEvent
-	onRecovery       func()
-	mu               sync.Mutex
-	prev             int
+	h    host.Host
+	core *partitionMonitorCore
 }
 
 // PartitionMonitorOption configures PeerConnectivityMonitor.
@@ -64,7 +144,7 @@ type PartitionMonitorOption func(*PeerConnectivityMonitor)
 // Returns:
 //   - PartitionMonitorOption: an option that applies the interval to a PeerConnectivityMonitor.
 func PartitionMonitorInterval(d time.Duration) PartitionMonitorOption {
-	return func(m *PeerConnectivityMonitor) { m.interval = d }
+	return func(m *PeerConnectivityMonitor) { m.core.interval = d }
 }
 
 // PartitionMonitorMinPeers sets the minimum peer count before we consider drops significant.
@@ -76,7 +156,7 @@ func PartitionMonitorInterval(d time.Duration) PartitionMonitorOption {
 // Returns:
 //   - PartitionMonitorOption: an option that applies the threshold to a PeerConnectivityMonitor.
 func PartitionMonitorMinPeers(n int) PartitionMonitorOption {
-	return func(m *PeerConnectivityMonitor) { m.minPeers = n }
+	return func(m *PeerConnectivityMonitor) { m.core.minPeers = n }
 }
 
 // PartitionMonitorDropPct sets the drop threshold as a percentage (0-100).
@@ -96,7 +176,7 @@ func PartitionMonitorDropPct(pct int) PartitionMonitorOption {
 		if pct > 100 {
 			pct = 100
 		}
-		m.dropPct = pct
+		m.core.dropPct = pct
 	}
 }
 
@@ -108,7 +188,7 @@ func PartitionMonitorDropPct(pct int) PartitionMonitorOption {
 // Returns:
 //   - PartitionMonitorOption: an option that registers the callback on a PeerConnectivityMonitor.
 func PartitionMonitorOnDrop(fn func(prev, now int)) PartitionMonitorOption {
-	return func(m *PeerConnectivityMonitor) { m.onDrop = fn }
+	return func(m *PeerConnectivityMonitor) { m.core.onThreshold = fn }
 }
 
 // PartitionMonitorOnPartitionEvent sets the callback for partition events (for upper layers).
@@ -119,7 +199,7 @@ func PartitionMonitorOnDrop(fn func(prev, now int)) PartitionMonitorOption {
 // Returns:
 //   - PartitionMonitorOption: an option that registers the callback on a PeerConnectivityMonitor.
 func PartitionMonitorOnPartitionEvent(fn OnPartitionEvent) PartitionMonitorOption {
-	return func(m *PeerConnectivityMonitor) { m.onPartitionEvent = fn }
+	return func(m *PeerConnectivityMonitor) { m.core.onPartitionEvent = fn }
 }
 
 // PartitionMonitorOnRecovery sets the callback when peer count increases (post-heal).
@@ -130,7 +210,7 @@ func PartitionMonitorOnPartitionEvent(fn OnPartitionEvent) PartitionMonitorOptio
 // Returns:
 //   - PartitionMonitorOption: an option that registers the callback on a PeerConnectivityMonitor.
 func PartitionMonitorOnRecovery(fn func()) PartitionMonitorOption {
-	return func(m *PeerConnectivityMonitor) { m.onRecovery = fn }
+	return func(m *PeerConnectivityMonitor) { m.core.onRecovery = fn }
 }
 
 // NewPeerConnectivityMonitor creates a monitor for the given host, applying defaults
@@ -143,12 +223,8 @@ func PartitionMonitorOnRecovery(fn func()) PartitionMonitorOption {
 // Returns:
 //   - *PeerConnectivityMonitor: a configured, unstarted monitor.
 func NewPeerConnectivityMonitor(h host.Host, opts ...PartitionMonitorOption) *PeerConnectivityMonitor {
-	m := &PeerConnectivityMonitor{
-		h:        h,
-		interval: 10 * time.Second,
-		minPeers: 2,
-		dropPct:  50,
-	}
+	m := &PeerConnectivityMonitor{h: h}
+	m.core = newPartitionMonitorCore(m.connectedCount, PartitionEventConnectivity)
 	for _, opt := range opts {
 		opt(m)
 	}
@@ -191,40 +267,7 @@ func (m *PeerConnectivityMonitor) ConnectedCount() int {
 // Parameters:
 //   - ctx (context.Context): cancelling ctx stops the monitoring loop.
 func (m *PeerConnectivityMonitor) Start(ctx context.Context) {
-	ticker := time.NewTicker(m.interval)
-	defer ticker.Stop()
-	m.mu.Lock()
-	m.prev = m.connectedCount()
-	m.mu.Unlock()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			now := m.connectedCount()
-			m.mu.Lock()
-			prev := m.prev
-			m.prev = now
-			m.mu.Unlock()
-			if prev >= m.minPeers && now < prev {
-				drop := prev - now
-				pct := 0
-				if prev > 0 {
-					pct = (drop * 100) / prev
-				}
-				if pct >= m.dropPct {
-					if m.onDrop != nil {
-						m.onDrop(prev, now)
-					}
-					if m.onPartitionEvent != nil {
-						m.onPartitionEvent(PartitionEvent{PrevCount: prev, NowCount: now, Kind: PartitionEventConnectivity})
-					}
-				}
-			} else if now > prev && m.onRecovery != nil {
-				m.onRecovery()
-			}
-		}
-	}
+	m.core.Start(ctx)
 }
 
 // PeerLastSeen holds a k-bucket peer and its last-seen timestamp.
@@ -300,15 +343,8 @@ func (t *KBucketLastSeenTracker) LastSeen(p peer.ID) (time.Time, bool) {
 // PeerConnectivityMonitor: a drop is significant when the previous count was at
 // least minPeers and the percentage lost is at least dropPct.
 type DHTNeighborMonitor struct {
-	dht              *kaddht.IpfsDHT
-	interval         time.Duration
-	minPeers         int
-	dropPct          int
-	onLoss           func(prev, now int)
-	onPartitionEvent OnPartitionEvent
-	onRecovery       func()
-	mu               sync.Mutex
-	prev             int
+	dht  *kaddht.IpfsDHT
+	core *partitionMonitorCore
 }
 
 // DHTNeighborMonitorOption configures DHTNeighborMonitor.
@@ -322,7 +358,7 @@ type DHTNeighborMonitorOption func(*DHTNeighborMonitor)
 // Returns:
 //   - DHTNeighborMonitorOption: an option that applies the interval to a DHTNeighborMonitor.
 func DHTNeighborMonitorInterval(d time.Duration) DHTNeighborMonitorOption {
-	return func(m *DHTNeighborMonitor) { m.interval = d }
+	return func(m *DHTNeighborMonitor) { m.core.interval = d }
 }
 
 // DHTNeighborMonitorMinPeers sets the minimum neighbor count before we consider drops significant.
@@ -333,7 +369,7 @@ func DHTNeighborMonitorInterval(d time.Duration) DHTNeighborMonitorOption {
 // Returns:
 //   - DHTNeighborMonitorOption: an option that applies the threshold to a DHTNeighborMonitor.
 func DHTNeighborMonitorMinPeers(n int) DHTNeighborMonitorOption {
-	return func(m *DHTNeighborMonitor) { m.minPeers = n }
+	return func(m *DHTNeighborMonitor) { m.core.minPeers = n }
 }
 
 // DHTNeighborMonitorDropPct sets the drop threshold as a percentage (0-100). Values
@@ -352,7 +388,7 @@ func DHTNeighborMonitorDropPct(pct int) DHTNeighborMonitorOption {
 		if pct > 100 {
 			pct = 100
 		}
-		m.dropPct = pct
+		m.core.dropPct = pct
 	}
 }
 
@@ -364,7 +400,7 @@ func DHTNeighborMonitorDropPct(pct int) DHTNeighborMonitorOption {
 // Returns:
 //   - DHTNeighborMonitorOption: an option that registers the callback on a DHTNeighborMonitor.
 func DHTNeighborMonitorOnLoss(fn func(prev, now int)) DHTNeighborMonitorOption {
-	return func(m *DHTNeighborMonitor) { m.onLoss = fn }
+	return func(m *DHTNeighborMonitor) { m.core.onThreshold = fn }
 }
 
 // DHTNeighborMonitorOnPartitionEvent sets the callback for partition events (for upper layers).
@@ -375,7 +411,7 @@ func DHTNeighborMonitorOnLoss(fn func(prev, now int)) DHTNeighborMonitorOption {
 // Returns:
 //   - DHTNeighborMonitorOption: an option that registers the callback on a DHTNeighborMonitor.
 func DHTNeighborMonitorOnPartitionEvent(fn OnPartitionEvent) DHTNeighborMonitorOption {
-	return func(m *DHTNeighborMonitor) { m.onPartitionEvent = fn }
+	return func(m *DHTNeighborMonitor) { m.core.onPartitionEvent = fn }
 }
 
 // DHTNeighborMonitorOnRecovery sets the callback when neighbor count increases (post-heal).
@@ -386,7 +422,7 @@ func DHTNeighborMonitorOnPartitionEvent(fn OnPartitionEvent) DHTNeighborMonitorO
 // Returns:
 //   - DHTNeighborMonitorOption: an option that registers the callback on a DHTNeighborMonitor.
 func DHTNeighborMonitorOnRecovery(fn func()) DHTNeighborMonitorOption {
-	return func(m *DHTNeighborMonitor) { m.onRecovery = fn }
+	return func(m *DHTNeighborMonitor) { m.core.onRecovery = fn }
 }
 
 // NewDHTNeighborMonitor creates a monitor for the given DHT, applying defaults
@@ -399,12 +435,8 @@ func DHTNeighborMonitorOnRecovery(fn func()) DHTNeighborMonitorOption {
 // Returns:
 //   - *DHTNeighborMonitor: a configured, unstarted monitor.
 func NewDHTNeighborMonitor(dht *kaddht.IpfsDHT, opts ...DHTNeighborMonitorOption) *DHTNeighborMonitor {
-	m := &DHTNeighborMonitor{
-		dht:      dht,
-		interval: 10 * time.Second,
-		minPeers: 2,
-		dropPct:  50,
-	}
+	m := &DHTNeighborMonitor{dht: dht}
+	m.core = newPartitionMonitorCore(m.neighborCount, PartitionEventDHTNeighbors)
 	for _, opt := range opts {
 		opt(m)
 	}
@@ -444,38 +476,5 @@ func (m *DHTNeighborMonitor) NeighborCount() int {
 // Parameters:
 //   - ctx (context.Context): cancelling ctx stops the monitoring loop.
 func (m *DHTNeighborMonitor) Start(ctx context.Context) {
-	ticker := time.NewTicker(m.interval)
-	defer ticker.Stop()
-	m.mu.Lock()
-	m.prev = m.neighborCount()
-	m.mu.Unlock()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			now := m.neighborCount()
-			m.mu.Lock()
-			prev := m.prev
-			m.prev = now
-			m.mu.Unlock()
-			if prev >= m.minPeers && now < prev {
-				drop := prev - now
-				pct := 0
-				if prev > 0 {
-					pct = (drop * 100) / prev
-				}
-				if pct >= m.dropPct {
-					if m.onLoss != nil {
-						m.onLoss(prev, now)
-					}
-					if m.onPartitionEvent != nil {
-						m.onPartitionEvent(PartitionEvent{PrevCount: prev, NowCount: now, Kind: PartitionEventDHTNeighbors})
-					}
-				}
-			} else if now > prev && m.onRecovery != nil {
-				m.onRecovery()
-			}
-		}
-	}
+	m.core.Start(ctx)
 }

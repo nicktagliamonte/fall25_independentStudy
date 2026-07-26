@@ -156,6 +156,10 @@ func (ps *PeerStore) Upsert(p peer.ID, addrs []ma.Multiaddr, services uint64, so
 	for a := range merged {
 		rec.Addrs = append(rec.Addrs, a)
 	}
+	// Sort for deterministic ordering: map iteration above is randomized, and
+	// without this, stored address order would vary run-to-run for the same
+	// input, causing noisy diffs and flaky order-sensitive assertions.
+	sort.Strings(rec.Addrs)
 	// fields
 	if services != 0 {
 		rec.Services = services

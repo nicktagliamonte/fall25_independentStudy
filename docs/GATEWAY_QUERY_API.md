@@ -45,7 +45,7 @@ results, err := gateway.Query(ctx, gateway.Query{Pattern: "a1b2c3..."})
 // results[0].Value = token JSON
 ```
 
-**Note:** `Query`'s own OR-breakdown (`breakDownQuery`, an internal helper distinct from `QueryOptimizer`) splits `|`-separated patterns and looks up each sub-pattern **sequentially**, with no deduplication via `QueryOptimizer`. This is a separate, simpler code path from `QueryMultiPartition` below — don't assume `Query` uses the optimizer pipeline just because it also handles `|` patterns.
+**Note:** `Query` is a thin wrapper around `QueryMultiPartition` (with a default `QueryOptimizer`) — a single pattern takes the synchronous single-sub-query path, and an OR-separated pattern is optimized, broken down, and run in parallel exactly as `QueryMultiPartition` describes below.
 
 ---
 
@@ -107,7 +107,6 @@ optimizer := gateway.NewQueryOptimizer()
 | OptimizeQuery(q)| Trim, dedupe OR parts, collapse single part         |
 | BreakDownQuery(q)| Split on `|`, return `[]SubQuery`                      |
 | RouteForQuery(q)| Routing target string (DHT, PHT+DHT, P2P, multi-partition) |
-| RouteTarget(q)  | Near-identical to RouteForQuery, but returns the `RouteDHT`/`RoutePHTDHT`/`RouteP2P`/`RoutePartition` constants instead of literal strings — used for observability/metrics rather than documentation-facing routing decisions. Defaults to `RouteDHT` for an unrecognized type (RouteForQuery defaults to `"unknown"`). |
 
 **OptimizeQuery behavior:**
 - Trim whitespace.
@@ -132,7 +131,7 @@ tokenStore := gateway.TokenStore()
 
 ## TupleSpace implementations (`internal/tuplespace`)
 
-`Gateway.TupleSpace` is typically a `tuplespace.Router` (`internal/tuplespace/router.go`), which does the actual dispatch that `RouteForQuery`/`RouteTarget` describe above:
+`Gateway.TupleSpace` is typically a `tuplespace.Router` (`internal/tuplespace/router.go`), which does the actual dispatch that `RouteForQuery` describes above:
 
 | Implementation | File | Backs | Notes |
 |---|---|---|---|

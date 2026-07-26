@@ -235,9 +235,8 @@ func writeTshGetIt(w io.Writer, s TshGetIt) error {
 //   - tpvalue ([]byte): the tuple payload.
 //
 // Returns:
-//   - int: TSH-reported status/error code (0/TSPUT_ER-style semantics
-//     inherited from the C protocol; note phase 2's consumed-by-GET path
-//     returns TSPUT_ER with a nil error even though the operation succeeded).
+//   - int: TSH-reported status/error code (0 on success, including phase 2's
+//     consumed-by-GET path; TSPUT_ER on failure).
 //   - error: non-nil if the permission check, listener setup, TSH connection,
 //     or any protocol read/write step failed.
 func (p *P2PTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
@@ -345,7 +344,10 @@ func (p *P2PTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 		// uvrReturn Match found
 		// Send tuple header to client
 		buf := new(bytes.Buffer)
-		writeTshPutIt(buf, out)
+		if err := writeTshPutIt(buf, out); err != nil {
+			clientConn.Close()
+			return TSPUT_ER, fmt.Errorf("Direct send to client header encode failure: %w", err)
+		}
 
 		if _, err := clientConn.Write(buf.Bytes()); err != nil {
 			clientConn.Close()
@@ -359,9 +361,12 @@ func (p *P2PTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 		}
 
 		if uvrReturn.Request == int32(TSH_OP_GET) {
-			// Consumed
+			// Consumed: the tuple was handed off directly to a waiting GET, which
+			// is a successful Put outcome. Return 0 (success), not TSPUT_ER, so
+			// callers checking the numeric code (not just err) don't misread a
+			// successful handoff as a failure.
 			clientConn.Close()
-			return TSPUT_ER, nil // Technically TSPUT_ER is what C returns, which is confusing if success. Assuming caller handles.
+			return 0, nil
 		}
 
 		clientConn.Close()

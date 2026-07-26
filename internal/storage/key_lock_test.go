@@ -38,7 +38,7 @@ func TestAcquireLock_ReleaseLock_Roundtrip(t *testing.T) {
 	if err := mgr.AcquireLock(ctx, key, holder, ttl); err != nil {
 		t.Fatalf("AcquireLock: %v", err)
 	}
-	locked, h := mgr.IsLocked(key)
+	locked, h := mgr.IsLocked(ctx, key)
 	if !locked || h != holder {
 		t.Errorf("IsLocked: want true/%s, got %v/%s", holder, locked, h)
 	}
@@ -46,7 +46,7 @@ func TestAcquireLock_ReleaseLock_Roundtrip(t *testing.T) {
 	if err := mgr.ReleaseLock(ctx, key, holder); err != nil {
 		t.Fatalf("ReleaseLock: %v", err)
 	}
-	locked, _ = mgr.IsLocked(key)
+	locked, _ = mgr.IsLocked(ctx, key)
 	if locked {
 		t.Error("ReleaseLock: key should not be locked")
 	}

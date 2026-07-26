@@ -12,14 +12,6 @@ import (
 	"strings"
 )
 
-// RouteTarget constants for query routing observability.
-const (
-	RouteDHT       = "DHT"
-	RoutePHTDHT    = "PHT+DHT"
-	RouteP2P       = "P2P"
-	RoutePartition = "partition"
-)
-
 // QueryType identifies the query kind for routing.
 type QueryType int
 
@@ -126,39 +118,9 @@ func (o *QueryOptimizer) BreakDownQuery(query Query) []SubQuery {
 	return []SubQuery{{Pattern: query.Pattern, Type: query.Type}}
 }
 
-// RouteTarget returns the routing target for a query. Exact→DHT, Prefix→PHT+DHT,
-// Regex→P2P, MultiPartition→partition. Used for observability; actual routing
-// happens when TupleSpace.TsRead is called (tuplespace.Router routes by pattern).
-//
-// Parameters:
-//   - query (Query): the query whose Type determines the routing target.
-//
-// Returns:
-//   - string: one of the RouteDHT/RoutePHTDHT/RouteP2P/RoutePartition
-//     constants; defaults to RouteDHT for an unrecognized Type.
-func (o *QueryOptimizer) RouteTarget(query Query) string {
-	switch query.Type {
-	case QueryExact:
-		return RouteDHT
-	case QueryPrefix:
-		return RoutePHTDHT
-	case QueryRegex:
-		return RouteP2P
-	case QueryMultiPartition:
-		return RoutePartition
-	default:
-		return RouteDHT
-	}
-}
-
 // RouteForQuery returns the routing target for a query. Used for documentation
 // and routing decisions. Exact→DHT token lookup; Prefix→PHT+DHT token lookup;
 // Regex→P2P tuple space; MultiPartition→break down and route each part.
-//
-// Note: functionally near-identical to RouteTarget, but returns different
-// literal strings ("multi-partition", "unknown") rather than the RouteTarget
-// constants — callers comparing routing target strings should be careful
-// which of the two methods produced the value.
 //
 // Parameters:
 //   - query (Query): the query whose Type determines the routing target.

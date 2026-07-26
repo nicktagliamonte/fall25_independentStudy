@@ -711,9 +711,10 @@ func StoreKeyToCIDMapping(ctx context.Context, d ds.Batching, k Key, c cid.Cid) 
 //   - k (Key): the key to look up.
 //
 // Returns:
-//   - cid.Cid: the mapped CID, or the zero CID if d is nil, k is zero, no mapping exists, or
-//     the stored value fails to decode as a CID.
-//   - error: currently always nil; decode/lookup failures are reported via a zero CID instead.
+//   - cid.Cid: the mapped CID, or the zero CID if d is nil, k is zero, or no mapping exists.
+//   - error: non-nil if the datastore read failed for a reason other than "not
+//     found", or if the stored value failed to decode as a CID; nil (with a
+//     zero CID) when the mapping simply doesn't exist.
 func GetCIDFromKey(ctx context.Context, d ds.Batching, k Key) (cid.Cid, error) {
 	if d == nil || k.IsZero() {
 		return cid.Cid{}, nil
@@ -721,7 +722,10 @@ func GetCIDFromKey(ctx context.Context, d ds.Batching, k Key) (cid.Cid, error) {
 	key := ds.NewKey(keyToCIDNS + k.String())
 	val, err := d.Get(ctx, key)
 	if err != nil {
-		return cid.Cid{}, nil // Not found, return zero CID
+		if err == ds.ErrNotFound {
+			return cid.Cid{}, nil
+		}
+		return cid.Cid{}, fmt.Errorf("get key-to-cid mapping: %w", err)
 	}
 	return cid.Decode(string(val))
 }
@@ -755,9 +759,10 @@ func StoreKeyToProviderIDMapping(ctx context.Context, d ds.Batching, k Key, prov
 //   - k (Key): the key to look up.
 //
 // Returns:
-//   - peer.ID: the mapped provider ID, or "" if d is nil, k is zero, no mapping exists, or the
-//     stored value fails to decode as a peer.ID.
-//   - error: currently always nil; decode/lookup failures are reported via an empty peer.ID.
+//   - peer.ID: the mapped provider ID, or "" if d is nil, k is zero, or no mapping exists.
+//   - error: non-nil if the datastore read failed for a reason other than "not
+//     found", or if the stored value failed to decode as a peer.ID; nil (with
+//     an empty peer.ID) when the mapping simply doesn't exist.
 func GetProviderIDFromKey(ctx context.Context, d ds.Batching, k Key) (peer.ID, error) {
 	if d == nil || k.IsZero() {
 		return "", nil
@@ -765,7 +770,10 @@ func GetProviderIDFromKey(ctx context.Context, d ds.Batching, k Key) (peer.ID, e
 	key := ds.NewKey(keyToProviderIDNS + k.String())
 	val, err := d.Get(ctx, key)
 	if err != nil {
-		return "", nil // Not found, return empty peer.ID
+		if err == ds.ErrNotFound {
+			return "", nil
+		}
+		return "", fmt.Errorf("get key-to-provider mapping: %w", err)
 	}
 	return peer.Decode(string(val))
 }
@@ -806,6 +814,49 @@ func UnindexCID(ctx context.Context, d ds.Batching, c cid.Cid) error {
 	return d.Delete(ctx, key)
 }
 
+// withKeyLock acquires mgr's lock on key for holder (using retryCfg, or mgr's default retry
+// behavior if retryCfg is nil via AcquireLockWithRetry), runs fn, and releases the lock
+// afterward regardless of fn's outcome. If mgr is nil, fn runs without locking at all
+// (callers signal "no locking wanted" by passing a nil mgr rather than this helper inspecting
+// holder/key itself). The lock is released via a deferred fallback if fn returns early/panics,
+// and explicitly after a successful fn so it isn't held for the rest of any deferred call chain.
+//
+// Parameters:
+//   - ctx (context.Context): cancels lock acquisition and is passed through to fn's caller-side
+//     work; the deferred fallback release uses context.Background() instead, matching the
+//     original call sites' behavior of not letting a canceled ctx block releasing the lock.
+//   - mgr (*KeyLockManager): the lock manager to acquire/release through; nil skips locking.
+//   - holder (peer.ID): the peer ID to acquire/release the lock as.
+//   - key (Key): the content key to lock.
+//   - retryCfg (*LockRetryConfig): backoff/timeout configuration passed to AcquireLockWithRetry;
+//     nil uses that method's own defaults.
+//   - fn (func() error): the work to perform while holding the lock (or unconditionally, if
+//     mgr is nil).
+//
+// Returns:
+//   - error: fmt.Errorf("acquire lock: %w", err) if lock acquisition fails; otherwise fn's
+//     return value, unwrapped.
+func withKeyLock(ctx context.Context, mgr *KeyLockManager, holder peer.ID, key Key, retryCfg *LockRetryConfig, fn func() error) error {
+	if mgr == nil {
+		return fn()
+	}
+	if err := mgr.AcquireLockWithRetry(ctx, key, holder, 0, retryCfg); err != nil {
+		return fmt.Errorf("acquire lock: %w", err)
+	}
+	released := false
+	defer func() {
+		if !released {
+			_ = mgr.ReleaseLock(context.Background(), key, holder)
+		}
+	}()
+	if err := fn(); err != nil {
+		return err
+	}
+	released = true
+	_ = mgr.ReleaseLock(ctx, key, holder)
+	return nil
+}
+
 // DeleteLockOpts supplies an optional lock manager, holder, and key for DeleteBlockIndexed.
 // When Manager, Holder, and Key are all set (Manager non-nil, Holder non-empty, Key non-zero),
 // DeleteBlockIndexed acquires the per-key write lock for Key before deleting and releases it
@@ -843,26 +894,20 @@ func DeleteBlockIndexed(ctx context.Context, d ds.Batching, bs bstore.Blockstore
 		return nil
 	}
 
+	var mgr *KeyLockManager
+	var holder peer.ID
+	var key Key
+	var retryCfg *LockRetryConfig
 	if lockOpts != nil && lockOpts.Manager != nil && lockOpts.Holder != "" && !lockOpts.Key.IsZero() {
-		if err := lockOpts.Manager.AcquireLockWithRetry(ctx, lockOpts.Key, lockOpts.Holder, 0, lockOpts.RetryConfig); err != nil {
-			return fmt.Errorf("acquire lock: %w", err)
-		}
-		released := false
-		defer func() {
-			if !released {
-				_ = lockOpts.Manager.ReleaseLock(context.Background(), lockOpts.Key, lockOpts.Holder)
-			}
-		}()
-		err := deleteBlockIndexedInner(ctx, d, bs, c, providerRecords)
-		if err != nil {
-			return err
-		}
-		released = true
-		_ = lockOpts.Manager.ReleaseLock(ctx, lockOpts.Key, lockOpts.Holder)
-		return nil
+		mgr = lockOpts.Manager
+		holder = lockOpts.Holder
+		key = lockOpts.Key
+		retryCfg = lockOpts.RetryConfig
 	}
 
-	return deleteBlockIndexedInner(ctx, d, bs, c, providerRecords)
+	return withKeyLock(ctx, mgr, holder, key, retryCfg, func() error {
+		return deleteBlockIndexedInner(ctx, d, bs, c, providerRecords)
+	})
 }
 
 // deleteBlockIndexedInner performs the unlocked body of DeleteBlockIndexed: delete the block
@@ -1032,26 +1077,21 @@ func PutRawBlockIndexed(ctx context.Context, d ds.Batching, bsvc *bserv.BlockSer
 	// ProviderID will be stored separately via UpdateRoutingTableOnPut().
 	key := KeyFromData(data)
 
+	var mgr *KeyLockManager
+	var holder peer.ID
+	var retryCfg *LockRetryConfig
 	if lockOpts != nil && lockOpts.Manager != nil && lockOpts.Holder != "" {
-		if err := lockOpts.Manager.AcquireLockWithRetry(ctx, key, lockOpts.Holder, 0, lockOpts.RetryConfig); err != nil {
-			return Key{}, cid.Cid{}, fmt.Errorf("acquire lock: %w", err)
-		}
-		released := false
-		defer func() {
-			if !released {
-				_ = lockOpts.Manager.ReleaseLock(context.Background(), key, lockOpts.Holder)
-			}
-		}()
-		c, err := putRawBlockIndexedInner(ctx, d, bsvc, data, key)
-		if err != nil {
-			return Key{}, cid.Cid{}, err
-		}
-		released = true
-		_ = lockOpts.Manager.ReleaseLock(ctx, key, lockOpts.Holder)
-		return key, c, nil
+		mgr = lockOpts.Manager
+		holder = lockOpts.Holder
+		retryCfg = lockOpts.RetryConfig
 	}
 
-	c, err := putRawBlockIndexedInner(ctx, d, bsvc, data, key)
+	var c cid.Cid
+	err := withKeyLock(ctx, mgr, holder, key, retryCfg, func() error {
+		var innerErr error
+		c, innerErr = putRawBlockIndexedInner(ctx, d, bsvc, data, key)
+		return innerErr
+	})
 	if err != nil {
 		return Key{}, cid.Cid{}, err
 	}

@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/libp2p/go-libp2p/core/routing"
 )
@@ -137,6 +138,15 @@ func dhtKey(tpname string) string {
 type DHTTupleSpace struct {
 	// store is the underlying key/value backend (typically the Kademlia DHT).
 	store ValueStore
+
+	// consumeMu serializes TsGet's read-then-tombstone sequence per tuple name,
+	// within this process, so two concurrent local TsGet calls for the same
+	// tpname cannot both observe the data before either writes the tombstone.
+	// This does not (and cannot, given a plain PutValue/GetValue DHT interface
+	// with no compare-and-swap) protect against the same race across two
+	// different processes/peers calling TsGet concurrently; that residual
+	// distributed race is inherent to the storage substrate.
+	consumeMu keyedMutex
 }
 
 // NewDHTTupleSpace creates a DHT-backed tuple space.
@@ -148,6 +158,37 @@ type DHTTupleSpace struct {
 //   - *DHTTupleSpace: the constructed tuple space.
 func NewDHTTupleSpace(store ValueStore) *DHTTupleSpace {
 	return &DHTTupleSpace{store: store}
+}
+
+// keyedMutex hands out a distinct *sync.Mutex per string key, so callers can
+// serialize operations on the same key without serializing unrelated keys
+// behind a single process-wide lock.
+type keyedMutex struct {
+	mu    sync.Mutex
+	locks map[string]*sync.Mutex
+}
+
+// lock returns the mutex for key, creating it on first use, and locks it.
+// Callers must call unlock(key) to release it.
+//
+// Parameters:
+//   - key (string): the logical key to lock.
+//
+// Returns:
+//   - *sync.Mutex: the (already-locked) mutex associated with key.
+func (k *keyedMutex) lock(key string) *sync.Mutex {
+	k.mu.Lock()
+	if k.locks == nil {
+		k.locks = make(map[string]*sync.Mutex)
+	}
+	m, ok := k.locks[key]
+	if !ok {
+		m = &sync.Mutex{}
+		k.locks[key] = m
+	}
+	k.mu.Unlock()
+	m.Lock()
+	return m
 }
 
 // TsPut stores a tuple in the DHT.
@@ -183,9 +224,14 @@ func (d *DHTTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 // Returns the tuple data. After retrieval, stores a tombstone marker to signal consumption.
 // Tombstones are cleaned up by DHT TTL expiration (48h default per libp2p spec).
 //
-// Note: consumption is implemented as a separate read-then-write-tombstone
-// sequence (not atomic), so concurrent TsGet calls for the same tpname can
-// both observe the data before either writes the tombstone.
+// Note: consumption is a read-then-write-tombstone sequence, not a single
+// atomic DHT operation (the underlying ValueStore has no compare-and-swap).
+// d.consumeMu serializes this sequence per tpname within this process, so two
+// local, concurrent TsGet calls for the same name cannot both observe the
+// data before either writes the tombstone. It cannot close the same race
+// across two different processes/peers calling TsGet concurrently for the
+// same name — that residual distributed race is inherent to a plain
+// PutValue/GetValue DHT interface.
 //
 // Parameters:
 //   - tpname (string): the tuple name to consume.
@@ -204,6 +250,8 @@ func (d *DHTTupleSpace) TsGet(tpname string) ([]byte, error) {
 		return nil, errors.New("tuple name required")
 	}
 	key := dhtKey(tpname)
+	m := d.consumeMu.lock(key)
+	defer m.Unlock()
 	data, err := d.store.GetValue(context.Background(), key)
 	if err != nil {
 		return nil, fmt.Errorf("DHT get failed: %w", err)
