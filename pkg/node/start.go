@@ -44,6 +44,7 @@ type service struct {
 	controlAddr     string                                   // "host:port" of the node's local HTTP control server.
 	controlShutdown func(context.Context) error              // shuts down the control server; set by ctrl.Start.
 	stopIBLT        func()                                   // stops the periodic catalog IBLT exchange loop; set by InstallCatalogIBLT.
+	stopAntiReplay  func()                                   // stops the anti-replay tracker (nonce/hash/timestamp checks); set by EnableAntiReplay via buildNodeSubsystems.
 }
 
 // Start assembles and launches an embedded node: it creates (or loads) the
@@ -129,12 +130,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	s.onHandshake = opts.OnHandshake
 	s.onAck = opts.OnAck
 	s.stopIBLT = subs.StopIBLT
-
-	// stopAntiReplay is deferred at Start()'s own return (this preserves the
-	// original, possibly-accidental behavior of stopping the anti-replay
-	// tracker almost immediately, rather than waiting for Close(); see
-	// nodeSubsystems.StopAntiReplay's doc comment).
-	defer subs.StopAntiReplay()
+	s.stopAntiReplay = subs.StopAntiReplay
 
 	// Register handshake and gate with current state
 	myhost.RegisterHandshake(s.h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: subs.HeadStr, StateHeight: subs.Height, ListenAddrs: hostAddrsStrings(s.h)}, s.basePolicy)
@@ -192,9 +188,10 @@ func Start(parent context.Context, opts Options) (Service, error) {
 }
 
 // Close shuts down the node in dependency order: it stops the control server,
-// stops the catalog IBLT exchange loop, cancels the shared context (signaling
-// all background goroutines to exit), waits for those goroutines to finish,
-// closes the storage stack and DHT, and finally closes the libp2p host.
+// stops the catalog IBLT exchange loop and the anti-replay tracker, cancels
+// the shared context (signaling all background goroutines to exit), waits
+// for those goroutines to finish, closes the storage stack and DHT, and
+// finally closes the libp2p host.
 //
 // Parameters:
 //   - ctx (context.Context): passed through to the control server's shutdown; not otherwise used to bound this call.
@@ -207,6 +204,9 @@ func (s *service) Close(ctx context.Context) error {
 	}
 	if s.stopIBLT != nil {
 		s.stopIBLT()
+	}
+	if s.stopAntiReplay != nil {
+		s.stopAntiReplay()
 	}
 	s.cancel()
 	s.wg.Wait()

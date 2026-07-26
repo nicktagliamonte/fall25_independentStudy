@@ -151,14 +151,17 @@ type nodeSubsystems struct {
 	Height  int64
 
 	// StopAntiReplay/StopIBLT are cleanup funcs for the anti-replay tracker
-	// and the catalog IBLT exchange loop, respectively. Deliberately left
-	// for each caller to invoke on its own schedule (rather than deferred
-	// inside buildNodeSubsystems itself): run.go's "run" case defers them at
-	// the call site so they fire at true node shutdown, while start.go's
-	// Start historically deferred stopAntiReplay at Start()'s own return
-	// (i.e., almost immediately) and stores stopIBLT for its Close() method.
-	// Preserving each call site's own defer/store choice keeps that
-	// (possibly accidental, but preexisting) difference intact.
+	// and the catalog IBLT exchange loop, respectively. Deliberately left for
+	// each caller to invoke on its own schedule rather than deferred inside
+	// buildNodeSubsystems itself, since each entry point's notion of "real
+	// shutdown" differs: run.go's "run" case defers both at the call site,
+	// which only returns at true node shutdown; start.go's Start stores both
+	// on its service struct and calls them from Close(), which is the
+	// embedded-library caller's real shutdown point. (StopAntiReplay was
+	// previously deferred at Start()'s own return instead, stopping the
+	// anti-replay tracker almost immediately after startup rather than at
+	// Close() — see git history for that bug; it now matches StopIBLT's
+	// store-and-call-in-Close pattern.)
 	StopAntiReplay func()
 	StopIBLT       func()
 }
