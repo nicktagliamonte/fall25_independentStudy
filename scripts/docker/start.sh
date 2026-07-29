@@ -59,6 +59,9 @@ for i in $(seq 2 "$N"); do
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
       --min-outbound 20
+      --cluster-nodes $N
+      --index-shards \${TARSUS_INDEX_SHARDS:-16}
+      --disable-bloom-pruning=\${TARSUS_DISABLE_BLOOM_PRUNING:-false}
       --control /app/logs/node${i}.json
       --log /app/logs/node${i}.log
     volumes:

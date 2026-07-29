@@ -197,6 +197,13 @@ func ExecuteSubstringQuery(ctx context.Context, store ValueStore, substring stri
 // ExecuteSubstringQueryWithStats runs a Bloom-pruned substring query and
 // reports direct PHT traversal work.
 func ExecuteSubstringQueryWithStats(ctx context.Context, store ValueStore, substring string, nGram int) ([]string, QueryStats, error) {
+	return ExecuteSubstringQueryWithStatsAndPruning(ctx, store, substring, nGram, true)
+}
+
+// ExecuteSubstringQueryWithStatsAndPruning exposes a controlled Bloom-filter
+// ablation. When pruning is false it traverses the same PHT and applies the
+// same authoritative substring filter, but supplies no n-grams to traversal.
+func ExecuteSubstringQueryWithStatsAndPruning(ctx context.Context, store ValueStore, substring string, nGram int, pruning bool) ([]string, QueryStats, error) {
 	if substring == "" {
 		return nil, QueryStats{}, nil
 	}
@@ -204,6 +211,9 @@ func ExecuteSubstringQueryWithStats(ctx context.Context, store ValueStore, subst
 		nGram = DefaultNGramSize
 	}
 	ngrams := ExtractNGrams(substring, nGram)
+	if !pruning {
+		ngrams = nil
+	}
 	counters := &queryCounters{}
 	counted := countingValueStore{ValueStore: store, counters: counters}
 	root, err := NavigateDHT(ctx, counted, "")

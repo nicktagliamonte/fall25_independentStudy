@@ -256,9 +256,14 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
 			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 				baseTS = nativeTS
-				if shardStores, err := mypht.NewShardStores(dhtAdapter, mypht.DefaultShardCount); err == nil {
+				shardCount := opts.IndexShardCount
+				if shardCount <= 0 {
+					shardCount = mypht.DefaultShardCount
+				}
+				if shardStores, err := mypht.NewShardStores(dhtAdapter, shardCount); err == nil {
 					if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
 						if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
+							indexedTS.SetBloomPruning(!opts.DisableBloomPruning)
 							baseTS = indexedTS
 						}
 					}

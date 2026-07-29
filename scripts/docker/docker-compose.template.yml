@@ -18,6 +18,8 @@ services:
       --key /app/keys/bootstrap.key
       --store /app/data/bootstrap
       --min-outbound 20
+      --index-shards ${TARSUS_INDEX_SHARDS:-16}
+      --disable-bloom-pruning=${TARSUS_DISABLE_BLOOM_PRUNING:-false}
       --control /app/logs/bootstrap.json
       --log /app/logs/bootstrap.log
     volumes:
@@ -27,6 +29,8 @@ services:
     networks:
       node-network:
         ipv4_address: 172.20.0.10
+    environment:
+      - CLUSTER_NODE_COUNT=${TARSUS_NODE_COUNT:-100}
     healthcheck:
       test: ["CMD", "sh", "-c", "test -f /app/logs/bootstrap.json && curl -sf http://$$(jq -r .addr /app/logs/bootstrap.json)/health || exit 1"]
       interval: 5s

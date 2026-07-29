@@ -128,3 +128,32 @@ func TestMutableIndexQueryStatsReportDirectWork(t *testing.T) {
 		t.Fatalf("substring rows/stats = %d, %+v", len(substringRows), substringStats)
 	}
 }
+
+func TestSubstringQueryBloomAblationPreservesResultsAndExposesWork(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	index, _ := NewMutableIndex(store)
+	for i := 0; i < 80; i++ {
+		if err := index.Insert(ctx, fmt.Sprintf("task:dataset:%03d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	prunedRows, prunedStats, err := ExecuteSubstringQueryWithStatsAndPruning(ctx, store, "not-present", 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fullRows, fullStats, err := ExecuteSubstringQueryWithStatsAndPruning(ctx, store, "not-present", 0, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prunedRows) != len(fullRows) {
+		t.Fatalf("ablation changed results: pruned=%v full=%v", prunedRows, fullRows)
+	}
+	if prunedStats.BranchesPruned == 0 {
+		t.Fatalf("expected pruning work, stats=%+v", prunedStats)
+	}
+	if fullStats.BranchesPruned != 0 || fullStats.Candidates <= prunedStats.Candidates {
+		t.Fatalf("expected unpruned traversal to inspect more candidates: pruned=%+v full=%+v", prunedStats, fullStats)
+	}
+}

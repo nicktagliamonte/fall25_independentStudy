@@ -186,10 +186,11 @@ func (c *IndexCoordinator) apply(ctx context.Context, mutation indexMutation) er
 // authoritative tuple space. Index records are hints: every candidate is
 // verified by an exact operation at its tuple owner.
 type IndexedTupleSpace struct {
-	base        TupleSpace
-	stores      []pht.ValueStore
-	coordinator *IndexCoordinator
-	timeout     time.Duration
+	base         TupleSpace
+	stores       []pht.ValueStore
+	coordinator  *IndexCoordinator
+	timeout      time.Duration
+	bloomPruning bool
 }
 
 // IndexedQueryStats aggregates direct index and owner-verification work across
@@ -213,7 +214,13 @@ func NewIndexedTupleSpace(base TupleSpace, stores []pht.ValueStore, coordinator 
 	if base == nil || len(stores) == 0 || coordinator == nil {
 		return nil, errors.New("base tuple space, PHT shard stores, and index coordinator required")
 	}
-	return &IndexedTupleSpace{base: base, stores: stores, coordinator: coordinator, timeout: defaultTupleTimeout}, nil
+	return &IndexedTupleSpace{base: base, stores: stores, coordinator: coordinator, timeout: defaultTupleTimeout, bloomPruning: true}, nil
+}
+
+// SetBloomPruning enables or disables Bloom-based branch pruning. Disabling it
+// is intended for controlled experiments; exact verification remains enabled.
+func (i *IndexedTupleSpace) SetBloomPruning(enabled bool) {
+	i.bloomPruning = enabled
 }
 
 func (i *IndexedTupleSpace) TsPut(name string, value []byte) (int, error) {
@@ -327,7 +334,7 @@ func (i *IndexedTupleSpace) candidatesWithStats(expr string) ([]string, IndexedQ
 			case pht.QueryPrefix:
 				names, queryStats, err = pht.PrefixQueryDHTWithStats(ctx, store, query.Prefix)
 			case pht.QuerySubstring:
-				names, queryStats, err = pht.ExecuteSubstringQueryWithStats(ctx, store, query.Substring, 0)
+				names, queryStats, err = pht.ExecuteSubstringQueryWithStatsAndPruning(ctx, store, query.Substring, 0, i.bloomPruning)
 			default:
 				err = ErrTupleNotFound
 			}

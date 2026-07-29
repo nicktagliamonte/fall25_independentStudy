@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
@@ -13,9 +14,11 @@ import (
 type instrumentedTupleSpaceStub struct {
 	value []byte
 	err   error
+	puts  int
 }
 
 func (s *instrumentedTupleSpaceStub) TsPut(string, []byte) (int, error) {
+	s.puts++
 	return 0, nil
 }
 
@@ -44,7 +47,7 @@ func (s *instrumentedTupleSpaceStub) MutationSnapshot() mytuplespace.IndexMutati
 func TestTupleQueryEndpointReturnsInstrumentation(t *testing.T) {
 	mux := http.NewServeMux()
 	ts := &instrumentedTupleSpaceStub{value: []byte("token")}
-	registerTupleQueryEndpoint(mux, mygateway.NewGateway(nil, ts))
+	registerTupleExperimentEndpoints(mux, mygateway.NewGateway(nil, ts))
 
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/tuple/query?pattern=data%2F*", nil))
@@ -68,11 +71,27 @@ func TestTupleQueryEndpointReturnsInstrumentation(t *testing.T) {
 
 func TestTupleQueryEndpointValidatesRequest(t *testing.T) {
 	mux := http.NewServeMux()
-	registerTupleQueryEndpoint(mux, nil)
+	registerTupleExperimentEndpoints(mux, nil)
 
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/tuple/query", nil))
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)
+	}
+}
+
+func TestTuplePutEndpointPopulatesWorkload(t *testing.T) {
+	mux := http.NewServeMux()
+	ts := &instrumentedTupleSpaceStub{}
+	registerTupleExperimentEndpoints(mux, mygateway.NewGateway(nil, ts))
+
+	body := strings.NewReader(`{"name":"experiment/run-1","value_base64":"dG9rZW4=","copies":3}`)
+	recorder := httptest.NewRecorder()
+	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/tuple/put", body))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+	if ts.puts != 3 {
+		t.Fatalf("puts = %d, want 3", ts.puts)
 	}
 }

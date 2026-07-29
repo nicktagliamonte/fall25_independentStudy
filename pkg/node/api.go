@@ -66,6 +66,13 @@ type Options struct {
 	// newReqs.txt.
 	TSHAddr string
 
+	// IndexShardCount controls independent PHT mutation owners and query
+	// fanout. Values <= 0 use pht.DefaultShardCount.
+	IndexShardCount int
+	// DisableBloomPruning traverses all PHT branches for substring queries.
+	// It is intended for controlled ablation experiments.
+	DisableBloomPruning bool
+
 	// OnHandshake, if set, is invoked after each inbound or outbound
 	// handshake completes, with the remote peer ID and a small info map
 	// describing the handshake (e.g. direction, remote height).

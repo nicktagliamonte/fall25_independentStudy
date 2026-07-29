@@ -341,6 +341,8 @@ func Run() error {
 		var maxFailures int
 		var maxKnown int
 		var perIPDialLimit int
+		var indexShards int
+		var disableBloomPruning bool
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.BoolVar(&daemon, "daemon", false, "run the node in the background and return immediately")
 		fs.StringVar(&logPath, "log", "", "when backgrounding, write logs to this file (appended)")
@@ -356,7 +358,12 @@ func Run() error {
 		fs.IntVar(&maxFailures, "max-fail", 8, "evict peers after this many consecutive failures")
 		fs.IntVar(&maxKnown, "max-known", 5000, "soft cap on tracked peers in PeerStore")
 		fs.IntVar(&perIPDialLimit, "per-ip-dial-limit", 3, "maximum outbound dials per unique IP")
+		fs.IntVar(&indexShards, "index-shards", mypht.DefaultShardCount, "number of independently owned PHT shards")
+		fs.BoolVar(&disableBloomPruning, "disable-bloom-pruning", false, "disable Bloom pruning for controlled query ablation")
 		_ = fs.Parse(os.Args[2:])
+		if indexShards <= 0 {
+			return errors.New("--index-shards must be positive")
+		}
 		if clusterNodes == 0 {
 			if v := os.Getenv("CLUSTER_NODE_COUNT"); v != "" {
 				if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -405,6 +412,10 @@ func Run() error {
 			childArgs = append(childArgs, "--max-fail", fmt.Sprintf("%d", maxFailures))
 			childArgs = append(childArgs, "--max-known", fmt.Sprintf("%d", maxKnown))
 			childArgs = append(childArgs, "--per-ip-dial-limit", fmt.Sprintf("%d", perIPDialLimit))
+			childArgs = append(childArgs, "--index-shards", fmt.Sprintf("%d", indexShards))
+			if disableBloomPruning {
+				childArgs = append(childArgs, "--disable-bloom-pruning")
+			}
 
 			cmd := exec.Command(os.Args[0], childArgs...)
 			// If a log path was provided, still attach child stdout/err to that file to catch early output.
@@ -562,9 +573,10 @@ func Run() error {
 			if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht); err == nil {
 				if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 					baseTS = nativeTS
-					if shardStores, err := mypht.NewShardStores(dhtAdapter, mypht.DefaultShardCount); err == nil {
+					if shardStores, err := mypht.NewShardStores(dhtAdapter, indexShards); err == nil {
 						if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
 							if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
+								indexedTS.SetBloomPruning(!disableBloomPruning)
 								baseTS = indexedTS
 							}
 						}

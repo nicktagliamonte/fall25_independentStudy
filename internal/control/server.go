@@ -48,6 +48,7 @@ func getRemoteOnlyQuery(r *http.Request) bool {
 }
 
 type instrumentedTupleSpace interface {
+	TsPut(string, []byte) (int, error)
 	TsReadWithStats(string) ([]byte, mytuplespace.IndexedQueryStats, error)
 	MutationSnapshot() mytuplespace.IndexMutationStats
 }
@@ -59,7 +60,19 @@ type tupleQueryResponse struct {
 	MutationStats mytuplespace.IndexMutationStats `json:"mutation_stats"`
 }
 
-func registerTupleQueryEndpoint(mux *http.ServeMux, gateway *mygateway.Gateway) {
+type tuplePutRequest struct {
+	Name        string `json:"name"`
+	ValueBase64 string `json:"value_base64"`
+	Copies      int    `json:"copies,omitempty"`
+}
+
+type tuplePutResponse struct {
+	Name          string                          `json:"name"`
+	Copies        int                             `json:"copies"`
+	MutationStats mytuplespace.IndexMutationStats `json:"mutation_stats"`
+}
+
+func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gateway) {
 	mux.HandleFunc("/tuple/query", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method != http.MethodGet {
@@ -97,6 +110,57 @@ func registerTupleQueryEndpoint(mux *http.ServeMux, gateway *mygateway.Gateway) 
 		}
 		response.ValueBase64 = base64.StdEncoding.EncodeToString(value)
 		_ = json.NewEncoder(w).Encode(response)
+	})
+
+	mux.HandleFunc("/tuple/put", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", http.MethodPost)
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		if gateway == nil || gateway.TupleSpace == nil {
+			http.Error(w, `{"error":"tuple space unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
+		instrumented, ok := gateway.TupleSpace.(instrumentedTupleSpace)
+		if !ok {
+			http.Error(w, `{"error":"tuple-space instrumentation unavailable"}`, http.StatusNotImplemented)
+			return
+		}
+		var request tuplePutRequest
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&request); err != nil {
+			http.Error(w, `{"error":"invalid JSON request"}`, http.StatusBadRequest)
+			return
+		}
+		request.Name = strings.TrimSpace(request.Name)
+		if request.Name == "" {
+			http.Error(w, `{"error":"missing tuple name"}`, http.StatusBadRequest)
+			return
+		}
+		value, err := base64.StdEncoding.DecodeString(request.ValueBase64)
+		if err != nil || len(value) == 0 {
+			http.Error(w, `{"error":"value_base64 must encode a non-empty value"}`, http.StatusBadRequest)
+			return
+		}
+		if request.Copies == 0 {
+			request.Copies = 1
+		}
+		if request.Copies < 1 || request.Copies > 10000 {
+			http.Error(w, `{"error":"copies must be between 1 and 10000"}`, http.StatusBadRequest)
+			return
+		}
+		for copyIndex := 0; copyIndex < request.Copies; copyIndex++ {
+			if _, err := instrumented.TsPut(request.Name, value); err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
+		}
+		_ = json.NewEncoder(w).Encode(tuplePutResponse{
+			Name:          request.Name,
+			Copies:        request.Copies,
+			MutationStats: instrumented.MutationSnapshot(),
+		})
 	})
 }
 
@@ -291,7 +355,7 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 //   - (error): non-nil if the TCP listener could not be created.
 func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func(), explicitRouter *DynamicRouter, repairProtocol *mystore.RepairProtocol, gateway *mygateway.Gateway, storePath string) (string, func(context.Context) error, error) {
 	mux := http.NewServeMux()
-	registerTupleQueryEndpoint(mux, gateway)
+	registerTupleExperimentEndpoints(mux, gateway)
 	router := explicitRouter
 	if router == nil {
 		router = NewDynamicRouter()
