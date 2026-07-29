@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // DHTNamespace is the key prefix for PHT records in the DHT.
@@ -284,11 +285,28 @@ func collectUnderDHTInternal(ctx context.Context, store ValueStore, n *Node, ngr
 //   - error: non-nil if fetching the prefix node failed; nil, nil if the node
 //     does not exist or is nil.
 func PrefixQueryDHT(ctx context.Context, store ValueStore, prefix string) ([]string, error) {
-	n, err := NavigateDHT(ctx, store, prefix)
+	n, err := NavigateDHT(ctx, store, "")
 	if err != nil || n == nil {
 		return nil, err
 	}
-	return CollectUnderDHT(ctx, store, n)
+	for n.IsInternal() && len(n.Prefix) < len(prefix) {
+		seg := string(prefix[len(n.Prefix)])
+		n, err = GetNode(ctx, store, n.Prefix+seg)
+		if err != nil || n == nil {
+			return nil, err
+		}
+	}
+	rows, err := CollectUnderDHT(ctx, store, n)
+	if err != nil {
+		return nil, err
+	}
+	out := rows[:0]
+	for _, key := range rows {
+		if strings.HasPrefix(key, prefix) {
+			out = append(out, key)
+		}
+	}
+	return out, nil
 }
 
 // PutNodeRecursive stores a node and all its descendants in the DHT.
