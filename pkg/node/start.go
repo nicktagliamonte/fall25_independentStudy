@@ -225,16 +225,16 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		headStr = head.String()
 	}
 	myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, basePolicy)
-	_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, basePolicy, func(pid peer.ID) {
+	handshakeGate := myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, basePolicy, func(pid peer.ID) {
 		_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		if opts.OnHandshake != nil {
 			opts.OnHandshake(pid.String(), map[string]any{"direction": "inbound"})
 		}
 	})
-	myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(h)}, basePolicy, func(max int) []peer.AddrInfo {
+	myhost.RegisterHandshakeWithPeersAndCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, ListenAddrs: hostAddrsStrings(h)}, basePolicy, func(max int) []peer.AddrInfo {
 		infos, _ := peerStore.GetDialCandidates(max, 0, nil)
 		return infos
-	})
+	}, handshakeGate.MarkVerified)
 
 	s := &service{h: h, dht: d, stack: stack, peerStore: peerStore, metrics: metrics, cancel: cancel, basePolicy: basePolicy, onHandshake: opts.OnHandshake, onAck: opts.OnAck}
 
@@ -254,7 +254,9 @@ func Start(parent context.Context, opts Options) (Service, error) {
 
 		var baseTS mytuplespace.TupleSpace = dhtTS
 		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
+			ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(opts.ClusterNodeCount))
 			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
+				nativeTS.SetRequireVerifiedPeers(true)
 				baseTS = nativeTS
 				shardCount := opts.IndexShardCount
 				if shardCount <= 0 {
@@ -262,6 +264,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				}
 				if shardStores, err := mypht.NewShardStores(dhtAdapter, shardCount); err == nil {
 					if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
+						indexCoordinator.SetRequireVerifiedPeers(true)
 						if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
 							indexedTS.SetBloomPruning(!opts.DisableBloomPruning)
 							baseTS = indexedTS
@@ -422,6 +425,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				pol := basePolicy
 				pol.Timeout = opts.DialTimeout
 				if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+					handshakeGate.MarkVerified(pid)
 					if opts.OnHandshake != nil {
 						opts.OnHandshake(pid.String(), map[string]any{"direction": "outbound", "remote_height": res.RemoteStateHeight})
 					}
@@ -457,6 +461,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 					pol := basePolicy
 					pol.Timeout = 5 * time.Second
 					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+						handshakeGate.MarkVerified(pid)
 						for _, info := range res.Learned {
 							if info.ID == h.ID() {
 								continue

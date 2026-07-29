@@ -40,6 +40,13 @@ type TupleSpace interface {
 	TsRead(tpname string) ([]byte, error)
 }
 
+// NamedTupleReplacer is an optional extension for application records that
+// have one current value per exact tuple name. It does not change Linda-style
+// TsPut multiset semantics: callers must opt into replacement explicitly.
+type NamedTupleReplacer interface {
+	TsReplace(tpname string, tpvalue []byte) (int, error)
+}
+
 // Error codes matching tslib.go (synergy.h). These are returned as the int
 // status/error code from TsPut/TsGet/TsRead implementations to signal the
 // specific operation that failed, mirroring the legacy C tuple space library's

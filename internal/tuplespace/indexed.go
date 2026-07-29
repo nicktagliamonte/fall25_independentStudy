@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 const (
 	indexMutationProtocolID protocol.ID = "/tarsus/pht-mutation/1.0.0"
 	indexOwnershipKey                   = "__tarsus_global_tuple_name_index__"
+	maxConcurrentOwnerReads             = 32
 )
 
 type indexMutation struct {
@@ -34,11 +36,12 @@ type indexMutationResponse struct {
 // deterministic overlay owner. Queries still read PHT nodes directly from the
 // DHT and therefore do not pass through this coordinator.
 type IndexCoordinator struct {
-	host     host.Host
-	resolver TupleOwnerResolver
-	indexes  []*pht.MutableIndex
-	timeout  time.Duration
-	metrics  indexMutationMetrics
+	host                 host.Host
+	resolver             TupleOwnerResolver
+	indexes              []*pht.MutableIndex
+	timeout              time.Duration
+	metrics              indexMutationMetrics
+	requireVerifiedPeers bool
 }
 
 type indexMutationMetrics struct {
@@ -76,6 +79,12 @@ func NewIndexCoordinator(h host.Host, resolver TupleOwnerResolver, stores []pht.
 	c.metrics.perShard = make([]atomic.Uint64, len(indexes))
 	h.SetStreamHandler(indexMutationProtocolID, c.handleStream)
 	return c, nil
+}
+
+// SetRequireVerifiedPeers makes remote mutation streams wait for the host
+// handshake gate before negotiating the PHT mutation protocol.
+func (c *IndexCoordinator) SetRequireVerifiedPeers(required bool) {
+	c.requireVerifiedPeers = required
 }
 
 func (c *IndexCoordinator) Close() {
@@ -130,7 +139,7 @@ func (c *IndexCoordinator) mutate(ctx context.Context, mutation indexMutation) (
 	}
 	stats.Remote = 1
 	c.metrics.remote.Add(1)
-	stream, err := c.host.NewStream(ctx, owner, indexMutationProtocolID)
+	stream, err := openTuplePeerStream(ctx, c.host, owner, indexMutationProtocolID, c.requireVerifiedPeers)
 	if err != nil {
 		return stats, fmt.Errorf("open index-owner stream: %w", err)
 	}
@@ -206,6 +215,7 @@ type IndexedTupleSpace struct {
 	coordinator  *IndexCoordinator
 	timeout      time.Duration
 	bloomPruning bool
+	indexedNames sync.Map
 }
 
 // IndexedQueryStats aggregates direct index and owner-verification work across
@@ -249,12 +259,36 @@ func (i *IndexedTupleSpace) TsPutWithMutationStats(name string, value []byte) (i
 	defer cancel()
 	// Index first: a stale hint is safe, while an unindexed live tuple would be
 	// invisible to associative queries.
-	stats, err := i.coordinator.InsertWithStats(ctx, name)
-	if err != nil {
-		return TSPUT_ER, stats, err
+	stats := IndexMutationStats{PerShard: make([]uint64, len(i.stores))}
+	if _, indexed := i.indexedNames.Load(name); !indexed {
+		var err error
+		stats, err = i.coordinator.InsertWithStats(ctx, name)
+		if err != nil {
+			return TSPUT_ER, stats, err
+		}
+		i.indexedNames.Store(name, struct{}{})
 	}
 	code, err := i.base.TsPut(name, value)
 	return code, stats, err
+}
+
+// TsReplace updates a singleton tuple and reasserts its PHT membership first.
+// Renewable records serve as low-rate anti-entropy for index writes that may
+// have raced during an ownership transition. Refresh callers must stagger
+// these operations; a future fenced ownership protocol can make the repeated
+// insertion unnecessary.
+func (i *IndexedTupleSpace) TsReplace(name string, value []byte) (int, error) {
+	replacer, ok := i.base.(NamedTupleReplacer)
+	if !ok {
+		return TSPUT_ER, errors.New("base tuple space does not support replacement")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
+	defer cancel()
+	if err := i.coordinator.Insert(ctx, name); err != nil {
+		return TSPUT_ER, err
+	}
+	i.indexedNames.Store(name, struct{}{})
+	return replacer.TsReplace(name, value)
 }
 
 // MutationSnapshot returns the coordinator counters visible from this node.
@@ -290,17 +324,110 @@ func (i *IndexedTupleSpace) TsReadWithStats(expr string) ([]byte, IndexedQuerySt
 		stats.DurationNS = time.Since(started).Nanoseconds()
 		return nil, stats, err
 	}
-	for _, name := range names {
-		stats.OwnerAttempts++
-		value, readErr := i.base.TsRead(name)
-		if readErr == nil {
-			stats.VerifiedMatches = 1
-			stats.DurationNS = time.Since(started).Nanoseconds()
-			return value, stats, nil
-		}
+	value, attempts, err := i.readFirstCandidate(names)
+	stats.OwnerAttempts = attempts
+	if err == nil {
+		stats.VerifiedMatches = 1
+		stats.DurationNS = time.Since(started).Nanoseconds()
+		return value, stats, nil
 	}
 	stats.DurationNS = time.Since(started).Nanoseconds()
-	return nil, stats, ErrTupleNotFound
+	return nil, stats, err
+}
+
+type contextTupleReader interface {
+	TsReadContext(context.Context, string) ([]byte, error)
+}
+
+// readFirstCandidate verifies index hints with bounded concurrency and one
+// overall deadline. Index entries are hints and may be stale after partial
+// writes or ownership changes; verifying them serially would multiply the
+// tuple timeout by the number of stale candidates.
+func (i *IndexedTupleSpace) readFirstCandidate(names []string) ([]byte, int, error) {
+	if len(names) == 0 {
+		return nil, 0, ErrTupleNotFound
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
+	defer cancel()
+
+	workerCount := maxConcurrentOwnerReads
+	if len(names) < workerCount {
+		workerCount = len(names)
+	}
+	jobs := make(chan string)
+	var attempts atomic.Int64
+	var wg sync.WaitGroup
+	var resultOnce sync.Once
+	var result []byte
+	var found bool
+
+	read := func(name string) ([]byte, error) {
+		if contextual, ok := i.base.(contextTupleReader); ok {
+			return contextual.TsReadContext(ctx, name)
+		}
+		done := make(chan struct {
+			value []byte
+			err   error
+		}, 1)
+		go func() {
+			value, err := i.base.TsRead(name)
+			done <- struct {
+				value []byte
+				err   error
+			}{value: value, err: err}
+		}()
+		select {
+		case outcome := <-done:
+			return outcome.value, outcome.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	wg.Add(workerCount)
+	for worker := 0; worker < workerCount; worker++ {
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case name, ok := <-jobs:
+					if !ok {
+						return
+					}
+					attempts.Add(1)
+					value, err := read(name)
+					if err == nil {
+						resultOnce.Do(func() {
+							result = append([]byte(nil), value...)
+							found = true
+							cancel()
+						})
+						return
+					}
+				}
+			}
+		}()
+	}
+	go func() {
+		defer close(jobs)
+		for _, name := range names {
+			select {
+			case jobs <- name:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	wg.Wait()
+	if found {
+		return result, int(attempts.Load()), nil
+	}
+	if ctx.Err() != nil {
+		return nil, int(attempts.Load()), ctx.Err()
+	}
+	return nil, int(attempts.Load()), ErrTupleNotFound
 }
 
 func (i *IndexedTupleSpace) TsGet(expr string) ([]byte, error) {
@@ -394,5 +521,7 @@ func (i *IndexedTupleSpace) removeIfExhausted(name string) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 	defer cancel()
-	_ = i.coordinator.Delete(ctx, name)
+	if err := i.coordinator.Delete(ctx, name); err == nil {
+		i.indexedNames.Delete(name)
+	}
 }

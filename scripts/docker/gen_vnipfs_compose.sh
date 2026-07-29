@@ -35,11 +35,11 @@ for i in $(seq 2 "$N"); do
     hostname: node${i}
     command: run
       --listen /ip4/172.20.0.${IP_LAST}/tcp/4001
-      --listen /ip4/172.20.0.${IP_LAST}/udp/4002/quic-v1
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
-      --min-outbound 20
+      --min-outbound \${TARSUS_MIN_OUTBOUND:-4}
       --cluster-nodes $N
+      --no-default-bootstrap
       --index-shards \${TARSUS_INDEX_SHARDS:-16}
       --disable-bloom-pruning=\${TARSUS_DISABLE_BLOOM_PRUNING:-false}
       --control /app/logs/node${i}.json
@@ -54,8 +54,6 @@ for i in $(seq 2 "$N"); do
     depends_on:
       bootstrap:
         condition: service_healthy
-    environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
 EOF
 done
 
@@ -72,4 +70,4 @@ for i in $(seq 2 "$N"); do
   echo "  node${i}-logs:" >> "$COMPOSE_FILE"
 done
 
-echo "Wrote $COMPOSE_FILE (nodes 2..$N, PLACEHOLDER_PEER_ID for start_vnipfs.sh to replace)"
+echo "Wrote $COMPOSE_FILE (nodes 2..$N)"

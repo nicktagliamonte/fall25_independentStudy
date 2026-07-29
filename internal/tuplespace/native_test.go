@@ -38,6 +38,36 @@ func TestNativeTupleSpacePutReadGet(t *testing.T) {
 	}
 }
 
+func TestNativeTupleSpaceReplaceCollapsesExactName(t *testing.T) {
+	ts := NewNativeTupleSpace()
+	if _, err := ts.TsPut("offer:peer", []byte("old-1")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ts.TsPut("offer:peer", []byte("old-2")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ts.TsPut("other", []byte("keep")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ts.TsReplace("offer:peer", []byte("current")); err != nil {
+		t.Fatal(err)
+	}
+	if ts.Len() != 2 {
+		t.Fatalf("tuple count = %d, want 2", ts.Len())
+	}
+	got, err := ts.TsGet("offer:peer")
+	if err != nil || string(got) != "current" {
+		t.Fatalf("replacement = %q, %v", got, err)
+	}
+	if _, err := ts.TsRead("offer:peer"); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("duplicate survived replacement: %v", err)
+	}
+	got, err = ts.TsRead("other")
+	if err != nil || string(got) != "keep" {
+		t.Fatalf("unrelated tuple = %q, %v", got, err)
+	}
+}
+
 func TestNativeTupleSpaceIsMultiset(t *testing.T) {
 	ts := NewNativeTupleSpace()
 	_, _ = ts.TsPut("result:dataset-a", []byte("first"))

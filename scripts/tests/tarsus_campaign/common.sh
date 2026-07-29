@@ -33,24 +33,24 @@ campaign_control_get() {
   local service=$1
   local path=$2
   docker-compose -f "$COMPOSE_FILE" exec -T "$service" sh -c \
-    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --fail-with-body --silent --show-error "http://$addr'"$path"'"' \
-    </dev/null
+    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --max-time "$1" --fail-with-body --silent --show-error "http://$addr'"$path"'"' \
+    sh "${CAMPAIGN_HTTP_TIMEOUT_SECONDS:-30}" </dev/null
 }
 
 campaign_tuple_query() {
   local service=$1
   local pattern=$2
   docker-compose -f "$COMPOSE_FILE" exec -T "$service" sh -c \
-    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --fail-with-body --silent --show-error --get --data-urlencode "pattern=$1" "http://$addr/tuple/query"' \
-    sh "$pattern" </dev/null
+    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --max-time "$2" --fail-with-body --silent --show-error --get --data-urlencode "pattern=$1" "http://$addr/tuple/query"' \
+    sh "$pattern" "${CAMPAIGN_QUERY_TIMEOUT_SECONDS:-30}" </dev/null
 }
 
 campaign_tuple_put_file() {
   local service=$1
   local request_file=$2
   docker-compose -f "$COMPOSE_FILE" exec -T "$service" sh -c \
-    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "http://$addr/tuple/put"' \
-    <"$request_file"
+    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --max-time "$1" --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "http://$addr/tuple/put"' \
+    sh "${CAMPAIGN_PUT_TIMEOUT_SECONDS:-300}" <"$request_file"
 }
 
 campaign_capture_host_manifest() {

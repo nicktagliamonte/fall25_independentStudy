@@ -74,24 +74,15 @@ if [[ -z "$PEER_ID" || "$PEER_ID" == "null" ]]; then
   exit 1
 fi
 
-ESCAPED_PEER_ID=$(echo "$PEER_ID" | sed 's/[[\.*^$()+?{|]/\\&/g')
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
-else
-  sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
-fi
-
 echo "Starting peer nodes 2..$N..."
 for i in $(seq 2 "$N"); do
   docker-compose -f "$COMPOSE_FILE" up -d "node$i" || true
   [[ $((i % 20)) -eq 0 ]] && echo "  Started node$i..."
 done
 
-echo "Connecting peer nodes to bootstrap..."
-CONNECT_BODY=$(jq -nc \
-  --arg addr "/ip4/172.20.0.10/tcp/4001" \
-  --arg peer "$PEER_ID" \
-  '{addr:$addr,peer:$peer,timeout:"20s"}')
+echo "Collecting peer identities..."
+declare -a PEER_IDS
+PEER_IDS[1]="$PEER_ID"
 for i in $(seq 2 "$N"); do
   SERVICE="node$i"
   CTRL_FILE="/app/logs/$SERVICE.json"
@@ -105,11 +96,43 @@ for i in $(seq 2 "$N"); do
     echo "ERROR: $SERVICE did not publish its control address" >&2
     exit 1
   fi
-  if ! docker-compose -f "$COMPOSE_FILE" exec -T "$SERVICE" sh -c \
-    'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
-    <<<"$CONNECT_BODY"; then
-    echo "ERROR: $SERVICE could not connect to bootstrap" >&2
+  NODE_PEER_ID=$(docker-compose -f "$COMPOSE_FILE" exec -T "$SERVICE" curl -sf "http://$CTRL_ADDR/id" |
+    jq -r '.peer // empty' 2>/dev/null || true)
+  if [[ -z "$NODE_PEER_ID" ]]; then
+    echo "ERROR: $SERVICE did not publish its peer ID" >&2
     exit 1
+  fi
+  PEER_IDS[$i]="$NODE_PEER_ID"
+done
+
+echo "Connecting peer nodes in a bounded-degree tree..."
+# Join leaves before their parents so the peer-maintenance loops cannot turn a
+# growing root-connected prefix into a dense component before later nodes have
+# received their first edge.
+for ((i = N; i >= 2; i--)); do
+  SERVICE="node$i"
+  PARENT=$((i / 2))
+  PARENT_IP_LAST=$((9 + PARENT))
+  CONNECT_BODY=$(jq -nc \
+    --arg addr "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" \
+    --arg peer "${PEER_IDS[$PARENT]}" \
+    '{addr:$addr,peer:$peer,timeout:"20s"}')
+  CONNECTED=0
+  for _ in $(seq 1 30); do
+    if docker-compose -f "$COMPOSE_FILE" exec -T "$SERVICE" sh -c \
+      'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
+      <<<"$CONNECT_BODY" >/dev/null 2>&1; then
+      CONNECTED=1
+      break
+    fi
+    sleep 2
+  done
+  if [[ "$CONNECTED" -ne 1 ]]; then
+    echo "ERROR: $SERVICE could not connect to parent node$PARENT" >&2
+    exit 1
+  fi
+  if [[ $((i % 10)) -eq 0 || "$i" -eq 2 ]]; then
+    echo "  Connected node$i through node$PARENT"
   fi
 done
 

@@ -55,3 +55,18 @@ func TestDHTTupleOwnerResolverSingleNodeFallback(t *testing.T) {
 		t.Fatalf("owner = %s, want self", got)
 	}
 }
+
+func TestDHTTupleOwnerResolverRejectsUnderpopulatedElectionView(t *testing.T) {
+	self := peer.ID("self-peer")
+	resolver, err := NewDHTTupleOwnerResolver(
+		self,
+		fakeClosestPeerFinder{peers: []peer.ID{peer.ID("peer-a"), peer.ID("peer-b")}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.SetMinimumCandidates(3)
+	if _, err := resolver.ResolveTupleOwner(context.Background(), "task"); err == nil {
+		t.Fatal("under-populated ownership view was accepted")
+	}
+}

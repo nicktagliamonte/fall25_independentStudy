@@ -32,9 +32,12 @@ jq -n \
   --argjson bloom_pruning "$bloom_pruning" \
   --argjson query_repetitions "$repetitions" \
   --argjson client_count "$client_count" \
+  --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-4}" \
+  --arg transport "tcp" \
   '{cell_id:$cell_id,node_count:$node_count,catalog_size:$catalog_size,
     index_shards:$index_shards,bloom_pruning:$bloom_pruning,
-    query_repetitions:$query_repetitions,client_count:$client_count}' >"$cell_dir/cell.json"
+    query_repetitions:$query_repetitions,client_count:$client_count,
+    min_outbound:$min_outbound,transport:$transport}' >"$cell_dir/cell.json"
 
 monitor_pid=""
 artifacts_finalized=0
@@ -75,11 +78,24 @@ docker-compose -f "$COMPOSE_FILE" ps >"$cell_dir/docker-ps.txt"
 docker stats --no-stream >"$cell_dir/docker-stats.txt"
 campaign_log "settling routing state for ${SETTLE_SECONDS:-30}s"
 sleep "${SETTLE_SECONDS:-30}"
-availability_deadline=$((SECONDS + ${AVAILABILITY_WAIT_SECONDS:-75}))
+availability_deadline=$((SECONDS + ${AVAILABILITY_WAIT_SECONDS:-300}))
 while true; do
-  campaign_tuple_query bootstrap "storage-available:*" >"$cell_dir/startup-availability.json"
-  availability_matches=$(jq -r '.query_stats.index_matches // 0' "$cell_dir/startup-availability.json")
-  if [[ "$availability_matches" -ge "$node_count" ]]; then
+  availability_response="$cell_dir/startup-availability.tmp"
+  availability_ready=0
+  if campaign_tuple_query bootstrap "storage-available:*" >"$availability_response"; then
+    availability_matches=$(jq -r '.query_stats.index_matches // 0' "$availability_response")
+    if [[ "$availability_matches" -ge "$node_count" ]]; then
+      availability_ready=1
+    fi
+  else
+    # A 404 means the distributed index has no currently verifiable match;
+    # a curl timeout means it did not answer within the per-request budget.
+    # Both are readiness states until the overall availability deadline.
+    availability_matches=$(jq -r '.response.query_stats.index_matches // 0' \
+      "$availability_response" 2>/dev/null || echo 0)
+  fi
+  mv "$availability_response" "$cell_dir/startup-availability.json"
+  if [[ "$availability_ready" -eq 1 ]]; then
     break
   fi
   if [[ "$SECONDS" -ge "$availability_deadline" ]]; then

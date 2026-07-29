@@ -343,6 +343,7 @@ func Run() error {
 		var perIPDialLimit int
 		var indexShards int
 		var disableBloomPruning bool
+		var noDefaultBootstrap bool
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
 		fs.BoolVar(&daemon, "daemon", false, "run the node in the background and return immediately")
 		fs.StringVar(&logPath, "log", "", "when backgrounding, write logs to this file (appended)")
@@ -360,6 +361,7 @@ func Run() error {
 		fs.IntVar(&perIPDialLimit, "per-ip-dial-limit", 3, "maximum outbound dials per unique IP")
 		fs.IntVar(&indexShards, "index-shards", mypht.DefaultShardCount, "number of independently owned PHT shards")
 		fs.BoolVar(&disableBloomPruning, "disable-bloom-pruning", false, "disable Bloom pruning for controlled query ablation")
+		fs.BoolVar(&noDefaultBootstrap, "no-default-bootstrap", false, "do not use public libp2p bootstrap peers (for explicitly bootstrapped private clusters)")
 		_ = fs.Parse(os.Args[2:])
 		if indexShards <= 0 {
 			return errors.New("--index-shards must be positive")
@@ -415,6 +417,9 @@ func Run() error {
 			childArgs = append(childArgs, "--index-shards", fmt.Sprintf("%d", indexShards))
 			if disableBloomPruning {
 				childArgs = append(childArgs, "--disable-bloom-pruning")
+			}
+			if noDefaultBootstrap {
+				childArgs = append(childArgs, "--no-default-bootstrap")
 			}
 
 			cmd := exec.Command(os.Args[0], childArgs...)
@@ -489,7 +494,10 @@ func Run() error {
 		}
 
 		// Seeds: DHT bootstrap + CLI/env/file
-		seeds := append([]string{}, myhost.DefaultDHTBootstrapAddrs...)
+		var seeds []string
+		if !noDefaultBootstrap {
+			seeds = append(seeds, myhost.DefaultDHTBootstrapAddrs...)
+		}
 		seeds = append(seeds, seedAddrs...)
 		if env := os.Getenv("SNG40_SEEDS"); env != "" {
 			for _, s := range strings.Split(env, ",") {
@@ -550,7 +558,7 @@ func Run() error {
 		if head.Defined() {
 			headStr = head.String()
 		}
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
+		handshakeGate := myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
 
@@ -571,10 +579,13 @@ func Run() error {
 
 			var baseTS mytuplespace.TupleSpace = dhtTS
 			if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht); err == nil {
+				ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(clusterNodes))
 				if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
+					nativeTS.SetRequireVerifiedPeers(true)
 					baseTS = nativeTS
 					if shardStores, err := mypht.NewShardStores(dhtAdapter, indexShards); err == nil {
 						if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
+							indexCoordinator.SetRequireVerifiedPeers(true)
 							if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
 								indexedTS.SetBloomPruning(!disableBloomPruning)
 								baseTS = indexedTS
@@ -653,7 +664,7 @@ func Run() error {
 		// Register handshake responder for inbound peers with state summary AND peer sample
 		// This combines state head/height with peer discovery functionality
 		// Peer provider returns connected peers from network (not just peerstore) so new nodes learn about each other
-		myhost.RegisterHandshakeWithPeers(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, policyBase, func(max int) []peer.AddrInfo {
+		myhost.RegisterHandshakeWithPeersAndCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height, ListenAddrs: hostAddrsStrings(h)}, policyBase, func(max int) []peer.AddrInfo {
 			// Return connected peers from network (these are the peers we actually know about)
 			connectedPeers := h.Network().Peers()
 			infos := make([]peer.AddrInfo, 0, max)
@@ -684,7 +695,7 @@ func Run() error {
 				}
 			}
 			return infos
-		})
+		}, handshakeGate.MarkVerified)
 
 		// Dialer loop: maintain minOutbound connections with backoff
 		dialTimeout, err := time.ParseDuration(dialTimeoutStr)
@@ -773,6 +784,7 @@ func Run() error {
 					pol := policyBase
 					pol.Timeout = dialTimeout
 					if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+						handshakeGate.MarkVerified(pid)
 						// advance state head for this peer (best effort)
 						if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							// no-op
@@ -850,6 +862,7 @@ func Run() error {
 						pol := policyBase
 						pol.Timeout = 5 * time.Second
 						if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
+							handshakeGate.MarkVerified(pid)
 							if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							}
 							for _, info := range res.Learned {
@@ -1133,7 +1146,7 @@ func Run() error {
 			headStr = head.String()
 		}
 		myhost.RegisterHandshake(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, StateHeadCID: headStr, StateHeight: height}, policyBase)
-		_ = myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
+		handshakeGate := myhost.InstallHandshakeGateWithCallback(h, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0}, policyBase, func(pid peer.ID) {
 			_, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String())
 		})
 
@@ -1161,6 +1174,7 @@ func Run() error {
 		if err != nil {
 			return err
 		}
+		handshakeGate.MarkVerified(pid)
 		// advance local state for the explicitly connected peer
 		if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 		}

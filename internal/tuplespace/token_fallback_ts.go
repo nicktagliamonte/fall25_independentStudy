@@ -68,6 +68,19 @@ func (t *TokenFallbackTupleSpace) TsPut(tpname string, tpvalue []byte) (int, err
 	return t.fallback.TsPut(tpname, tpvalue)
 }
 
+// TsReplace delegates singleton-record replacement for non-token tuple names.
+// Token records already have key/value replacement semantics in the DHT.
+func (t *TokenFallbackTupleSpace) TsReplace(tpname string, tpvalue []byte) (int, error) {
+	if isHexKey(tpname) {
+		return t.TsPut(tpname, tpvalue)
+	}
+	replacer, ok := t.fallback.(NamedTupleReplacer)
+	if !ok {
+		return TSPUT_ER, errors.New("fallback does not support tuple replacement")
+	}
+	return replacer.TsReplace(tpname, tpvalue)
+}
+
 // TsPutWithMutationStats delegates non-token writes to an instrumented
 // fallback and returns exact per-call index mutation work.
 func (t *TokenFallbackTupleSpace) TsPutWithMutationStats(tpname string, tpvalue []byte) (int, IndexMutationStats, error) {

@@ -208,9 +208,27 @@ func RegisterHandshake(h host.Host, local HandshakeLocal, policy HandshakePolicy
 //   - policy (HandshakePolicy): validation, anti-replay, and attack-mitigation policy applied to incoming handshakes.
 //   - provider (PeerProvider): supplies a peer sample when the initiator sets WantPeerlist.
 func RegisterHandshakeWithPeers(h host.Host, local HandshakeLocal, policy HandshakePolicy, provider PeerProvider) {
+	RegisterHandshakeWithPeersAndCallback(h, local, policy, provider, nil)
+}
+
+// RegisterHandshakeWithPeersAndCallback installs a responder that can include
+// a peer sample and reports a successfully validated initiator. The callback
+// runs only after the complete version/verack exchange succeeds, so a
+// HandshakeGate can use it to admit application streams without requiring a
+// redundant reverse-direction handshake.
+func RegisterHandshakeWithPeersAndCallback(
+	h host.Host,
+	local HandshakeLocal,
+	policy HandshakePolicy,
+	provider PeerProvider,
+	onAccepted func(peer.ID),
+) {
 	h.SetStreamHandler(HandshakeProtocolID, func(s network.Stream) {
 		defer s.Close()
-		_ = responder(s, h, local, policy, provider)
+		pid := s.Conn().RemotePeer()
+		if err := responder(s, h, local, policy, provider); err == nil && onAccepted != nil {
+			onAccepted(pid)
+		}
 	})
 }
 
@@ -224,8 +242,9 @@ type HandshakeResult struct {
 	RemoteStateHeight int64
 }
 
-// PerformHandshakeWithState dials the peer and returns learned peers and remote state summary.
-// On success, tags the peer in the host's connection manager with handshakeOkTag.
+// PerformHandshakeWithState dials the peer and returns learned peers and remote
+// state summary. Admission state is owned by HandshakeGate; callers using a
+// gate must report successful completion through HandshakeGate.MarkVerified.
 //
 // Parameters:
 //   - ctx (context.Context): controls the lifetime of the handshake stream.
@@ -247,13 +266,12 @@ func PerformHandshakeWithState(ctx context.Context, h host.Host, p peer.ID, poli
 	if err != nil {
 		return nil, err
 	}
-	h.ConnManager().TagPeer(p, handshakeOkTag, 1)
 	return &HandshakeResult{Learned: learned, RemoteStateHead: remote.StateHeadCID, RemoteStateHeight: remote.StateHeight}, nil
 }
 
 // PerformHandshake dials the peer and runs the initiator side. Returns any peers learned.
-// On success, tags the peer in the host's connection manager with handshakeOkTag,
-// marking it verified for downstream gating/policy.
+// Admission state is deliberately not changed here: HandshakeGate performs
+// the connectedness check and owns the corresponding connection-manager tag.
 //
 // Parameters:
 //   - ctx (context.Context): controls the lifetime of the handshake stream.
@@ -275,8 +293,6 @@ func PerformHandshake(ctx context.Context, h host.Host, p peer.ID, policy Handsh
 	if err != nil {
 		return nil, err
 	}
-	// Mark the peer as verified for downstream gating/policy.
-	h.ConnManager().TagPeer(p, handshakeOkTag, 1)
 	return learned, nil
 }
 

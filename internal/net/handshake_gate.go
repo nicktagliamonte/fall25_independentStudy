@@ -4,11 +4,14 @@ package net
 
 import (
 	"context"
+	"log"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -25,6 +28,7 @@ type HandshakeGate struct {
 
 	mu       sync.RWMutex
 	verified map[peer.ID]struct{}
+	inflight map[peer.ID]struct{}
 
 	onVerified func(peer.ID)
 
@@ -48,6 +52,7 @@ func InstallHandshakeGate(h host.Host, local HandshakeLocal, policy HandshakePol
 		local:    local,
 		policy:   policy,
 		verified: make(map[peer.ID]struct{}),
+		inflight: make(map[peer.ID]struct{}),
 	}
 
 	// Implement a custom notifiee to avoid relying on NotifyBundle field names.
@@ -88,6 +93,10 @@ type handshakeNotifiee struct{ gate *HandshakeGate }
 func (n *handshakeNotifiee) Connected(_ network.Network, c network.Conn) {
 	pid := c.RemotePeer()
 	g := n.gate
+	// Connected notifications can precede peerstore address propagation. Keep
+	// the address from the connection itself so a verification retry can dial
+	// after either side closes the initial transport.
+	g.h.Peerstore().AddAddr(pid, c.RemoteMultiaddr(), peerstore.TempAddrTTL)
 	if am := g.policy.AttackMitigation; am != nil {
 		if am.BanList.IsBanned(pid) {
 			g.h.Network().ClosePeer(pid)
@@ -98,10 +107,43 @@ func (n *handshakeNotifiee) Connected(_ network.Network, c network.Conn) {
 			return
 		}
 	}
+	g.mu.Lock()
+	if _, ok := g.verified[pid]; ok {
+		g.mu.Unlock()
+		return
+	}
+	if _, ok := g.inflight[pid]; ok {
+		g.mu.Unlock()
+		return
+	}
+	g.inflight[pid] = struct{}{}
+	g.mu.Unlock()
+
 	ctx, cancel := context.WithTimeout(context.Background(), policyTimeout(g.policy))
 	go func() {
 		defer cancel()
-		if _, err := PerformHandshake(ctx, g.h, pid, g.policy, g.local); err != nil {
+		defer func() {
+			g.mu.Lock()
+			delete(g.inflight, pid)
+			g.mu.Unlock()
+		}()
+		var handshakeErr error
+		for attempt := 0; attempt < 3; attempt++ {
+			if _, handshakeErr = PerformHandshake(ctx, g.h, pid, g.policy, g.local); handshakeErr == nil {
+				break
+			}
+			delay := time.Duration(attempt+1) * 100 * time.Millisecond
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				attempt = 3
+			case <-timer.C:
+			}
+		}
+		if handshakeErr != nil {
+			err := handshakeErr
+			log.Printf("handshake gate: verification with %s failed: %v", pid, err)
 			if am := g.policy.AttackMitigation; am != nil {
 				am.Misbehavior.AddMisbehavior(pid, 20)
 				if am.Misbehavior.ShouldDisconnect(pid) {
@@ -119,16 +161,25 @@ func (n *handshakeNotifiee) Connected(_ network.Network, c network.Conn) {
 }
 
 // Disconnected is called by libp2p when a connection closes. It unregisters the
-// remote peer from the eclipse limiter (if AttackMitigation is configured) so its
-// subnet/ASN slot becomes available again. Note that it does not remove the peer
-// from the gate's verified set.
+// remote peer from the eclipse limiter (if AttackMitigation is configured) so
+// its subnet/ASN slot becomes available again. When the peer has no remaining
+// connections, its verification state and connection-manager tag are removed:
+// a later transport must complete verack again.
 //
 // Parameters:
 //   - _ (network.Network): the network the connection belonged to; unused.
 //   - c (network.Conn): the connection that was closed.
 func (n *handshakeNotifiee) Disconnected(_ network.Network, c network.Conn) {
+	pid := c.RemotePeer()
 	if am := n.gate.policy.AttackMitigation; am != nil {
-		am.Eclipse.Unregister(c.RemotePeer())
+		am.Eclipse.Unregister(pid)
+	}
+	if len(n.gate.h.Network().ConnsToPeer(pid)) == 0 {
+		n.gate.mu.Lock()
+		delete(n.gate.verified, pid)
+		delete(n.gate.inflight, pid)
+		n.gate.mu.Unlock()
+		n.gate.h.ConnManager().UntagPeer(pid, handshakeOkTag)
 	}
 }
 
@@ -188,6 +239,16 @@ func (n *handshakeNotifiee) ListenClose(_ network.Network, _ ma.Multiaddr) {}
 //   - pid (peer.ID): the peer that completed the handshake successfully.
 func (g *HandshakeGate) markVerified(pid peer.ID) {
 	g.mu.Lock()
+	// A handshake can finish concurrently with transport teardown. Do not let
+	// that late result resurrect verification state for a disconnected peer.
+	if len(g.h.Network().ConnsToPeer(pid)) == 0 {
+		g.mu.Unlock()
+		return
+	}
+	if _, exists := g.verified[pid]; exists {
+		g.mu.Unlock()
+		return
+	}
 	g.verified[pid] = struct{}{}
 	g.mu.Unlock()
 	// Tag the peer in the connection manager as a lightweight hint for metrics/policy
@@ -195,6 +256,13 @@ func (g *HandshakeGate) markVerified(pid peer.ID) {
 	if g.onVerified != nil {
 		g.onVerified(pid)
 	}
+}
+
+// MarkVerified admits a connected peer after the local handshake responder has
+// validated the peer and completed the version/verack exchange. It is safe to
+// call more than once and ignores peers that have already disconnected.
+func (g *HandshakeGate) MarkVerified(pid peer.ID) {
+	g.markVerified(pid)
 }
 
 // isVerified reports whether pid has already completed the handshake.

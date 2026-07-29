@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/nicktagliamonte/fall25_independentStudy/internal/pht"
@@ -14,6 +15,26 @@ import (
 type indexedTestStore struct {
 	mu   sync.Mutex
 	data map[string][]byte
+}
+
+type slowIndexedTestTupleSpace struct {
+	live string
+}
+
+func (s *slowIndexedTestTupleSpace) TsPut(string, []byte) (int, error) {
+	return 0, nil
+}
+
+func (s *slowIndexedTestTupleSpace) TsGet(string) ([]byte, error) {
+	return nil, ErrTupleNotFound
+}
+
+func (s *slowIndexedTestTupleSpace) TsRead(name string) ([]byte, error) {
+	time.Sleep(50 * time.Millisecond)
+	if name == s.live {
+		return []byte(name), nil
+	}
+	return nil, ErrTupleNotFound
 }
 
 func (s *indexedTestStore) PutValue(_ context.Context, key string, value []byte, _ ...interface{}) error {
@@ -132,5 +153,91 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	}
 	if _, err := clientA.TsRead("*dataset-a:000*"); !errors.Is(err, ErrTupleNotFound) {
 		t.Fatalf("deleted index candidate read = %v", err)
+	}
+}
+
+func TestIndexedTupleSpaceVerifiesStaleCandidatesConcurrently(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := fixedOwnerResolver{owner: h.ID()}
+	coordinator, err := NewIndexCoordinator(h, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+
+	const live = "task:stale:040"
+	base := &slowIndexedTestTupleSpace{live: live}
+	indexed, err := NewIndexedTupleSpace(base, stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for candidate := 0; candidate <= 40; candidate++ {
+		name := fmt.Sprintf("task:stale:%03d", candidate)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := coordinator.Insert(ctx, name)
+		cancel()
+		if err != nil {
+			t.Fatalf("insert %s: %v", name, err)
+		}
+	}
+
+	started := time.Now()
+	value, stats, err := indexed.TsReadWithStats("task:stale:*")
+	elapsed := time.Since(started)
+	if err != nil || string(value) != live {
+		t.Fatalf("read = %q, %v", value, err)
+	}
+	if stats.OwnerAttempts <= 1 || stats.VerifiedMatches != 1 {
+		t.Fatalf("stats = %+v", stats)
+	}
+	if elapsed >= 500*time.Millisecond {
+		t.Fatalf("verification took %v; candidates appear to be serialized", elapsed)
+	}
+}
+
+func TestIndexedTupleSpaceReplaceReassertsIndexMembership(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := fixedOwnerResolver{owner: h.ID()}
+	coordinator, err := NewIndexCoordinator(h, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	indexed, err := NewIndexedTupleSpace(NewNativeTupleSpace(), stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := indexed.TsReplace("storage-available:peer", []byte("first")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := indexed.TsReplace("storage-available:peer", []byte("second")); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := coordinator.Snapshot()
+	if snapshot.Total != 2 || snapshot.Failures != 0 {
+		t.Fatalf("replacement mutation stats = %+v", snapshot)
+	}
+	got, err := indexed.TsRead("storage-available:peer")
+	if err != nil || string(got) != "second" {
+		t.Fatalf("replacement read = %q, %v", got, err)
 	}
 }

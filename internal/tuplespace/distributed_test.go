@@ -66,8 +66,15 @@ func TestDistributedTupleSpaceRoutesExactOperationsToOwner(t *testing.T) {
 	if err != nil || string(got) != "payload" {
 		t.Fatalf("read = %q, %v", got, err)
 	}
+	if _, err := clientTS.TsReplace("task:image:001", []byte("replacement")); err != nil {
+		t.Fatalf("replace: %v", err)
+	}
+	got, err = clientTS.TsRead("task:image:001")
+	if err != nil || string(got) != "replacement" {
+		t.Fatalf("read replacement = %q, %v", got, err)
+	}
 	got, err = clientTS.TsGet("task:image:001")
-	if err != nil || string(got) != "payload" {
+	if err != nil || string(got) != "replacement" {
 		t.Fatalf("get = %q, %v", got, err)
 	}
 	if _, err := clientTS.TsRead("task:image:001"); !errors.Is(err, ErrTupleNotFound) {

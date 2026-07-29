@@ -49,16 +49,15 @@ func BuildStackWithDHT(ctx context.Context, h host.Host, bs bstore.Blockstore, d
 	dhtCfg := myhost.DHTConfig{
 		Mode:        mode,
 		UseTokenDHT: true, // required for /tokens/ namespace (SyncTokenOnPut, GetToken, replication)
-		// BootstrapPeersFunc supplies the DHT's bootstrap candidate list on
-		// demand: it merges the built-in default bootstrap peers with up to
-		// 50 dial candidates drawn from peerStore, excluding self and
-		// de-duplicating by peer ID.
+		// BootstrapPeersFunc supplies up to 50 candidates from peerStore on
+		// demand. Callers decide whether peerStore contains the public libp2p
+		// defaults, which also permits explicitly bootstrapped private clusters
+		// to start without dialing unrelated public peers.
 		BootstrapPeersFunc: func() []peer.AddrInfo {
-			defaults := myhost.DefaultBootstrapPeerInfos()
 			fromStore, _ := peerStore.GetDialCandidates(50, 0, nil)
 			seen := make(map[peer.ID]struct{})
 			var out []peer.AddrInfo
-			for _, info := range append(defaults, fromStore...) {
+			for _, info := range fromStore {
 				if info.ID == h.ID() {
 					continue
 				}

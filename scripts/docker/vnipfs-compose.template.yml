@@ -14,10 +14,10 @@ services:
     hostname: bootstrap
     command: run
       --listen /ip4/172.20.0.10/tcp/4001
-      --listen /ip4/172.20.0.10/udp/4002/quic-v1
       --key /app/keys/bootstrap.key
       --store /app/data/bootstrap
-      --min-outbound 20
+      --min-outbound ${TARSUS_MIN_OUTBOUND:-4}
+      --no-default-bootstrap
       --index-shards ${TARSUS_INDEX_SHARDS:-16}
       --disable-bloom-pruning=${TARSUS_DISABLE_BLOOM_PRUNING:-false}
       --control /app/logs/bootstrap.json

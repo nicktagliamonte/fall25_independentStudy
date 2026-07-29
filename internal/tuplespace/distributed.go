@@ -22,6 +22,7 @@ const (
 	NativeTupleProtocolID protocol.ID = "/tarsus/tuplespace/1.0.0"
 	defaultTupleTimeout               = 10 * time.Second
 	maxTupleRequestBytes              = 1 << 20
+	handshakeVerifiedTag              = "handshake_ok"
 )
 
 // TupleOwnerResolver deterministically chooses the peer that serializes exact
@@ -48,10 +49,11 @@ type tupleWireResponse struct {
 // reachable peers; the distributed index can supply a narrower candidate set
 // without changing the ownership or consume protocol.
 type DistributedTupleSpace struct {
-	host     host.Host
-	resolver TupleOwnerResolver
-	local    *NativeTupleSpace
-	timeout  time.Duration
+	host                 host.Host
+	resolver             TupleOwnerResolver
+	local                *NativeTupleSpace
+	timeout              time.Duration
+	requireVerifiedPeers bool
 }
 
 // NewDistributedTupleSpace installs the native tuple protocol on h.
@@ -70,6 +72,13 @@ func NewDistributedTupleSpace(h host.Host, resolver TupleOwnerResolver) (*Distri
 	}
 	h.SetStreamHandler(NativeTupleProtocolID, d.handleStream)
 	return d, nil
+}
+
+// SetRequireVerifiedPeers makes tuple streams wait for the host's handshake
+// gate to verify a newly dialed peer. Production nodes enable this after
+// installing the gate; direct libp2p tests may leave it disabled.
+func (d *DistributedTupleSpace) SetRequireVerifiedPeers(required bool) {
+	d.requireVerifiedPeers = required
 }
 
 // Close removes the protocol handler. It does not close the shared libp2p host.
@@ -92,8 +101,33 @@ func (d *DistributedTupleSpace) TsPut(name string, value []byte) (int, error) {
 	return 0, nil
 }
 
-func (d *DistributedTupleSpace) TsRead(expr string) ([]byte, error) {
+// TsReplace routes an exact-name singleton update to the same deterministic
+// tuple owner used by Put, Read, and Get.
+func (d *DistributedTupleSpace) TsReplace(name string, value []byte) (int, error) {
+	if name == "" {
+		return TSPUT_ER, errors.New("tuple name required")
+	}
+	if isTuplePattern(name) {
+		return TSPUT_ER, errors.New("tuple replacement requires an exact name")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
+	_, err := d.exact(ctx, tupleWireRequest{Operation: "replace", Name: name, Value: value})
+	if err != nil {
+		return TSPUT_ER, err
+	}
+	return 0, nil
+}
+
+func (d *DistributedTupleSpace) TsRead(expr string) ([]byte, error) {
+	return d.TsReadContext(context.Background(), expr)
+}
+
+// TsReadContext is the context-aware read path used by indexed candidate
+// verification so one query has one end-to-end deadline rather than a fresh
+// timeout for every stale candidate.
+func (d *DistributedTupleSpace) TsReadContext(parent context.Context, expr string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(parent, d.timeout)
 	defer cancel()
 	if !isTuplePattern(expr) {
 		return d.exact(ctx, tupleWireRequest{Operation: "read", Name: expr})
@@ -153,7 +187,7 @@ func (d *DistributedTupleSpace) requestPeer(ctx context.Context, owner peer.ID, 
 	if owner == d.host.ID() {
 		return d.applyLocal(req)
 	}
-	stream, err := d.host.NewStream(ctx, owner, NativeTupleProtocolID)
+	stream, err := openTuplePeerStream(ctx, d.host, owner, NativeTupleProtocolID, d.requireVerifiedPeers)
 	if err != nil {
 		return nil, fmt.Errorf("open tuple-owner stream: %w", err)
 	}
@@ -178,6 +212,29 @@ func (d *DistributedTupleSpace) requestPeer(ctx context.Context, owner peer.ID, 
 	return response.Value, nil
 }
 
+func openTuplePeerStream(ctx context.Context, h host.Host, owner peer.ID, protocolID protocol.ID, requireVerified bool) (network.Stream, error) {
+	info := peer.AddrInfo{ID: owner, Addrs: h.Peerstore().Addrs(owner)}
+	if err := h.Connect(ctx, info); err != nil {
+		return nil, fmt.Errorf("connect to peer: %w", err)
+	}
+	if requireVerified {
+		ticker := time.NewTicker(25 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			tagInfo := h.ConnManager().GetTagInfo(owner)
+			if tagInfo != nil && tagInfo.Tags[handshakeVerifiedTag] > 0 {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return nil, fmt.Errorf("wait for peer verification: %w", ctx.Err())
+			case <-ticker.C:
+			}
+		}
+	}
+	return h.NewStream(ctx, owner, protocolID)
+}
+
 func (d *DistributedTupleSpace) handleStream(stream network.Stream) {
 	defer stream.Close()
 	_ = stream.SetDeadline(time.Now().Add(d.timeout))
@@ -199,6 +256,9 @@ func (d *DistributedTupleSpace) applyLocal(req tupleWireRequest) ([]byte, error)
 	switch req.Operation {
 	case "put":
 		_, err := d.local.TsPut(req.Name, req.Value)
+		return nil, err
+	case "replace":
+		_, err := d.local.TsReplace(req.Name, req.Value)
 		return nil, err
 	case "read":
 		return d.local.TsRead(req.Name)

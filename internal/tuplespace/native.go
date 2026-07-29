@@ -81,6 +81,41 @@ func (n *NativeTupleSpace) TsPut(tpname string, tpvalue []byte) (int, error) {
 	return 0, nil
 }
 
+// TsReplace atomically removes every tuple with the exact name and publishes
+// one replacement value. This optional application-level operation preserves
+// TsPut's Linda-style multiset behavior while supporting singleton records
+// such as renewable storage advertisements.
+func (n *NativeTupleSpace) TsReplace(tpname string, tpvalue []byte) (int, error) {
+	if tpname == "" {
+		return TSPUT_ER, errors.New("tuple name required")
+	}
+	if isTuplePattern(tpname) {
+		return TSPUT_ER, errors.New("tuple replacement requires an exact name")
+	}
+	if len(tpvalue) == 0 {
+		return TSPUT_ER, errors.New("tuple value required")
+	}
+
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.permissionChecker != nil {
+		if err := n.permissionChecker.CheckPermission(OpTsPut); err != nil {
+			return TSPUT_ER, err
+		}
+	}
+	kept := n.tuples[:0]
+	for _, tuple := range n.tuples {
+		if tuple.Name != tpname {
+			kept = append(kept, tuple)
+		}
+	}
+	n.tuples = append(kept, NativeTuple{
+		Name:  tpname,
+		Value: append([]byte(nil), tpvalue...),
+	})
+	return 0, nil
+}
+
 // TsRead returns the oldest matching tuple without consuming it.
 func (n *NativeTupleSpace) TsRead(expr string) ([]byte, error) {
 	match, err := compileTupleMatcher(expr)

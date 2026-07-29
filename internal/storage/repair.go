@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"log"
 	"strconv"
@@ -38,6 +39,9 @@ type RepairProtocol struct {
 	storageAvailable *StorageAvailableProtocol
 	// criteria are the weights used when selecting among storage-available candidates.
 	criteria SelectionCriteria
+	// advertisementInitialJitterWindow spreads startup writes in large clusters.
+	// A zero value disables jitter for focused tests.
+	advertisementInitialJitterWindow time.Duration
 }
 
 // NewRepairProtocol creates a new RepairProtocol bound to stack and host h. It builds an
@@ -74,10 +78,11 @@ func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, toke
 		return pids
 	}
 	return &RepairProtocol{
-		stack:            stack,
-		host:             h,
-		storageAvailable: sap,
-		criteria:         DefaultSelectionCriteria(tokenized),
+		stack:                            stack,
+		host:                             h,
+		storageAvailable:                 sap,
+		criteria:                         DefaultSelectionCriteria(tokenized),
+		advertisementInitialJitterWindow: 30 * time.Second,
 	}
 }
 
@@ -94,10 +99,12 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 	}
 	go func() {
 		const refreshInterval = 30 * time.Second
+		const offerLifetime = 2 * time.Minute
 		const initialRetry = 100 * time.Millisecond
 		const maxRetry = 5 * time.Second
-		delay := time.Duration(0)
+		delay := deterministicPeerJitter(rp.host.ID(), rp.advertisementInitialJitterWindow)
 		retry := initialRetry
+		published := false
 		for {
 			if delay > 0 {
 				timer := time.NewTimer(delay)
@@ -108,13 +115,18 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 				case <-timer.C:
 				}
 			}
-			err := rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, 24*time.Hour)
+			err := rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, offerLifetime)
 			if err == nil {
-				delay = refreshInterval
+				published = true
+				delay = refreshInterval + deterministicPeerJitter(rp.host.ID(), refreshInterval)
 				retry = initialRetry
 				continue
 			}
-			log.Printf("storage availability advertisement failed; retrying in %s: %v", retry, err)
+			action := "advertisement"
+			if published {
+				action = "advertisement refresh"
+			}
+			log.Printf("storage availability %s failed; retrying in %s: %v", action, retry, err)
 			delay = retry
 			retry *= 2
 			if retry > maxRetry {
@@ -127,6 +139,15 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 			}
 		}
 	}()
+}
+
+func deterministicPeerJitter(pid peer.ID, window time.Duration) time.Duration {
+	if window <= 0 {
+		return 0
+	}
+	hash := fnv.New64a()
+	_, _ = hash.Write([]byte(pid))
+	return time.Duration(hash.Sum64() % uint64(window))
 }
 
 // getTokenStore returns the routing.ValueStore to use for token operations: rp.stack.TokenStore

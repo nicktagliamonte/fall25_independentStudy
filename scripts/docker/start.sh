@@ -54,12 +54,12 @@ for i in $(seq 2 "$N"); do
     container_name: fall25-node${i}
     hostname: node${i}
     command: run
-      --listen /ip4/0.0.0.0/tcp/4001
-      --listen /ip4/0.0.0.0/udp/4002/quic-v1
+      --listen /ip4/172.20.0.${IP_LAST}/tcp/4001
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
-      --min-outbound 20
+      --min-outbound \${TARSUS_MIN_OUTBOUND:-4}
       --cluster-nodes $N
+      --no-default-bootstrap
       --index-shards \${TARSUS_INDEX_SHARDS:-16}
       --disable-bloom-pruning=\${TARSUS_DISABLE_BLOOM_PRUNING:-false}
       --control /app/logs/node${i}.json
@@ -74,8 +74,6 @@ for i in $(seq 2 "$N"); do
     depends_on:
       bootstrap:
         condition: service_healthy
-    environment:
-      - SNG40_SEEDS=/ip4/172.20.0.10/tcp/4001/p2p/PLACEHOLDER_PEER_ID
 EOF
 done
 
@@ -163,14 +161,6 @@ if [[ -z "$PEER_ID" || "$PEER_ID" == "null" ]]; then
   exit 1
 fi
 
-# Update docker-compose.yml with actual peer ID (escape special chars for sed)
-ESCAPED_PEER_ID=$(echo "$PEER_ID" | sed 's/[[\.*^$()+?{|]/\\&/g')
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  sed -i '' "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
-else
-  sed -i "s|PLACEHOLDER_PEER_ID|$ESCAPED_PEER_ID|g" "$COMPOSE_FILE"
-fi
-
 # Start remaining nodes (2 through N)
 echo "Starting peer nodes..."
 for i in $(seq 2 "$N"); do
@@ -179,14 +169,13 @@ for i in $(seq 2 "$N"); do
   docker-compose up -d "$SERVICE"
 done
 
-# Explicitly establish the bootstrap edge. The background dialer remains
-# responsible for learning additional peers, but experiments must not proceed
-# with silently isolated nodes.
-echo "Connecting peer nodes to bootstrap..."
-CONNECT_BODY=$(jq -nc \
-  --arg addr "/ip4/172.20.0.10/tcp/4001" \
-  --arg peer "$PEER_ID" \
-  '{addr:$addr,peer:$peer,timeout:"20s"}')
+# Explicitly establish a bounded-degree binary tree. Requiring every peer to
+# dial the bootstrap node creates an avoidable connection storm at 50+ nodes;
+# the tree gives every node a verified path into the cluster while the
+# background dialer and handshake peer exchange fill additional routing edges.
+echo "Collecting peer identities..."
+declare -a PEER_IDS
+PEER_IDS[1]="$PEER_ID"
 for i in $(seq 2 "$N"); do
   SERVICE="node$i"
   CTRL_FILE="/app/logs/$SERVICE.json"
@@ -200,11 +189,43 @@ for i in $(seq 2 "$N"); do
     echo "ERROR: $SERVICE did not publish its control address" >&2
     exit 1
   fi
-  if ! docker-compose exec -T "$SERVICE" sh -c \
-    'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
-    <<<"$CONNECT_BODY"; then
-    echo "ERROR: $SERVICE could not connect to bootstrap" >&2
+  NODE_PEER_ID=$(docker-compose exec -T "$SERVICE" curl -sf "http://$CTRL_ADDR/id" |
+    jq -r '.peer // empty' 2>/dev/null || true)
+  if [[ -z "$NODE_PEER_ID" ]]; then
+    echo "ERROR: $SERVICE did not publish its peer ID" >&2
     exit 1
+  fi
+  PEER_IDS[$i]="$NODE_PEER_ID"
+done
+
+echo "Connecting peer nodes in a bounded-degree tree..."
+# Join leaves before their parents so the peer-maintenance loops cannot turn a
+# growing root-connected prefix into a dense component before later nodes have
+# received their first edge.
+for ((i = N; i >= 2; i--)); do
+  SERVICE="node$i"
+  PARENT=$((i / 2))
+  PARENT_IP_LAST=$((9 + PARENT))
+  CONNECT_BODY=$(jq -nc \
+    --arg addr "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" \
+    --arg peer "${PEER_IDS[$PARENT]}" \
+    '{addr:$addr,peer:$peer,timeout:"20s"}')
+  CONNECTED=0
+  for _ in $(seq 1 30); do
+    if docker-compose exec -T "$SERVICE" sh -c \
+      'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
+      <<<"$CONNECT_BODY" >/dev/null 2>&1; then
+      CONNECTED=1
+      break
+    fi
+    sleep 2
+  done
+  if [[ "$CONNECTED" -ne 1 ]]; then
+    echo "ERROR: $SERVICE could not connect to parent node$PARENT" >&2
+    exit 1
+  fi
+  if [[ $((i % 10)) -eq 0 || "$i" -eq 2 ]]; then
+    echo "  Connected node$i through node$PARENT"
   fi
 done
 

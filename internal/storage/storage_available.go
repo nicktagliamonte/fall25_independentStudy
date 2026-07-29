@@ -108,7 +108,11 @@ func (sap *StorageAvailableProtocol) AdvertiseStorageAvailable(
 	}
 
 	tupleName := StorageAvailableTuplePrefix + peerID.String()
-	_, err = sap.ts.TsPut(tupleName, data)
+	if replacer, ok := sap.ts.(tuplespace.NamedTupleReplacer); ok {
+		_, err = replacer.TsReplace(tupleName, data)
+	} else {
+		_, err = sap.ts.TsPut(tupleName, data)
+	}
 	if err != nil {
 		return fmt.Errorf("tuple space put failed: %w", err)
 	}
@@ -185,6 +189,9 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 			if err := json.Unmarshal(offerData, &offer); err != nil {
 				continue
 			}
+			if offerExpired(offer, time.Now()) {
+				continue
+			}
 			if seenPeers[offer.PeerID] {
 				continue
 			}
@@ -218,6 +225,9 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 		if err := json.Unmarshal(offerData, &offer); err != nil {
 			continue
 		}
+		if offerExpired(offer, time.Now()) {
+			continue
+		}
 		if seenPeers[offer.PeerID] {
 			continue
 		}
@@ -231,6 +241,14 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 		}
 	}
 	return candidates, nil
+}
+
+func offerExpired(offer StorageAvailableOffer, now time.Time) bool {
+	if offer.Timestamp <= 0 || offer.AvailabilityDuration <= 0 {
+		return true
+	}
+	expires := time.Unix(offer.Timestamp, 0).Add(time.Duration(offer.AvailabilityDuration) * time.Second)
+	return !now.Before(expires)
 }
 
 // FindAndSelectReplicas finds storage-available candidates for desiredCategory (requesting up
@@ -332,12 +350,8 @@ func (sap *StorageAvailableProtocol) UpdateOffer(
 	reputationScore float64,
 	availabilityDuration time.Duration,
 ) error {
-	// Withdraw old offer
-	if err := sap.WithdrawStorageAvailable(peerID); err != nil {
-		// Ignore error if offer doesn't exist
-	}
-
-	// Advertise new offer
+	// AdvertiseStorageAvailable uses atomic replacement when the configured
+	// tuple space supports the optional singleton-record extension.
 	return sap.AdvertiseStorageAvailable(
 		peerID,
 		committedStake,
