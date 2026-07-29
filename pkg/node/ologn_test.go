@@ -4,7 +4,6 @@ package node
 
 import (
 	"context"
-	"math"
 	"testing"
 	"time"
 
@@ -17,51 +16,22 @@ import (
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
 
-// TestVerifyOLogNComplexity measures GetToken latency across network sizes 4, 8, 16
-// and verifies sub-linear scaling consistent with O(log N). Skips when -short.
-func TestVerifyOLogNComplexity(t *testing.T) {
+// TestDHTLookupAcrossNetworkSizes verifies token lookup at network sizes 4, 8,
+// and 16 and logs non-normative local latency. Wall-clock ratios on one host,
+// with warm caches and scheduler contention, cannot prove asymptotic
+// complexity; routing-work experiments provide that evidence separately.
+func TestDHTLookupAcrossNetworkSizes(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping O(log N) verification in short mode")
+		t.Skip("skipping multi-size DHT lookup test in short mode")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 
 	sizes := []int{4, 8, 16}
-	latencies := make(map[int]float64)
-
 	for _, n := range sizes {
 		avgNs := runGetTokenLatencyTest(ctx, t, n)
-		latencies[n] = float64(avgNs) / 1e9
-		t.Logf("N=%d: avg GetToken latency = %.3f ms", n, latencies[n]*1000)
-	}
-
-	// Verify sub-linear scaling: latency(N) / log2(N) should be roughly constant.
-	// For O(log N), doubling N adds ~constant time. Check that growth is bounded.
-	ratios := make([]float64, 0, len(sizes)-1)
-	for i := 1; i < len(sizes); i++ {
-		nPrev, nCur := sizes[i-1], sizes[i]
-		latPrev, latCur := latencies[nPrev], latencies[nCur]
-		logPrev := math.Log2(float64(nPrev))
-		logCur := math.Log2(float64(nCur))
-		ratioPrev := latPrev / logPrev
-		ratioCur := latCur / logCur
-		ratios = append(ratios, ratioCur/ratioPrev)
-	}
-
-	// For O(log N), ratioCur/ratioPrev should be roughly constant. Allow variance
-	// due to measurement noise, bootstrap timing, and local topology.
-	for i, r := range ratios {
-		if r > 6.0 || r < 0.1 {
-			t.Errorf("N=%d→%d: latency/log(N) ratio = %.2f, expected ~1 (O(log N))",
-				sizes[i], sizes[i+1], r)
-		}
-	}
-
-	// Reject O(N): latency(16) must be sub-linear in N (not ~4x latency(4))
-	if latencies[16] > 6*latencies[4] {
-		t.Errorf("latency(16)=%.3f ms >> 6*latency(4)=%.3f ms; scaling appears super-log",
-			latencies[16]*1000, 6*latencies[4]*1000)
+		t.Logf("N=%d: warm local-host GetToken mean = %.3f ms", n, float64(avgNs)/1e6)
 	}
 }
 
@@ -91,8 +61,8 @@ func runGetTokenLatencyTest(ctx context.Context, t *testing.T, n int) int64 {
 		}
 		bs, dstore := mystore.NewEphemeralBlockstore()
 		dhtCfg := myhost.DHTConfig{
-			Mode:       myhost.DHTModeServer,
-			UseTokenDHT: true,
+			Mode:               myhost.DHTModeServer,
+			UseTokenDHT:        true,
 			BootstrapPeersFunc: func() []peer.AddrInfo { return bootstrapPeers },
 		}
 		d, err := myhost.NewDHT(ctx, hosts[i], dhtCfg)
@@ -113,17 +83,9 @@ func runGetTokenLatencyTest(ctx context.Context, t *testing.T, n int) int64 {
 		defer stack.Close()
 	}
 
-	for i := 0; i < n; i++ {
-		for j := 0; j < n; j++ {
-			if i == j {
-				continue
-			}
-			_ = hosts[i].Connect(ctx, infos[j])
-		}
+	for i := 1; i < n; i++ {
+		connectAndAwaitTestDHT(t, ctx, hosts[0], hosts[i], dhts[0], dhts[i])
 	}
-
-	sleepDur := time.Duration(3+n/2) * time.Second
-	time.Sleep(sleepDur)
 
 	payload := []byte("o(log n) complexity verification test payload")
 	key := mystore.KeyFromData(payload)
@@ -140,7 +102,7 @@ func runGetTokenLatencyTest(ctx context.Context, t *testing.T, n int) int64 {
 	if err := mystore.PutToken(ctx, dhts[0], key, token); err != nil {
 		t.Fatalf("PutToken: %v", err)
 	}
-	time.Sleep(3 * time.Second)
+	awaitTestToken(t, ctx, dhts[n-1], key, 1)
 
 	runs := 8
 	var totalNs int64

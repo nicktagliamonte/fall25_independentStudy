@@ -21,7 +21,7 @@ or an explicitly stated assumption/limitation.
 | Returned content is hash verified | `GetBlock`/direct-fetch verification path and tests | Supported | Cite exact test and report failure behavior |
 | Upload creates a fixed number of opportunistic replicas | `ReplicateToNPeers`; replication tests | Implemented | Measure achieved replica count and completion time |
 | Default upload enforces RTT-diverse 40/30/30 placement | ordinary replication labels selected peers midrange | Unsupported | Do not claim for upload; either integrate category-aware repair or narrow wording |
-| Repair can classify and fill RTT-category shortfalls | verification and category-aware repair code | Implemented in components | Run end-to-end controlled-latency recovery test |
+| Repair can classify and fill RTT-category shortfalls | verification and category-aware repair code; availability advertisements retry transient startup failures and campaign preflight requires one indexed offer per node | Implemented in components with validated discovery startup | Run end-to-end controlled-latency recovery test |
 | Replica placement survives regional failure | Docker data does not model independent regions | Unsupported | Multi-host/netem failure experiment; otherwise present only as motivation |
 | Catalog growth compares fairly with Swarm | existing runs use potentially different retrieval/cache semantics | Not yet defensible | Rerun equivalent cold-remote workload |
 | Lookup or propagation scales logarithmically | DHT theory supports expected lookup; existing counter is not a proof | Partially supported | Report measured routing work; avoid converting a reference curve into data |

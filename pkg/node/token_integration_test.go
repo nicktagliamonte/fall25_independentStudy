@@ -88,16 +88,7 @@ func TestPutTokenCreatedGetTokenDirectFetch(t *testing.T) {
 
 	stackA.ProviderRecords = mystore.NewLocalProviderRecords()
 
-	// Ensure peers are connected (like performance_test) before DHT/token ops
-	if err := hA.Connect(ctx, infoB); err != nil {
-		t.Fatalf("Connect A→B: %v", err)
-	}
-	if err := hB.Connect(ctx, infoA); err != nil {
-		t.Fatalf("Connect B→A: %v", err)
-	}
-
-	// Allow DHT bootstrap to connect peers
-	time.Sleep(2 * time.Second)
+	connectAndAwaitTestDHT(t, ctx, hA, hB, dhtA, dhtB)
 
 	// Register DirectFetch handler on A so B can fetch blocks from A
 	hA.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
@@ -121,8 +112,8 @@ func TestPutTokenCreatedGetTokenDirectFetch(t *testing.T) {
 		t.Fatal("C.1 verification failed: token.Locations must be non-empty after Put")
 	}
 
-	// 2. Wait for DHT propagation of token to B
-	time.Sleep(5 * time.Second)
+	// 2. Wait for the observable DHT token condition on B.
+	awaitTestToken(t, ctx, dhtB, key, 1)
 
 	// 3. GetToken → Direct fetch on B (block not local, so GetBlock uses token + DirectFetch)
 	got, _, err := stackB.GetBlock(ctx, key)
@@ -198,7 +189,7 @@ func TestReplicationMultipleProvidersTokenUpdated(t *testing.T) {
 
 	stackA.ProviderRecords = mystore.NewLocalProviderRecords()
 
-	time.Sleep(2 * time.Second)
+	connectAndAwaitTestDHT(t, ctx, hA, hB, dhtA, dhtB)
 
 	repairB := mystore.NewRepairProtocol(stackB, hB, nil, false)
 	hB.SetStreamHandler(mystore.RepairProtocolID, func(stream network.Stream) {
@@ -224,14 +215,10 @@ func TestReplicationMultipleProvidersTokenUpdated(t *testing.T) {
 		t.Fatalf("ReplicateToPeer A→B: %v", err)
 	}
 
-	// 3. Wait for DHT token propagation (both SyncTokenOnPut on B and SyncTokenOnReplication on A update token)
-	time.Sleep(5 * time.Second)
+	// 3. Wait for both provider updates rather than sleeping for a fixed duration.
+	token := awaitTestToken(t, ctx, dhtA, key, 2)
 
 	// 4. Verify token has multiple providers (A and B)
-	token, err := mystore.GetToken(ctx, stackA.DHT, key)
-	if err != nil {
-		t.Fatalf("GetToken: %v", err)
-	}
 	providerIDs := make(map[string]bool)
 	for _, loc := range token.Locations {
 		providerIDs[loc.ProviderID.String()] = true
@@ -402,7 +389,7 @@ func TestReadWithoutLockMultipleConcurrentReadsSucceed(t *testing.T) {
 
 	stackA.ProviderRecords = mystore.NewLocalProviderRecords()
 
-	time.Sleep(2 * time.Second)
+	connectAndAwaitTestDHT(t, ctx, hA, hB, dhtA, dhtB)
 
 	hA.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
 		_ = mystore.HandleDirectFetchStream(stream, stackA)
@@ -415,7 +402,7 @@ func TestReadWithoutLockMultipleConcurrentReadsSucceed(t *testing.T) {
 	}
 	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
 
-	time.Sleep(5 * time.Second)
+	awaitTestToken(t, ctx, dhtB, key, 1)
 
 	const numReaders = 8
 	var wg sync.WaitGroup

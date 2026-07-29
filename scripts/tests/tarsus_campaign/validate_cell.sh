@@ -3,13 +3,18 @@ set -euo pipefail
 
 [[ $# -eq 1 ]] || { echo "usage: $0 CELL_DIR" >&2; exit 2; }
 cell_dir=$1
-required=(cell.json host.json workload/names.txt workload/patterns.tsv populate.ndjson queries.csv topology.json docker-ps.txt docker-stats.txt docker.log)
+required=(cell.json host.json workload/names.txt workload/patterns.tsv populate.ndjson queries.csv topology.json startup-availability.json docker-ps.txt docker-stats.txt docker.log)
 for path in "${required[@]}"; do
   [[ -s "$cell_dir/$path" ]] || { echo "missing or empty artifact: $cell_dir/$path" >&2; exit 1; }
 done
 
 jq -e '.node_count > 1 and .catalog_size > 0 and .index_shards > 0' "$cell_dir/cell.json" >/dev/null
 jq -e '.git.commit != "" and .host.logical_cpus > 0' "$cell_dir/host.json" >/dev/null
+jq -e --slurpfile cell "$cell_dir/cell.json" \
+  '.query_stats.verified_matches == 1
+   and .query_stats.index_matches >= $cell[0].node_count' \
+  "$cell_dir/startup-availability.json" >/dev/null
+jq -e 'all(.nodes[]; .neighbor_count > 0)' "$cell_dir/topology.json" >/dev/null
 jq -e '.requested > 0 and .failed == 0 and .requested == .succeeded
   and .mutation_delta.total == .requested
   and .mutation_delta.failures == 0' "$cell_dir/populate-summary.json" >/dev/null

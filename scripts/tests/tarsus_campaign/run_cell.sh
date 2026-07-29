@@ -75,6 +75,20 @@ docker-compose -f "$COMPOSE_FILE" ps >"$cell_dir/docker-ps.txt"
 docker stats --no-stream >"$cell_dir/docker-stats.txt"
 campaign_log "settling routing state for ${SETTLE_SECONDS:-30}s"
 sleep "${SETTLE_SECONDS:-30}"
+availability_deadline=$((SECONDS + ${AVAILABILITY_WAIT_SECONDS:-75}))
+while true; do
+  campaign_tuple_query bootstrap "storage-available:*" >"$cell_dir/startup-availability.json"
+  availability_matches=$(jq -r '.query_stats.index_matches // 0' "$cell_dir/startup-availability.json")
+  if [[ "$availability_matches" -ge "$node_count" ]]; then
+    break
+  fi
+  if [[ "$SECONDS" -ge "$availability_deadline" ]]; then
+    echo "availability advertisements indexed=$availability_matches, want >=$node_count" >&2
+    exit 1
+  fi
+  campaign_log "availability advertisements indexed=$availability_matches/$node_count; awaiting refresh"
+  sleep 2
+done
 
 split -d -a 5 -l "${POPULATE_BATCH_SIZE:-2500}" \
   "$cell_dir/workload/names.txt" "$cell_dir/batches/names-"

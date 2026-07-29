@@ -41,7 +41,7 @@ func TestPutGetViaDHT(t *testing.T) {
 
 	buildStack := func(h host.Host, other peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode:       myhost.DHTModeServer,
+			Mode:        myhost.DHTModeServer,
 			UseTokenDHT: true,
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				if other.ID == h.ID() {
@@ -82,7 +82,7 @@ func TestPutGetViaDHT(t *testing.T) {
 	defer dhtB.Close()
 	defer stackB.Close()
 
-	time.Sleep(2 * time.Second)
+	connectAndAwaitTestDHT(t, ctx, hA, hB, dhtA, dhtB)
 
 	hA.SetStreamHandler(mystore.DirectFetchProtocolID, func(stream network.Stream) {
 		_ = mystore.HandleDirectFetchStream(stream, stackA)
@@ -95,7 +95,7 @@ func TestPutGetViaDHT(t *testing.T) {
 	}
 	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
 
-	time.Sleep(5 * time.Second)
+	awaitTestToken(t, ctx, dhtB, key, 1)
 
 	got, _, err := stackB.GetBlock(ctx, key)
 	if err != nil {
@@ -135,7 +135,7 @@ func TestPartitionAndRecovery(t *testing.T) {
 
 	buildStack := func(h host.Host, bootstrapPeers []peer.AddrInfo, bs bstore.Blockstore, datastore ds.Batching) (*mystore.Stack, *kaddht.IpfsDHT, error) {
 		dhtCfg := myhost.DHTConfig{
-			Mode:       myhost.DHTModeServer,
+			Mode:        myhost.DHTModeServer,
 			UseTokenDHT: true,
 			BootstrapPeersFunc: func() []peer.AddrInfo {
 				var out []peer.AddrInfo
@@ -194,7 +194,7 @@ func TestPartitionAndRecovery(t *testing.T) {
 		_ = mystore.HandleDirectFetchStream(stream, stackB)
 	})
 
-	time.Sleep(2 * time.Second)
+	connectAndAwaitTestDHT(t, ctx, hA, hB, dhtA, dhtB)
 
 	payload := []byte("partition recovery test")
 	key, c, err := stackA.PutBlock(ctx, payload)
@@ -203,7 +203,7 @@ func TestPartitionAndRecovery(t *testing.T) {
 	}
 	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
 
-	time.Sleep(5 * time.Second)
+	awaitTestToken(t, ctx, dhtB, key, 1)
 
 	gotB, _, err := stackB.GetBlock(ctx, key)
 	if err != nil {
@@ -221,8 +221,7 @@ func TestPartitionAndRecovery(t *testing.T) {
 	if err := hC.Connect(ctx, infoB); err != nil {
 		t.Fatalf("recovery connect C to B: %v", err)
 	}
-
-	time.Sleep(5 * time.Second)
+	connectAndAwaitTestDHT(t, ctx, hC, hB, dhtC, dhtB)
 
 	gotC, _, err := stackC.GetBlock(ctx, key)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"time"
 
@@ -80,10 +81,10 @@ func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, toke
 	}
 }
 
-// StartAdvertisingStorageAvailability advertises this peer's storage availability (a fixed
-// placeholder capacity of 1GiB, full reputation 1.0, 24h validity, 0 committed stake) once
-// immediately, then again every 30 seconds in a background goroutine until ctx is done. Call
-// once at node startup. No-op if rp.host or rp.storageAvailable is nil.
+// StartAdvertisingStorageAvailability advertises this peer's storage
+// availability in a background loop. Transient startup failures are retried
+// with bounded exponential backoff; after success, the offer is refreshed
+// every 30 seconds. Call once at node startup.
 //
 // Parameters:
 //   - ctx (context.Context): stops the periodic re-advertisement loop when done/canceled.
@@ -91,16 +92,38 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 	if rp.host == nil || rp.storageAvailable == nil {
 		return
 	}
-	_ = rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, 24*time.Hour)
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
+		const refreshInterval = 30 * time.Second
+		const initialRetry = 100 * time.Millisecond
+		const maxRetry = 5 * time.Second
+		delay := time.Duration(0)
+		retry := initialRetry
 		for {
+			if delay > 0 {
+				timer := time.NewTimer(delay)
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return
+				case <-timer.C:
+				}
+			}
+			err := rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, 24*time.Hour)
+			if err == nil {
+				delay = refreshInterval
+				retry = initialRetry
+				continue
+			}
+			log.Printf("storage availability advertisement failed; retrying in %s: %v", retry, err)
+			delay = retry
+			retry *= 2
+			if retry > maxRetry {
+				retry = maxRetry
+			}
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
-				_ = rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, 24*time.Hour)
+			default:
 			}
 		}
 	}()
