@@ -85,55 +85,70 @@ func (c *IndexCoordinator) Close() {
 }
 
 func (c *IndexCoordinator) Insert(ctx context.Context, key string) error {
+	_, err := c.InsertWithStats(ctx, key)
+	return err
+}
+
+// InsertWithStats attributes mutation work to this exact call rather than
+// inferring it from process-wide counter snapshots.
+func (c *IndexCoordinator) InsertWithStats(ctx context.Context, key string) (IndexMutationStats, error) {
 	shard := pht.ShardForKey(key, len(c.indexes))
 	return c.mutate(ctx, indexMutation{Operation: "insert", Key: key, Shard: shard})
 }
 
 func (c *IndexCoordinator) Delete(ctx context.Context, key string) error {
 	shard := pht.ShardForKey(key, len(c.indexes))
-	return c.mutate(ctx, indexMutation{Operation: "delete", Key: key, Shard: shard})
+	_, err := c.mutate(ctx, indexMutation{Operation: "delete", Key: key, Shard: shard})
+	return err
 }
 
-func (c *IndexCoordinator) mutate(ctx context.Context, mutation indexMutation) (err error) {
+func (c *IndexCoordinator) mutate(ctx context.Context, mutation indexMutation) (stats IndexMutationStats, err error) {
 	started := time.Now()
+	stats.Total = 1
+	stats.PerShard = make([]uint64, len(c.metrics.perShard))
 	c.metrics.total.Add(1)
 	if mutation.Shard >= 0 && mutation.Shard < len(c.metrics.perShard) {
 		c.metrics.perShard[mutation.Shard].Add(1)
+		stats.PerShard[mutation.Shard] = 1
 	}
 	defer func() {
-		c.metrics.durationNS.Add(uint64(time.Since(started).Nanoseconds()))
+		stats.DurationNS = uint64(time.Since(started).Nanoseconds())
+		c.metrics.durationNS.Add(stats.DurationNS)
 		if err != nil {
+			stats.Failures = 1
 			c.metrics.failures.Add(1)
 		}
 	}()
 	owner, err := c.resolver.ResolveTupleOwner(ctx, fmt.Sprintf("%s:%d", indexOwnershipKey, mutation.Shard))
 	if err != nil {
-		return fmt.Errorf("resolve index owner: %w", err)
+		return stats, fmt.Errorf("resolve index owner: %w", err)
 	}
 	if owner == c.host.ID() {
+		stats.Local = 1
 		c.metrics.local.Add(1)
-		return c.apply(ctx, mutation)
+		return stats, c.apply(ctx, mutation)
 	}
+	stats.Remote = 1
 	c.metrics.remote.Add(1)
 	stream, err := c.host.NewStream(ctx, owner, indexMutationProtocolID)
 	if err != nil {
-		return fmt.Errorf("open index-owner stream: %w", err)
+		return stats, fmt.Errorf("open index-owner stream: %w", err)
 	}
 	defer stream.Close()
 	if deadline, ok := ctx.Deadline(); ok {
 		_ = stream.SetDeadline(deadline)
 	}
 	if err := json.NewEncoder(stream).Encode(mutation); err != nil {
-		return fmt.Errorf("write index mutation: %w", err)
+		return stats, fmt.Errorf("write index mutation: %w", err)
 	}
 	var response indexMutationResponse
 	if err := json.NewDecoder(io.LimitReader(stream, maxTupleRequestBytes)).Decode(&response); err != nil {
-		return fmt.Errorf("read index response: %w", err)
+		return stats, fmt.Errorf("read index response: %w", err)
 	}
 	if response.Error != "" {
-		return errors.New(response.Error)
+		return stats, errors.New(response.Error)
 	}
-	return nil
+	return stats, nil
 }
 
 // Snapshot returns monotonic mutation counters without resetting them.
@@ -224,14 +239,22 @@ func (i *IndexedTupleSpace) SetBloomPruning(enabled bool) {
 }
 
 func (i *IndexedTupleSpace) TsPut(name string, value []byte) (int, error) {
+	code, _, err := i.TsPutWithMutationStats(name, value)
+	return code, err
+}
+
+// TsPutWithMutationStats returns mutation work attributable to this tuple put.
+func (i *IndexedTupleSpace) TsPutWithMutationStats(name string, value []byte) (int, IndexMutationStats, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 	defer cancel()
 	// Index first: a stale hint is safe, while an unindexed live tuple would be
 	// invisible to associative queries.
-	if err := i.coordinator.Insert(ctx, name); err != nil {
-		return TSPUT_ER, err
+	stats, err := i.coordinator.InsertWithStats(ctx, name)
+	if err != nil {
+		return TSPUT_ER, stats, err
 	}
-	return i.base.TsPut(name, value)
+	code, err := i.base.TsPut(name, value)
+	return code, stats, err
 }
 
 // MutationSnapshot returns the coordinator counters visible from this node.

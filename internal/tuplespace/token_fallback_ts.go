@@ -68,6 +68,23 @@ func (t *TokenFallbackTupleSpace) TsPut(tpname string, tpvalue []byte) (int, err
 	return t.fallback.TsPut(tpname, tpvalue)
 }
 
+// TsPutWithMutationStats delegates non-token writes to an instrumented
+// fallback and returns exact per-call index mutation work.
+func (t *TokenFallbackTupleSpace) TsPutWithMutationStats(tpname string, tpvalue []byte) (int, IndexMutationStats, error) {
+	if isHexKey(tpname) {
+		code, err := t.TsPut(tpname, tpvalue)
+		return code, IndexMutationStats{}, err
+	}
+	instrumented, ok := t.fallback.(interface {
+		TsPutWithMutationStats(string, []byte) (int, IndexMutationStats, error)
+	})
+	if !ok {
+		code, err := t.TsPut(tpname, tpvalue)
+		return code, IndexMutationStats{}, err
+	}
+	return instrumented.TsPutWithMutationStats(tpname, tpvalue)
+}
+
 // TsGet delegates to fallback; tokens are not consumed via TsGet.
 //
 // Parameters:

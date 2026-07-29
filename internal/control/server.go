@@ -48,9 +48,12 @@ func getRemoteOnlyQuery(r *http.Request) bool {
 }
 
 type instrumentedTupleSpace interface {
-	TsPut(string, []byte) (int, error)
 	TsReadWithStats(string) ([]byte, mytuplespace.IndexedQueryStats, error)
 	MutationSnapshot() mytuplespace.IndexMutationStats
+}
+
+type instrumentedTuplePutSpace interface {
+	TsPutWithMutationStats(string, []byte) (int, mytuplespace.IndexMutationStats, error)
 }
 
 type tupleQueryResponse struct {
@@ -78,23 +81,20 @@ type tuplePutResponse struct {
 	MutationStats  mytuplespace.IndexMutationStats `json:"mutation_stats"`
 }
 
-func subtractMutationStats(after, before mytuplespace.IndexMutationStats) mytuplespace.IndexMutationStats {
-	delta := mytuplespace.IndexMutationStats{
-		Total:      after.Total - before.Total,
-		Local:      after.Local - before.Local,
-		Remote:     after.Remote - before.Remote,
-		Failures:   after.Failures - before.Failures,
-		DurationNS: after.DurationNS - before.DurationNS,
-		PerShard:   make([]uint64, len(after.PerShard)),
+func addMutationStats(total *mytuplespace.IndexMutationStats, add mytuplespace.IndexMutationStats) {
+	total.Total += add.Total
+	total.Local += add.Local
+	total.Remote += add.Remote
+	total.Failures += add.Failures
+	total.DurationNS += add.DurationNS
+	if len(total.PerShard) < len(add.PerShard) {
+		grown := make([]uint64, len(add.PerShard))
+		copy(grown, total.PerShard)
+		total.PerShard = grown
 	}
-	for shard, value := range after.PerShard {
-		if shard < len(before.PerShard) {
-			delta.PerShard[shard] = value - before.PerShard[shard]
-		} else {
-			delta.PerShard[shard] = value
-		}
+	for shard, value := range add.PerShard {
+		total.PerShard[shard] += value
 	}
-	return delta
 }
 
 func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gateway) {
@@ -153,6 +153,11 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			http.Error(w, `{"error":"tuple-space instrumentation unavailable"}`, http.StatusNotImplemented)
 			return
 		}
+		putInstrumented, ok := gateway.TupleSpace.(instrumentedTuplePutSpace)
+		if !ok {
+			http.Error(w, `{"error":"tuple put instrumentation unavailable"}`, http.StatusNotImplemented)
+			return
+		}
 		var request tuplePutRequest
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&request); err != nil {
 			http.Error(w, `{"error":"invalid JSON request"}`, http.StatusBadRequest)
@@ -197,15 +202,19 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 
 		requested := len(names) * request.Copies
 		jobs := make(chan string)
-		results := make(chan error, requested)
+		type putResult struct {
+			stats mytuplespace.IndexMutationStats
+			err   error
+		}
+		results := make(chan putResult, requested)
 		var workers sync.WaitGroup
 		for worker := 0; worker < request.Concurrency; worker++ {
 			workers.Add(1)
 			go func() {
 				defer workers.Done()
 				for name := range jobs {
-					_, err := instrumented.TsPut(name, value)
-					results <- err
+					_, stats, err := putInstrumented.TsPutWithMutationStats(name, value)
+					results <- putResult{stats: stats, err: err}
 				}
 			}()
 		}
@@ -223,8 +232,10 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 		}()
 		succeeded := 0
 		failed := 0
-		for err := range results {
-			if err == nil {
+		mutationDelta := mytuplespace.IndexMutationStats{}
+		for result := range results {
+			addMutationStats(&mutationDelta, result.stats)
+			if result.err == nil {
 				succeeded++
 			} else {
 				failed++
@@ -237,7 +248,7 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			Failed:         failed,
 			DurationNS:     time.Since(started).Nanoseconds(),
 			MutationBefore: mutationBefore,
-			MutationDelta:  subtractMutationStats(mutationAfter, mutationBefore),
+			MutationDelta:  mutationDelta,
 			MutationStats:  mutationAfter,
 		}
 		if failed > 0 {

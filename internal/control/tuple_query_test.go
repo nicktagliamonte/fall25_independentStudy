@@ -22,6 +22,13 @@ func (s *instrumentedTupleSpaceStub) TsPut(string, []byte) (int, error) {
 	return 0, nil
 }
 
+func (s *instrumentedTupleSpaceStub) TsPutWithMutationStats(name string, value []byte) (int, mytuplespace.IndexMutationStats, error) {
+	code, err := s.TsPut(name, value)
+	return code, mytuplespace.IndexMutationStats{
+		Total: 1, Local: 1, PerShard: []uint64{1, 0},
+	}, err
+}
+
 func (s *instrumentedTupleSpaceStub) TsRead(string) ([]byte, error) {
 	return s.value, s.err
 }
