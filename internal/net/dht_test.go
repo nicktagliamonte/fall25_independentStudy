@@ -37,6 +37,93 @@ func TestVersionedJSONValidatorRejectsMalformedRecord(t *testing.T) {
 	}
 }
 
+func TestTokenDHTRoundTripsVersionedPHTRecord(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	h1, err := NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h1.Close()
+	h2, err := NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h2.Close()
+
+	d1, err := NewDHT(ctx, h1, DHTConfig{
+		Mode:               DHTModeServer,
+		UseTokenDHT:        true,
+		BootstrapPeersFunc: func() []peer.AddrInfo { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d1.Close()
+	d2, err := NewDHT(ctx, h2, DHTConfig{
+		Mode:        DHTModeServer,
+		UseTokenDHT: true,
+		BootstrapPeers: []peer.AddrInfo{{
+			ID:    h1.ID(),
+			Addrs: h1.Addrs(),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d2.Close()
+	if err := h2.Connect(ctx, peer.AddrInfo{ID: h1.ID(), Addrs: h1.Addrs()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := d2.Bootstrap(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for attempt := 0; attempt < 40 && d2.RoutingTable().Size() == 0; attempt++ {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if d2.RoutingTable().Size() == 0 {
+		t.Fatal("second DHT did not discover bootstrap peer")
+	}
+
+	const key = "/pht/3/versioned-node"
+	for _, version := range []uint64{1, 2} {
+		value, err := json.Marshal(map[string]any{
+			"version": version,
+			"kind":    0,
+			"prefix":  "task:",
+			"entries": []string{"task:image:001"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := d2.PutValue(ctx, key, value); err != nil {
+			t.Fatalf("put PHT version %d: %v", version, err)
+		}
+	}
+
+	var got []byte
+	for attempt := 0; attempt < 20; attempt++ {
+		got, err = d1.GetValue(ctx, key)
+		if err == nil {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	if err != nil {
+		t.Fatalf("get PHT record: %v", err)
+	}
+	var record struct {
+		Version uint64 `json:"version"`
+	}
+	if err := json.Unmarshal(got, &record); err != nil {
+		t.Fatal(err)
+	}
+	if record.Version != 2 {
+		t.Fatalf("PHT version = %d, want 2", record.Version)
+	}
+}
+
 func TestNewDHT_ServerMode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

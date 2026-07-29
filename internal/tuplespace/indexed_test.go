@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/nicktagliamonte/fall25_independentStudy/internal/pht"
 )
 
 type indexedTestStore struct {
@@ -46,6 +47,10 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	connectTupleHosts(t, clientBHost, ownerHost)
 
 	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resolver := fixedOwnerResolver{owner: ownerHost.ID()}
 	ownerBase, _ := NewDistributedTupleSpace(ownerHost, resolver)
 	defer ownerBase.Close()
@@ -53,14 +58,14 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	defer clientABase.Close()
 	clientBBase, _ := NewDistributedTupleSpace(clientBHost, resolver)
 	defer clientBBase.Close()
-	ownerCoordinator, _ := NewIndexCoordinator(ownerHost, resolver, store)
+	ownerCoordinator, _ := NewIndexCoordinator(ownerHost, resolver, stores)
 	defer ownerCoordinator.Close()
-	clientACoordinator, _ := NewIndexCoordinator(clientAHost, resolver, store)
+	clientACoordinator, _ := NewIndexCoordinator(clientAHost, resolver, stores)
 	defer clientACoordinator.Close()
-	clientBCoordinator, _ := NewIndexCoordinator(clientBHost, resolver, store)
+	clientBCoordinator, _ := NewIndexCoordinator(clientBHost, resolver, stores)
 	defer clientBCoordinator.Close()
-	clientA, _ := NewIndexedTupleSpace(clientABase, store, clientACoordinator)
-	clientB, _ := NewIndexedTupleSpace(clientBBase, store, clientBCoordinator)
+	clientA, _ := NewIndexedTupleSpace(clientABase, stores, clientACoordinator)
+	clientB, _ := NewIndexedTupleSpace(clientBBase, stores, clientBCoordinator)
 
 	const tuplesPerClient = 24
 	var wg sync.WaitGroup

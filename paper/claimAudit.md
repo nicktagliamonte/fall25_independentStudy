@@ -12,8 +12,9 @@ or an explicitly stated assumption/limitation.
 | Concurrent `get` consumes one instance once at a stable owner | owner-side mutex; local and two-client concurrency tests | Supported under stated assumptions | Add higher-contention multi-peer experiment |
 | Exact names have deterministic Kademlia-aligned owners | `DHTTupleOwnerResolver` and unit test | Implemented | Test agreement using multiple live DHT nodes |
 | General associative patterns work without external TSH | peer scan plus passing multi-peer wildcard/regex integration test | Supported for reachable peers | Measure cost as peer count grows |
-| Prefix queries use a PHT in production | incremental PHT, indexed tuple wrapper, mutation coordinator, and both node constructors | Implemented and integration-tested | Add live multi-node DHT experiment |
-| Substring queries use Bloom pruning in production | live Bloom maintenance, indexed substring path, and multi-peer integration test | Implemented and integration-tested | Add traversal/pruning instrumentation and ablation |
+| Prefix queries use sharded PHTs in production | shard stores, per-shard ownership keys, incremental PHT, production constructors, and live DHT record test | Implemented and integration-tested | Instrument shard fanout and PHT nodes fetched |
+| Substring queries use Bloom pruning in production | live Bloom maintenance, parallel shard queries, indexed substring path, and multi-peer integration test | Implemented and integration-tested | Add traversal/pruning instrumentation and ablation |
+| Index mutation authority is distributed | full-name hash selects one of 16 shards; each shard resolves a distinct overlay owner | Implemented | Measure mutation throughput and owner distribution as shard count varies |
 | Tuple state survives owner restart | Native owner state is memory-resident | Unsupported | Add persistence or state clearly as a prototype limitation |
 | Exclusive consumption survives ownership change | No ownership-transfer protocol | Unsupported | Do not claim; future work unless required by experiments |
 | Content tokens are separate from block bytes | token store plus `DirectFetch` path | Supported | Add end-to-end trace/measurement |

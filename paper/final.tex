@@ -42,8 +42,9 @@ tuple-space coordination plane. \system exposes \putop, non-consuming \readop,
 and consuming \getop operations with associative matching while keeping
 coordination metadata separate from bulk content transfer. Exact tuple
 operations are assigned to deterministic owners in a Kademlia keyspace;
-associative queries use a distributed prefix index and Bloom-filter summaries
-to identify candidate tuple names before contacting their owners. The owner is
+associative queries use hash-sharded distributed prefix indexes and
+Bloom-filter summaries to identify candidate tuple names before contacting
+their owners. The owner is
 the serialization point for consuming operations, preventing two reachable
 clients from claiming the same tuple. Tuple values can reference
 content-addressed objects whose provider locations are maintained independently
@@ -291,12 +292,25 @@ outside the indexed forms use peer search. This last path preserves generality
 but may contact $O(N)$ peers, so the evaluation reports it separately.
 
 PHT mutations are read-modify-write operations and cannot safely be issued
-independently by every peer. \system maps a distinguished index-mutation key
-into the overlay and routes insertions and deletions to its deterministic
-owner. That owner serializes mutations, increments affected PHT-node versions,
-and writes the nodes through the DHT. Namespace validation selects the
-highest-version valid node. Queries remain decentralized reads and do not pass
-through the mutation owner.
+independently by every peer. \system hashes each full tuple name into one of
+$S$ PHT shards, maps a distinct mutation key for each shard into the overlay,
+and routes insertion or deletion to that shard's deterministic owner. The
+owner serializes mutations within its shard, increments affected PHT-node
+versions, and writes the nodes through the DHT. Namespace validation selects
+the highest-version valid node. Hashing the full name avoids concentrating a
+workload whose names share a prefix such as \texttt{task:} on one shard.
+
+Prefix and substring queries read all shard indexes in parallel and merge
+candidate names before contacting tuple owners. Queries therefore do not pass
+through mutation owners. With balanced hashes, mutation capacity can grow with
+$S$, while indexed query fanout is bounded by $S$ rather than the peer count
+$N$:
+\[
+  C_{\mathrm{mutation}} \propto S,
+  \qquad F_{\mathrm{query}} \le S.
+\]
+The evaluation varies $S$ because increasing write parallelism also increases
+fixed query fanout.
 
 The PHT and Bloom filter are established techniques rather than individual
 novelties. \system contributes their placement within one tuple interface:
@@ -344,9 +358,10 @@ across latency classes and from recovery after a provider loss.
 The prototype is implemented in Go over libp2p. It includes a Kademlia DHT,
 content-addressed block storage, provider-location tokens, direct block fetch,
 a native tuple multiset, a tuple-owner stream protocol, PHT nodes stored through
-a DHT value-store interface, incremental index maintenance, version-aware DHT
-validation, Bloom-filter subtree summaries, a query router, replication and
-repair protocols, and an HTTP control API. The legacy TSH adapter remains
+a DHT value-store interface, hash-sharded incremental index maintenance,
+per-shard mutation ownership, version-aware DHT validation, Bloom-filter
+subtree summaries, a query router, replication and repair protocols, and an
+HTTP control API. The legacy TSH adapter remains
 available only as a compatibility option; the default \system path uses the
 tuple-space implementation in the repository.
 
@@ -372,8 +387,8 @@ The evaluation is organized around five questions:
 
 \subsection{Methodology}
 
-Controlled experiments vary peer count, tuple count, match selectivity, payload
-size, and replication target. Each reported configuration uses fresh storage
+Controlled experiments vary peer count, tuple count, index shard count, match
+selectivity, payload size, and replication target. Each reported configuration uses fresh storage
 where state affects results, discarded warm-up operations, multiple independent
 trials, and confidence intervals. Remote retrieval bypasses the requester's
 local store. Comparisons use the same payload, client path, cache state, and
@@ -440,9 +455,10 @@ The current ownership protocol provides exclusive consumption only while
 clients agree on and can reach the authoritative owner. Durable owner state,
 ownership transfer, and reconciliation after divergent overlay views must be
 validated before claiming availability-preserving failover for tuple
-coordination. Index mutations are serialized by one elected overlay owner
-during an ownership epoch; this prevents lost updates but can limit write
-throughput until mutation authority is partitioned. General regular-expression
+coordination. Mutations within each index shard are serialized by its elected
+owner; a hot shard can therefore bottleneck even when aggregate mutation load
+is balanced. Indexed queries contact every configured shard, making the shard
+count a write-parallelism/query-fanout tradeoff. General regular-expression
 search may require network-wide work.
 Bloom filters reduce negative traversal but do not remove false positives.
 RTT categories approximate network distance and do not guarantee independent

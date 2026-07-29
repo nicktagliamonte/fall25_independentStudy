@@ -22,6 +22,7 @@ const (
 type indexMutation struct {
 	Operation string `json:"operation"`
 	Key       string `json:"key"`
+	Shard     int    `json:"shard"`
 }
 
 type indexMutationResponse struct {
@@ -34,19 +35,23 @@ type indexMutationResponse struct {
 type IndexCoordinator struct {
 	host     host.Host
 	resolver TupleOwnerResolver
-	index    *pht.MutableIndex
+	indexes  []*pht.MutableIndex
 	timeout  time.Duration
 }
 
-func NewIndexCoordinator(h host.Host, resolver TupleOwnerResolver, store pht.ValueStore) (*IndexCoordinator, error) {
-	if h == nil || resolver == nil || store == nil {
-		return nil, errors.New("host, owner resolver, and PHT store required")
+func NewIndexCoordinator(h host.Host, resolver TupleOwnerResolver, stores []pht.ValueStore) (*IndexCoordinator, error) {
+	if h == nil || resolver == nil || len(stores) == 0 {
+		return nil, errors.New("host, owner resolver, and PHT shard stores required")
 	}
-	index, err := pht.NewMutableIndex(store)
-	if err != nil {
-		return nil, err
+	indexes := make([]*pht.MutableIndex, len(stores))
+	for shard, store := range stores {
+		index, err := pht.NewMutableIndex(store)
+		if err != nil {
+			return nil, fmt.Errorf("PHT shard %d: %w", shard, err)
+		}
+		indexes[shard] = index
 	}
-	c := &IndexCoordinator{host: h, resolver: resolver, index: index, timeout: defaultTupleTimeout}
+	c := &IndexCoordinator{host: h, resolver: resolver, indexes: indexes, timeout: defaultTupleTimeout}
 	h.SetStreamHandler(indexMutationProtocolID, c.handleStream)
 	return c, nil
 }
@@ -58,15 +63,17 @@ func (c *IndexCoordinator) Close() {
 }
 
 func (c *IndexCoordinator) Insert(ctx context.Context, key string) error {
-	return c.mutate(ctx, indexMutation{Operation: "insert", Key: key})
+	shard := pht.ShardForKey(key, len(c.indexes))
+	return c.mutate(ctx, indexMutation{Operation: "insert", Key: key, Shard: shard})
 }
 
 func (c *IndexCoordinator) Delete(ctx context.Context, key string) error {
-	return c.mutate(ctx, indexMutation{Operation: "delete", Key: key})
+	shard := pht.ShardForKey(key, len(c.indexes))
+	return c.mutate(ctx, indexMutation{Operation: "delete", Key: key, Shard: shard})
 }
 
 func (c *IndexCoordinator) mutate(ctx context.Context, mutation indexMutation) error {
-	owner, err := c.resolver.ResolveTupleOwner(ctx, indexOwnershipKey)
+	owner, err := c.resolver.ResolveTupleOwner(ctx, fmt.Sprintf("%s:%d", indexOwnershipKey, mutation.Shard))
 	if err != nil {
 		return fmt.Errorf("resolve index owner: %w", err)
 	}
@@ -111,11 +118,14 @@ func (c *IndexCoordinator) handleStream(stream network.Stream) {
 }
 
 func (c *IndexCoordinator) apply(ctx context.Context, mutation indexMutation) error {
+	if mutation.Shard < 0 || mutation.Shard >= len(c.indexes) {
+		return fmt.Errorf("invalid index shard %d", mutation.Shard)
+	}
 	switch mutation.Operation {
 	case "insert":
-		return c.index.Insert(ctx, mutation.Key)
+		return c.indexes[mutation.Shard].Insert(ctx, mutation.Key)
 	case "delete":
-		return c.index.Delete(ctx, mutation.Key)
+		return c.indexes[mutation.Shard].Delete(ctx, mutation.Key)
 	default:
 		return fmt.Errorf("unsupported index mutation %q", mutation.Operation)
 	}
@@ -126,16 +136,16 @@ func (c *IndexCoordinator) apply(ctx context.Context, mutation indexMutation) er
 // verified by an exact operation at its tuple owner.
 type IndexedTupleSpace struct {
 	base        TupleSpace
-	store       pht.ValueStore
+	stores      []pht.ValueStore
 	coordinator *IndexCoordinator
 	timeout     time.Duration
 }
 
-func NewIndexedTupleSpace(base TupleSpace, store pht.ValueStore, coordinator *IndexCoordinator) (*IndexedTupleSpace, error) {
-	if base == nil || store == nil || coordinator == nil {
-		return nil, errors.New("base tuple space, PHT store, and index coordinator required")
+func NewIndexedTupleSpace(base TupleSpace, stores []pht.ValueStore, coordinator *IndexCoordinator) (*IndexedTupleSpace, error) {
+	if base == nil || len(stores) == 0 || coordinator == nil {
+		return nil, errors.New("base tuple space, PHT shard stores, and index coordinator required")
 	}
-	return &IndexedTupleSpace{base: base, store: store, coordinator: coordinator, timeout: defaultTupleTimeout}, nil
+	return &IndexedTupleSpace{base: base, stores: stores, coordinator: coordinator, timeout: defaultTupleTimeout}, nil
 }
 
 func (i *IndexedTupleSpace) TsPut(name string, value []byte) (int, error) {
@@ -187,14 +197,41 @@ func (i *IndexedTupleSpace) candidates(expr string) ([]string, error) {
 	query := pht.ParseQuery(expr)
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 	defer cancel()
-	switch query.Kind {
-	case pht.QueryPrefix:
-		return pht.ExecutePrefixQuery(ctx, i.store, query.Prefix)
-	case pht.QuerySubstring:
-		return pht.ExecuteSubstringQuery(ctx, i.store, query.Substring, 0)
-	default:
-		return nil, ErrTupleNotFound
+	type result struct {
+		names []string
+		err   error
 	}
+	results := make(chan result, len(i.stores))
+	for _, store := range i.stores {
+		go func(store pht.ValueStore) {
+			var names []string
+			var err error
+			switch query.Kind {
+			case pht.QueryPrefix:
+				names, err = pht.ExecutePrefixQuery(ctx, store, query.Prefix)
+			case pht.QuerySubstring:
+				names, err = pht.ExecuteSubstringQuery(ctx, store, query.Substring, 0)
+			default:
+				err = ErrTupleNotFound
+			}
+			results <- result{names: names, err: err}
+		}(store)
+	}
+	var parts [][]string
+	var lastErr error
+	for range i.stores {
+		result := <-results
+		if result.err != nil {
+			lastErr = result.err
+			continue
+		}
+		parts = append(parts, result.names)
+	}
+	names := pht.CombineResults(parts...)
+	if len(names) == 0 && lastErr != nil {
+		return nil, lastErr
+	}
+	return names, nil
 }
 
 func (i *IndexedTupleSpace) removeIfExhausted(name string) {

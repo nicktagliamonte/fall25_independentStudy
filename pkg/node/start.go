@@ -31,6 +31,7 @@ import (
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
+	mypht "github.com/nicktagliamonte/fall25_independentStudy/internal/pht"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
@@ -255,9 +256,11 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
 			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 				baseTS = nativeTS
-				if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, dhtAdapter); err == nil {
-					if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, dhtAdapter, indexCoordinator); err == nil {
-						baseTS = indexedTS
+				if shardStores, err := mypht.NewShardStores(dhtAdapter, mypht.DefaultShardCount); err == nil {
+					if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
+						if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
+							baseTS = indexedTS
+						}
 					}
 				}
 			}
