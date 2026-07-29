@@ -290,6 +290,14 @@ n-grams, followed by exact verification to remove false positives. Expressions
 outside the indexed forms use peer search. This last path preserves generality
 but may contact $O(N)$ peers, so the evaluation reports it separately.
 
+PHT mutations are read-modify-write operations and cannot safely be issued
+independently by every peer. \system maps a distinguished index-mutation key
+into the overlay and routes insertions and deletions to its deterministic
+owner. That owner serializes mutations, increments affected PHT-node versions,
+and writes the nodes through the DHT. Namespace validation selects the
+highest-version valid node. Queries remain decentralized reads and do not pass
+through the mutation owner.
+
 The PHT and Bloom filter are established techniques rather than individual
 novelties. \system contributes their placement within one tuple interface:
 indexes discover candidate tuple names, while authoritative owners retain
@@ -336,10 +344,11 @@ across latency classes and from recovery after a provider loss.
 The prototype is implemented in Go over libp2p. It includes a Kademlia DHT,
 content-addressed block storage, provider-location tokens, direct block fetch,
 a native tuple multiset, a tuple-owner stream protocol, PHT nodes stored through
-a DHT value-store interface, Bloom-filter subtree summaries, a query router,
-replication and repair protocols, and an HTTP control API. The legacy TSH
-adapter remains available only as a compatibility option; the default \system
-path uses the tuple-space implementation in the repository.
+a DHT value-store interface, incremental index maintenance, version-aware DHT
+validation, Bloom-filter subtree summaries, a query router, replication and
+repair protocols, and an HTTP control API. The legacy TSH adapter remains
+available only as a compatibility option; the default \system path uses the
+tuple-space implementation in the repository.
 
 Tuple requests are size bounded and owner streams use deadlines. Exact
 operations avoid scanning the overlay after ownership resolution. Pattern
@@ -431,7 +440,10 @@ The current ownership protocol provides exclusive consumption only while
 clients agree on and can reach the authoritative owner. Durable owner state,
 ownership transfer, and reconciliation after divergent overlay views must be
 validated before claiming availability-preserving failover for tuple
-coordination. General regular-expression search may require network-wide work.
+coordination. Index mutations are serialized by one elected overlay owner
+during an ownership epoch; this prevents lost updates but can limit write
+throughput until mutation authority is partitioned. General regular-expression
+search may require network-wide work.
 Bloom filters reduce negative traversal but do not remove false positives.
 RTT categories approximate network distance and do not guarantee independent
 geographic or administrative failure domains. Finally, container clusters on

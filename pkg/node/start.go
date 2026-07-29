@@ -255,6 +255,11 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
 			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 				baseTS = nativeTS
+				if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, dhtAdapter); err == nil {
+					if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, dhtAdapter, indexCoordinator); err == nil {
+						baseTS = indexedTS
+					}
+				}
 			}
 		}
 		if opts.TSHAddr != "" {

@@ -18,6 +18,7 @@ const DHTNamespace = "/pht/"
 // nodeWire is the serialized form of a Node for DHT storage.
 // Internal nodes store child segments (prefix suffixes); children are stored separately.
 type nodeWire struct {
+	Version  uint64   `json:"version"`
 	Kind     NodeKind `json:"kind"`
 	Prefix   string   `json:"prefix"`
 	Entries  []string `json:"entries,omitempty"`
@@ -80,7 +81,7 @@ func PutNode(ctx context.Context, store ValueStore, n *Node) error {
 	if store == nil || n == nil {
 		return errors.New("store and node required")
 	}
-	w := nodeWire{Kind: n.Kind, Prefix: n.Prefix}
+	w := nodeWire{Version: n.Version, Kind: n.Kind, Prefix: n.Prefix}
 	if n.IsLeaf() {
 		w.Entries = make([]string, len(n.Entries))
 		copy(w.Entries, n.Entries)
@@ -129,7 +130,7 @@ func GetNode(ctx context.Context, store ValueStore, prefix string) (*Node, error
 	if err := json.Unmarshal(data, &w); err != nil {
 		return nil, fmt.Errorf("unmarshal node: %w", err)
 	}
-	n := &Node{Kind: w.Kind, Prefix: w.Prefix}
+	n := &Node{Version: w.Version, Kind: w.Kind, Prefix: w.Prefix}
 	if n.Kind == KindLeaf {
 		n.Entries = w.Entries
 		if n.Entries == nil {

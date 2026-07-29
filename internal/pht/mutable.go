@@ -58,11 +58,13 @@ func (m *MutableIndex) Insert(ctx context.Context, key string) error {
 	cur.Entries = append(cur.Entries, key)
 	MaybeSplit(cur)
 	BuildNodeBloom(cur, 0, 0, 0)
+	incrementVersions(cur)
 	if err := PutNodeRecursive(ctx, m.store, cur); err != nil {
 		return err
 	}
 	for i := len(ancestors) - 1; i >= 0; i-- {
 		addKeyToBloom(ancestors[i], key)
+		ancestors[i].Version++
 		if err := PutNode(ctx, m.store, ancestors[i]); err != nil {
 			return err
 		}
@@ -101,9 +103,20 @@ func (m *MutableIndex) Delete(ctx context.Context, key string) error {
 		copy(cur.Entries[i:], cur.Entries[i+1:])
 		cur.Entries = cur.Entries[:len(cur.Entries)-1]
 		BuildNodeBloom(cur, 0, 0, 0)
+		cur.Version++
 		return PutNode(ctx, m.store, cur)
 	}
 	return nil
+}
+
+func incrementVersions(n *Node) {
+	if n == nil {
+		return
+	}
+	n.Version++
+	for _, child := range n.Children {
+		incrementVersions(child)
+	}
 }
 
 func addKeyToBloom(n *Node, key string) {

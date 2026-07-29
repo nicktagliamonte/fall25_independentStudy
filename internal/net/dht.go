@@ -4,6 +4,7 @@ package net
 
 import (
 	"context"
+	"encoding/json"
 
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
@@ -79,6 +80,44 @@ func (tokenRecordValidator) Validate(key string, value []byte) error {
 	return nil
 }
 
+// versionedJSONValidator accepts non-empty JSON records and resolves concurrent
+// DHT values by their monotonically increasing "version" field.
+type versionedJSONValidator struct{}
+
+func (versionedJSONValidator) Validate(_ string, value []byte) error {
+	var record struct {
+		Version uint64 `json:"version"`
+	}
+	if len(value) == 0 || json.Unmarshal(value, &record) != nil {
+		return routing.ErrNotFound
+	}
+	return nil
+}
+
+func (versionedJSONValidator) Select(_ string, values [][]byte) (int, error) {
+	if len(values) == 0 {
+		return -1, routing.ErrNotFound
+	}
+	selected := -1
+	var highest uint64
+	for i, value := range values {
+		var record struct {
+			Version uint64 `json:"version"`
+		}
+		if json.Unmarshal(value, &record) != nil {
+			continue
+		}
+		if selected == -1 || record.Version > highest {
+			selected = i
+			highest = record.Version
+		}
+	}
+	if selected == -1 {
+		return -1, routing.ErrNotFound
+	}
+	return selected, nil
+}
+
 // Select implements record.Validator for the /tokens/ namespace. It always picks
 // the first candidate value; callers are expected to merge/reconcile token
 // versions themselves (see token conflict resolution via version+timestamp).
@@ -134,6 +173,7 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 	if cfg.UseTokenDHT {
 		opts = append(opts, kaddht.ProtocolPrefix(TokenDHTProtocolPrefix))
 		opts = append(opts, kaddht.NamespacedValidator("tokens", &tokenRecordValidator{}))
+		opts = append(opts, kaddht.NamespacedValidator("pht", &versionedJSONValidator{}))
 	}
 
 	if cfg.BootstrapPeersFunc != nil {

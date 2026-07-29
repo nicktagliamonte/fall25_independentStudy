@@ -561,6 +561,11 @@ func Run() error {
 			if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht); err == nil {
 				if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 					baseTS = nativeTS
+					if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, dhtAdapter); err == nil {
+						if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, dhtAdapter, indexCoordinator); err == nil {
+							baseTS = indexedTS
+						}
+					}
 				}
 			}
 			if tshAddr := os.Getenv("TSH_ADDR"); tshAddr != "" {

@@ -4,11 +4,38 @@ package net
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
+
+func TestVersionedJSONValidatorSelectsNewestRecord(t *testing.T) {
+	validator := versionedJSONValidator{}
+	values := make([][]byte, 0, 3)
+	for _, version := range []uint64{2, 9, 4} {
+		value, err := json.Marshal(map[string]any{"version": version, "prefix": "task"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		values = append(values, value)
+	}
+	selected, err := validator.Select("/pht/key", values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected != 1 {
+		t.Fatalf("selected index = %d, want 1", selected)
+	}
+}
+
+func TestVersionedJSONValidatorRejectsMalformedRecord(t *testing.T) {
+	validator := versionedJSONValidator{}
+	if err := validator.Validate("/pht/key", []byte("not-json")); err == nil {
+		t.Fatal("expected malformed PHT record to be rejected")
+	}
+}
 
 func TestNewDHT_ServerMode(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

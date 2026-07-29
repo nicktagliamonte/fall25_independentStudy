@@ -12,8 +12,8 @@ or an explicitly stated assumption/limitation.
 | Concurrent `get` consumes one instance once at a stable owner | owner-side mutex; local and two-client concurrency tests | Supported under stated assumptions | Add higher-contention multi-peer experiment |
 | Exact names have deterministic Kademlia-aligned owners | `DHTTupleOwnerResolver` and unit test | Implemented | Test agreement using multiple live DHT nodes |
 | General associative patterns work without external TSH | peer scan plus passing multi-peer wildcard/regex integration test | Supported for reachable peers | Measure cost as peer count grows |
-| Prefix queries use a PHT in production | PHT implementation and unit tests exist, but node construction does not connect it | Unsupported in production | Wire tuple insertion/removal and candidate lookup, or narrow paper |
-| Substring queries use Bloom pruning in production | Bloom/PHT implementation and unit tests exist, but production path is unwired | Unsupported in production | Same as PHT; add pruning ablation |
+| Prefix queries use a PHT in production | incremental PHT, indexed tuple wrapper, mutation coordinator, and both node constructors | Implemented and integration-tested | Add live multi-node DHT experiment |
+| Substring queries use Bloom pruning in production | live Bloom maintenance, indexed substring path, and multi-peer integration test | Implemented and integration-tested | Add traversal/pruning instrumentation and ablation |
 | Tuple state survives owner restart | Native owner state is memory-resident | Unsupported | Add persistence or state clearly as a prototype limitation |
 | Exclusive consumption survives ownership change | No ownership-transfer protocol | Unsupported | Do not claim; future work unless required by experiments |
 | Content tokens are separate from block bytes | token store plus `DirectFetch` path | Supported | Add end-to-end trace/measurement |
