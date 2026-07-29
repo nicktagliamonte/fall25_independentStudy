@@ -86,9 +86,10 @@ if [[ "$execute" -ne 1 ]]; then
 fi
 
 campaign_require_tools
-tail -n +2 "$plan" | while IFS=$'\t' read -r cell_id nodes catalog shards bloom; do
+while IFS=$'\t' read -r cell_id nodes catalog shards bloom; do
   "$SCRIPT_DIR/run_cell.sh" "$run_dir/cells/$cell_id" \
-    "$nodes" "$catalog" "$shards" "$bloom" "$QUERY_REPETITIONS" "$CLIENT_COUNT"
-done
+    "$nodes" "$catalog" "$shards" "$bloom" "$QUERY_REPETITIONS" "$CLIENT_COUNT" \
+    </dev/null
+done < <(tail -n +2 "$plan")
 "$SCRIPT_DIR/validate_campaign.sh" "$run_dir"
 campaign_log "campaign complete: $run_dir"
