@@ -114,3 +114,52 @@ func TestDistributedTupleSpaceConcurrentClientsConsumeOnce(t *testing.T) {
 		t.Fatalf("successful consumers = %d, want 1", successes.Load())
 	}
 }
+
+func TestDistributedTupleSpaceAssociativeOperationsAcrossPeers(t *testing.T) {
+	ownerHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerHost.Close()
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+	connectTupleHosts(t, clientHost, ownerHost)
+
+	resolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	ownerTS, err := NewDistributedTupleSpace(ownerHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerTS.Close()
+	clientTS, err := NewDistributedTupleSpace(clientHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientTS.Close()
+
+	if _, err := clientTS.TsPut("task:image:dataset-a:001", []byte("image-task")); err != nil {
+		t.Fatalf("put image task: %v", err)
+	}
+	if _, err := clientTS.TsPut("task:text:dataset-a:001", []byte("text-task")); err != nil {
+		t.Fatalf("put text task: %v", err)
+	}
+
+	got, err := clientTS.TsRead("task:image:dataset-a:*")
+	if err != nil || string(got) != "image-task" {
+		t.Fatalf("wildcard read = %q, %v", got, err)
+	}
+	got, err = clientTS.TsGet(`task:(image|text):dataset-a:001`)
+	if err != nil || string(got) != "image-task" {
+		t.Fatalf("regex get = %q, %v", got, err)
+	}
+	if _, err := clientTS.TsRead("task:image:dataset-a:*"); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("image task after consuming regex get = %v", err)
+	}
+	got, err = clientTS.TsRead("task:text:dataset-a:*")
+	if err != nil || string(got) != "text-task" {
+		t.Fatalf("unconsumed text task = %q, %v", got, err)
+	}
+}

@@ -1,0 +1,45 @@
+# Tarsus claim/evidence audit
+
+This file is an internal drafting aid, not part of the submitted manuscript.
+Every visible paper claim should be supported by code, a test, an experiment,
+or an explicitly stated assumption/limitation.
+
+| Claim | Current evidence | Status | Minimum next action |
+|---|---|---|---|
+| Tarsus implements its own tuple space | `internal/tuplespace/native.go`, `distributed.go` | Supported | Retain regression tests |
+| Tuple space is a multiset | `NativeTupleSpace.tuples`; duplicate-name test | Supported | None |
+| `read` is non-consuming | implementation and repeated-read test | Supported | None |
+| Concurrent `get` consumes one instance once at a stable owner | owner-side mutex; local and two-client concurrency tests | Supported under stated assumptions | Add higher-contention multi-peer experiment |
+| Exact names have deterministic Kademlia-aligned owners | `DHTTupleOwnerResolver` and unit test | Implemented | Test agreement using multiple live DHT nodes |
+| General associative patterns work without external TSH | peer scan plus passing multi-peer wildcard/regex integration test | Supported for reachable peers | Measure cost as peer count grows |
+| Prefix queries use a PHT in production | PHT implementation and unit tests exist, but node construction does not connect it | Unsupported in production | Wire tuple insertion/removal and candidate lookup, or narrow paper |
+| Substring queries use Bloom pruning in production | Bloom/PHT implementation and unit tests exist, but production path is unwired | Unsupported in production | Same as PHT; add pruning ablation |
+| Tuple state survives owner restart | Native owner state is memory-resident | Unsupported | Add persistence or state clearly as a prototype limitation |
+| Exclusive consumption survives ownership change | No ownership-transfer protocol | Unsupported | Do not claim; future work unless required by experiments |
+| Content tokens are separate from block bytes | token store plus `DirectFetch` path | Supported | Add end-to-end trace/measurement |
+| Returned content is hash verified | `GetBlock`/direct-fetch verification path and tests | Supported | Cite exact test and report failure behavior |
+| Upload creates a fixed number of opportunistic replicas | `ReplicateToNPeers`; replication tests | Implemented | Measure achieved replica count and completion time |
+| Default upload enforces RTT-diverse 40/30/30 placement | ordinary replication labels selected peers midrange | Unsupported | Do not claim for upload; either integrate category-aware repair or narrow wording |
+| Repair can classify and fill RTT-category shortfalls | verification and category-aware repair code | Implemented in components | Run end-to-end controlled-latency recovery test |
+| Replica placement survives regional failure | Docker data does not model independent regions | Unsupported | Multi-host/netem failure experiment; otherwise present only as motivation |
+| Catalog growth compares fairly with Swarm | existing runs use potentially different retrieval/cache semantics | Not yet defensible | Rerun equivalent cold-remote workload |
+| Lookup or propagation scales logarithmically | DHT theory supports expected lookup; existing counter is not a proof | Partially supported | Report measured routing work; avoid converting a reference curve into data |
+| ACAN is realized by active metadata for discovery, placement, and repair | tokens, tuple coordination, repair paths | Architectural interpretation | Tie each ACAN responsibility to a protocol and experiment |
+| SMC2 dynamically selects available resources | peer selection, RTT classification, storage offers, direct fetch | Partially implemented | Define inputs precisely and measure selection/redistribution; avoid universal-scale language |
+
+## Reviewer-derived acceptance gates
+
+1. The introduction must identify associative coordination—not provider/data
+   decoupling—as the central problem and contribution.
+2. Related work must directly compare Linda-style coordination, PHT/DHT query
+   systems, IPFS, Bitswap, Filecoin where relevant, and Swarm.
+3. The system model must identify crash/omission assumptions, stable ownership,
+   content integrity, and properties not provided.
+4. Every abstract and introduction result claim must point to a reported
+   experiment.
+5. The evaluation must contain real results, equivalent baselines, multiple
+   trials, and variability.
+6. Port numbers, opcodes, token supply, KYC, and legacy white-paper material do
+   not belong in the research narrative.
+7. Seven replicas must be described as a configurable durability policy, not a
+   derivation of Byzantine fault tolerance.

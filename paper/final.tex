@@ -2,6 +2,7 @@
 
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb}
+\usepackage{amsthm}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{microtype}
@@ -12,6 +13,11 @@
 \newcommand{\putop}{\textsc{put}\xspace}
 \newcommand{\readop}{\textsc{read}\xspace}
 \newcommand{\getop}{\textsc{get}\xspace}
+
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
 
 \begin{document}
 
@@ -98,7 +104,8 @@ This paper makes four contributions:
 \begin{itemize}
     \item It defines a single tuple-space interface over a decentralized,
     content-addressed store, including explicit consistency semantics for
-    publication, observation, and exclusive consumption.
+    publication, observation, and exclusive consumption, with correctness
+    arguments stated over a stable ownership epoch.
     \item It presents a query-sensitive coordination plane that maps exact
     operations to deterministic owners and uses a Prefix Hash Tree (PHT) with
     Bloom-filter pruning for associative candidate discovery.
@@ -179,6 +186,96 @@ This guarantee is intentionally narrower than global transactional
 serializability. \system does not provide multi-tuple transactions, atomic
 operations spanning multiple owners, or linearizable observation during
 ownership changes.
+
+\section{Correctness Arguments}
+\label{sec:correctness}
+
+We state the central guarantees before describing their implementation. This
+separates properties of the coordination abstraction from performance
+characteristics of the particular overlay.
+
+\begin{definition}[Tuple state]
+Let $\mathcal{T}$ be a multiset of tuple instances. An instance
+$t=(n,v,i)$ has name $n$, value $v$, and identity $i$. Distinct identities
+allow duplicate names and values. For a pattern $p$, write $t \models p$ when
+$n$ satisfies the system's matching relation.
+\end{definition}
+
+\begin{definition}[Stable ownership epoch]
+An interval $E=[\tau_0,\tau_1]$ is a stable ownership epoch for name $n$ when
+all operations on $n$ resolve to the same live owner $o(n)$ throughout $E$,
+and messages between each participating client and $o(n)$ are eventually
+delivered or return a failure.
+\end{definition}
+
+At an owner, tuple operations execute against one multiset under mutual
+exclusion. Their state transitions are
+\[
+\begin{aligned}
+\putop(n,v)&:\quad \mathcal{T}'=\mathcal{T}\uplus\{(n,v,i)\},\\
+\readop(p)&:\quad \mathcal{T}'=\mathcal{T},\\
+\getop(p)&:\quad
+  \mathcal{T}'=\mathcal{T}\setminus\{t\}
+  \quad\text{for one }t\in\mathcal{T}\text{ with }t\models p.
+\end{aligned}
+\]
+If no matching instance exists, \readop and \getop return not found and leave
+$\mathcal{T}$ unchanged.
+
+\begin{lemma}[Read non-interference]
+For any sequence containing only successful or unsuccessful \readop
+operations, the tuple multiset is unchanged.
+\end{lemma}
+\begin{proof}
+The \readop transition returns a copy of a matching value and assigns
+$\mathcal{T}'=\mathcal{T}$. An unsuccessful read has the same state
+transition. Composition preserves the multiset.
+\end{proof}
+
+\begin{theorem}[Owner-scoped exclusive consumption]
+\label{thm:exclusive}
+During a stable ownership epoch, a tuple instance can be returned successfully
+by at most one \getop operation.
+\end{theorem}
+\begin{proof}
+All operations for the tuple name execute at the same owner. The owner
+serializes match selection and removal in one critical section. Consider the
+first successful \getop that selects instance $t$. Its transition removes $t$
+before the critical section is released. Every later \getop therefore observes
+a multiset that does not contain $t$ and cannot return that instance. Thus no
+two successful operations return the same tuple identity.
+\end{proof}
+
+\begin{proposition}[Conditional claim progress]
+During a stable ownership epoch, if a matching tuple remains stored until a
+\getop request reaches its owner, then that request either consumes a matching
+tuple in finite local processing time or loses to an earlier serialized
+consumer and returns not found.
+\end{proposition}
+\begin{proof}
+Eventual delivery brings the request to the live owner. The owner's critical
+section contains no blocking network operation. It therefore observes either
+a matching instance, which it removes, or no matching instance after preceding
+operations, in which case it returns not found.
+\end{proof}
+
+\begin{proposition}[Content verification]
+\label{prop:integrity}
+Let $k=H(b)$ be the requested content key for collision-resistant hash $H$.
+A requester that returns bytes $b'$ only after checking $H(b')=k$ does not
+accept altered bytes except with probability bounded by the collision or
+second-preimage resistance of $H$.
+\end{proposition}
+\begin{proof}
+Acceptance of altered bytes requires $b'\ne b$ and $H(b')=H(b)$, which is a
+hash collision or second preimage. Provider voting is unnecessary for this
+property.
+\end{proof}
+
+Theorem~\ref{thm:exclusive} deliberately excludes ownership changes. Persisted
+owner state and an ownership-transfer protocol are required to extend the
+result across epochs. Similarly, Proposition~\ref{prop:integrity} establishes
+integrity, not availability: all providers may still be unreachable.
 
 \section{Architecture}
 \label{sec:architecture}
