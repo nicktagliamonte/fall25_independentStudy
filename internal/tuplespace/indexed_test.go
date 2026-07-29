@@ -88,10 +88,34 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+	for label, snapshot := range map[string]IndexMutationStats{
+		"client-a": clientACoordinator.Snapshot(),
+		"client-b": clientBCoordinator.Snapshot(),
+	} {
+		if snapshot.Total != tuplesPerClient || snapshot.Remote != tuplesPerClient ||
+			snapshot.Failures != 0 || snapshot.DurationNS == 0 {
+			t.Fatalf("%s mutation stats = %+v", label, snapshot)
+		}
+		usedShards := 0
+		for _, count := range snapshot.PerShard {
+			if count > 0 {
+				usedShards++
+			}
+		}
+		if usedShards < 2 {
+			t.Fatalf("%s used only %d shards: %+v", label, usedShards, snapshot.PerShard)
+		}
+	}
 
-	got, err := clientA.TsRead("task:image:dataset-a:*")
+	got, queryStats, err := clientA.TsReadWithStats("task:image:dataset-a:*")
 	if err != nil || string(got[:21]) != "task:image:dataset-a:" {
 		t.Fatalf("indexed prefix read = %q, %v", got, err)
+	}
+	if queryStats.QueryKind != "prefix" || queryStats.ShardsContacted != len(stores) ||
+		queryStats.ShardsSucceeded != len(stores) || queryStats.NodesFetched == 0 ||
+		queryStats.IndexMatches != tuplesPerClient || queryStats.VerifiedMatches != 1 ||
+		queryStats.DurationNS <= 0 {
+		t.Fatalf("indexed prefix stats = %+v", queryStats)
 	}
 	got, err = clientB.TsRead("*dataset-b:01*")
 	if err != nil || string(got[:20]) != "task:text:dataset-b:" {

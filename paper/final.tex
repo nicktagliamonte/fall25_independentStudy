@@ -361,7 +361,11 @@ a native tuple multiset, a tuple-owner stream protocol, PHT nodes stored through
 a DHT value-store interface, hash-sharded incremental index maintenance,
 per-shard mutation ownership, version-aware DHT validation, Bloom-filter
 subtree summaries, a query router, replication and repair protocols, and an
-HTTP control API. The legacy TSH adapter remains
+HTTP control API. The query path directly records shard fanout, PHT nodes
+fetched, branches considered and pruned, candidate counts, authoritative-owner
+attempts, verified matches, and end-to-end duration. Mutation coordinators
+maintain monotonic local/remote/failure, per-shard, and service-time counters.
+The legacy TSH adapter remains
 available only as a compatibility option; the default \system path uses the
 tuple-space implementation in the repository.
 
@@ -396,6 +400,14 @@ timing boundary. Container experiments establish repeatability; experiments on
 multiple physical hosts measure sensitivity to real network delay and failure
 domains.
 
+Instrumentation is collected inside the query and mutation paths rather than
+inferred from wall-clock time. A read-only control endpoint returns the result
+and its traversal, pruning, candidate, owner-verification, fanout, and duration
+counters. A versioned experiment harness records one CSV row per query trial.
+This separation permits latency to be interpreted alongside actual system work
+and prevents an empty or failed query from being reported as an inexpensive
+success.
+
 % TODO: Insert validated environment, hardware, software versions, trial count,
 % and statistical treatment.
 % TODO: Existing 50-node/512-object catalog data must be rerun with equivalent
@@ -413,7 +425,10 @@ rate, and throughput as independent tuple names increase.
 Exact, prefix, substring, and general-pattern workloads use the same tuple-name
 distribution. Measurements report latency, contacted peers, fetched PHT nodes,
 Bloom-pruned branches, false-positive candidates, and returned matches. An
-ablation disables Bloom summaries to isolate their effect.
+ablation that disables Bloom pruning while retaining the same PHT and workload
+will isolate its effect. Index-update experiments independently vary shard
+count and concurrent writers, reporting per-shard mutation distribution,
+local-versus-remote coordination, failures, throughput, and service time.
 
 \subsection{Storage and Recovery}
 

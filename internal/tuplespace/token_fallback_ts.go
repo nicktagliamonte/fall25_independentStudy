@@ -107,6 +107,38 @@ func (t *TokenFallbackTupleSpace) TsRead(tpname string) ([]byte, error) {
 	return t.fallback.TsRead(tpname)
 }
 
+// TsReadWithStats delegates instrumented non-token queries when the fallback
+// is an IndexedTupleSpace (or another compatible implementation).
+func (t *TokenFallbackTupleSpace) TsReadWithStats(tpname string) ([]byte, IndexedQueryStats, error) {
+	if isHexKey(tpname) {
+		data, err := t.TsRead(tpname)
+		stats := IndexedQueryStats{QueryKind: "token", OwnerAttempts: 1}
+		if err == nil {
+			stats.VerifiedMatches = 1
+		}
+		return data, stats, err
+	}
+	instrumented, ok := t.fallback.(interface {
+		TsReadWithStats(string) ([]byte, IndexedQueryStats, error)
+	})
+	if !ok {
+		data, err := t.TsRead(tpname)
+		return data, IndexedQueryStats{}, err
+	}
+	return instrumented.TsReadWithStats(tpname)
+}
+
+// MutationSnapshot delegates mutation counters when available.
+func (t *TokenFallbackTupleSpace) MutationSnapshot() IndexMutationStats {
+	instrumented, ok := t.fallback.(interface {
+		MutationSnapshot() IndexMutationStats
+	})
+	if !ok {
+		return IndexMutationStats{}
+	}
+	return instrumented.MutationSnapshot()
+}
+
 // isHexKey reports whether s is a 64-character lowercase/uppercase hex string,
 // the shape of a vn-IPFS content key (SHA-256 hex digest), used to decide
 // whether a tuple name should be treated as a token lookup.

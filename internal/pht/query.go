@@ -190,20 +190,29 @@ func ExecutePrefixQuery(ctx context.Context, store ValueStore, prefix string) ([
 //   - []string: keys that actually contain substring; nil, nil if substring is empty.
 //   - error: non-nil if fetching the root or traversing the DHT failed.
 func ExecuteSubstringQuery(ctx context.Context, store ValueStore, substring string, nGram int) ([]string, error) {
+	rows, _, err := ExecuteSubstringQueryWithStats(ctx, store, substring, nGram)
+	return rows, err
+}
+
+// ExecuteSubstringQueryWithStats runs a Bloom-pruned substring query and
+// reports direct PHT traversal work.
+func ExecuteSubstringQueryWithStats(ctx context.Context, store ValueStore, substring string, nGram int) ([]string, QueryStats, error) {
 	if substring == "" {
-		return nil, nil
+		return nil, QueryStats{}, nil
 	}
 	if nGram <= 0 {
 		nGram = DefaultNGramSize
 	}
 	ngrams := ExtractNGrams(substring, nGram)
-	root, err := NavigateDHT(ctx, store, "")
+	counters := &queryCounters{}
+	counted := countingValueStore{ValueStore: store, counters: counters}
+	root, err := NavigateDHT(ctx, counted, "")
 	if err != nil || root == nil {
-		return nil, err
+		return nil, counters.snapshot(), err
 	}
-	candidates, err := CollectUnderDHTWithPrune(ctx, store, root, ngrams)
+	candidates, err := collectUnderDHTInternal(ctx, counted, root, ngrams, counters)
 	if err != nil {
-		return nil, err
+		return nil, counters.snapshot(), err
 	}
 	var out []string
 	for _, k := range candidates {
@@ -211,7 +220,9 @@ func ExecuteSubstringQuery(ctx context.Context, store ValueStore, substring stri
 			out = append(out, k)
 		}
 	}
-	return out, nil
+	stats := counters.snapshot()
+	stats.Matches = len(out)
+	return out, stats, nil
 }
 
 // Execute runs the query appropriate for q.Kind. For QueryPrefix, performs PHT tree

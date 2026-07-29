@@ -28,6 +28,7 @@ import (
 	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
 	mynet "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
+	mytuplespace "github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
 )
 
 // no persistent server struct is required
@@ -44,6 +45,59 @@ import (
 func getRemoteOnlyQuery(r *http.Request) bool {
 	v := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("remote_only")))
 	return v == "1" || v == "true" || v == "yes"
+}
+
+type instrumentedTupleSpace interface {
+	TsReadWithStats(string) ([]byte, mytuplespace.IndexedQueryStats, error)
+	MutationSnapshot() mytuplespace.IndexMutationStats
+}
+
+type tupleQueryResponse struct {
+	Pattern       string                          `json:"pattern"`
+	ValueBase64   string                          `json:"value_base64,omitempty"`
+	QueryStats    mytuplespace.IndexedQueryStats  `json:"query_stats"`
+	MutationStats mytuplespace.IndexMutationStats `json:"mutation_stats"`
+}
+
+func registerTupleQueryEndpoint(mux *http.ServeMux, gateway *mygateway.Gateway) {
+	mux.HandleFunc("/tuple/query", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodGet {
+			w.Header().Set("Allow", http.MethodGet)
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		pattern := strings.TrimSpace(r.URL.Query().Get("pattern"))
+		if pattern == "" {
+			http.Error(w, `{"error":"missing pattern"}`, http.StatusBadRequest)
+			return
+		}
+		if gateway == nil || gateway.TupleSpace == nil {
+			http.Error(w, `{"error":"tuple space unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
+		instrumented, ok := gateway.TupleSpace.(instrumentedTupleSpace)
+		if !ok {
+			http.Error(w, `{"error":"tuple-space instrumentation unavailable"}`, http.StatusNotImplemented)
+			return
+		}
+		value, queryStats, err := instrumented.TsReadWithStats(pattern)
+		response := tupleQueryResponse{
+			Pattern:       pattern,
+			QueryStats:    queryStats,
+			MutationStats: instrumented.MutationSnapshot(),
+		}
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(struct {
+				Error    string             `json:"error"`
+				Response tupleQueryResponse `json:"response"`
+			}{Error: err.Error(), Response: response})
+			return
+		}
+		response.ValueBase64 = base64.StdEncoding.EncodeToString(value)
+		_ = json.NewEncoder(w).Encode(response)
+	})
 }
 
 // ReplicationFactorR is the enforced minimum replicas per file (Near 40%, Midrange 30%, Far 30%).
@@ -237,6 +291,7 @@ func fetchBlockFromToken(ctx context.Context, stack *mystore.Stack, token mystor
 //   - (error): non-nil if the TCP listener could not be created.
 func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.PeerStore, metrics *NodeMetrics, onShutdown func(), explicitRouter *DynamicRouter, repairProtocol *mystore.RepairProtocol, gateway *mygateway.Gateway, storePath string) (string, func(context.Context) error, error) {
 	mux := http.NewServeMux()
+	registerTupleQueryEndpoint(mux, gateway)
 	router := explicitRouter
 	if router == nil {
 		router = NewDynamicRouter()

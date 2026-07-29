@@ -101,3 +101,30 @@ func TestMutableIndexConcurrentInsertIsLossless(t *testing.T) {
 		t.Fatalf("concurrent entries = %d, want 64", len(got))
 	}
 }
+
+func TestMutableIndexQueryStatsReportDirectWork(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	index, _ := NewMutableIndex(store)
+	for i := 0; i < 40; i++ {
+		if err := index.Insert(ctx, fmt.Sprintf("task:image:%03d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	prefixRows, prefixStats, err := PrefixQueryDHTWithStats(ctx, store, "task:image:01")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prefixRows) != 10 || prefixStats.NodesFetched == 0 ||
+		prefixStats.Candidates != 10 || prefixStats.Matches != 10 {
+		t.Fatalf("prefix rows/stats = %d, %+v", len(prefixRows), prefixStats)
+	}
+	substringRows, substringStats, err := ExecuteSubstringQueryWithStats(ctx, store, "image:02", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(substringRows) != 10 || substringStats.NodesFetched == 0 ||
+		substringStats.BranchesConsidered == 0 || substringStats.Matches != 10 {
+		t.Fatalf("substring rows/stats = %d, %+v", len(substringRows), substringStats)
+	}
+}

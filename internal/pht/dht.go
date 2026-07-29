@@ -10,7 +10,34 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
+
+// QueryStats reports index work performed by one PHT query.
+type QueryStats struct {
+	NodesFetched       int
+	BranchesConsidered int
+	BranchesPruned     int
+	Candidates         int
+	Matches            int
+}
+
+type queryCounters struct {
+	nodesFetched       atomic.Int64
+	branchesConsidered atomic.Int64
+	branchesPruned     atomic.Int64
+	candidates         atomic.Int64
+}
+
+type countingValueStore struct {
+	ValueStore
+	counters *queryCounters
+}
+
+func (s countingValueStore) GetValue(ctx context.Context, key string, opts ...interface{}) ([]byte, error) {
+	s.counters.nodesFetched.Add(1)
+	return s.ValueStore.GetValue(ctx, key, opts...)
+}
 
 // DHTNamespace is the key prefix for PHT records in the DHT.
 const DHTNamespace = "/pht/"
@@ -178,7 +205,7 @@ func NavigateDHT(ctx context.Context, store ValueStore, prefix string) (*Node, e
 //   - error: currently always nil at the top level (per-child fetch errors
 //     are swallowed and that child's branch is skipped).
 func CollectUnderDHT(ctx context.Context, store ValueStore, n *Node) ([]string, error) {
-	return collectUnderDHTInternal(ctx, store, n, nil)
+	return collectUnderDHTInternal(ctx, store, n, nil, nil)
 }
 
 // CollectUnderDHTWithPrune performs the same traversal as CollectUnderDHT but
@@ -197,7 +224,7 @@ func CollectUnderDHT(ctx context.Context, store ValueStore, n *Node) ([]string, 
 //   - []string: keys found in the subtree, restricted to branches that pass the Bloom check.
 //   - error: currently always nil at the top level (per-child fetch errors are swallowed).
 func CollectUnderDHTWithPrune(ctx context.Context, store ValueStore, n *Node, ngrams []string) ([]string, error) {
-	return collectUnderDHTInternal(ctx, store, n, ngrams)
+	return collectUnderDHTInternal(ctx, store, n, ngrams, nil)
 }
 
 // collectUnderDHTInternal is the shared recursive implementation behind
@@ -219,13 +246,19 @@ func CollectUnderDHTWithPrune(ctx context.Context, store ValueStore, n *Node, ng
 // Returns:
 //   - []string: the deduplicated union of keys found across all traversed branches.
 //   - error: always nil (reserved for future use; per-branch errors are swallowed).
-func collectUnderDHTInternal(ctx context.Context, store ValueStore, n *Node, ngrams []string) ([]string, error) {
+func collectUnderDHTInternal(ctx context.Context, store ValueStore, n *Node, ngrams []string, counters *queryCounters) ([]string, error) {
 	if n == nil {
 		return nil, nil
 	}
 	if n.IsLeaf() {
 		if len(ngrams) > 0 && !BloomContainsAll(n.Bloom, ngrams) {
+			if counters != nil {
+				counters.branchesPruned.Add(1)
+			}
 			return nil, nil
+		}
+		if counters != nil {
+			counters.candidates.Add(int64(len(n.Entries)))
 		}
 		out := make([]string, len(n.Entries))
 		copy(out, n.Entries)
@@ -236,6 +269,9 @@ func collectUnderDHTInternal(ctx context.Context, store ValueStore, n *Node, ngr
 		segs = append(segs, seg)
 	}
 	children := make([]*Node, len(segs))
+	if counters != nil {
+		counters.branchesConsidered.Add(int64(len(segs)))
+	}
 	type result struct {
 		i   int
 		err error
@@ -256,14 +292,18 @@ func collectUnderDHTInternal(ctx context.Context, store ValueStore, n *Node, ngr
 		<-results
 	}
 	if len(ngrams) > 0 {
+		before := len(children)
 		children = PruneByBloom(children, ngrams)
+		if counters != nil {
+			counters.branchesPruned.Add(int64(before - len(children)))
+		}
 	}
 	var parts [][]string
 	for _, child := range children {
 		if child == nil {
 			continue
 		}
-		sub, err := collectUnderDHTInternal(ctx, store, child, ngrams)
+		sub, err := collectUnderDHTInternal(ctx, store, child, ngrams, counters)
 		if err != nil {
 			continue
 		}
@@ -286,6 +326,20 @@ func collectUnderDHTInternal(ctx context.Context, store ValueStore, n *Node, ngr
 //   - error: non-nil if fetching the prefix node failed; nil, nil if the node
 //     does not exist or is nil.
 func PrefixQueryDHT(ctx context.Context, store ValueStore, prefix string) ([]string, error) {
+	return prefixQueryDHT(ctx, store, prefix, nil)
+}
+
+// PrefixQueryDHTWithStats is PrefixQueryDHT with direct index-work metrics.
+func PrefixQueryDHTWithStats(ctx context.Context, store ValueStore, prefix string) ([]string, QueryStats, error) {
+	counters := &queryCounters{}
+	counted := countingValueStore{ValueStore: store, counters: counters}
+	rows, err := prefixQueryDHT(ctx, counted, prefix, counters)
+	stats := counters.snapshot()
+	stats.Matches = len(rows)
+	return rows, stats, err
+}
+
+func prefixQueryDHT(ctx context.Context, store ValueStore, prefix string, counters *queryCounters) ([]string, error) {
 	n, err := NavigateDHT(ctx, store, "")
 	if err != nil || n == nil {
 		return nil, err
@@ -297,7 +351,7 @@ func PrefixQueryDHT(ctx context.Context, store ValueStore, prefix string) ([]str
 			return nil, err
 		}
 	}
-	rows, err := CollectUnderDHT(ctx, store, n)
+	rows, err := collectUnderDHTInternal(ctx, store, n, nil, counters)
 	if err != nil {
 		return nil, err
 	}
@@ -308,6 +362,15 @@ func PrefixQueryDHT(ctx context.Context, store ValueStore, prefix string) ([]str
 		}
 	}
 	return out, nil
+}
+
+func (c *queryCounters) snapshot() QueryStats {
+	return QueryStats{
+		NodesFetched:       int(c.nodesFetched.Load()),
+		BranchesConsidered: int(c.branchesConsidered.Load()),
+		BranchesPruned:     int(c.branchesPruned.Load()),
+		Candidates:         int(c.candidates.Load()),
+	}
 }
 
 // PutNodeRecursive stores a node and all its descendants in the DHT.
