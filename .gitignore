@@ -5,3 +5,4 @@ test_results*/
 *.log
 Dockerfile
 docker-compose.*.yml
+paper/

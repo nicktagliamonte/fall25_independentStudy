@@ -250,15 +250,22 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		dhtAdapter := mytuplespace.NewDHTValueStoreAdapter(d)
 		dhtTS := mytuplespace.NewDHTTupleSpace(dhtAdapter)
 		tokenized := opts.RequireToken || (len(opts.CAPubKeysB64) > 0 && opts.Token != "")
-		repairProtocol = mystore.NewRepairProtocol(stack, h, dhtTS, tokenized)
 
 		var baseTS mytuplespace.TupleSpace = dhtTS
+		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
+			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
+				baseTS = nativeTS
+			}
+		}
 		if opts.TSHAddr != "" {
+			// Legacy compatibility only. Tarsus's production tuple space is the
+			// repository-native DistributedTupleSpace constructed above.
 			p2pTS := mytuplespace.NewP2PTupleSpace(opts.TSHAddr, 0x7f000001, "sng40")
 			p2pTS.SetPermissionChecker(myhost.NewHandshakePermissionChecker(basePolicy))
 			router := mytuplespace.NewRouter(dhtTS, p2pTS, nil)
 			baseTS = router
 		}
+		repairProtocol = mystore.NewRepairProtocol(stack, h, baseTS, tokenized)
 		tokenTS := mytuplespace.NewTokenFallbackTupleSpace(dhtAdapter, baseTS)
 		gateway = mygateway.NewGateway(stack.Router, tokenTS)
 		if ts := gateway.TokenStore(); ts != nil {

@@ -556,15 +556,22 @@ func Run() error {
 		if dht != nil {
 			dhtAdapter := mytuplespace.NewDHTValueStoreAdapter(dht)
 			dhtTS := mytuplespace.NewDHTTupleSpace(dhtAdapter)
-			repairProtocol = mystore.NewRepairProtocol(stack, h, dhtTS, false) // tokenized: false for daemon mode
 
 			var baseTS mytuplespace.TupleSpace = dhtTS
+			if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht); err == nil {
+				if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
+					baseTS = nativeTS
+				}
+			}
 			if tshAddr := os.Getenv("TSH_ADDR"); tshAddr != "" {
+				// Legacy compatibility only. The default production path uses
+				// the repository-native DistributedTupleSpace above.
 				p2pTS := mytuplespace.NewP2PTupleSpace(tshAddr, 0x7f000001, "sng40")
 				p2pTS.SetPermissionChecker(myhost.NewHandshakePermissionChecker(policyBase))
 				router := mytuplespace.NewRouter(dhtTS, p2pTS, nil)
 				baseTS = router
 			}
+			repairProtocol = mystore.NewRepairProtocol(stack, h, baseTS, false) // tokenized: false for daemon mode
 			tokenTS := mytuplespace.NewTokenFallbackTupleSpace(dhtAdapter, baseTS)
 			gateway = mygateway.NewGateway(stack.Router, tokenTS)
 			if ts := gateway.TokenStore(); ts != nil {
