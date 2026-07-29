@@ -61,15 +61,40 @@ type tupleQueryResponse struct {
 }
 
 type tuplePutRequest struct {
-	Name        string `json:"name"`
-	ValueBase64 string `json:"value_base64"`
-	Copies      int    `json:"copies,omitempty"`
+	Name        string   `json:"name"`
+	Names       []string `json:"names,omitempty"`
+	ValueBase64 string   `json:"value_base64"`
+	Copies      int      `json:"copies,omitempty"`
+	Concurrency int      `json:"concurrency,omitempty"`
 }
 
 type tuplePutResponse struct {
-	Name          string                          `json:"name"`
-	Copies        int                             `json:"copies"`
-	MutationStats mytuplespace.IndexMutationStats `json:"mutation_stats"`
+	Requested      int                             `json:"requested"`
+	Succeeded      int                             `json:"succeeded"`
+	Failed         int                             `json:"failed"`
+	DurationNS     int64                           `json:"duration_ns"`
+	MutationBefore mytuplespace.IndexMutationStats `json:"mutation_before"`
+	MutationDelta  mytuplespace.IndexMutationStats `json:"mutation_delta"`
+	MutationStats  mytuplespace.IndexMutationStats `json:"mutation_stats"`
+}
+
+func subtractMutationStats(after, before mytuplespace.IndexMutationStats) mytuplespace.IndexMutationStats {
+	delta := mytuplespace.IndexMutationStats{
+		Total:      after.Total - before.Total,
+		Local:      after.Local - before.Local,
+		Remote:     after.Remote - before.Remote,
+		Failures:   after.Failures - before.Failures,
+		DurationNS: after.DurationNS - before.DurationNS,
+		PerShard:   make([]uint64, len(after.PerShard)),
+	}
+	for shard, value := range after.PerShard {
+		if shard < len(before.PerShard) {
+			delta.PerShard[shard] = value - before.PerShard[shard]
+		} else {
+			delta.PerShard[shard] = value
+		}
+	}
+	return delta
 }
 
 func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gateway) {
@@ -133,9 +158,21 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			http.Error(w, `{"error":"invalid JSON request"}`, http.StatusBadRequest)
 			return
 		}
-		request.Name = strings.TrimSpace(request.Name)
-		if request.Name == "" {
-			http.Error(w, `{"error":"missing tuple name"}`, http.StatusBadRequest)
+		names := make([]string, 0, len(request.Names)+1)
+		if name := strings.TrimSpace(request.Name); name != "" {
+			names = append(names, name)
+		}
+		for _, rawName := range request.Names {
+			if name := strings.TrimSpace(rawName); name != "" {
+				names = append(names, name)
+			}
+		}
+		if len(names) == 0 {
+			http.Error(w, `{"error":"missing tuple name or names"}`, http.StatusBadRequest)
+			return
+		}
+		if len(names) > 10000 {
+			http.Error(w, `{"error":"at most 10000 names per request"}`, http.StatusBadRequest)
 			return
 		}
 		value, err := base64.StdEncoding.DecodeString(request.ValueBase64)
@@ -150,17 +187,63 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			http.Error(w, `{"error":"copies must be between 1 and 10000"}`, http.StatusBadRequest)
 			return
 		}
-		for copyIndex := 0; copyIndex < request.Copies; copyIndex++ {
-			if _, err := instrumented.TsPut(request.Name, value); err != nil {
-				http.Error(w, fmt.Sprintf(`{"error":%q}`, err.Error()), http.StatusInternalServerError)
-				return
+		if request.Concurrency == 0 {
+			request.Concurrency = 1
+		}
+		if request.Concurrency < 1 || request.Concurrency > 64 {
+			http.Error(w, `{"error":"concurrency must be between 1 and 64"}`, http.StatusBadRequest)
+			return
+		}
+
+		requested := len(names) * request.Copies
+		jobs := make(chan string)
+		results := make(chan error, requested)
+		var workers sync.WaitGroup
+		for worker := 0; worker < request.Concurrency; worker++ {
+			workers.Add(1)
+			go func() {
+				defer workers.Done()
+				for name := range jobs {
+					_, err := instrumented.TsPut(name, value)
+					results <- err
+				}
+			}()
+		}
+		mutationBefore := instrumented.MutationSnapshot()
+		started := time.Now()
+		go func() {
+			for _, name := range names {
+				for copyIndex := 0; copyIndex < request.Copies; copyIndex++ {
+					jobs <- name
+				}
+			}
+			close(jobs)
+			workers.Wait()
+			close(results)
+		}()
+		succeeded := 0
+		failed := 0
+		for err := range results {
+			if err == nil {
+				succeeded++
+			} else {
+				failed++
 			}
 		}
-		_ = json.NewEncoder(w).Encode(tuplePutResponse{
-			Name:          request.Name,
-			Copies:        request.Copies,
-			MutationStats: instrumented.MutationSnapshot(),
-		})
+		mutationAfter := instrumented.MutationSnapshot()
+		response := tuplePutResponse{
+			Requested:      requested,
+			Succeeded:      succeeded,
+			Failed:         failed,
+			DurationNS:     time.Since(started).Nanoseconds(),
+			MutationBefore: mutationBefore,
+			MutationDelta:  subtractMutationStats(mutationAfter, mutationBefore),
+			MutationStats:  mutationAfter,
+		}
+		if failed > 0 {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		_ = json.NewEncoder(w).Encode(response)
 	})
 }
 

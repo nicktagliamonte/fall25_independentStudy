@@ -179,8 +179,36 @@ for i in $(seq 2 "$N"); do
   docker-compose up -d "$SERVICE"
 done
 
-# Wait a bit for nodes to connect
-echo "Waiting for nodes to connect..."
+# Explicitly establish the bootstrap edge. The background dialer remains
+# responsible for learning additional peers, but experiments must not proceed
+# with silently isolated nodes.
+echo "Connecting peer nodes to bootstrap..."
+CONNECT_BODY=$(jq -nc \
+  --arg addr "/ip4/172.20.0.10/tcp/4001" \
+  --arg peer "$PEER_ID" \
+  '{addr:$addr,peer:$peer,timeout:"20s"}')
+for i in $(seq 2 "$N"); do
+  SERVICE="node$i"
+  CTRL_FILE="/app/logs/$SERVICE.json"
+  CTRL_ADDR=""
+  for _ in $(seq 1 60); do
+    CTRL_ADDR=$(docker-compose exec -T "$SERVICE" jq -r '.addr // empty' "$CTRL_FILE" 2>/dev/null || true)
+    [[ -n "$CTRL_ADDR" ]] && break
+    sleep 1
+  done
+  if [[ -z "$CTRL_ADDR" ]]; then
+    echo "ERROR: $SERVICE did not publish its control address" >&2
+    exit 1
+  fi
+  if ! docker-compose exec -T "$SERVICE" sh -c \
+    'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
+    <<<"$CONNECT_BODY"; then
+    echo "ERROR: $SERVICE could not connect to bootstrap" >&2
+    exit 1
+  fi
+done
+
+echo "Waiting for peer discovery..."
 sleep 10
 
 # Print status

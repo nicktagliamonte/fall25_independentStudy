@@ -403,7 +403,12 @@ domains.
 Instrumentation is collected inside the query and mutation paths rather than
 inferred from wall-clock time. A read-only control endpoint returns the result
 and its traversal, pruning, candidate, owner-verification, fanout, and duration
-counters. A versioned experiment harness records one CSV row per query trial.
+counters. Bulk workload insertion reports request-scoped mutation deltas,
+separating experiment traffic from background repair advertisements. A
+versioned, resumable experiment harness records one CSV row per query trial,
+the exact Git revision and workload checksum, observed topology, container
+resources, raw logs, and population failures. Each cell is accepted only after
+artifact and row-count validation.
 This separation permits latency to be interpreted alongside actual system work
 and prevents an empty or failed query from being reported as an inexpensive
 success.
@@ -429,6 +434,10 @@ ablation that disables Bloom pruning while retaining the same PHT and workload
 will isolate its effect. Index-update experiments independently vary shard
 count and concurrent writers, reporting per-shard mutation distribution,
 local-versus-remote coordination, failures, throughput, and service time.
+The planned container matrix includes 10, 50, and 100 peers, catalog-size
+scaling, and 1, 4, 16, and 64 index shards. These container runs measure
+protocol scaling and repeatability on one host; they are not presented as
+independent-region evidence.
 
 \subsection{Storage and Recovery}
 

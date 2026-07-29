@@ -41,7 +41,7 @@ func (s *instrumentedTupleSpaceStub) TsReadWithStats(string) ([]byte, mytuplespa
 }
 
 func (s *instrumentedTupleSpaceStub) MutationSnapshot() mytuplespace.IndexMutationStats {
-	return mytuplespace.IndexMutationStats{Total: 4, PerShard: []uint64{1, 3}}
+	return mytuplespace.IndexMutationStats{Total: uint64(4 + s.puts), Local: uint64(s.puts), PerShard: []uint64{uint64(1 + s.puts), 3}}
 }
 
 func TestTupleQueryEndpointReturnsInstrumentation(t *testing.T) {
@@ -85,13 +85,20 @@ func TestTuplePutEndpointPopulatesWorkload(t *testing.T) {
 	ts := &instrumentedTupleSpaceStub{}
 	registerTupleExperimentEndpoints(mux, mygateway.NewGateway(nil, ts))
 
-	body := strings.NewReader(`{"name":"experiment/run-1","value_base64":"dG9rZW4=","copies":3}`)
+	body := strings.NewReader(`{"names":["experiment/run-1","experiment/run-2"],"value_base64":"dG9rZW4=","copies":3,"concurrency":2}`)
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, httptest.NewRequest(http.MethodPost, "/tuple/put", body))
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
-	if ts.puts != 3 {
-		t.Fatalf("puts = %d, want 3", ts.puts)
+	if ts.puts != 6 {
+		t.Fatalf("puts = %d, want 6", ts.puts)
+	}
+	var response tuplePutResponse
+	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
+		t.Fatal(err)
+	}
+	if response.MutationDelta.Total != 6 || response.MutationDelta.Failures != 0 {
+		t.Fatalf("unexpected mutation delta: %+v", response.MutationDelta)
 	}
 }

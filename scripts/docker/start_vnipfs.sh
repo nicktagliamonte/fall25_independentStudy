@@ -87,7 +87,33 @@ for i in $(seq 2 "$N"); do
   [[ $((i % 20)) -eq 0 ]] && echo "  Started node$i..."
 done
 
-echo "Waiting for nodes to connect..."
+echo "Connecting peer nodes to bootstrap..."
+CONNECT_BODY=$(jq -nc \
+  --arg addr "/ip4/172.20.0.10/tcp/4001" \
+  --arg peer "$PEER_ID" \
+  '{addr:$addr,peer:$peer,timeout:"20s"}')
+for i in $(seq 2 "$N"); do
+  SERVICE="node$i"
+  CTRL_FILE="/app/logs/$SERVICE.json"
+  CTRL_ADDR=""
+  for _ in $(seq 1 60); do
+    CTRL_ADDR=$(docker-compose -f "$COMPOSE_FILE" exec -T "$SERVICE" jq -r '.addr // empty' "$CTRL_FILE" 2>/dev/null || true)
+    [[ -n "$CTRL_ADDR" ]] && break
+    sleep 1
+  done
+  if [[ -z "$CTRL_ADDR" ]]; then
+    echo "ERROR: $SERVICE did not publish its control address" >&2
+    exit 1
+  fi
+  if ! docker-compose -f "$COMPOSE_FILE" exec -T "$SERVICE" sh -c \
+    'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
+    <<<"$CONNECT_BODY"; then
+    echo "ERROR: $SERVICE could not connect to bootstrap" >&2
+    exit 1
+  fi
+done
+
+echo "Waiting for peer discovery..."
 sleep 15
 
 echo ""
