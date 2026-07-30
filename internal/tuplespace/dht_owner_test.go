@@ -3,6 +3,7 @@ package tuplespace
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	kbucket "github.com/libp2p/go-libp2p-kbucket"
@@ -17,6 +18,26 @@ type fakeClosestPeerFinder struct {
 
 func (f fakeClosestPeerFinder) GetClosestPeers(context.Context, string) ([]peer.ID, error) {
 	return f.peers, f.err
+}
+
+type scriptedClosestPeerFinder struct {
+	mu        sync.Mutex
+	responses [][]peer.ID
+	calls     int
+}
+
+func (f *scriptedClosestPeerFinder) GetClosestPeers(
+	context.Context,
+	string,
+) ([]peer.ID, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	index := f.calls
+	f.calls++
+	if index >= len(f.responses) {
+		index = len(f.responses) - 1
+	}
+	return f.responses[index], nil
 }
 
 type fakeStablePeerFinder struct {
@@ -111,6 +132,27 @@ func TestDHTTupleOwnerResolverRejectsUnderpopulatedElectionView(t *testing.T) {
 	resolver.SetMinimumCandidates(3)
 	if _, err := resolver.ResolveTupleOwner(context.Background(), "task"); err == nil {
 		t.Fatal("under-populated ownership view was accepted")
+	}
+}
+
+func TestDHTTupleOwnerResolverRetriesUnderpopulatedElectionView(t *testing.T) {
+	self := peer.ID("self-peer")
+	finder := &scriptedClosestPeerFinder{
+		responses: [][]peer.ID{
+			{peer.ID("peer-a"), peer.ID("peer-b")},
+			{peer.ID("peer-a"), peer.ID("peer-b"), peer.ID("peer-c")},
+		},
+	}
+	resolver, err := NewDHTTupleOwnerResolver(self, finder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver.SetMinimumCandidates(3)
+	if _, err := resolver.ResolveTupleOwner(context.Background(), "task"); err != nil {
+		t.Fatalf("transient under-populated view was not retried: %v", err)
+	}
+	if finder.calls != 2 {
+		t.Fatalf("closest-peer calls = %d, want 2", finder.calls)
 	}
 }
 

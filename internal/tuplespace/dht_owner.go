@@ -5,9 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/peer"
+)
+
+const (
+	ownerLookupAttempts   = 4
+	ownerLookupRetryDelay = 25 * time.Millisecond
 )
 
 // ClosestPeerFinder is the subset of Kademlia used for tuple ownership.
@@ -102,7 +108,7 @@ func (r *DHTTupleOwnerResolver) resolveTupleOwnerExcluding(
 	if tupleName == "" {
 		return "", errors.New("tuple name required")
 	}
-	peers, err := r.finder.GetClosestPeers(ctx, tupleName)
+	peers, err := r.closestPeers(ctx, tupleName)
 	if len(peers) < r.minimumCandidates {
 		return "", fmt.Errorf(
 			"ownership lookup returned %d candidates, need at least %d",
@@ -140,4 +146,50 @@ func (r *DHTTupleOwnerResolver) resolveTupleOwnerExcluding(
 		return kbucket.Closer(candidates[i], candidates[j], tupleName)
 	})
 	return candidates[0], nil
+}
+
+// closestPeers retries only an under-populated election view. A production
+// DHT lookup can transiently return one fewer peer than its bucket width while
+// concurrent requests update or contend for the routing table. Each accepted
+// view must still satisfy the configured minimum on one lookup; results from
+// different attempts are deliberately not merged into an artificial quorum.
+func (r *DHTTupleOwnerResolver) closestPeers(
+	ctx context.Context,
+	tupleName string,
+) ([]peer.ID, error) {
+	attempts := 1
+	if r.minimumCandidates > 0 {
+		attempts = ownerLookupAttempts
+	}
+	var (
+		best    []peer.ID
+		bestErr error
+	)
+	for attempt := 0; attempt < attempts; attempt++ {
+		peers, err := r.finder.GetClosestPeers(ctx, tupleName)
+		if len(peers) > len(best) {
+			best = peers
+			bestErr = err
+		}
+		if len(peers) >= r.minimumCandidates {
+			return peers, err
+		}
+		if ctx.Err() != nil || attempt+1 == attempts {
+			break
+		}
+		delay := time.Duration(attempt+1) * ownerLookupRetryDelay
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			return best, ctx.Err()
+		case <-timer.C:
+		}
+	}
+	return best, bestErr
 }
