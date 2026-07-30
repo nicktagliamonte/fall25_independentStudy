@@ -340,6 +340,14 @@ type ConnectRequest struct {
 	Timeout string `json:"timeout"`
 }
 
+// connectExplicitPeer performs a direct operator-requested dial. The explicit
+// address and deadline come from the local control plane, so a stale libp2p
+// opportunistic-dial backoff must not suppress the attempt without touching
+// the network.
+func connectExplicitPeer(ctx context.Context, h host.Host, info peer.AddrInfo) error {
+	return h.Connect(network.WithForceDirectDial(ctx, "explicit control-plane connect"), info)
+}
+
 // GetRequest is the JSON request body for POST /get.
 type GetRequest struct {
 	Key     string `json:"key"` // Key (hex string) - primary identifier for token-based routing
@@ -1429,7 +1437,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		}
 		ctxDial, cancel := context.WithTimeout(r.Context(), d)
 		defer cancel()
-		if err := h.Connect(ctxDial, info); err != nil {
+		if err := connectExplicitPeer(ctxDial, h, info); err != nil {
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = w.Write([]byte(err.Error()))
 			return

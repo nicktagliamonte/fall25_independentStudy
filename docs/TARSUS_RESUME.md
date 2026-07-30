@@ -71,6 +71,11 @@
   after asynchronous Tarsus handshake verification, failed child-to-parent
   dials are retried in the reverse direction, and the last HTTP/dial error plus
   both node logs is preserved on terminal failure.
+- Explicit `/connect` requests now force a bounded direct libp2p dial. This
+  prevents an earlier opportunistic failure from turning every control-plane
+  retry into an immediate local `dial backoff` rejection without a network
+  attempt. A focused regression creates exactly that cached-backoff state and
+  proves the explicit dial reaches the newly available peer.
 - Revalidated the hardened harness with
   `test_results/tarsus_campaign_smoke/resilience-n010-fresh-volumes-v2`.
   The validator-compliant 5 MiB run reached and restored exactly seven copies,
@@ -118,12 +123,14 @@ replacement issues one batched call and successfully captured four complete
 ## Immediate next work
 
 The production-current failure/repair harness is complete and has passed its
-fresh-volume 10-node end-to-end smoke gate. An initial 100-node pilot reached
+fresh-volume 10-node end-to-end smoke gate. The first 100-node pilot reached
 all 100 running containers but failed on the first requested tree edge because
-the old harness discarded every `/connect` diagnostic; it never began the
-content workload. That path is now hardened and checkpointed. The next step is
-to rerun the 100-node, one-trial pilot using the default 8 MiB payload. If that
-validates, run the full
+the old harness discarded every `/connect` diagnostic. The hardened retry
+reached 87 explicit edges before revealing that a lower-tree pair was trapped
+in libp2p dial backoff in both directions; neither pilot began the content
+workload. The explicit-dial path now bypasses that stale opportunistic backoff.
+The next step is to rerun the 100-node, one-trial pilot using the default 8 MiB
+payload. If that validates, run the full
 query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
 artifact, and only then generate manuscript figures. Do not use the dated
 vnIPFS/Swarm repair scripts as paper evidence.
