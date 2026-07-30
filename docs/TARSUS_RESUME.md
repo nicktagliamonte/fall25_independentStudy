@@ -219,6 +219,13 @@
   authority record. Focused regressions cover overlapping probe protections,
   bounded candidate concurrency, and a stronger same-epoch PHT fence; complete
   normal/race suites and `go vet` pass.
+- The fresh `resilience-n010-d5294dd-v1` distributed cell validates all three
+  post-pilot changes together. It repaired in 55.699 seconds, retained every
+  healthy original, admitted exactly one replacement, stayed between six and
+  seven replicas, and passed both hashes. All six recorded liveness suspicions
+  targeted only the stopped node; no healthy provider was suspected and no
+  stale PHT fence occurred. Kernel diagnostics, compose restoration, container
+  teardown, and the default 128/512/1024 host limits were clean.
 - The pilot's ad hoc zsh restoration wrapper briefly restored only the leading
   digit of each original procfs value after the artifact had completed. This
   did not affect the run; it was caught immediately and the host was reset to
@@ -288,12 +295,12 @@ smokes passed and exposed a stale-offer retry responsible for the slower run.
 The candidate-pool fix then passed a fresh 10-node run in 30.641 seconds, and
 the next strict 100-node pilot passed the complete failure path. Its logs
 motivated temporary probe protection, parallel candidate discovery, and
-proactive stale-fence reconciliation; their full normal/race suites pass. The
-immediate next step is a fresh 10-node distributed smoke followed by a
-100-node validation at the new commit, using the checked neighbor-limit helper.
-If those validate, run the full query-cost/shard/Bloom matrix and five-trial
-resilience cell, validate every artifact, and only then generate manuscript
-figures. Do not use the dated vnIPFS/Swarm repair scripts as paper evidence.
+proactive stale-fence reconciliation; their full normal/race suites and fresh
+10-node distributed smoke pass. The immediate next step is a 100-node
+validation at the new commit, using the checked neighbor-limit helper. If that
+validates, run the full query-cost/shard/Bloom matrix and five-trial resilience
+cell, validate every artifact, and only then generate manuscript figures. Do
+not use the dated vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and
