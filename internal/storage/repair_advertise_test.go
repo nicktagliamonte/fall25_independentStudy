@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 type retryAdvertisementTupleSpace struct {
@@ -64,5 +65,74 @@ func TestStorageAvailabilityAdvertisementRetriesTransientFailure(t *testing.T) {
 	ts.mu.Unlock()
 	if attempts != 3 {
 		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+}
+
+func TestReplicaLivenessRequiresSeparatedFailures(t *testing.T) {
+	h, err := libp2p.New(libp2p.NoListenAddrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+
+	pid := tokenTestPeerID(t)
+	addr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/65534")
+	rp := &RepairProtocol{
+		host:                                h,
+		livenessFailures:                    make(map[peer.ID]livenessFailureEvidence),
+		livenessFailureThreshold:            2,
+		livenessFailureConfirmationInterval: time.Minute,
+	}
+	probeErr := errors.New("transient liveness failure")
+
+	rtt, err := rp.applyLivenessFailureEvidence(pid, addr, 0, probeErr)
+	if err != nil || rtt <= 0 {
+		t.Fatalf("first failure = (%s, %v), want positive fallback RTT and no error", rtt, err)
+	}
+	rtt, err = rp.applyLivenessFailureEvidence(pid, addr, 0, probeErr)
+	if err != nil || rtt <= 0 {
+		t.Fatalf("unseparated repeat = (%s, %v), want continued suspicion", rtt, err)
+	}
+	if got := rp.livenessFailures[pid].count; got != 1 {
+		t.Fatalf("unseparated failure count = %d, want 1", got)
+	}
+
+	rp.livenessMu.Lock()
+	evidence := rp.livenessFailures[pid]
+	evidence.last = time.Now().Add(-2 * rp.livenessFailureConfirmationInterval)
+	rp.livenessFailures[pid] = evidence
+	rp.livenessMu.Unlock()
+
+	if _, err := rp.applyLivenessFailureEvidence(pid, addr, 0, probeErr); !errors.Is(err, probeErr) {
+		t.Fatalf("separated repeat error = %v, want %v", err, probeErr)
+	}
+}
+
+func TestReplicaLivenessSuccessClearsSuspicion(t *testing.T) {
+	h, err := libp2p.New(libp2p.NoListenAddrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+
+	pid := tokenTestPeerID(t)
+	addr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/65534")
+	rp := &RepairProtocol{
+		host:                                h,
+		livenessFailures:                    make(map[peer.ID]livenessFailureEvidence),
+		livenessFailureThreshold:            2,
+		livenessFailureConfirmationInterval: 0,
+	}
+	probeErr := errors.New("transient liveness failure")
+
+	if _, err := rp.applyLivenessFailureEvidence(pid, addr, 0, probeErr); err != nil {
+		t.Fatalf("first failure: %v", err)
+	}
+	rp.clearLivenessFailureEvidence(pid)
+	if _, err := rp.applyLivenessFailureEvidence(pid, addr, 0, probeErr); err != nil {
+		t.Fatalf("failure after successful probe reset: %v", err)
+	}
+	if got := rp.livenessFailures[pid].count; got != 1 {
+		t.Fatalf("failure count after successful probe reset = %d, want 1", got)
 	}
 }

@@ -50,6 +50,13 @@ type RepairProtocol struct {
 	// sweep or upload burst.
 	rttMu    sync.Mutex
 	rttCache map[peer.ID]cachedRTT
+	// livenessFailures implements conservative repeated-observation failure
+	// detection for replica pruning. A single failed active probe is only a
+	// suspicion; removal requires repeated failures separated in time.
+	livenessMu                          sync.Mutex
+	livenessFailures                    map[peer.ID]livenessFailureEvidence
+	livenessFailureThreshold            int
+	livenessFailureConfirmationInterval time.Duration
 	// advertisementInitialJitterWindow spreads startup writes in large clusters.
 	// A zero value disables jitter for focused tests.
 	advertisementInitialJitterWindow time.Duration
@@ -60,6 +67,16 @@ type cachedRTT struct {
 	err      error
 	measured time.Time
 }
+
+type livenessFailureEvidence struct {
+	count int
+	last  time.Time
+}
+
+const (
+	defaultLivenessFailureThreshold            = 2
+	defaultLivenessFailureConfirmationInterval = 10 * time.Second
+)
 
 // NewRepairProtocol creates a new RepairProtocol bound to stack and host h. It builds an
 // internal StorageAvailableProtocol over the given tuple space, configuring its
@@ -95,12 +112,15 @@ func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, toke
 		return pids
 	}
 	rp := &RepairProtocol{
-		stack:                            stack,
-		host:                             h,
-		storageAvailable:                 sap,
-		criteria:                         DefaultSelectionCriteria(tokenized),
-		rttCache:                         make(map[peer.ID]cachedRTT),
-		advertisementInitialJitterWindow: 30 * time.Second,
+		stack:                               stack,
+		host:                                h,
+		storageAvailable:                    sap,
+		criteria:                            DefaultSelectionCriteria(tokenized),
+		rttCache:                            make(map[peer.ID]cachedRTT),
+		livenessFailures:                    make(map[peer.ID]livenessFailureEvidence),
+		livenessFailureThreshold:            defaultLivenessFailureThreshold,
+		livenessFailureConfirmationInterval: defaultLivenessFailureConfirmationInterval,
+		advertisementInitialJitterWindow:    30 * time.Second,
 	}
 	sap.RTTMeasurer = rp.MeasureRTT
 	return rp
@@ -159,14 +179,7 @@ func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (tim
 			dialCtx := network.WithForceDirectDial(ctx, "token provider liveness probe")
 			if err := rp.host.Connect(dialCtx, info); err != nil {
 				rp.cacheRTT(pid, 0, err)
-				log.Printf(
-					"replica liveness dial from %s to %s at %s failed: %v",
-					rp.host.ID(),
-					pid,
-					addr,
-					err,
-				)
-				return 0, err
+				return rp.applyLivenessFailureEvidence(pid, addr, cached.rtt, err)
 			}
 		}
 	}
@@ -200,16 +213,14 @@ func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (tim
 		}
 	}
 	rp.cacheRTT(pid, rtt, probeErr)
-	if probeErr != nil && addr != nil {
-		log.Printf(
-			"replica liveness ping from %s to %s at %s failed: %v",
-			rp.host.ID(),
-			pid,
-			addr,
-			probeErr,
-		)
+	if addr == nil {
+		return rtt, probeErr
 	}
-	return rtt, probeErr
+	if probeErr != nil {
+		return rp.applyLivenessFailureEvidence(pid, addr, cached.rtt, probeErr)
+	}
+	rp.clearLivenessFailureEvidence(pid)
+	return rtt, nil
 }
 
 func (rp *RepairProtocol) cacheRTT(pid peer.ID, rtt time.Duration, probeErr error) {
@@ -219,6 +230,65 @@ func (rp *RepairProtocol) cacheRTT(pid peer.ID, rtt time.Duration, probeErr erro
 	}
 	rp.rttCache[pid] = cachedRTT{rtt: rtt, err: probeErr, measured: time.Now()}
 	rp.rttMu.Unlock()
+}
+
+func (rp *RepairProtocol) applyLivenessFailureEvidence(
+	pid peer.ID,
+	addr multiaddr.Multiaddr,
+	fallbackRTT time.Duration,
+	probeErr error,
+) (time.Duration, error) {
+	threshold := rp.livenessFailureThreshold
+	if threshold <= 0 {
+		threshold = defaultLivenessFailureThreshold
+	}
+	now := time.Now()
+	rp.livenessMu.Lock()
+	if rp.livenessFailures == nil {
+		rp.livenessFailures = make(map[peer.ID]livenessFailureEvidence)
+	}
+	evidence := rp.livenessFailures[pid]
+	interval := rp.livenessFailureConfirmationInterval
+	if evidence.last.IsZero() || interval <= 0 || now.Sub(evidence.last) >= interval {
+		evidence.count++
+		evidence.last = now
+		rp.livenessFailures[pid] = evidence
+	}
+	rp.livenessMu.Unlock()
+
+	if evidence.count < threshold {
+		if fallbackRTT <= 0 {
+			// Verification counts the provider conservatively as reachable but
+			// with no meaningful distance evidence until a later probe succeeds.
+			fallbackRTT = time.Nanosecond
+		}
+		log.Printf(
+			"replica liveness suspicion from %s to %s at %s (%d/%d): %v",
+			rp.host.ID(),
+			pid,
+			addr,
+			evidence.count,
+			threshold,
+			probeErr,
+		)
+		return fallbackRTT, nil
+	}
+	log.Printf(
+		"replica liveness failure confirmed from %s to %s at %s (%d/%d): %v",
+		rp.host.ID(),
+		pid,
+		addr,
+		evidence.count,
+		threshold,
+		probeErr,
+	)
+	return 0, probeErr
+}
+
+func (rp *RepairProtocol) clearLivenessFailureEvidence(pid peer.ID) {
+	rp.livenessMu.Lock()
+	delete(rp.livenessFailures, pid)
+	rp.livenessMu.Unlock()
 }
 
 // StartAdvertisingStorageAvailability advertises this peer's storage

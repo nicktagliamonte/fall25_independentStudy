@@ -165,6 +165,21 @@
   authenticated Tarsus handshake gate completes. An earlier no-address failure
   cannot suppress this address-aware attempt. Repeated live-libp2p and race
   tests cover a disconnected provider that is known only through its token.
+- An initial address-aware 10-node run still exposed an intermittent
+  single-probe false negative: after initially holding the six surviving
+  replicas, the system eventually pruned healthy providers and amplified
+  repair. That interrupted artifact is explicitly marked invalid at
+  `test_results/tarsus_campaign_smoke/resilience-n010-address-aware-liveness-v1`.
+  Two subsequent diagnostic runs passed strictly, so this was intermittent
+  rather than a deterministic address-resolution failure.
+- Added a conservative repeated-observation failure detector for replica
+  pruning. The first failed address-aware probe retains the provider as a
+  liveness suspicion; removal requires a second failed observation at least
+  ten seconds later. A successful probe clears the evidence. This trades one
+  additional audit interval of crash-repair latency for protection against
+  destructive one-shot false positives. Focused normal tests passed 20
+  repetitions, focused race tests passed five, and the full normal and race
+  suites passed.
 - Strengthened resilience validation for the single-holder failure experiment:
   every repair observation must remain between six and seven providers, the
   six live originals must survive, no over-replication is accepted, and only
@@ -220,14 +235,16 @@ explained by contemporaneous kernel neighbor-table overflow; what looked like
 a lost-index-update plateau was proved to be three disconnected overlay
 components. Both failure modes now have explicit startup guards. The first
 protected 100-node workload then exposed false provider pruning and repair
-amplification, which the address-aware probe and stricter trace validator now
-target. The immediate next step is one fresh 10-node smoke run of that repair
-change, followed by a 100-node, one-trial pilot using the default 8 MiB payload
-and protected tree, with temporary host neighbor limits of 2048/4096/8192 and
-restoration of the Fedora defaults 128/512/1024 afterward. If that validates,
-run the full query-cost/shard/Bloom matrix and five-trial resilience cell,
-validate every artifact, and only then generate manuscript figures. Do not use
-the dated vnIPFS/Swarm repair scripts as paper evidence.
+amplification. Address-aware probes fixed missing route knowledge but one
+intermittent false negative remained, so pruning now requires two separated
+failures and the stricter trace validator rejects any recurrence. The immediate
+next step is repeated fresh 10-node smoke runs of that detector, followed by a
+100-node, one-trial pilot using the default 8 MiB payload and protected tree,
+with temporary host neighbor limits of 2048/4096/8192 and restoration of the
+Fedora defaults 128/512/1024 afterward. If that validates, run the full
+query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
+artifact, and only then generate manuscript figures. Do not use the dated
+vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and
