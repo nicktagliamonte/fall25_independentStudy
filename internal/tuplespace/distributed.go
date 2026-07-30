@@ -18,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/nicktagliamonte/fall25_independentStudy/internal/pht"
 )
 
 const (
@@ -54,11 +55,16 @@ type tupleWireRequest struct {
 	Target      string   `json:"target,omitempty"`
 	Visited     []string `json:"visited,omitempty"`
 	RouteBudget int      `json:"route_budget,omitempty"`
+	Epoch       uint64   `json:"epoch,omitempty"`
+	Writer      string   `json:"writer,omitempty"`
 }
 
 type tupleWireResponse struct {
-	Value []byte `json:"value,omitempty"`
-	Error string `json:"error,omitempty"`
+	Value         []byte `json:"value,omitempty"`
+	Error         string `json:"error,omitempty"`
+	ErrorCode     string `json:"error_code,omitempty"`
+	CurrentEpoch  uint64 `json:"current_epoch,omitempty"`
+	CurrentWriter string `json:"current_writer,omitempty"`
 }
 
 // DistributedTupleSpace routes exact operations to a deterministic owner. Each
@@ -75,6 +81,7 @@ type DistributedTupleSpace struct {
 	requestSequence      atomic.Uint64
 	memoMu               sync.Mutex
 	memo                 map[string]*tupleMemoEntry
+	durable              *durableTupleStore
 }
 
 type tupleMemoEntry struct {
@@ -108,6 +115,31 @@ func NewDistributedTupleSpace(h host.Host, resolver TupleOwnerResolver) (*Distri
 // installing the gate; direct libp2p tests may leave it disabled.
 func (d *DistributedTupleSpace) SetRequireVerifiedPeers(required bool) {
 	d.requireVerifiedPeers = required
+}
+
+// EnableDurableState makes exact-name tuple operations commit their multiset,
+// ownership fence, and retry results to the replicated DHT before replying.
+// It is enabled by production node construction; the in-memory mode remains
+// available for focused transport tests and standalone use.
+func (d *DistributedTupleSpace) EnableDurableState(store pht.ValueStore) error {
+	durable, err := newDurableTupleStore(d.host.ID(), d.resolver, store)
+	if err != nil {
+		return err
+	}
+	d.durable = durable
+	return nil
+}
+
+// SetDurableStateTiming changes claim propagation and lease timing for tests.
+// Production uses the defaults established by EnableDurableState.
+func (d *DistributedTupleSpace) SetDurableStateTiming(
+	settle time.Duration,
+	lease time.Duration,
+	margin time.Duration,
+) {
+	if d.durable != nil {
+		d.durable.setTiming(settle, lease, margin)
+	}
 }
 
 // Close removes the protocol handler. It does not close the shared libp2p host.
@@ -174,6 +206,9 @@ func (d *DistributedTupleSpace) TsGet(expr string) ([]byte, error) {
 }
 
 func (d *DistributedTupleSpace) exact(ctx context.Context, req tupleWireRequest) ([]byte, error) {
+	if d.durable != nil {
+		return d.exactDurable(ctx, req)
+	}
 	owner, err := d.resolver.ResolveTupleOwner(ctx, req.Name)
 	if err != nil {
 		return nil, fmt.Errorf("resolve tuple owner: %w", err)
@@ -182,6 +217,53 @@ func (d *DistributedTupleSpace) exact(ctx context.Context, req tupleWireRequest)
 		return nil, errors.New("tuple owner resolver returned an empty peer ID")
 	}
 	return d.requestPeer(ctx, owner, req)
+}
+
+func (d *DistributedTupleSpace) exactDurable(
+	ctx context.Context,
+	req tupleWireRequest,
+) ([]byte, error) {
+	if req.RequestID == "" {
+		req.RequestID = fmt.Sprintf(
+			"%s-%x-%x",
+			d.host.ID(),
+			time.Now().UnixNano(),
+			d.requestSequence.Add(1),
+		)
+	}
+	fence, err := d.durable.resolve(ctx, req.Name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve durable tuple owner: %w", err)
+	}
+	for attempt := 0; attempt < 4; attempt++ {
+		owner, decodeErr := peer.Decode(fence.Writer)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("decode durable tuple owner: %w", decodeErr)
+		}
+		req.Epoch = fence.Epoch
+		req.Writer = fence.Writer
+		value, requestErr := d.requestPeer(ctx, owner, req)
+		if requestErr == nil || errors.Is(requestErr, ErrTupleNotFound) {
+			return value, requestErr
+		}
+		var stale *tupleAuthorityError
+		if errors.As(requestErr, &stale) {
+			if stale.Fence.Epoch == 0 || stale.Fence.Writer == "" {
+				return nil, requestErr
+			}
+			fence = stale.Fence
+			continue
+		}
+		var application *tupleApplicationError
+		if errors.As(requestErr, &application) || owner == d.host.ID() {
+			return nil, requestErr
+		}
+		fence, err = d.durable.failover(ctx, req.Name, fence)
+		if err != nil {
+			return nil, fmt.Errorf("fail over durable tuple owner: %w", err)
+		}
+	}
+	return nil, errors.New("durable tuple authority did not converge")
 }
 
 // associative queries peers in stable peer-ID order. A consuming operation
@@ -262,6 +344,17 @@ func (d *DistributedTupleSpace) requestPeerDirect(
 		return nil, fmt.Errorf("read tuple response: %w", err)
 	}
 	if response.Error != "" {
+		switch response.ErrorCode {
+		case "not_found":
+			return nil, ErrTupleNotFound
+		case "stale_authority":
+			return nil, &tupleAuthorityError{Fence: tupleFence{
+				Epoch:  response.CurrentEpoch,
+				Writer: response.CurrentWriter,
+			}}
+		case "application":
+			return nil, &tupleApplicationError{message: response.Error}
+		}
 		if response.Error == ErrTupleNotFound.Error() {
 			return nil, ErrTupleNotFound
 		}
@@ -504,6 +597,19 @@ func (d *DistributedTupleSpace) handleStream(stream network.Stream) {
 	response := tupleWireResponse{Value: value}
 	if err != nil {
 		response.Error = err.Error()
+		switch {
+		case errors.Is(err, ErrTupleNotFound):
+			response.ErrorCode = "not_found"
+		default:
+			var stale *tupleAuthorityError
+			if errors.As(err, &stale) {
+				response.ErrorCode = "stale_authority"
+				response.CurrentEpoch = stale.Fence.Epoch
+				response.CurrentWriter = stale.Fence.Writer
+			} else {
+				response.ErrorCode = "application"
+			}
+		}
 	}
 	_ = json.NewEncoder(stream).Encode(response)
 }
@@ -529,6 +635,13 @@ func (d *DistributedTupleSpace) applyLocalOnce(
 	ctx context.Context,
 	req tupleWireRequest,
 ) ([]byte, error) {
+	if d.durable != nil && !isTuplePattern(req.Name) {
+		value, err := d.durable.apply(ctx, req)
+		if syncErr := d.syncDurableLocalProjection(ctx, req.Name); err == nil && syncErr != nil {
+			err = syncErr
+		}
+		return value, err
+	}
 	if req.RequestID == "" {
 		return d.applyLocal(req)
 	}
@@ -559,6 +672,26 @@ func (d *DistributedTupleSpace) applyLocalOnce(
 	}
 	d.memoMu.Unlock()
 	return value, err
+}
+
+func (d *DistributedTupleSpace) syncDurableLocalProjection(
+	ctx context.Context,
+	name string,
+) error {
+	values, err := d.durable.values(ctx, name)
+	if err != nil {
+		return err
+	}
+	d.local.SetExactState(name, values)
+	return nil
+}
+
+type tupleApplicationError struct {
+	message string
+}
+
+func (e *tupleApplicationError) Error() string {
+	return e.message
 }
 
 func (d *DistributedTupleSpace) evictTupleMemoLocked() {

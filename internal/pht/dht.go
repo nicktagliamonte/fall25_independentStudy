@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync/atomic"
 )
@@ -351,6 +352,41 @@ func PrefixQueryDHTWithStats(ctx context.Context, store ValueStore, prefix strin
 	stats := counters.snapshot()
 	stats.Matches = len(rows)
 	return rows, stats, err
+}
+
+// RegexQueryDHTWithStats scans one PHT shard and applies an anchored regular
+// expression to its names. Regex search is intentionally O(N); unlike prefix
+// and substring queries, an arbitrary expression has no safe PHT/Bloom pruning
+// rule. Returning names still lets the tuple layer verify and consume each
+// candidate at its current fenced owner.
+func RegexQueryDHTWithStats(
+	ctx context.Context,
+	store ValueStore,
+	expr string,
+) ([]string, QueryStats, error) {
+	matcher, err := regexp.Compile("^(?:" + expr + ")$")
+	if err != nil {
+		return nil, QueryStats{}, fmt.Errorf("compile PHT regex: %w", err)
+	}
+	counters := &queryCounters{}
+	counted := countingValueStore{ValueStore: store, counters: counters}
+	root, err := NavigateDHT(ctx, counted, "")
+	if err != nil || root == nil {
+		return nil, counters.snapshot(), err
+	}
+	rows, err := collectUnderDHTInternal(ctx, counted, root, nil, counters)
+	if err != nil {
+		return nil, counters.snapshot(), err
+	}
+	out := rows[:0]
+	for _, name := range rows {
+		if matcher.MatchString(name) {
+			out = append(out, name)
+		}
+	}
+	stats := counters.snapshot()
+	stats.Matches = len(out)
+	return out, stats, nil
 }
 
 func prefixQueryDHT(ctx context.Context, store ValueStore, prefix string, counters *queryCounters) ([]string, error) {

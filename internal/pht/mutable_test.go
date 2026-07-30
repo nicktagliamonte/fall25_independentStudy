@@ -103,6 +103,41 @@ func TestMutableIndexConcurrentInsertIsLossless(t *testing.T) {
 	}
 }
 
+func TestRegexQueryScansAndFiltersNames(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	index, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{
+		"task:image:dataset-a:001",
+		"task:text:dataset-a:002",
+		"task:audio:dataset-a:003",
+	} {
+		if err := index.Insert(ctx, name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, stats, err := RegexQueryDHTWithStats(
+		ctx,
+		store,
+		`task:(image|text):dataset-a:[0-9]+`,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(rows)
+	if len(rows) != 2 ||
+		rows[0] != "task:image:dataset-a:001" ||
+		rows[1] != "task:text:dataset-a:002" {
+		t.Fatalf("regex rows = %#v", rows)
+	}
+	if stats.Candidates != 3 || stats.Matches != 2 || stats.NodesFetched == 0 {
+		t.Fatalf("regex stats = %+v", stats)
+	}
+}
+
 func TestMutableIndexFencesStaleWriterAndMigratesExistingEntry(t *testing.T) {
 	ctx := context.Background()
 	store := &mockStore{}

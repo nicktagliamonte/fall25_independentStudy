@@ -580,23 +580,35 @@ func Run() error {
 			dhtTS := mytuplespace.NewDHTTupleSpace(dhtAdapter)
 
 			var baseTS mytuplespace.TupleSpace = dhtTS
-			if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht); err == nil {
-				ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(clusterNodes))
-				ownerResolver.SetStablePeerFinder(peerStore)
-				if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
-					nativeTS.SetRequireVerifiedPeers(true)
-					baseTS = nativeTS
-					if shardStores, err := mypht.NewShardStores(dhtAdapter, indexShards); err == nil {
-						if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
-							indexCoordinator.SetRequireVerifiedPeers(true)
-							if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
-								indexedTS.SetBloomPruning(!disableBloomPruning)
-								baseTS = indexedTS
-							}
-						}
-					}
-				}
+			ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht)
+			if err != nil {
+				return fmt.Errorf("create tuple owner resolver: %w", err)
 			}
+			ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(clusterNodes))
+			ownerResolver.SetStablePeerFinder(peerStore)
+			nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver)
+			if err != nil {
+				return fmt.Errorf("create distributed tuple space: %w", err)
+			}
+			if err := nativeTS.EnableDurableState(dhtAdapter); err != nil {
+				return fmt.Errorf("enable durable tuple state: %w", err)
+			}
+			nativeTS.SetRequireVerifiedPeers(true)
+			shardStores, err := mypht.NewShardStores(dhtAdapter, indexShards)
+			if err != nil {
+				return fmt.Errorf("create PHT shard stores: %w", err)
+			}
+			indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores)
+			if err != nil {
+				return fmt.Errorf("create index coordinator: %w", err)
+			}
+			indexCoordinator.SetRequireVerifiedPeers(true)
+			indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator)
+			if err != nil {
+				return fmt.Errorf("create indexed tuple space: %w", err)
+			}
+			indexedTS.SetBloomPruning(!disableBloomPruning)
+			baseTS = indexedTS
 			if tshAddr := os.Getenv("TSH_ADDR"); tshAddr != "" {
 				// Legacy compatibility only. The default production path uses
 				// the repository-native DistributedTupleSpace above.

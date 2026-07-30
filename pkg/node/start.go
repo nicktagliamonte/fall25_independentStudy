@@ -255,27 +255,63 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		tokenized := opts.RequireToken || (len(opts.CAPubKeysB64) > 0 && opts.Token != "")
 
 		var baseTS mytuplespace.TupleSpace = dhtTS
-		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
-			ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(opts.ClusterNodeCount))
-			ownerResolver.SetStablePeerFinder(peerStore)
-			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
-				nativeTS.SetRequireVerifiedPeers(true)
-				baseTS = nativeTS
-				shardCount := opts.IndexShardCount
-				if shardCount <= 0 {
-					shardCount = mypht.DefaultShardCount
-				}
-				if shardStores, err := mypht.NewShardStores(dhtAdapter, shardCount); err == nil {
-					if indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores); err == nil {
-						indexCoordinator.SetRequireVerifiedPeers(true)
-						if indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator); err == nil {
-							indexedTS.SetBloomPruning(!opts.DisableBloomPruning)
-							baseTS = indexedTS
-						}
-					}
-				}
-			}
+		ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d)
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create tuple owner resolver: %w", err)
 		}
+		ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(opts.ClusterNodeCount))
+		ownerResolver.SetStablePeerFinder(peerStore)
+		nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver)
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create distributed tuple space: %w", err)
+		}
+		if err := nativeTS.EnableDurableState(dhtAdapter); err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("enable durable tuple state: %w", err)
+		}
+		nativeTS.SetRequireVerifiedPeers(true)
+		shardCount := opts.IndexShardCount
+		if shardCount <= 0 {
+			shardCount = mypht.DefaultShardCount
+		}
+		shardStores, err := mypht.NewShardStores(dhtAdapter, shardCount)
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create PHT shard stores: %w", err)
+		}
+		indexCoordinator, err := mytuplespace.NewIndexCoordinator(h, ownerResolver, shardStores)
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create index coordinator: %w", err)
+		}
+		indexCoordinator.SetRequireVerifiedPeers(true)
+		indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator)
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create indexed tuple space: %w", err)
+		}
+		indexedTS.SetBloomPruning(!opts.DisableBloomPruning)
+		baseTS = indexedTS
 		if opts.TSHAddr != "" {
 			// Legacy compatibility only. Tarsus's production tuple space is the
 			// repository-native DistributedTupleSpace constructed above.

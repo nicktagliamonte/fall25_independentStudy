@@ -19,10 +19,50 @@ type indexedTestStore struct {
 	data map[string][]byte
 	puts atomic.Int64
 	gets atomic.Int64
+	fail atomic.Bool
 }
 
 type slowIndexedTestTupleSpace struct {
 	live string
+}
+
+type exactOnlyIndexedTestTupleSpace struct {
+	mu     sync.Mutex
+	values map[string][]byte
+}
+
+func (s *exactOnlyIndexedTestTupleSpace) TsPut(name string, value []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.values[name] = append([]byte(nil), value...)
+	return 0, nil
+}
+
+func (s *exactOnlyIndexedTestTupleSpace) TsRead(name string) ([]byte, error) {
+	if isTuplePattern(name) {
+		return nil, errors.New("base received a pattern instead of an exact candidate")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.values[name]
+	if !ok {
+		return nil, ErrTupleNotFound
+	}
+	return append([]byte(nil), value...), nil
+}
+
+func (s *exactOnlyIndexedTestTupleSpace) TsGet(name string) ([]byte, error) {
+	if isTuplePattern(name) {
+		return nil, errors.New("base received a pattern instead of an exact candidate")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.values[name]
+	if !ok {
+		return nil, ErrTupleNotFound
+	}
+	delete(s.values, name)
+	return append([]byte(nil), value...), nil
 }
 
 func (s *slowIndexedTestTupleSpace) TsPut(string, []byte) (int, error) {
@@ -43,6 +83,9 @@ func (s *slowIndexedTestTupleSpace) TsRead(name string) ([]byte, error) {
 
 func (s *indexedTestStore) PutValue(_ context.Context, key string, value []byte, _ ...interface{}) error {
 	s.puts.Add(1)
+	if s.fail.Load() {
+		return errors.New("injected index write failure")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.data == nil {
@@ -50,6 +93,14 @@ func (s *indexedTestStore) PutValue(_ context.Context, key string, value []byte,
 	}
 	s.data[key] = append([]byte(nil), value...)
 	return nil
+}
+
+type failingPutIndexedTestTupleSpace struct {
+	*NativeTupleSpace
+}
+
+func (s *failingPutIndexedTestTupleSpace) TsPut(string, []byte) (int, error) {
+	return TSPUT_ER, errors.New("injected tuple publication failure")
 }
 
 func (s *indexedTestStore) GetValue(_ context.Context, key string, _ ...interface{}) ([]byte, error) {
@@ -385,6 +436,147 @@ func TestIndexedTupleSpaceVerifiesStaleCandidatesConcurrently(t *testing.T) {
 	}
 	if elapsed >= 500*time.Millisecond {
 		t.Fatalf("verification took %v; candidates appear to be serialized", elapsed)
+	}
+}
+
+func TestIndexedTupleSpaceRegexVerifiesExactOwnerCandidate(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := NewIndexCoordinator(
+		h,
+		fixedOwnerResolver{owner: h.ID()},
+		stores,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	base := &exactOnlyIndexedTestTupleSpace{values: map[string][]byte{
+		"task:image:001": []byte("image"),
+		"task:audio:001": []byte("audio"),
+	}}
+	indexed, err := NewIndexedTupleSpace(base, stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name := range base.values {
+		if err := coordinator.Insert(context.Background(), name); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	value, stats, err := indexed.TsReadWithStats(`task:(image|text):[0-9]+`)
+	if err != nil || string(value) != "image" {
+		t.Fatalf("regex read = %q, %v", value, err)
+	}
+	if stats.QueryKind != "regex" || stats.IndexMatches != 1 ||
+		stats.OwnerAttempts != 1 || stats.VerifiedMatches != 1 {
+		t.Fatalf("regex stats = %+v", stats)
+	}
+	value, err = indexed.TsGet(`task:(image|text):[0-9]+`)
+	if err != nil || string(value) != "image" {
+		t.Fatalf("regex get = %q, %v", value, err)
+	}
+}
+
+func TestIndexedTupleSpaceDoesNotPublishWhenIndexInsertionFails(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := NewIndexCoordinator(
+		h,
+		fixedOwnerResolver{owner: h.ID()},
+		stores,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	base := NewNativeTupleSpace()
+	indexed, err := NewIndexedTupleSpace(base, stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store.fail.Store(true)
+
+	if _, err := indexed.TsPut("task:index-failure", []byte("hidden")); err == nil {
+		t.Fatal("put succeeded despite injected index failure")
+	}
+	if _, err := base.TsRead("task:index-failure"); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("tuple was published without an index entry: %v", err)
+	}
+}
+
+func TestIndexedTupleSpaceTreatsPartialWritesAsRepairableStaleHints(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := NewIndexCoordinator(
+		h,
+		fixedOwnerResolver{owner: h.ID()},
+		stores,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
+
+	failingBase := &failingPutIndexedTestTupleSpace{NativeTupleSpace: NewNativeTupleSpace()}
+	failingIndexed, err := NewIndexedTupleSpace(failingBase, stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := failingIndexed.TsPut("task:partial:put", []byte("absent")); err == nil {
+		t.Fatal("expected tuple publication failure")
+	}
+	if _, stats, err := failingIndexed.TsReadWithStats("task:partial:*"); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("stale post-put hint produced a value: stats=%+v err=%v", stats, err)
+	}
+
+	base := NewNativeTupleSpace()
+	indexed, err := NewIndexedTupleSpace(base, stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := indexed.TsPut("task:partial:get", []byte("consume-once")); err != nil {
+		t.Fatal(err)
+	}
+	store.fail.Store(true)
+	value, err := indexed.TsGet("task:partial:get")
+	if err != nil || string(value) != "consume-once" {
+		t.Fatalf("get with failed hint deletion = %q, %v", value, err)
+	}
+	store.fail.Store(false)
+	if _, err := indexed.TsGet("task:partial:get"); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("consumed tuple returned twice: %v", err)
+	}
+	if _, stats, err := indexed.TsReadWithStats("task:partial:*"); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("stale post-get hint produced a value: stats=%+v err=%v", stats, err)
 	}
 }
 

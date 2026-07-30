@@ -232,6 +232,7 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 		opts = append(opts, kaddht.ProtocolPrefix(TokenDHTProtocolPrefix))
 		opts = append(opts, kaddht.NamespacedValidator("tokens", &tokenRecordValidator{}))
 		opts = append(opts, kaddht.NamespacedValidator("pht", &versionedJSONValidator{}))
+		opts = append(opts, kaddht.NamespacedValidator("tuplestate", &versionedJSONValidator{}))
 	}
 	if cfg.BucketSize > 0 {
 		opts = append(opts, kaddht.BucketSize(cfg.BucketSize))

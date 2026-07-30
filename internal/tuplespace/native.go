@@ -173,6 +173,28 @@ func (n *NativeTupleSpace) Len() int {
 	return len(n.tuples)
 }
 
+// SetExactState replaces the local projection for one exact tuple name with a
+// committed durable multiset. DistributedTupleSpace uses this after every
+// durable operation so associative scans remain a cache of committed state,
+// never the source of ownership or failover truth.
+func (n *NativeTupleSpace) SetExactState(name string, values [][]byte) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	kept := n.tuples[:0]
+	for _, tuple := range n.tuples {
+		if tuple.Name != name {
+			kept = append(kept, tuple)
+		}
+	}
+	n.tuples = kept
+	for _, value := range values {
+		n.tuples = append(n.tuples, NativeTuple{
+			Name:  name,
+			Value: append([]byte(nil), value...),
+		})
+	}
+}
+
 func compileTupleMatcher(expr string) (func(string) bool, error) {
 	if expr == "" {
 		return nil, fmt.Errorf("%w: empty expression", ErrInvalidTuplePattern)

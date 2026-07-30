@@ -32,6 +32,15 @@
   automatic replication repair.
 - Corrected token-location removal/convergence and added a live libp2p
   durability/repair regression.
+- Added versioned durable exact-name tuple records containing the multiset,
+  ownership fence, and successful mutation results.
+- Added lease-expiry crash handoff, higher-epoch stale-owner fencing, durable
+  retry idempotence, and a three-node live-DHT failover test that passed 20/20.
+- Routed general regex matches through the PHT catalog and then exact fenced
+  owners, retaining the honest O(M) matching boundary.
+- Added injected partial-write tests proving index-first publication cannot
+  create an undiscoverable live tuple and stale hints cannot fabricate data or
+  duplicate a consume.
 
 ## Current plan
 
@@ -42,7 +51,7 @@
 4. [x] Pass the strict 50/50 distributed correctness gate.
 5. [x] Diagnose and fix the pre-existing and distributed failures exposed so
    far.
-6. [ ] Address the manuscript's remaining distributed-filesystem limitations
+6. [x] Address the manuscript's remaining distributed-filesystem limitations
    in implementation and claims.
 7. [ ] Analyze and optimize the growing short-test latency and resource costs.
 8. [ ] Run the full 100-node failure, repair, query-cost, and resource campaign.
@@ -51,33 +60,35 @@
 11. [ ] Emit a brief, parseable plain-English document describing the Tarsus
     rewrite for the research group.
 
-## Immediate next limitation
+## Immediate next work
 
-Exact tuple state still exists only in the deterministic owner's in-memory
-`NativeTupleSpace`. The new authority fencing protects PHT/index mutations, not
-tuple values. A tuple owner crash can therefore lose tuple state, and request
-deduplication is also owner-memory-local.
+The implementation/claim limitation gate is complete. The next step is the
+scheduled latency and resource regression pass. Durable exact-name operations
+now add DHT reads plus write/read confirmation, placement adds active RTT
+probing, and periodic repair scans local content. Establish a reproducible
+10-node baseline, attribute time and resource growth to specific operations,
+then cache/coalesce or batch work without weakening fencing, confirmation, or
+repair correctness.
 
-The next production-real slice is durable, fenced exact-tuple state:
+The remaining manuscript boundaries are deliberate or experimental: DHT
+convergence is not consensus under arbitrary partitions; retry results and
+exact-name records are bounded; index shards trade write parallelism for query
+fanout; regex is O(M); RTT is not a geographic-domain oracle; and one-host
+Docker does not prove regional resilience.
 
-1. persist tuple state and operation IDs before acknowledging mutations;
-2. identify the current tuple authority with an epoch/fence;
-3. reject commits from stale owners after authority transfer;
-4. load committed state when a successor assumes ownership;
-5. prove retry and failover behavior for `put`, `read`, `get`, and `replace`;
-6. preserve the Linda-style interface without claiming that Tarsus uses Linda.
-
-Do not update the manuscript to claim tuple-owner failover until these tests
-pass. RTT diversity also remains a latency heuristic, not proof of geographic
-or administrative failure-domain independence.
+`paper/final.tex` has been updated to state the durable handoff assumptions and
+proof obligations. Local PDF compilation is currently blocked because this
+machine's TeX installation does not contain `IEEEtran.cls`, not because of a
+reported TeX syntax error.
 
 ## Resume prompt
 
 Open this conversation and send:
 
 > Resume the Tarsus work from `docs/TARSUS_RESUME.md`. Inspect the branch and
-> working tree first, then continue the durable fenced exact-tuple ownership
-> slice. The 50/50 gate is complete; do not rerun it unless a relevant change
+> working tree first, then continue the latency/resource regression pass. The
+> 50/50 gate and the distributed-filesystem implementation/claim gate are
+> complete; do not rerun the large 50-node cell unless a relevant change
 > invalidates that result.
 
 If this conversation is unavailable, a new Codex conversation opened in the

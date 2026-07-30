@@ -678,12 +678,8 @@ func (i *IndexedTupleSpace) TsRead(expr string) ([]byte, error) {
 func (i *IndexedTupleSpace) TsReadWithStats(expr string) ([]byte, IndexedQueryStats, error) {
 	started := time.Now()
 	stats := IndexedQueryStats{}
-	if !isSimpleWildcard(expr) {
-		if isTuplePattern(expr) {
-			stats.QueryKind = "regex"
-		} else {
-			stats.QueryKind = "exact"
-		}
+	if !isTuplePattern(expr) {
+		stats.QueryKind = "exact"
 		value, err := i.base.TsRead(expr)
 		stats.OwnerAttempts = 1
 		if err == nil {
@@ -804,7 +800,7 @@ func (i *IndexedTupleSpace) readFirstCandidate(names []string) ([]byte, int, err
 }
 
 func (i *IndexedTupleSpace) TsGet(expr string) ([]byte, error) {
-	if !isSimpleWildcard(expr) {
+	if !isTuplePattern(expr) {
 		value, err := i.base.TsGet(expr)
 		if err == nil {
 			i.removeIfExhausted(expr)
@@ -834,11 +830,16 @@ func (i *IndexedTupleSpace) candidates(expr string) ([]string, error) {
 func (i *IndexedTupleSpace) candidatesWithStats(expr string) ([]string, IndexedQueryStats, error) {
 	query := pht.ParseQuery(expr)
 	stats := IndexedQueryStats{ShardsContacted: len(i.stores)}
-	switch query.Kind {
-	case pht.QueryPrefix:
-		stats.QueryKind = "prefix"
-	case pht.QuerySubstring:
-		stats.QueryKind = "substring"
+	simpleWildcard := isSimpleWildcard(expr)
+	if !simpleWildcard {
+		stats.QueryKind = "regex"
+	} else {
+		switch query.Kind {
+		case pht.QueryPrefix:
+			stats.QueryKind = "prefix"
+		case pht.QuerySubstring:
+			stats.QueryKind = "substring"
+		}
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 	defer cancel()
@@ -853,13 +854,17 @@ func (i *IndexedTupleSpace) candidatesWithStats(expr string) ([]string, IndexedQ
 			var names []string
 			var queryStats pht.QueryStats
 			var err error
-			switch query.Kind {
-			case pht.QueryPrefix:
-				names, queryStats, err = pht.PrefixQueryDHTWithStats(ctx, store, query.Prefix)
-			case pht.QuerySubstring:
-				names, queryStats, err = pht.ExecuteSubstringQueryWithStatsAndPruning(ctx, store, query.Substring, 0, i.bloomPruning)
-			default:
-				err = ErrTupleNotFound
+			if !simpleWildcard {
+				names, queryStats, err = pht.RegexQueryDHTWithStats(ctx, store, expr)
+			} else {
+				switch query.Kind {
+				case pht.QueryPrefix:
+					names, queryStats, err = pht.PrefixQueryDHTWithStats(ctx, store, query.Prefix)
+				case pht.QuerySubstring:
+					names, queryStats, err = pht.ExecuteSubstringQueryWithStatsAndPruning(ctx, store, query.Substring, 0, i.bloomPruning)
+				default:
+					err = ErrTupleNotFound
+				}
 			}
 			results <- result{names: names, stats: queryStats, err: err}
 		}(store)

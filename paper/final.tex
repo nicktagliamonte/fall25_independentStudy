@@ -44,9 +44,11 @@ coordination metadata separate from bulk content transfer. Exact tuple
 operations are assigned to deterministic owners in a Kademlia keyspace;
 associative queries use hash-sharded distributed prefix indexes and
 Bloom-filter summaries to identify candidate tuple names before contacting
-their owners. The owner is
-the serialization point for consuming operations, preventing two reachable
-clients from claiming the same tuple. Tuple values can reference
+their owners. Each exact-name multiset and a bounded retry-result window are
+stored as one versioned DHT record. The fenced owner is the serialization point
+for consuming operations, preventing two reachable clients from claiming the
+same tuple and allowing a successor to adopt committed state after a crash.
+Tuple values can reference
 content-addressed objects whose provider locations are maintained independently
 and whose bytes are fetched directly over libp2p. This combination supports
 decentralized workflows in which producers publish immutable inputs, workers
@@ -105,8 +107,8 @@ This paper makes four contributions:
 \begin{itemize}
     \item It defines a single tuple-space interface over a decentralized,
     content-addressed store, including explicit consistency semantics for
-    publication, observation, and exclusive consumption, with correctness
-    arguments stated over a stable ownership epoch.
+    publication, observation, and exclusive consumption, with durable request
+    results and an explicit fenced-ownership consistency boundary.
     \item It presents a query-sensitive coordination plane that maps exact
     operations to deterministic owners and uses a Prefix Hash Tree (PHT) with
     Bloom-filter pruning for associative candidate discovery.
@@ -153,8 +155,10 @@ bytes validate under an uncompromised content key.
 
 An exact tuple name maps to an owner in the Kademlia keyspace. During a stable
 ownership epoch, requests that resolve to a reachable owner are serialized by
-that owner. Ownership changes and owner failure require recovery from persisted
-tuple state; Section~\ref{sec:limitations} states the resulting boundary.
+that owner. The multiset, ownership fence, and successful mutation results are
+persisted together before acknowledgment. After the lease of an unreachable
+owner expires, a successor copies the committed record into a higher epoch.
+Section~\ref{sec:limitations} states the assumptions that bound this handoff.
 
 \subsection{Operations}
 
@@ -184,9 +188,10 @@ claimants may observe failures or timeouts, but two successful operations at
 the same owner cannot consume the same stored tuple.
 
 This guarantee is intentionally narrower than global transactional
-serializability. \system does not provide multi-tuple transactions, atomic
-operations spanning multiple owners, or linearizable observation during
-ownership changes.
+serializability. \system does not provide multi-tuple transactions or atomic
+operations spanning multiple owners. Across an ownership change, safety
+depends on convergence of the versioned DHT record and the lease assumptions
+stated below; the system does not run a consensus protocol.
 
 \section{Correctness Arguments}
 \label{sec:correctness}
@@ -207,6 +212,16 @@ An interval $E=[\tau_0,\tau_1]$ is a stable ownership epoch for name $n$ when
 all operations on $n$ resolve to the same live owner $o(n)$ throughout $E$,
 and messages between each participating client and $o(n)$ are eventually
 delivered or return a failure.
+\end{definition}
+
+\begin{definition}[Durable exact-name record]
+For exact name $n$, a record
+$S_n=(e,w,q,\mathcal{T}_n,\mathcal{R}_n,\tau_v,\tau_x)$ contains an ownership
+epoch $e$, writer identity $w$, monotonically increasing version $q$, the
+multiset for $n$, a bounded map $\mathcal{R}_n$ from successful mutation
+request identifiers to results, and lease-validity times
+$[\tau_v,\tau_x)$. Records are ordered lexicographically by $(e,w,q)$; the
+writer returns success only after writing and rereading the selected record.
 \end{definition}
 
 At an owner, tuple operations execute against one multiset under mutual
@@ -247,17 +262,51 @@ a multiset that does not contain $t$ and cannot return that instance. Thus no
 two successful operations return the same tuple identity.
 \end{proof}
 
+\begin{lemma}[Durable retry idempotence]
+\label{lem:retry}
+Within the retained result window, retrying a successfully committed
+\putop or \getop with the same request identifier does not apply its state
+transition again.
+\end{lemma}
+\begin{proof}
+The owner inserts the request identifier and its result into
+$\mathcal{R}_n$ in the same record version as the tuple-state transition. A
+retry first reads the selected durable record. If its identifier is present,
+the owner returns the stored result without changing $\mathcal{T}_n$. Because
+the transition and result are one versioned write, a successor observes both
+or neither.
+\end{proof}
+
 \begin{proposition}[Conditional claim progress]
 During a stable ownership epoch, if a matching tuple remains stored until a
 \getop request reaches its owner, then that request either consumes a matching
-tuple in finite local processing time or loses to an earlier serialized
-consumer and returns not found.
+tuple and confirms its durable record, loses to an earlier serialized consumer
+and returns not found, or reports a timeout/failure without claiming success.
 \end{proposition}
 \begin{proof}
 Eventual delivery brings the request to the live owner. The owner's critical
-section contains no blocking network operation. It therefore observes either
-a matching instance, which it removes, or no matching instance after preceding
-operations, in which case it returns not found.
+section observes either a matching instance, which it removes in the next
+durable version, or no matching instance after preceding operations. It
+acknowledges the former only after commit confirmation. If confirmation does
+not complete, the operation reports failure; a retry is governed by
+Lemma~\ref{lem:retry}.
+\end{proof}
+
+\begin{proposition}[Fenced crash handoff]
+\label{prop:handoff}
+Assume bounded clock error, expiration of writer $(e,w)$ before transfer, and
+convergence of DHT selection for $S_n$. A successor selected at a greater
+fence cannot adopt a state older than the selected committed state, and a
+write carrying a lower fence cannot replace the converged successor record.
+\end{proposition}
+\begin{proof}
+The successor first reads the selected $S_n$, preserves
+$\mathcal{T}_n$ and $\mathcal{R}_n$, and publishes them with a greater epoch.
+The validator orders epoch before writer and local version, so every
+lower-epoch candidate loses selection. Same-epoch claim races have one
+deterministic writer ordering. The propagation delay before use prevents the
+successor from acknowledging an operation before checking the selected
+winner.
 \end{proof}
 
 \begin{proposition}[Content verification]
@@ -273,9 +322,10 @@ hash collision or second preimage. Provider voting is unnecessary for this
 property.
 \end{proof}
 
-Theorem~\ref{thm:exclusive} deliberately excludes ownership changes. Persisted
-owner state and an ownership-transfer protocol are required to extend the
-result across epochs. Similarly, Proposition~\ref{prop:integrity} establishes
+Theorem~\ref{thm:exclusive} supplies the local serialization argument;
+Lemma~\ref{lem:retry} and Proposition~\ref{prop:handoff} describe the durable
+crash-recovery extension. They do not establish consensus availability during
+arbitrary partitions. Similarly, Proposition~\ref{prop:integrity} establishes
 integrity, not availability: all providers may still be unreachable.
 
 \section{Architecture}
@@ -287,9 +337,10 @@ integrity, not availability: all providers may still be unreachable.
 Kademlia ownership. Prefix expressions descend a PHT, a trie-like index stored
 over DHT operations \cite{RamabhadranPHT}. Substring expressions use
 per-subtree Bloom summaries to prune branches that cannot contain all query
-n-grams, followed by exact verification to remove false positives. Expressions
-outside the indexed forms use peer search. This last path preserves generality
-but may contact $O(N)$ peers, so the evaluation reports it separately.
+n-grams, followed by exact verification to remove false positives. General
+regular expressions scan indexed names and then perform the same exact-owner
+verification. This last path preserves generality but performs $O(M)$ catalog
+matching work for $M$ indexed names, so the evaluation reports it separately.
 
 PHT mutations are read-modify-write operations and cannot safely be issued
 independently by every peer. \system hashes each full tuple name into one of
@@ -323,10 +374,13 @@ consume a tuple.
 The owner resolver hashes the tuple name into the overlay keyspace and selects
 the XOR-closest peer from the Kademlia result set, including the local peer.
 Peers communicate with owners using a dedicated libp2p protocol. Each owner
-maintains a concurrent tuple multiset. \putop appends an entry; \readop returns
-the oldest matching entry without modification; and \getop selects and removes
-the oldest matching entry under one mutex. Values are copied at the interface
-boundary so callers cannot mutate stored state.
+serializes one exact-name durable record at a time. \putop appends an entry;
+\readop returns the oldest entry without modifying the multiset; and \getop
+selects and removes the oldest entry. Mutations and successful request results
+are committed together and confirmed before acknowledgment. A lease-bearing
+$(epoch,writer)$ fence rejects stale owners; after expiry, a successor retains
+the multiset and retry results while publishing a higher epoch. Values are
+copied at the interface boundary so callers cannot mutate stored state.
 
 \subsection{Metadata and Content Separation}
 
@@ -341,11 +395,13 @@ tuples and active storage metadata, while bulk bytes remain outside it.
 
 \subsection{Replication and Repair}
 
-Each stored object has a configurable target replica count. The current upload
-path creates replicas opportunistically among reachable peers. The repair path
-classifies candidate locations using measured round-trip time and can seek
-shortfalls in near, midrange, and far categories. Provider locations are merged
-into the routing token and retrieval tries providers independently.
+Each stored object has a configurable target replica count. With the default
+target of seven, placement seeks three near, two midrange, and two far copies
+using measured round-trip time, falling back opportunistically when a class is
+undersupplied. Periodic audits probe providers, remove unreachable locations,
+elect one reachable repair coordinator, and refill deficits. Provider
+locations are merged into the routing token and retrieval tries providers
+independently.
 
 Replica count is a durability policy, not a Byzantine quorum. In particular,
 the default count of seven does not by itself imply tolerance of two Byzantine
@@ -358,7 +414,8 @@ across latency classes and from recovery after a provider loss.
 The prototype is implemented in Go over libp2p. It includes a Kademlia DHT,
 content-addressed block storage, provider-location tokens, direct block fetch,
 a native tuple multiset, a tuple-owner stream protocol, PHT nodes stored through
-a DHT value-store interface, hash-sharded incremental index maintenance,
+a DHT value-store interface, durable fenced exact-name records, persisted
+retry results, hash-sharded incremental index maintenance,
 per-shard mutation ownership, version-aware DHT validation, Bloom-filter
 subtree summaries, a query router, replication and repair protocols, and an
 HTTP control API. The query path directly records shard fanout, PHT nodes
@@ -369,7 +426,8 @@ The legacy TSH adapter remains
 available only as a compatibility option; the default \system path uses the
 tuple-space implementation in the repository.
 
-Tuple requests are size bounded and owner streams use deadlines. Exact
+Tuple requests and durable records are size bounded, owner streams use
+deadlines, and successful mutations require a write/read confirmation. Exact
 operations avoid scanning the overlay after ownership resolution. Pattern
 queries separate candidate discovery from owner execution so stale index
 entries can cause extra work but cannot duplicate a successful consume.
@@ -382,7 +440,8 @@ The evaluation is organized around five questions:
     \item What latency and routing work do exact tuple operations add?
     \item How do PHT and Bloom-assisted queries scale with catalog size, and
     how much traversal do Bloom summaries prune?
-    \item Does owner serialization prevent duplicate claims under concurrency?
+    \item Do owner serialization, durable retries, and crash handoff prevent
+    duplicate claims under concurrency and failover?
     \item How do catalog growth, upload, and remote retrieval compare with
     Swarm under equivalent cache and payload conditions?
     \item How quickly does the system restore its replica target after peer or
@@ -475,15 +534,19 @@ or direct provider transfer are new.
 \section{Limitations}
 \label{sec:limitations}
 
-The current ownership protocol provides exclusive consumption only while
-clients agree on and can reach the authoritative owner. Durable owner state,
-ownership transfer, and reconciliation after divergent overlay views must be
-validated before claiming availability-preserving failover for tuple
-coordination. Mutations within each index shard are serialized by its elected
+Exact tuple state and successful mutation results now survive a tested
+single-owner crash and move under a higher fencing epoch. This is not a
+consensus result: the guarantee assumes bounded clock error, lease expiry, and
+convergence of DHT record selection. Arbitrarily partitioned groups may lose
+availability, and multi-host partition/reconciliation tests remain necessary
+before claiming linearizable failover under divergent overlay views. Retry
+results are retained in a bounded window, and one exact-name record is capped
+at 1 MiB; hot names or very large multisets require state segmentation.
+Mutations within each index shard are serialized by its elected
 owner; a hot shard can therefore bottleneck even when aggregate mutation load
 is balanced. Indexed queries contact every configured shard, making the shard
 count a write-parallelism/query-fanout tradeoff. General regular-expression
-search may require network-wide work.
+search requires catalog-wide matching work.
 Bloom filters reduce negative traversal but do not remove false positives.
 RTT categories approximate network distance and do not guarantee independent
 geographic or administrative failure domains. Finally, container clusters on
@@ -497,11 +560,12 @@ applications rather than as an endpoint requiring every client to know a
 content identifier. Its native tuple-space plane supports indirect publication,
 observation, and exclusive work claiming while routing bulk bytes directly
 between storage peers. The architecture combines ACAN's active metadata with
-SMC2's runtime resource selection, deterministic tuple ownership, associative
+SMC2's runtime resource selection, fenced durable tuple ownership, associative
 candidate discovery, and explicit replication and repair. Equally important,
-the design states where its guarantees stop: exclusive consumption belongs to
-a stable reachable owner, content integrity comes from content addressing, and
-replica counts are durability policy rather than consensus quorums.
+the design states where its guarantees stop: exclusive consumption and crash
+handoff rely on fenced record convergence rather than consensus, content
+integrity comes from content addressing, and replica counts are durability
+policy rather than consensus quorums.
 
 \begin{thebibliography}{00}
 
