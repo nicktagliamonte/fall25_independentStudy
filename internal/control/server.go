@@ -377,6 +377,43 @@ func wantsRawGetResponse(r *http.Request) bool {
 	return strings.Contains(accept, "application/octet-stream")
 }
 
+func waitForLocalTokenPublication(
+	ctx context.Context,
+	stack *mystore.Stack,
+	key mystore.Key,
+	c cid.Cid,
+	ready <-chan error,
+) error {
+	var err error
+	if ready != nil {
+		select {
+		case err = <-ready:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	} else {
+		err = stack.SyncLocalTokenLocation(ctx, key, c)
+	}
+	delay := 100 * time.Millisecond
+	for err != nil {
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return ctx.Err()
+		case <-timer.C:
+		}
+		err = stack.SyncLocalTokenLocation(ctx, key, c)
+		if delay < 5*time.Second {
+			delay *= 2
+			if delay > 5*time.Second {
+				delay = 5 * time.Second
+			}
+		}
+	}
+	return nil
+}
+
 // DeleteRequest is the JSON request body for POST /delete.
 type DeleteRequest struct {
 	// CID is the IPFS-compatible content ID of the block to delete
@@ -675,7 +712,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			return
 		}
 		providers := make([]string, 0, len(token.Locations))
-		var near, midrange, farflung int
+		var near, midrange, farflung, unknown int
 		thresholds := mystore.DefaultRTTThresholds()
 		simulateDistances := r.URL.Query().Get("simulate_distances") == "1"
 		locs := token.Locations
@@ -698,7 +735,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			case mystore.DistanceFarFlung:
 				farflung++
 			default:
-				midrange++
+				unknown++
 			}
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -710,6 +747,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			"near_count":     near,
 			"midrange_count": midrange,
 			"farflung_count": farflung,
+			"unknown_count":  unknown,
 		})
 	})
 
@@ -1221,8 +1259,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
+		var tokenReady <-chan error
 		if h != nil {
-			stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+			tokenReady = stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
 		}
 		t2 := time.Now()
 		if os.Getenv("SNG40_LOG_PUT_PHASES") == "1" {
@@ -1243,6 +1282,16 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			go func() {
 				ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 				defer cancel()
+				if err := waitForLocalTokenPublication(
+					ctxRepair,
+					stack,
+					key,
+					c,
+					tokenReady,
+				); err != nil {
+					log.Printf("publish source token for %s before replication: %v", key.String(), err)
+					return
+				}
 				_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, blockData, 6)
 			}()
 		}

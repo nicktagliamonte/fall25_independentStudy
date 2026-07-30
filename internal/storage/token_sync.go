@@ -55,7 +55,8 @@ func isTokenAbsent(err error) bool {
 		return true
 	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "token not found")
+	return strings.Contains(msg, "token not found") ||
+		strings.Contains(msg, "no matching tuple")
 }
 
 // SyncTokenOnPut creates or updates a token when data is stored locally.

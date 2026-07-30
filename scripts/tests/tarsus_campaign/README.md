@@ -44,6 +44,15 @@ CLIENT_COUNT=2
 Docker evidence does not establish independent regional failure behavior.
 Multi-host or controlled-delay experiments must be reported separately.
 
+When `RUN_RESILIENCE=true`, the campaign also runs one production-current
+resilience deployment. Each trial writes an 8 MiB deterministic payload, waits
+for exactly seven token-advertised replicas, stops a mapped replica holder,
+verifies a surviving copy, waits for automatic periodic repair to replace the
+failed provider while returning to exactly seven, and verifies a cold fetch
+from a non-provider. The cell preserves every status poll, peer/service map,
+content hashes, timings, resource samples, and logs. Success demonstrates
+single-host process-failure repair, not geographic or partition tolerance.
+
 After every planned cell validates, `validate_campaign.sh` merges raw query and
 population data, computes medians, p95 latency, standard deviation, and a
 deterministic bootstrap confidence interval, and emits a generated LaTeX table

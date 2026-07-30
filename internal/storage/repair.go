@@ -438,13 +438,18 @@ func (rp *RepairProtocol) TriggerRepair(
 		TotalReplicasCreated: 0,
 	}
 
-	// If already synchronized, no repair needed
+	// The fixed replica count is the durability invariant. Distance quotas are
+	// placement preferences: try missing categories first, then fill any
+	// remaining shortfall from other healthy advertised peers.
 	if verification.IsSynchronized {
 		return result, nil
 	}
 
-	// Calculate how many replicas are needed for each missing category
 	needed := rp.calculateNeededReplicas(verification)
+	remaining := verification.ExpectedCounts.Total - verification.ActualCounts.Total
+	if remaining <= 0 {
+		return result, nil
+	}
 
 	// Build set of existing providers to exclude from replication targets
 	existingProviders := make(map[peer.ID]bool)
@@ -452,10 +457,57 @@ func (rp *RepairProtocol) TriggerRepair(
 		existingProviders[p.ProviderID] = true
 	}
 
-	// Repair each missing category
-	for category, count := range needed {
+	repairedCategories := make(map[DistanceCategory]bool)
+	recordSuccess := func(candidate PeerCandidate) {
+		result.ReplicatedPeers = append(result.ReplicatedPeers, candidate.PeerID)
+		result.TotalReplicasCreated++
+		existingProviders[candidate.PeerID] = true
+		remaining--
+		if needed[candidate.DistanceCategory] > 0 {
+			needed[candidate.DistanceCategory]--
+		}
+		if !repairedCategories[candidate.DistanceCategory] {
+			repairedCategories[candidate.DistanceCategory] = true
+			result.RepairedCategories = append(
+				result.RepairedCategories,
+				candidate.DistanceCategory,
+			)
+		}
+		if rp.stack.RoutingTable != nil {
+			rp.stack.RoutingTable.AddProvider(
+				k,
+				candidate.PeerID,
+				candidate.DistanceCategory,
+			)
+		}
+	}
+	replicateCandidate := func(candidate PeerCandidate) bool {
+		if remaining <= 0 || candidate.PeerID == "" ||
+			candidate.PeerID == rp.host.ID() ||
+			existingProviders[candidate.PeerID] {
+			return false
+		}
+		if err := rp.replicateToPeer(ctx, c, candidate.PeerID, blockData); err != nil {
+			result.FailedPeers = append(result.FailedPeers, candidate.PeerID)
+			result.FailureDetails[candidate.PeerID.String()] = err.Error()
+			return false
+		}
+		recordSuccess(candidate)
+		return true
+	}
+
+	categories := []DistanceCategory{
+		DistanceNear,
+		DistanceMidrange,
+		DistanceFarFlung,
+	}
+	for _, category := range categories {
+		count := needed[category]
 		if count <= 0 {
 			continue
+		}
+		if count > remaining {
+			count = remaining
 		}
 
 		// Find storage-available candidates for this category
@@ -466,39 +518,49 @@ func (rp *RepairProtocol) TriggerRepair(
 			count,
 		)
 		if err != nil || len(candidates) == 0 {
-			result.FailedCategories = append(result.FailedCategories, category)
 			continue
 		}
 
-		// Replicate to selected candidates (skip those that already have the block)
-		replicated := 0
 		for _, candidate := range candidates {
-			if existingProviders[candidate.PeerID] {
-				continue
+			replicateCandidate(candidate)
+			if remaining <= 0 || needed[category] <= 0 {
+				break
 			}
-			if err := rp.replicateToPeer(ctx, c, candidate.PeerID, blockData); err != nil {
-				result.FailedPeers = append(result.FailedPeers, candidate.PeerID)
-				result.FailureDetails[candidate.PeerID.String()] = err.Error()
-				continue
-			}
-
-			result.ReplicatedPeers = append(result.ReplicatedPeers, candidate.PeerID)
-			replicated++
-			result.TotalReplicasCreated++
-
-			// Add new provider to routing table with distance category
-			if rp.stack.RoutingTable != nil {
-				rp.stack.RoutingTable.AddProvider(k, candidate.PeerID, category)
-			}
-		}
-
-		if replicated > 0 {
-			result.RepairedCategories = append(result.RepairedCategories, category)
-		} else {
-			result.FailedCategories = append(result.FailedCategories, category)
 		}
 	}
 
+	if remaining > 0 {
+		fallback, _ := rp.storageAvailable.FindAnyStorageAvailableCandidates(
+			rp.host.ID(),
+			0,
+		)
+		sort.Slice(fallback, func(i, j int) bool {
+			iNeeded := needed[fallback[i].DistanceCategory] > 0
+			jNeeded := needed[fallback[j].DistanceCategory] > 0
+			if iNeeded != jNeeded {
+				return iNeeded
+			}
+			if fallback[i].DistanceCategory != fallback[j].DistanceCategory {
+				return fallback[i].DistanceCategory < fallback[j].DistanceCategory
+			}
+			if fallback[i].RTT != fallback[j].RTT {
+				return fallback[i].RTT < fallback[j].RTT
+			}
+			return fallback[i].PeerID.String() < fallback[j].PeerID.String()
+		})
+		for _, candidate := range fallback {
+			replicateCandidate(candidate)
+			if remaining <= 0 {
+				break
+			}
+		}
+	}
+
+	for _, category := range categories {
+		if needed[category] > 0 {
+			result.FailedCategories = append(result.FailedCategories, category)
+		}
+	}
 	return result, nil
 }
 
@@ -884,7 +946,10 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 		return fmt.Errorf("replication failed: %s", ackStr)
 	}
 
-	// Auto-sync token: update token with new replica location (per newReqs: token syncs with data)
+	// The coordinator is the sole token writer for this transfer. The receiver
+	// stores and acknowledges the bytes; only then do we publish its location.
+	// Having both endpoints update the same token raced two stale DHT
+	// read-modify-write sequences and could erase the source location.
 	if tokenStore := rp.getTokenStore(); rp.stack != nil && tokenStore != nil {
 		key := KeyFromData(blockData)
 		if !key.IsZero() {
@@ -902,7 +967,16 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 				}
 			}
 			if targetAddr != nil {
-				_ = SyncTokenOnReplication(ctx, tokenStore, rp.stack.RoutingTable, key, targetPeer, targetAddr)
+				if err := SyncTokenOnReplication(
+					ctx,
+					tokenStore,
+					rp.stack.RoutingTable,
+					key,
+					targetPeer,
+					targetAddr,
+				); err != nil {
+					return fmt.Errorf("publish replica token location: %w", err)
+				}
 			}
 		}
 	}
@@ -918,9 +992,10 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 // lock when rp.stack.KeyLockManager and rp.host are set); updates rp.stack.RoutingTable to
 // record this node as a provider for the key (reusing an existing replication vector if the
 // key is already known, otherwise DefaultReplicationVector, and recording the stream's remote
-// peer as the source); and, if a token store is configured, syncs the token via SyncTokenOnPut
-// to record this node's own addresses as a new location. Writes "OK\n" on success or an
-// "ERROR: ...\n" line on failure, and always closes the stream before returning.
+// peer as the source). The sending coordinator publishes the new token
+// location only after receiving "OK\n", keeping each transfer's token update
+// single-writer. Writes "OK\n" on success or an "ERROR: ...\n" line on failure,
+// and always closes the stream before returning.
 //
 // Parameters:
 //   - stream (network.Stream): the inbound libp2p stream to read the request from and write
@@ -1020,14 +1095,6 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 		rp.stack.RoutingTable.Set(key, sourcePeer, repVector, storedCID)
 		if rp.host != nil {
 			rp.stack.RoutingTable.AddProvider(key, rp.host.ID(), DistanceNear)
-		}
-	}
-
-	// Auto-sync token: update token with our location (we received replicated content)
-	if tokenStore := rp.getTokenStore(); tokenStore != nil && rp.host != nil {
-		ourAddrs := rp.host.Addrs()
-		if len(ourAddrs) > 0 {
-			_ = SyncTokenOnPut(ctx, tokenStore, rp.host, key, storedCID, nil)
 		}
 	}
 

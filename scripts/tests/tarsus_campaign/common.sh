@@ -53,6 +53,44 @@ campaign_tuple_put_file() {
     sh "${CAMPAIGN_PUT_TIMEOUT_SECONDS:-300}" <"$request_file"
 }
 
+campaign_content_put_file() {
+  local service=$1
+  local payload_file=$2
+  docker-compose -f "$COMPOSE_FILE" exec -T "$service" sh -c \
+    'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --max-time "$1" --fail-with-body --silent --show-error -H "Content-Type: application/octet-stream" --data-binary @- "http://$addr/put"' \
+    sh "${CAMPAIGN_CONTENT_TIMEOUT_SECONDS:-300}" <"$payload_file"
+}
+
+campaign_content_get_file() {
+  local service=$1
+  local key=$2
+  local output_file=$3
+  local remote_only=${4:-false}
+  local query="format=raw"
+  if [[ "$remote_only" == "true" ]]; then
+    query="format=raw&remote_only=1"
+  fi
+  jq -cn --arg key "$key" \
+    '{key:$key,timeout:"120s"}' |
+    docker-compose -f "$COMPOSE_FILE" exec -T "$service" sh -c \
+      'addr=$(jq -r .addr /app/logs/'"$service"'.json); curl --max-time "$1" --fail-with-body --silent --show-error -H "Content-Type: application/json" -H "Accept: application/octet-stream" --data-binary @- "http://$addr/get?'"$query"'"' \
+      sh "${CAMPAIGN_CONTENT_TIMEOUT_SECONDS:-300}" >"$output_file"
+}
+
+campaign_replication_status() {
+  local service=$1
+  local key=$2
+  campaign_control_get "$service" "/replication/status?key=$key"
+}
+
+campaign_elapsed_seconds() {
+  local started_ns=$1
+  local now_ns
+  now_ns=$(date +%s%N)
+  awk -v start="$started_ns" -v now="$now_ns" \
+    'BEGIN {printf "%.3f", (now-start)/1000000000}'
+}
+
 campaign_capture_host_manifest() {
   local output=$1
   local commit dirty

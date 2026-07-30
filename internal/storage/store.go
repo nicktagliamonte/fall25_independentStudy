@@ -1180,8 +1180,53 @@ func (s *Stack) UpdateRoutingTableOnPut(k Key, providerID peer.ID, repVector *Re
 //   - providerID (peer.ID): the provider to record for k.
 //   - repVector (*ReplicationVector): the replication vector to store; nil uses the default.
 //   - c (cid.Cid): the CID to associate with k in the routing table.
-func (s *Stack) UpdateRoutingTableOnPutAsync(k Key, providerID peer.ID, repVector *ReplicationVector, c cid.Cid) {
-	s.updateRoutingTableOnPut(k, providerID, repVector, c, true)
+func (s *Stack) UpdateRoutingTableOnPutAsync(
+	k Key,
+	providerID peer.ID,
+	repVector *ReplicationVector,
+	c cid.Cid,
+) <-chan error {
+	ready := make(chan error, 1)
+	if s.RoutingTable == nil || k.IsZero() {
+		ready <- nil
+		close(ready)
+		return ready
+	}
+	rv := DefaultReplicationVector()
+	if repVector != nil {
+		rv = *repVector
+	}
+	s.RoutingTable.Set(k, providerID, rv, c)
+	go func() {
+		defer close(ready)
+		if err := StoreKeyToProviderIDMapping(
+			context.Background(),
+			s.Datastore,
+			k,
+			providerID,
+		); err != nil {
+			log.Printf("store provider mapping for key %s: %v", k.String(), err)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		defer cancel()
+		err := s.SyncLocalTokenLocation(ctx, k, c)
+		ready <- err
+	}()
+	return ready
+}
+
+// SyncLocalTokenLocation publishes this stack's host as a provider for k and
+// returns only after the token update has completed. Callers use it to order
+// source publication before replica-location updates.
+func (s *Stack) SyncLocalTokenLocation(ctx context.Context, k Key, c cid.Cid) error {
+	if s == nil || s.Host == nil {
+		return fmt.Errorf("storage host unavailable")
+	}
+	store := s.tokenValueStore()
+	if store == nil {
+		return fmt.Errorf("token store unavailable")
+	}
+	return SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink)
 }
 
 // updateRoutingTableOnPut is the shared implementation behind UpdateRoutingTableOnPut and

@@ -4,6 +4,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,15 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
 )
+
+func TestTokenAbsentRecognizesDHTNamespaceMiss(t *testing.T) {
+	if !isTokenAbsent(errors.New("DHT get token failed: no matching tuple")) {
+		t.Fatal("DHT namespace miss was not recognized as an absent token")
+	}
+	if isTokenAbsent(errors.New("connection reset")) {
+		t.Fatal("transient network failure was classified as an absent token")
+	}
+}
 
 type mockTokenDHT struct {
 	mu    sync.Mutex

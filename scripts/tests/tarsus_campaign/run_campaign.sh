@@ -39,6 +39,11 @@ export POPULATE_BATCH_SIZE=${POPULATE_BATCH_SIZE:-2500}
 export RESOURCE_INTERVAL_SECONDS=${RESOURCE_INTERVAL_SECONDS:-5}
 export SETTLE_SECONDS=${SETTLE_SECONDS:-30}
 export AVAILABILITY_WAIT_SECONDS=${AVAILABILITY_WAIT_SECONDS:-75}
+export RUN_RESILIENCE=${RUN_RESILIENCE:-true}
+export RESILIENCE_NODE_COUNT=${RESILIENCE_NODE_COUNT:-100}
+export RESILIENCE_PAYLOAD_BYTES=${RESILIENCE_PAYLOAD_BYTES:-8388608}
+export RESILIENCE_TRIALS=${RESILIENCE_TRIALS:-5}
+export RESILIENCE_REPLICA_TARGET=${RESILIENCE_REPLICA_TARGET:-7}
 
 if [[ -n "$resume_dir" ]]; then
   run_dir=$resume_dir
@@ -78,6 +83,11 @@ campaign_capture_host_manifest "$run_dir/host.json"
   echo "RESOURCE_INTERVAL_SECONDS=$RESOURCE_INTERVAL_SECONDS"
   echo "SETTLE_SECONDS=$SETTLE_SECONDS"
   echo "AVAILABILITY_WAIT_SECONDS=$AVAILABILITY_WAIT_SECONDS"
+  echo "RUN_RESILIENCE=$RUN_RESILIENCE"
+  echo "RESILIENCE_NODE_COUNT=$RESILIENCE_NODE_COUNT"
+  echo "RESILIENCE_PAYLOAD_BYTES=$RESILIENCE_PAYLOAD_BYTES"
+  echo "RESILIENCE_TRIALS=$RESILIENCE_TRIALS"
+  echo "RESILIENCE_REPLICA_TARGET=$RESILIENCE_REPLICA_TARGET"
 } >"$run_dir/resolved.env"
 
 campaign_log "campaign plan: $plan"
@@ -93,5 +103,14 @@ while IFS=$'\t' read -r cell_id nodes catalog shards bloom; do
     "$nodes" "$catalog" "$shards" "$bloom" "$QUERY_REPETITIONS" "$CLIENT_COUNT" \
     </dev/null
 done < <(tail -n +2 "$plan")
+if [[ "$RUN_RESILIENCE" == "true" ]]; then
+  resilience_id=$(printf 'resilience-n%03d-b%09d-r%02d' \
+    "$RESILIENCE_NODE_COUNT" "$RESILIENCE_PAYLOAD_BYTES" \
+    "$RESILIENCE_REPLICA_TARGET")
+  "$SCRIPT_DIR/run_resilience_cell.sh" \
+    "$run_dir/resilience/$resilience_id" \
+    "$RESILIENCE_NODE_COUNT" "$RESILIENCE_PAYLOAD_BYTES" \
+    "$RESILIENCE_TRIALS" "$RESILIENCE_REPLICA_TARGET" </dev/null
+fi
 "$SCRIPT_DIR/validate_campaign.sh" "$run_dir"
 campaign_log "campaign complete: $run_dir"

@@ -40,7 +40,8 @@ type ReplicaStateVerification struct {
 	// UnreachableProviders lists token or routing-table providers that failed an
 	// active RTT/liveness probe. They are not counted toward durability.
 	UnreachableProviders []peer.ID
-	// IsSynchronized indicates if actual distribution matches expected (within tolerance).
+	// IsSynchronized indicates that the reachable replica-count target is met.
+	// MissingCategories separately reports best-effort placement deficits.
 	IsSynchronized bool
 	// MissingCategories lists distance categories that are missing replicas.
 	MissingCategories []DistanceCategory
@@ -65,8 +66,10 @@ type ProviderDistanceInfo struct {
 // added afterward): (1) if tokenStore is non-nil, via GetToken(k), classifying each location's
 // distance using its stored RTT (or rttMeasurer if the stored RTT is 0) and thresholds; (2) any
 // providers in rt's entry for k not already seen via the token. Finally it
-// requires every category to meet or exceed its exact integer target; surplus
-// replicas are allowed, but a one-replica shortfall is not treated as healthy.
+// requires the total reachable replica count to meet the durability target.
+// Category shortfalls remain visible in MissingCategories so placement and
+// repair can prefer them, but a topology with no midrange or far-flung
+// candidates does not sacrifice the fixed replica count.
 //
 // Parameters:
 //   - ctx (context.Context): passed through to GetToken for cancellation.
@@ -232,7 +235,8 @@ func VerifyKeyStateWithRepVector(
 	midrangeOK := verification.ActualCounts.Midrange >= verification.ExpectedCounts.Midrange
 	farFlungOK := verification.ActualCounts.FarFlung >= verification.ExpectedCounts.FarFlung
 
-	verification.IsSynchronized = nearOK && midrangeOK && farFlungOK
+	verification.IsSynchronized =
+		verification.ActualCounts.Total >= verification.ExpectedCounts.Total
 
 	// Identify missing categories
 	if !nearOK {

@@ -50,6 +50,17 @@
   sample at 50--100 nodes.
 - Raised the campaign population default from 16 to 32 workers after a scaling
   probe; 64 workers did not improve wall time and increased summed work.
+- Made replica count the repair invariant and RTT-class quotas a best-effort
+  placement objective. Repair prefers missing classes, then fills the remaining
+  shortfall from another healthy storage advertiser without exceeding seven.
+- Serialized content-token publication: the source location is confirmed
+  before replication, and the sending coordinator alone publishes each
+  acknowledged replica. This removed a live race that lost the source from the
+  token and left six advertised copies after a nominal seven-copy upload.
+- Added and validated a production-current resilience campaign cell. A 10-node
+  smoke run stored 5 MiB, reached exactly seven replicas, stopped a proven
+  holder, hash-verified a surviving copy, repaired to a new seventh provider in
+  30.590 seconds, and hash-verified a cold non-provider fetch.
 
 ## Current plan
 
@@ -91,12 +102,12 @@ replacement issues one batched call and successfully captured four complete
 
 ## Immediate next work
 
-The next step is the full approximately 100-node evidence campaign. First
-extend the current Tarsus campaign harness with production-current content
-replication, node-failure, repair-to-seven, post-failure retrieval, and
-resource artifacts; do not rely on the dated vnIPFS/Swarm scripts as evidence.
-Then run the query-cost/shard/bloom matrix plus the failure/repair cells,
-validate every artifact, and only then generate manuscript figures.
+The production-current failure/repair harness is complete and has passed its
+10-node end-to-end smoke gate. The next step is a 100-node, one-trial pilot
+using the default 8 MiB payload. If that validates, run the full
+query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
+artifact, and only then generate manuscript figures. Do not use the dated
+vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and

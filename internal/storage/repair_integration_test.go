@@ -125,3 +125,109 @@ func TestAuditRepairsCrashStaleReplicaToRTTDiversePeer(t *testing.T) {
 		t.Fatalf("post-repair token providers = %v", seen)
 	}
 }
+
+func TestAuditRepairsReplicaCountWhenOnlyNearCandidateExists(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	hA, err := myhost.NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hA.Close()
+	hC, err := myhost.NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer hC.Close()
+	if err := hA.Connect(ctx, peer.AddrInfo{ID: hC.ID(), Addrs: hC.Addrs()}); err != nil {
+		t.Fatal(err)
+	}
+
+	stackA, err := NewStackWithRouter(ctx, hA, noProviderRouter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stackA.Close()
+	stackC, err := NewStackWithRouter(ctx, hC, noProviderRouter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer stackC.Close()
+	tokenStore := newMockTokenDHT()
+	stackA.TokenStore = tokenStore
+	stackC.TokenStore = tokenStore
+
+	sharedTuples := tuplespace.NewNativeTupleSpace()
+	repairA := NewRepairProtocol(stackA, hA, sharedTuples, false)
+	repairC := NewRepairProtocol(stackC, hC, sharedTuples, false)
+	handlerErrors := make(chan error, 1)
+	hC.SetStreamHandler(RepairProtocolID, func(stream network.Stream) {
+		handlerErrors <- repairC.HandleRepairStream(stream)
+	})
+	repairA.rttProbe = func(pid peer.ID) (time.Duration, error) {
+		if pid == hC.ID() {
+			return time.Millisecond, nil
+		}
+		return 0, errors.New("peer unavailable")
+	}
+	repairA.storageAvailable.RTTMeasurer = repairA.MeasureRTT
+	if err := repairA.storageAvailable.AdvertiseStorageAvailable(
+		hC.ID(), 0, 1<<30, 1, time.Minute,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	payload := bytes.Repeat([]byte("near-fallback-payload-"), 1024)
+	key, c, err := stackA.PutPayload(ctx, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
+	dead := tokenTestPeerID(t)
+	deadAddr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/65534")
+	if err := SyncTokenOnReplication(
+		ctx,
+		tokenStore,
+		stackA.RoutingTable,
+		key,
+		dead,
+		deadAddr,
+	); err != nil {
+		t.Fatal(err)
+	}
+
+	verification, result, err := repairA.AuditAndRepair(ctx, key, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verification.ActualCounts.Total != 1 ||
+		len(verification.UnreachableProviders) != 1 {
+		t.Fatalf("verification = %+v", verification)
+	}
+	if result == nil || result.TotalReplicasCreated != 1 ||
+		len(result.ReplicatedPeers) != 1 ||
+		result.ReplicatedPeers[0] != hC.ID() {
+		select {
+		case handlerErr := <-handlerErrors:
+			t.Fatalf("repair result = %+v, handler error = %v", result, handlerErr)
+		default:
+			t.Fatalf("repair result = %+v, want near fallback on C", result)
+		}
+	}
+	got, err := ResolvePayloadByKeyLocal(ctx, stackC.Datastore, stackC.BlockSvc, key)
+	if err != nil || !bytes.Equal(got, payload) {
+		t.Fatalf("fallback payload length = %d, err = %v", len(got), err)
+	}
+	token, err := GetToken(ctx, tokenStore, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := make(map[peer.ID]bool)
+	for _, location := range token.Locations {
+		seen[location.ProviderID] = true
+	}
+	if seen[dead] || !seen[hA.ID()] || !seen[hC.ID()] || len(seen) != 2 {
+		t.Fatalf("post-repair providers = %v", seen)
+	}
+}

@@ -398,10 +398,15 @@ tuples and active storage metadata, while bulk bytes remain outside it.
 Each stored object has a configurable target replica count. With the default
 target of seven, placement seeks three near, two midrange, and two far copies
 using measured round-trip time, falling back opportunistically when a class is
-undersupplied. Periodic audits probe providers, remove unreachable locations,
-elect one reachable repair coordinator, and refill deficits. Provider
-locations are merged into the routing token and retrieval tries providers
-independently.
+undersupplied without exceeding the target. Periodic audits treat the reachable
+replica count as the durability invariant and the latency-class vector as a
+best-effort placement objective: they probe providers, remove unreachable
+locations, elect one reachable repair coordinator, prefer missing classes, and
+fill any remaining count deficit from another healthy advertised peer.
+Provider locations are merged into the routing token and retrieval tries
+providers independently. The source location is published before replica
+locations, and one coordinator publishes each completed transfer, avoiding
+lost-location updates between the two transfer endpoints.
 
 Replica count is a durability policy, not a Byzantine quorum. In particular,
 the default count of seven does not by itself imply tolerance of two Byzantine

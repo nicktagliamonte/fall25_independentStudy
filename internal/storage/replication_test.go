@@ -81,3 +81,54 @@ func TestVerifyReplicaStateExcludesUnreachableProviders(t *testing.T) {
 		t.Fatalf("missing categories = %v, want [Far-flung]", verification.MissingCategories)
 	}
 }
+
+func TestVerifyReplicaCountHealthyWithBestEffortDistancePlacement(t *testing.T) {
+	ctx := context.Background()
+	store := newMockTokenDHT()
+	key := KeyFromData([]byte("best effort distance placement"))
+	local := tokenTestPeerID(t)
+	addr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/4001")
+	locations := []Location{{ProviderID: local, Address: addr}}
+	for i := 0; i < 6; i++ {
+		locations = append(locations, Location{
+			ProviderID: tokenTestPeerID(t),
+			Address:    addr,
+		})
+	}
+	token := Token{
+		Key:       key,
+		Locations: locations,
+		Timestamp: time.Now().UnixNano(),
+		Version:   1,
+	}
+	if err := PutToken(ctx, store, key, token); err != nil {
+		t.Fatal(err)
+	}
+	verification, err := VerifyKeyStateWithRepVector(
+		ctx,
+		key,
+		nil,
+		store,
+		local,
+		func(peer.ID) (time.Duration, error) {
+			return time.Millisecond, nil
+		},
+		7,
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if verification.ActualCounts.Total != 7 ||
+		verification.ActualCounts.Near != 7 {
+		t.Fatalf("actual counts = %+v", verification.ActualCounts)
+	}
+	if !verification.IsSynchronized {
+		t.Fatal("seven reachable near replicas did not satisfy the fixed durability target")
+	}
+	if len(verification.MissingCategories) != 2 ||
+		verification.MissingCategories[0] != DistanceMidrange ||
+		verification.MissingCategories[1] != DistanceFarFlung {
+		t.Fatalf("missing categories = %v, want midrange and far-flung", verification.MissingCategories)
+	}
+}

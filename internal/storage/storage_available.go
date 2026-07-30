@@ -167,6 +167,24 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	desiredCategory DistanceCategory,
 	maxCandidates int,
 ) ([]PeerCandidate, error) {
+	return sap.findStorageAvailableCandidates(providerID, &desiredCategory, maxCandidates)
+}
+
+// FindAnyStorageAvailableCandidates returns unexpired offers without requiring
+// one RTT category. Repair uses it only after preferred category placement
+// cannot fill the fixed replica-count shortfall.
+func (sap *StorageAvailableProtocol) FindAnyStorageAvailableCandidates(
+	providerID peer.ID,
+	maxCandidates int,
+) ([]PeerCandidate, error) {
+	return sap.findStorageAvailableCandidates(providerID, nil, maxCandidates)
+}
+
+func (sap *StorageAvailableProtocol) findStorageAvailableCandidates(
+	providerID peer.ID,
+	desiredCategory *DistanceCategory,
+	maxCandidates int,
+) ([]PeerCandidate, error) {
 	if sap.ts == nil {
 		return nil, errors.New("tuple space required")
 	}
@@ -177,7 +195,7 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	if sap.PeerIDsToCheck != nil {
 		// DHT tuple space: no pattern matching; iterate over known peers
 		for _, pid := range sap.PeerIDsToCheck() {
-			if len(candidates) >= maxCandidates {
+			if maxCandidates > 0 && len(candidates) >= maxCandidates {
 				break
 			}
 			tupleName := StorageAvailableTuplePrefix + pid.String()
@@ -200,7 +218,7 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 			if err != nil {
 				continue
 			}
-			if candidate.DistanceCategory == desiredCategory {
+			if desiredCategory == nil || candidate.DistanceCategory == *desiredCategory {
 				candidates = append(candidates, candidate)
 			}
 		}
@@ -213,7 +231,11 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	// P2P tuple space: pattern matching
 	pattern := StorageAvailableTuplePrefix + "*"
 	maxIterations := maxCandidates * 2
-	for i := 0; i < maxIterations && len(candidates) < maxCandidates; i++ {
+	if maxCandidates <= 0 {
+		maxIterations = 1024
+	}
+	for i := 0; i < maxIterations &&
+		(maxCandidates <= 0 || len(candidates) < maxCandidates); i++ {
 		offerData, err := sap.ts.TsRead(pattern)
 		if err != nil {
 			if len(candidates) == 0 {
@@ -236,7 +258,7 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 		if err != nil {
 			continue
 		}
-		if candidate.DistanceCategory == desiredCategory {
+		if desiredCategory == nil || candidate.DistanceCategory == *desiredCategory {
 			candidates = append(candidates, candidate)
 		}
 	}

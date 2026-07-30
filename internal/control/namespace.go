@@ -309,13 +309,23 @@ func putNamespaceBlock(ctx context.Context, stack *mystore.Stack, h host.Host, r
 	if err != nil {
 		return mystore.Key{}, cid.Cid{}, err
 	}
+	var tokenReady <-chan error
 	if h != nil {
-		stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+		tokenReady = stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
 	}
 	if repairProtocol != nil && h != nil && len(data) > 0 {
 		go func() {
 			ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
+			if err := waitForLocalTokenPublication(
+				ctxRepair,
+				stack,
+				key,
+				c,
+				tokenReady,
+			); err != nil {
+				return
+			}
 			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, data, ReplicationFactorR-1)
 		}()
 	}
