@@ -61,6 +61,7 @@ trap cleanup EXIT
 
 export TARSUS_NODE_COUNT="$node_count"
 export TARSUS_INDEX_SHARDS="$shard_count"
+export TARSUS_FRESH_VOLUMES=true
 if [[ "$bloom_pruning" == "true" ]]; then
   export TARSUS_DISABLE_BLOOM_PRUNING=false
 else

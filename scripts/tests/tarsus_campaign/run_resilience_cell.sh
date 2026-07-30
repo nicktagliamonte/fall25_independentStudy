@@ -55,6 +55,7 @@ trap cleanup EXIT
 export TARSUS_NODE_COUNT="$node_count"
 export TARSUS_INDEX_SHARDS="${TARSUS_INDEX_SHARDS:-16}"
 export TARSUS_DISABLE_BLOOM_PRUNING="${TARSUS_DISABLE_BLOOM_PRUNING:-false}"
+export TARSUS_FRESH_VOLUMES=true
 
 campaign_log "resilience start nodes=$node_count payload_bytes=$payload_bytes trials=$trials target=$replica_target"
 "$REPO_ROOT/scripts/docker/start.sh" "$node_count" >"$cell_dir/start.log" 2>&1

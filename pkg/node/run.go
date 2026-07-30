@@ -493,6 +493,14 @@ func Run() error {
 		if maxKnown > 0 {
 			peerStore.SetMaxKnown(maxKnown)
 		}
+		if noDefaultBootstrap {
+			// The flag is an isolation boundary, not merely a request to avoid
+			// adding defaults on this invocation. A persistent store may retain
+			// public bootstrap records from an older run.
+			if err := removePersistedDefaultBootstrapPeers(h, peerStore); err != nil {
+				return err
+			}
+		}
 
 		// Seeds: DHT bootstrap + CLI/env/file
 		var seeds []string
@@ -1646,6 +1654,23 @@ func Run() error {
 	default:
 		return fmt.Errorf("unknown subcommand: %s\nusage: %s <run|put|connect|get|shutdown|restore|snapshot|neighbors|keygen|lookup-key> [flags]", subcmd, os.Args[0])
 	}
+}
+
+// removePersistedDefaultBootstrapPeers enforces private-cluster isolation when
+// a node reuses a datastore that may have learned the public libp2p bootstrap
+// peers during an earlier run.
+func removePersistedDefaultBootstrapPeers(h host.Host, peerStore *myhost.PeerStore) error {
+	for _, info := range myhost.DefaultBootstrapPeerInfos() {
+		if info.ID == "" {
+			continue
+		}
+		if err := peerStore.Remove(info.ID); err != nil {
+			return fmt.Errorf("remove persisted default bootstrap peer %s: %w", info.ID, err)
+		}
+		h.Peerstore().ClearAddrs(info.ID)
+		h.Peerstore().RemovePeer(info.ID)
+	}
+	return nil
 }
 
 // parseLookupKeyBootstrapPeers parses a comma-separated list of p2p

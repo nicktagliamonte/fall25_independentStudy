@@ -61,6 +61,21 @@
   smoke run stored 5 MiB, reached exactly seven replicas, stopped a proven
   holder, hash-verified a surviving copy, repaired to a new seventh provider in
   30.590 seconds, and hash-verified a cold non-provider fetch.
+- Made private campaign cells reproducible and network-isolated. Every cell now
+  removes its declared Docker volumes before startup, so peer identities,
+  peerstore records, tuples, and blocks cannot leak across cells.
+  `--no-default-bootstrap` also removes the five public libp2p bootstrap
+  identities from persistent and live peerstores, rather than merely declining
+  to add them on the current invocation.
+- Hardened binary-tree construction: every requested edge must remain connected
+  after asynchronous Tarsus handshake verification, failed child-to-parent
+  dials are retried in the reverse direction, and the last HTTP/dial error plus
+  both node logs is preserved on terminal failure.
+- Revalidated the hardened harness with
+  `test_results/tarsus_campaign_smoke/resilience-n010-fresh-volumes-v2`.
+  The validator-compliant 5 MiB run reached and restored exactly seven copies,
+  repaired in 28.458 seconds, passed both hash checks, contained none of the
+  public bootstrap IDs, emitted `COMPLETE`, and left zero containers running.
 
 ## Current plan
 
@@ -103,8 +118,12 @@ replacement issues one batched call and successfully captured four complete
 ## Immediate next work
 
 The production-current failure/repair harness is complete and has passed its
-10-node end-to-end smoke gate. The next step is a 100-node, one-trial pilot
-using the default 8 MiB payload. If that validates, run the full
+fresh-volume 10-node end-to-end smoke gate. An initial 100-node pilot reached
+all 100 running containers but failed on the first requested tree edge because
+the old harness discarded every `/connect` diagnostic; it never began the
+content workload. That path is now hardened and checkpointed. The next step is
+to rerun the 100-node, one-trial pilot using the default 8 MiB payload. If that
+validates, run the full
 query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
 artifact, and only then generate manuscript figures. Do not use the dated
 vnIPFS/Swarm repair scripts as paper evidence.
@@ -125,7 +144,7 @@ reported TeX syntax error.
 Open this conversation and send:
 
 > Resume the Tarsus work from `docs/TARSUS_RESUME.md`. Inspect the branch and
-> working tree first, then continue the latency/resource regression pass. The
+> working tree first, then continue the 100-node resilience pilot. The
 > 50/50 gate and the distributed-filesystem implementation/claim gate are
 > complete; do not rerun the large 50-node cell unless a relevant change
 > invalidates that result.

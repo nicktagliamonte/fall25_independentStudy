@@ -23,7 +23,11 @@ scripts/tests/tarsus_campaign/run_campaign.sh \
 
 A cell is skipped only after `validate_cell.sh` succeeds and writes
 `COMPLETE`. Interrupted cells are recreated with fresh Docker volumes. The
-default plan covers 10, 50, and 100 nodes; two catalog sizes; 1, 4, 16, and 64
+campaign also invokes the node with `--no-default-bootstrap`; that mode purges
+the known public libp2p bootstrap identities from reused persistent and live
+peerstores. Thus a cell cannot inherit public bootstrap candidates, peer
+identities, tuples, metadata, or blocks from an older deployment. The default
+plan covers 10, 50, and 100 nodes; two catalog sizes; 1, 4, 16, and 64
 mutation shards at the largest scale; and an otherwise-identical Bloom-off
 ablation. A configurable settling interval precedes population so the reported
 stable-ownership epoch does not begin while the routing tables are still

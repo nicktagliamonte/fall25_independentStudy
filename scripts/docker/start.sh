@@ -98,6 +98,14 @@ for i in $(seq 2 "$N"); do
 EOF
 done
 
+# Production campaigns must not inherit peer identities, peerstore entries,
+# tuple metadata, or blocks from an interrupted/previous cell. Generate the
+# complete compose file first so `down -v` can resolve every named node volume.
+if [[ "${TARSUS_FRESH_VOLUMES:-false}" == "true" ]]; then
+  echo "Removing volumes from any previous $N-node run..."
+  docker-compose down -v --remove-orphans >/dev/null 2>&1 || true
+fi
+
 # One build: bootstrap defines the image; peer services use image: fall25_independentstudy-bootstrap:latest
 echo "Building Docker image (bootstrap only; COMPOSE_HTTP_TIMEOUT=${COMPOSE_HTTP_TIMEOUT}s)..."
 if ! docker-compose build --progress=plain bootstrap 2>&1 | tee /tmp/docker_build.log; then
@@ -175,7 +183,9 @@ done
 # background dialer and handshake peer exchange fill additional routing edges.
 echo "Collecting peer identities..."
 declare -a PEER_IDS
+declare -a CONTROL_ADDRS
 PEER_IDS[1]="$PEER_ID"
+CONTROL_ADDRS[1]="$CTRL_ADDR"
 for i in $(seq 2 "$N"); do
   SERVICE="node$i"
   CTRL_FILE="/app/logs/$SERVICE.json"
@@ -196,7 +206,59 @@ for i in $(seq 2 "$N"); do
     exit 1
   fi
   PEER_IDS[$i]="$NODE_PEER_ID"
+  CONTROL_ADDRS[$i]="$CTRL_ADDR"
 done
+
+connect_once() {
+  local source_service=$1
+  local source_control=$2
+  local target_addr=$3
+  local target_peer=$4
+  local connect_body
+  connect_body=$(jq -nc \
+    --arg addr "$target_addr" \
+    --arg peer "$target_peer" \
+    '{addr:$addr,peer:$peer,timeout:"20s"}')
+  docker-compose exec -T "$source_service" sh -c \
+    'curl --max-time 25 --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "$1/connect"' \
+    sh "http://$source_control" <<<"$connect_body"
+}
+
+connection_survived_handshake() {
+  local source_service=$1
+  local source_control=$2
+  local target_peer=$3
+  local neighbors
+  neighbors=$(docker-compose exec -T "$source_service" \
+    curl --max-time 5 --fail --silent "http://$source_control/neighbors" 2>/dev/null) || return 1
+  jq -e --arg peer "$target_peer" \
+    'any(.[]; .peer == $peer)' <<<"$neighbors" >/dev/null
+}
+
+dial_and_verify() {
+  local source_service=$1
+  local source_control=$2
+  local target_addr=$3
+  local target_peer=$4
+  local attempts=$5
+  local attempt output=""
+  for attempt in $(seq 1 "$attempts"); do
+    if output=$(connect_once \
+      "$source_service" "$source_control" "$target_addr" "$target_peer" 2>&1); then
+      # /connect confirms the transport dial. The handshake gate runs
+      # asynchronously, so also require the edge to remain live afterwards.
+      sleep 1
+      if connection_survived_handshake \
+        "$source_service" "$source_control" "$target_peer"; then
+        return 0
+      fi
+      output="transport connected but did not survive handshake verification"
+    fi
+    sleep 2
+  done
+  echo "  $source_service -> $target_peer failed after $attempts attempts: ${output:-no diagnostic}" >&2
+  return 1
+}
 
 echo "Connecting peer nodes in a bounded-degree tree..."
 # Join leaves before their parents so the peer-maintenance loops cannot turn a
@@ -206,22 +268,23 @@ for ((i = N; i >= 2; i--)); do
   SERVICE="node$i"
   PARENT=$((i / 2))
   PARENT_IP_LAST=$((9 + PARENT))
-  CONNECT_BODY=$(jq -nc \
-    --arg addr "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" \
-    --arg peer "${PEER_IDS[$PARENT]}" \
-    '{addr:$addr,peer:$peer,timeout:"20s"}')
-  CONNECTED=0
-  for _ in $(seq 1 30); do
-    if docker-compose exec -T "$SERVICE" sh -c \
-      'addr=$(jq -r .addr /app/logs/'"$SERVICE"'.json); curl --fail-with-body --silent -H "Content-Type: application/json" --data-binary @- "http://$addr/connect"' \
-      <<<"$CONNECT_BODY" >/dev/null 2>&1; then
-      CONNECTED=1
-      break
-    fi
-    sleep 2
-  done
-  if [[ "$CONNECTED" -ne 1 ]]; then
-    echo "ERROR: $SERVICE could not connect to parent node$PARENT" >&2
+  CHILD_IP_LAST=$((9 + i))
+  if [[ "$PARENT" -eq 1 ]]; then
+    PARENT_SERVICE=bootstrap
+  else
+    PARENT_SERVICE="node$PARENT"
+  fi
+  if ! dial_and_verify \
+    "$SERVICE" "${CONTROL_ADDRS[$i]}" \
+    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 15 &&
+    ! dial_and_verify \
+      "$PARENT_SERVICE" "${CONTROL_ADDRS[$PARENT]}" \
+      "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 15; then
+    echo "ERROR: node$i and node$PARENT could not establish a verified edge" >&2
+    echo "  node$i peer=${PEER_IDS[$i]} control=${CONTROL_ADDRS[$i]}" >&2
+    echo "  node$PARENT peer=${PEER_IDS[$PARENT]} control=${CONTROL_ADDRS[$PARENT]}" >&2
+    docker-compose logs --no-color "$SERVICE" "$PARENT_SERVICE" |
+      tail -80 >&2 || true
     exit 1
   fi
   if [[ $((i % 10)) -eq 0 || "$i" -eq 2 ]]; then
