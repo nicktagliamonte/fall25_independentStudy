@@ -214,14 +214,17 @@ connect_once() {
   local source_control=$2
   local target_addr=$3
   local target_peer=$4
+  local dial_timeout="${TARSUS_TOPOLOGY_DIAL_TIMEOUT:-5s}"
+  local http_timeout="${TARSUS_TOPOLOGY_HTTP_TIMEOUT_SECONDS:-8}"
   local connect_body
   connect_body=$(jq -nc \
     --arg addr "$target_addr" \
     --arg peer "$target_peer" \
-    '{addr:$addr,peer:$peer,timeout:"20s"}')
+    --arg timeout "$dial_timeout" \
+    '{addr:$addr,peer:$peer,timeout:$timeout}')
   docker-compose exec -T "$source_service" sh -c \
-    'curl --max-time 25 --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "$1/connect"' \
-    sh "http://$source_control" <<<"$connect_body"
+    'curl --max-time "$2" --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "$1/connect"' \
+    sh "http://$source_control" "$http_timeout" <<<"$connect_body"
 }
 
 connection_survived_handshake() {
@@ -232,7 +235,7 @@ connection_survived_handshake() {
   neighbors=$(docker-compose exec -T "$source_service" \
     curl --max-time 5 --fail --silent "http://$source_control/neighbors" 2>/dev/null) || return 1
   jq -e --arg peer "$target_peer" \
-    'any(.[]; .peer == $peer)' <<<"$neighbors" >/dev/null
+    'any((. // [])[]; .peer == $peer)' <<<"$neighbors" >/dev/null
 }
 
 dial_and_verify() {
@@ -243,6 +246,10 @@ dial_and_verify() {
   local attempts=$5
   local attempt output=""
   for attempt in $(seq 1 "$attempts"); do
+    if connection_survived_handshake \
+      "$source_service" "$source_control" "$target_peer"; then
+      return 0
+    fi
     if output=$(connect_once \
       "$source_service" "$source_control" "$target_addr" "$target_peer" 2>&1); then
       # /connect confirms the transport dial. The handshake gate runs
@@ -253,6 +260,10 @@ dial_and_verify() {
         return 0
       fi
       output="transport connected but did not survive handshake verification"
+    elif connection_survived_handshake \
+      "$source_service" "$source_control" "$target_peer"; then
+      # A background dial can complete while the explicit request is pending.
+      return 0
     fi
     sleep 2
   done
@@ -264,6 +275,7 @@ echo "Connecting peer nodes in a bounded-degree tree..."
 # Join leaves before their parents so the peer-maintenance loops cannot turn a
 # growing root-connected prefix into a dense component before later nodes have
 # received their first edge.
+DEGRADED_EDGES=0
 for ((i = N; i >= 2; i--)); do
   SERVICE="node$i"
   PARENT=$((i / 2))
@@ -274,23 +286,36 @@ for ((i = N; i >= 2; i--)); do
   else
     PARENT_SERVICE="node$PARENT"
   fi
-  if ! dial_and_verify \
+  if dial_and_verify \
     "$SERVICE" "${CONTROL_ADDRS[$i]}" \
-    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 15 &&
-    ! dial_and_verify \
+    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 3 ||
+    dial_and_verify \
       "$PARENT_SERVICE" "${CONTROL_ADDRS[$PARENT]}" \
-      "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 15; then
-    echo "ERROR: node$i and node$PARENT could not establish a verified edge" >&2
+      "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 3; then
+    :
+  elif [[ "$PARENT" -ne 1 ]] && {
+    dial_and_verify \
+      "$SERVICE" "${CONTROL_ADDRS[$i]}" \
+      "/ip4/172.20.0.10/tcp/4001" "${PEER_IDS[1]}" 3 ||
+      dial_and_verify \
+        bootstrap "${CONTROL_ADDRS[1]}" \
+        "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 3
+  }; then
+    DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
+    echo "  WARNING: node$i could not reach node$PARENT; connected its subtree through bootstrap" >&2
+  else
+    DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
+    echo "  WARNING: node$i and node$PARENT could not establish the requested edge" >&2
     echo "  node$i peer=${PEER_IDS[$i]} control=${CONTROL_ADDRS[$i]}" >&2
     echo "  node$PARENT peer=${PEER_IDS[$PARENT]} control=${CONTROL_ADDRS[$PARENT]}" >&2
     docker-compose logs --no-color "$SERVICE" "$PARENT_SERVICE" |
       tail -80 >&2 || true
-    exit 1
   fi
   if [[ $((i % 10)) -eq 0 || "$i" -eq 2 ]]; then
-    echo "  Connected node$i through node$PARENT"
+    echo "  Processed topology edge node$i -> node$PARENT"
   fi
 done
+echo "Tree construction complete (fallback/degraded edges: $DEGRADED_EDGES)"
 
 echo "Waiting for peer discovery..."
 sleep 10

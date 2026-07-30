@@ -345,6 +345,9 @@ type ConnectRequest struct {
 // opportunistic-dial backoff must not suppress the attempt without touching
 // the network.
 func connectExplicitPeer(ctx context.Context, h host.Host, info peer.AddrInfo) error {
+	if h.Network().Connectedness(info.ID) == network.Connected {
+		return nil
+	}
 	return h.Connect(network.WithForceDirectDial(ctx, "explicit control-plane connect"), info)
 }
 

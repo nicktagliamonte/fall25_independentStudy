@@ -74,4 +74,9 @@ func TestConnectExplicitPeerBypassesDialBackoff(t *testing.T) {
 	if err := connectExplicitPeer(explicitCtx, dialer, info); err != nil {
 		t.Fatalf("explicit dial did not bypass backoff: %v", err)
 	}
+	canceledCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := connectExplicitPeer(canceledCtx, dialer, info); err != nil {
+		t.Fatalf("already-connected explicit dial consulted canceled context: %v", err)
+	}
 }

@@ -76,6 +76,13 @@
   retry into an immediate local `dial backoff` rejection without a network
   attempt. A focused regression creates exactly that cached-backoff state and
   proves the explicit dial reaches the newly available peer.
+- Topology construction treats the binary tree as a bounded-degree target,
+  not a requirement that every arbitrary Docker endpoint pair be reachable.
+  Explicit local-network dials use a five-second bound, skip work when the edge
+  is already live, retry symmetrically, and fall back through bootstrap when a
+  selected pair has broken bridge connectivity. Every fallback is logged; the
+  subsequent 100/100 indexed-availability gate remains the acceptance proof
+  that all nodes joined one functional tuple/index cluster.
 - Revalidated the hardened harness with
   `test_results/tarsus_campaign_smoke/resilience-n010-fresh-volumes-v2`.
   The validator-compliant 5 MiB run reached and restored exactly seven copies,
@@ -129,8 +136,11 @@ the old harness discarded every `/connect` diagnostic. The hardened retry
 reached 87 explicit edges before revealing that a lower-tree pair was trapped
 in libp2p dial backoff in both directions; neither pilot began the content
 workload. The explicit-dial path now bypasses that stale opportunistic backoff.
-The next step is to rerun the 100-node, one-trial pilot using the default 8 MiB
-payload. If that validates, run the full
+A later pilot proved some selected pairs could not exchange even ICMP packets
+across the Docker bridge despite both endpoints communicating with many other
+peers; the harness now uses bounded alternate edges rather than retrying an
+impossible pair for minutes. The next step is to rerun the 100-node, one-trial
+pilot using the default 8 MiB payload. If that validates, run the full
 query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
 artifact, and only then generate manuscript figures. Do not use the dated
 vnIPFS/Swarm repair scripts as paper evidence.
