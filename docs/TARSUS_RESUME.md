@@ -194,7 +194,11 @@
   discovers the distributed offer pool once rather than once per RTT class,
   and reuses that pool for preferred placement and fixed-count fallback.
   A regression asserts that a stale failed-node offer receives only its single
-  verification probe and is never attempted as its own replacement.
+  verification probe and is never attempted as its own replacement. The fresh
+  `resilience-n010-stale-offer-exclusion-ad4da58-v1` cell validated the fix in
+  30.641 seconds, retained all six survivors, admitted exactly one replacement,
+  passed both hashes, restored `docker-compose.yml` byte-for-byte, and left the
+  host neighbor limits at 128/512/1024.
 - Strengthened resilience validation for the single-holder failure experiment:
   every repair observation must remain between six and seven providers, the
   six live originals must survive, no over-replication is accepted, and only
@@ -254,13 +258,13 @@ amplification. Address-aware probes fixed missing route knowledge but one
 intermittent false negative remained, so pruning now requires two separated
 failures and the stricter trace validator rejects any recurrence. Two detector
 smokes passed and exposed a stale-offer retry responsible for the slower run.
-The immediate next step is one fresh 10-node validation of that candidate-pool
-fix, followed by a 100-node, one-trial pilot using the default 8 MiB payload and
-protected tree, with temporary host neighbor limits of 2048/4096/8192 and
-restoration of the Fedora defaults 128/512/1024 afterward. If that validates,
-run the full query-cost/shard/Bloom matrix and five-trial resilience cell,
-validate every artifact, and only then generate manuscript figures. Do not use
-the dated vnIPFS/Swarm repair scripts as paper evidence.
+The candidate-pool fix then passed a fresh 10-node run in 30.641 seconds. The
+immediate next step is a 100-node, one-trial pilot using the default 8 MiB
+payload and protected tree, with temporary host neighbor limits of
+2048/4096/8192 and restoration of the Fedora defaults 128/512/1024 afterward.
+If that validates, run the full query-cost/shard/Bloom matrix and five-trial
+resilience cell, validate every artifact, and only then generate manuscript
+figures. Do not use the dated vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and
