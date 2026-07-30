@@ -238,6 +238,15 @@ connection_survived_handshake() {
     'any((. // [])[]; .peer == $peer)' <<<"$neighbors" >/dev/null
 }
 
+has_any_live_neighbor() {
+  local source_service=$1
+  local source_control=$2
+  local neighbors
+  neighbors=$(docker-compose exec -T "$source_service" \
+    curl --max-time 5 --fail --silent "http://$source_control/neighbors" 2>/dev/null) || return 1
+  jq -e '(. // []) | length > 0' <<<"$neighbors" >/dev/null
+}
+
 dial_and_verify() {
   local source_service=$1
   local source_control=$2
@@ -288,18 +297,21 @@ for ((i = N; i >= 2; i--)); do
   fi
   if dial_and_verify \
     "$SERVICE" "${CONTROL_ADDRS[$i]}" \
-    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 3 ||
+    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 2 ||
     dial_and_verify \
       "$PARENT_SERVICE" "${CONTROL_ADDRS[$PARENT]}" \
-      "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 3; then
+      "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 2; then
     :
+  elif has_any_live_neighbor "$SERVICE" "${CONTROL_ADDRS[$i]}"; then
+    DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
+    echo "  WARNING: node$i could not reach node$PARENT; retaining its existing alternate edge" >&2
   elif [[ "$PARENT" -ne 1 ]] && {
     dial_and_verify \
       "$SERVICE" "${CONTROL_ADDRS[$i]}" \
-      "/ip4/172.20.0.10/tcp/4001" "${PEER_IDS[1]}" 3 ||
+      "/ip4/172.20.0.10/tcp/4001" "${PEER_IDS[1]}" 1 ||
       dial_and_verify \
         bootstrap "${CONTROL_ADDRS[1]}" \
-        "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 3
+        "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 1
   }; then
     DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
     echo "  WARNING: node$i could not reach node$PARENT; connected its subtree through bootstrap" >&2

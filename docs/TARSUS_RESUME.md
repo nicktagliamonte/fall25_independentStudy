@@ -79,8 +79,9 @@
 - Topology construction treats the binary tree as a bounded-degree target,
   not a requirement that every arbitrary Docker endpoint pair be reachable.
   Explicit local-network dials use a five-second bound, skip work when the edge
-  is already live, retry symmetrically, and fall back through bootstrap when a
-  selected pair has broken bridge connectivity. Every fallback is logged; the
+  is already live, and retry symmetrically. If the child already has another
+  live edge, a broken selected pair is recorded and skipped; only an isolated
+  child falls back through bootstrap. Every fallback is logged; the
   subsequent 100/100 indexed-availability gate remains the acceptance proof
   that all nodes joined one functional tuple/index cluster.
 - Revalidated the hardened harness with
