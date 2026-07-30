@@ -2,8 +2,15 @@
 
 package node
 
+import "fmt"
+
 // DefaultMinOutbound is the default target for minimum outbound libp2p connections.
 const DefaultMinOutbound = 20
+
+// DefaultMaxConnections bounds the live libp2p overlay independently of the
+// peerstore and DHT routing table. The latter may retain many known addresses;
+// it does not require a permanent transport connection to every known peer.
+const DefaultMaxConnections = 32
 
 // normalizeMinOutbound returns want if it is a positive value, otherwise it
 // substitutes DefaultMinOutbound. Callers use explicit positive values to
@@ -58,4 +65,36 @@ func effectiveOutboundTarget(want int, clusterSize int, knownOthers int) int {
 		return knownOthers
 	}
 	return want
+}
+
+// connectionWatermarks derives a connection manager's low/high watermarks.
+// The dial target is the low watermark so pruning cannot make the maintenance
+// loop immediately redial, while a known small cluster is capped at N-1.
+func connectionWatermarks(
+	minOutbound int,
+	maxConnections int,
+	clusterSize int,
+) (int, int, error) {
+	low := normalizeMinOutbound(minOutbound)
+	high := maxConnections
+	if high <= 0 {
+		high = DefaultMaxConnections
+	}
+	if clusterSize > 1 {
+		clusterMaximum := clusterSize - 1
+		if low > clusterMaximum {
+			low = clusterMaximum
+		}
+		if high > clusterMaximum {
+			high = clusterMaximum
+		}
+	}
+	if high < low {
+		return 0, 0, fmt.Errorf(
+			"maximum connections %d is below minimum outbound target %d",
+			high,
+			low,
+		)
+	}
+	return low, high, nil
 }

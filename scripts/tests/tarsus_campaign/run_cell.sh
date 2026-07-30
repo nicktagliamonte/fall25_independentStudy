@@ -34,11 +34,13 @@ jq -n \
   --argjson query_repetitions "$repetitions" \
   --argjson client_count "$client_count" \
   --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-3}" \
+  --argjson max_connections "${TARSUS_MAX_CONNECTIONS:-8}" \
   --arg transport "tcp" \
   '{cell_id:$cell_id,node_count:$node_count,catalog_size:$catalog_size,
     index_shards:$index_shards,bloom_pruning:$bloom_pruning,
     query_repetitions:$query_repetitions,client_count:$client_count,
-    min_outbound:$min_outbound,transport:$transport}' >"$cell_dir/cell.json"
+    min_outbound:$min_outbound,max_connections:$max_connections,
+    transport:$transport}' >"$cell_dir/cell.json"
 
 monitor_pid=""
 artifacts_finalized=0
@@ -65,6 +67,7 @@ trap cleanup EXIT
 export TARSUS_NODE_COUNT="$node_count"
 export TARSUS_INDEX_SHARDS="$shard_count"
 export TARSUS_MIN_OUTBOUND="${TARSUS_MIN_OUTBOUND:-3}"
+export TARSUS_MAX_CONNECTIONS="${TARSUS_MAX_CONNECTIONS:-8}"
 export TARSUS_FRESH_VOLUMES=true
 if [[ "$bloom_pruning" == "true" ]]; then
   export TARSUS_DISABLE_BLOOM_PRUNING=false
@@ -72,7 +75,8 @@ else
   export TARSUS_DISABLE_BLOOM_PRUNING=true
 fi
 
-campaign_require_neighbor_capacity "$node_count" "$TARSUS_MIN_OUTBOUND"
+campaign_require_neighbor_capacity \
+  "$node_count" "$TARSUS_MIN_OUTBOUND" "$TARSUS_MAX_CONNECTIONS"
 campaign_log "start nodes=$node_count shards=$shard_count bloom=$bloom_pruning"
 "$REPO_ROOT/scripts/docker/start.sh" "$node_count" >"$cell_dir/start.log" 2>&1
 campaign_capture_kernel_network_diagnostics \

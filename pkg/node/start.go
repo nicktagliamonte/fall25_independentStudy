@@ -104,6 +104,14 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	if opts.DialTimeout <= 0 {
 		opts.DialTimeout = 10 * time.Second
 	}
+	connectionLowWater, connectionHighWater, err := connectionWatermarks(
+		opts.MinOutbound,
+		opts.MaxConnections,
+		opts.ClusterNodeCount,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	ctx, cancel := context.WithCancel(parent)
 	metrics := &ctrl.NodeMetrics{}
@@ -116,7 +124,13 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			cancel()
 			return nil, err
 		}
-		hh, err := myhost.NewHostWithPriv(ctx, opts.ListenMultiaddrs, priv)
+		hh, err := myhost.NewHostWithPrivAndConnectionLimits(
+			ctx,
+			opts.ListenMultiaddrs,
+			priv,
+			connectionLowWater,
+			connectionHighWater,
+		)
 		if err != nil {
 			cancel()
 			return nil, err
@@ -131,14 +145,25 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				cancel()
 				return nil, err
 			}
-			hh, err := myhost.NewHostWithPriv(ctx, opts.ListenMultiaddrs, priv)
+			hh, err := myhost.NewHostWithPrivAndConnectionLimits(
+				ctx,
+				opts.ListenMultiaddrs,
+				priv,
+				connectionLowWater,
+				connectionHighWater,
+			)
 			if err != nil {
 				cancel()
 				return nil, err
 			}
 			h = hh
 		} else {
-			hh, err := myhost.NewHost(ctx, opts.ListenMultiaddrs)
+			hh, err := myhost.NewHostWithConnectionLimits(
+				ctx,
+				opts.ListenMultiaddrs,
+				connectionLowWater,
+				connectionHighWater,
+			)
 			if err != nil {
 				cancel()
 				return nil, err

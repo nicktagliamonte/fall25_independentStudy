@@ -58,6 +58,7 @@ for i in $(seq 2 "$N"); do
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
       --min-outbound \${TARSUS_MIN_OUTBOUND:-3}
+      --max-connections \${TARSUS_MAX_CONNECTIONS:-8}
       --cluster-nodes $N
       --no-default-bootstrap
       --index-shards \${TARSUS_INDEX_SHARDS:-16}

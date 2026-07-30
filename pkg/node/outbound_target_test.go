@@ -36,3 +36,52 @@ func TestNormalizeMinOutbound(t *testing.T) {
 		t.Fatalf("got %d", g)
 	}
 }
+
+func TestConnectionWatermarks(t *testing.T) {
+	for _, test := range []struct {
+		name            string
+		minOutbound     int
+		maxConnections  int
+		clusterSize     int
+		wantLow, wantHi int
+	}{
+		{
+			name:    "defaults",
+			wantLow: DefaultMinOutbound, wantHi: DefaultMaxConnections,
+		},
+		{
+			name: "campaign bounds", minOutbound: 3, maxConnections: 8,
+			clusterSize: 100, wantLow: 3, wantHi: 8,
+		},
+		{
+			name: "small cluster cap", minOutbound: 20, maxConnections: 32,
+			clusterSize: 4, wantLow: 3, wantHi: 3,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			low, high, err := connectionWatermarks(
+				test.minOutbound,
+				test.maxConnections,
+				test.clusterSize,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if low != test.wantLow || high != test.wantHi {
+				t.Fatalf(
+					"watermarks = %d/%d, want %d/%d",
+					low,
+					high,
+					test.wantLow,
+					test.wantHi,
+				)
+			}
+		})
+	}
+}
+
+func TestConnectionWatermarksRejectMaximumBelowMinimum(t *testing.T) {
+	if _, _, err := connectionWatermarks(9, 8, 100); err == nil {
+		t.Fatal("maximum below minimum accepted")
+	}
+}

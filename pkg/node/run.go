@@ -336,6 +336,7 @@ func Run() error {
 		var seedAddrs stringSlice
 		var seedFile string
 		var minOutbound int
+		var maxConnections int
 		var clusterNodes int
 		var dialTimeoutStr string
 		var staleAgeStr string
@@ -354,6 +355,7 @@ func Run() error {
 		fs.Var(&seedAddrs, "seed", "seed peer multiaddr (repeatable)")
 		fs.StringVar(&seedFile, "seed-file", "", "path to file with seed multiaddrs (one per line)")
 		fs.IntVar(&minOutbound, "min-outbound", DefaultMinOutbound, "target minimum outbound peer connections (capped by --cluster-nodes or CLUSTER_NODE_COUNT or peerstore size)")
+		fs.IntVar(&maxConnections, "max-connections", DefaultMaxConnections, "high watermark for live libp2p connections; excess unprotected connections are pruned back to min-outbound")
 		fs.IntVar(&clusterNodes, "cluster-nodes", 0, "expected cluster size; caps min-outbound at N-1 (0 uses CLUSTER_NODE_COUNT env or peerstore)")
 		fs.StringVar(&dialTimeoutStr, "dial-timeout", "10s", "dial timeout, e.g. 10s")
 		fs.StringVar(&staleAgeStr, "stale-age", "24h", "consider peers stale after this duration")
@@ -373,6 +375,14 @@ func Run() error {
 					clusterNodes = n
 				}
 			}
+		}
+		connectionLowWater, connectionHighWater, err := connectionWatermarks(
+			minOutbound,
+			maxConnections,
+			clusterNodes,
+		)
+		if err != nil {
+			return err
 		}
 		if len(listenAddrs) == 0 {
 			listenAddrs = []string{
@@ -407,6 +417,7 @@ func Run() error {
 				childArgs = append(childArgs, "--seed-file", seedFile)
 			}
 			childArgs = append(childArgs, "--min-outbound", fmt.Sprintf("%d", minOutbound))
+			childArgs = append(childArgs, "--max-connections", fmt.Sprintf("%d", maxConnections))
 			if clusterNodes > 0 {
 				childArgs = append(childArgs, "--cluster-nodes", fmt.Sprintf("%d", clusterNodes))
 			}
@@ -456,13 +467,24 @@ func Run() error {
 			if err != nil {
 				return err
 			}
-			h, err = myhost.NewHostWithPriv(ctx, listenAddrs, priv)
+			h, err = myhost.NewHostWithPrivAndConnectionLimits(
+				ctx,
+				listenAddrs,
+				priv,
+				connectionLowWater,
+				connectionHighWater,
+			)
 			if err != nil {
 				return err
 			}
 		} else {
 			var err error
-			h, err = myhost.NewHost(ctx, listenAddrs)
+			h, err = myhost.NewHostWithConnectionLimits(
+				ctx,
+				listenAddrs,
+				connectionLowWater,
+				connectionHighWater,
+			)
 			if err != nil {
 				return err
 			}

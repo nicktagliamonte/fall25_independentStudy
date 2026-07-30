@@ -23,21 +23,28 @@ campaign_require_tools() {
 campaign_require_neighbor_capacity() {
   local node_count=$1
   local min_outbound=${2:-3}
+  local max_connections=${3:-8}
   local threshold_file=/proc/sys/net/ipv4/neigh/default/gc_thresh3
-  local threshold required per_node_budget recommended
+  local protected_dht_connections=16
+  local threshold required recommended
 
-  if [[ ! "$node_count" =~ ^[0-9]+$ || ! "$min_outbound" =~ ^[0-9]+$ ]]; then
-    echo "neighbor-capacity inputs must be non-negative integers: nodes=$node_count min_outbound=$min_outbound" >&2
+  if [[ ! "$node_count" =~ ^[0-9]+$ ||
+    ! "$min_outbound" =~ ^[0-9]+$ ||
+    ! "$max_connections" =~ ^[0-9]+$ ]]; then
+    echo "neighbor-capacity inputs must be non-negative integers: nodes=$node_count min_outbound=$min_outbound max_connections=$max_connections" >&2
+    return 1
+  fi
+  if [[ "$max_connections" -lt "$min_outbound" ]]; then
+    echo "max_connections=$max_connections is below min_outbound=$min_outbound" >&2
     return 1
   fi
 
   # Every connection occupies one neighbor-cache entry at each endpoint.
-  # Reserve four additional entries per node for Kademlia/control-plane
-  # transients plus 128 entries for the host and unrelated namespaces. The
-  # prior two-entry reserve admitted a 100-node run that crossed gc_thresh3
-  # as soon as its DHT routing views filled.
-  per_node_budget=$((2 * min_outbound + 4))
-  required=$((node_count * per_node_budget + 128))
+  # The application connection manager enforces max_connections for
+  # unprotected peers. go-libp2p-kad-dht exempts its two nearest k=8 buckets
+  # from pruning, so budget their 16 entries too, plus 128 entries for pruning
+  # transients, the host, and unrelated namespaces.
+  required=$((node_count * (max_connections + protected_dht_connections) + 128))
   recommended=1024
   while [[ "$recommended" -lt $((required * 2)) ]]; do
     recommended=$((recommended * 2))
@@ -59,7 +66,9 @@ host IPv4 neighbor-table capacity is too small for this campaign:
   estimated_required=$required
   nodes=$node_count
   min_outbound=$min_outbound
-Reduce TARSUS_MIN_OUTBOUND or raise the host limits before retrying, for example:
+  max_connections=$max_connections
+  protected_dht_connections=$protected_dht_connections
+Reduce TARSUS_MAX_CONNECTIONS or raise the host limits before retrying, for example:
   sudo sysctl -w net.ipv4.neigh.default.gc_thresh1=$((recommended / 4))
   sudo sysctl -w net.ipv4.neigh.default.gc_thresh2=$((recommended / 2))
   sudo sysctl -w net.ipv4.neigh.default.gc_thresh3=$recommended

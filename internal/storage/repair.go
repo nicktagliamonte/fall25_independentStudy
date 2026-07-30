@@ -177,8 +177,8 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 	go func() {
 		const refreshInterval = 30 * time.Second
 		const offerLifetime = 2 * time.Minute
-		const initialRetry = 100 * time.Millisecond
-		const maxRetry = 5 * time.Second
+		const initialRetry = 500 * time.Millisecond
+		const maxRetry = 30 * time.Second
 		delay := deterministicPeerJitter(rp.host.ID(), rp.advertisementInitialJitterWindow)
 		retry := initialRetry
 		published := false

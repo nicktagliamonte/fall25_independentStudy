@@ -24,7 +24,8 @@ done
 }
 
 jq -e '.node_count > 1 and .payload_bytes > 4194304 and
-  .trials > 0 and .replica_target > 1' "$cell_dir/cell.json" >/dev/null
+  .trials > 0 and .replica_target > 1 and .min_outbound > 0 and
+  .max_connections >= .min_outbound' "$cell_dir/cell.json" >/dev/null
 jq -e '.git.commit != "" and .host.logical_cpus > 0 and
   .host.ipv4_neighbor_gc.thresh3 > 0' "$cell_dir/host.json" >/dev/null
 jq -e --slurpfile cell "$cell_dir/cell.json" \

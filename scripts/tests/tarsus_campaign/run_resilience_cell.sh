@@ -28,9 +28,10 @@ jq -n \
   --argjson trials "$trials" \
   --argjson replica_target "$replica_target" \
   --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-3}" \
+  --argjson max_connections "${TARSUS_MAX_CONNECTIONS:-8}" \
   '{cell_id:$cell_id,node_count:$node_count,payload_bytes:$payload_bytes,
     trials:$trials,replica_target:$replica_target,transport:"tcp",
-    min_outbound:$min_outbound,
+    min_outbound:$min_outbound,max_connections:$max_connections,
     failure_mode:"stopped proven replica holder",
     repair_mode:"automatic periodic audit"}' >"$cell_dir/cell.json"
 
@@ -61,9 +62,11 @@ export TARSUS_NODE_COUNT="$node_count"
 export TARSUS_INDEX_SHARDS="${TARSUS_INDEX_SHARDS:-16}"
 export TARSUS_DISABLE_BLOOM_PRUNING="${TARSUS_DISABLE_BLOOM_PRUNING:-false}"
 export TARSUS_MIN_OUTBOUND="${TARSUS_MIN_OUTBOUND:-3}"
+export TARSUS_MAX_CONNECTIONS="${TARSUS_MAX_CONNECTIONS:-8}"
 export TARSUS_FRESH_VOLUMES=true
 
-campaign_require_neighbor_capacity "$node_count" "$TARSUS_MIN_OUTBOUND"
+campaign_require_neighbor_capacity \
+  "$node_count" "$TARSUS_MIN_OUTBOUND" "$TARSUS_MAX_CONNECTIONS"
 campaign_log "resilience start nodes=$node_count payload_bytes=$payload_bytes trials=$trials target=$replica_target"
 "$REPO_ROOT/scripts/docker/start.sh" "$node_count" >"$cell_dir/start.log" 2>&1
 campaign_capture_kernel_network_diagnostics \

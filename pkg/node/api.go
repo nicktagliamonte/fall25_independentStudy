@@ -34,6 +34,11 @@ type Options struct {
 	// MinOutbound is the target minimum number of outbound peer connections
 	// the dial-maintenance loop tries to reach; <= 0 uses DefaultMinOutbound.
 	MinOutbound int
+	// MaxConnections is the high watermark for live libp2p connections.
+	// Crossing it trims the overlay back to the effective MinOutbound target.
+	// Peers protected by Kademlia's nearest routing buckets are exempt from
+	// pruning. <= 0 uses DefaultMaxConnections.
+	MaxConnections int
 	// ClusterNodeCount, if > 0, caps MinOutbound at N-1 (network too small for the default target).
 	ClusterNodeCount int
 	// PerIPDialLimit caps how many outbound dials the dial-maintenance loop

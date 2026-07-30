@@ -116,8 +116,24 @@
   kernel recorded 60 neighbor-table overflows and the first dial failure at
   node 15. The run was stopped before its workload, its diagnostic artifact
   was preserved, and all containers were removed. The preflight reserve now
-  accounts for the additional Kademlia/control-plane entries and requires a
-  temporary 4096-entry host limit for the 100-node campaign.
+  accounts for the additional Kademlia/control-plane entries.
+- The temporarily tuned `resilience-n100-52416e3` pilot completed all requested
+  tree edges without degradation, proving the earlier pair failures were
+  caused by host exhaustion. It then exposed a separate overlay-bound defect:
+  nodes retained 16--74 live peers (mean 37.31) because libp2p's default
+  connection-manager watermarks are 160/192. The startup guard rejected the
+  resulting 100 kernel overflows before any workload.
+- Added explicit Tarsus connection-manager watermarks. Campaign nodes use
+  low/high 3/8, trim four times per second with no grace interval, and back
+  failed startup advertisements off from 500 milliseconds to 30 seconds.
+  Kademlia's two nearest k=8 buckets are intentionally protected, so the host
+  preflight budgets up to 16 protected DHT peers in addition to the configured
+  high watermark.
+- Revalidated the capped overlay at
+  `test_results/tarsus_campaign_smoke/resilience-n010-connection-cap-v1`.
+  The validator-compliant 5 MiB run again indexed all nodes, maintained and
+  repaired exactly seven copies in 35.051 seconds, passed both retrieval hash
+  checks, and recorded no kernel exhaustion.
 
 ## Current plan
 
@@ -166,7 +182,7 @@ post-handshake over-connection. What initially appeared to be arbitrary Docker
 pair failure is now explained by a contemporaneous kernel neighbor-table
 overflow and guarded explicitly by the campaign. The immediate next step is
 to rerun the 100-node, one-trial pilot using the default 8 MiB payload with
-temporary host neighbor limits of 1024/2048/4096, restoring the Fedora
+temporary host neighbor limits of 2048/4096/8192, restoring the Fedora
 defaults of 128/512/1024 afterward. If that validates, run the full
 query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
 artifact, and only then generate manuscript figures. Do not use the dated

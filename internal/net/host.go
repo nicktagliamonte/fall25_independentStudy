@@ -5,12 +5,14 @@ package net
 import (
 	"context"
 	"fmt"
+	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
+	basicconnmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	tlssec "github.com/libp2p/go-libp2p/p2p/security/tls"
@@ -105,6 +107,22 @@ func NewHost(ctx context.Context, listenAddrs []string) (host.Host, error) {
 	return NewHostWithPriv(ctx, listenAddrs, priv)
 }
 
+// NewHostWithConnectionLimits creates an ephemeral-identity host whose live
+// connection count is trimmed from highWater back to lowWater. It is the
+// bounded counterpart to NewHost for long-running Tarsus nodes.
+func NewHostWithConnectionLimits(
+	ctx context.Context,
+	listenAddrs []string,
+	lowWater int,
+	highWater int,
+) (host.Host, error) {
+	priv, _, err := crypto.GenerateEd25519Key(nil)
+	if err != nil {
+		return nil, err
+	}
+	return NewHostWithPrivAndConnectionLimits(ctx, listenAddrs, priv, lowWater, highWater)
+}
+
 // NewHostWithPriv creates a libp2p host using the given private key as its identity,
 // wired with TCP and QUIC transports, Noise and TLS security (both ECDH-based, see
 // ECDHSecurityProtocolIDs), the yamux stream muxer, NAT service, and client relay
@@ -119,6 +137,40 @@ func NewHost(ctx context.Context, listenAddrs []string) (host.Host, error) {
 //   - host.Host: the constructed libp2p host.
 //   - error: non-nil if libp2p host construction fails.
 func NewHostWithPriv(ctx context.Context, listenAddrs []string, priv crypto.PrivKey) (host.Host, error) {
+	return newHostWithPriv(ctx, listenAddrs, priv, 0, 0)
+}
+
+// NewHostWithPrivAndConnectionLimits is NewHostWithPriv with explicit
+// connection-manager watermarks. New peers receive no grace period and the
+// manager checks four times per second so simultaneous Kademlia lookups cannot
+// accumulate an unbounded near-mesh before pruning begins.
+func NewHostWithPrivAndConnectionLimits(
+	ctx context.Context,
+	listenAddrs []string,
+	priv crypto.PrivKey,
+	lowWater int,
+	highWater int,
+) (host.Host, error) {
+	if lowWater <= 0 {
+		return nil, fmt.Errorf("connection low watermark must be positive: %d", lowWater)
+	}
+	if highWater < lowWater {
+		return nil, fmt.Errorf(
+			"connection high watermark %d is below low watermark %d",
+			highWater,
+			lowWater,
+		)
+	}
+	return newHostWithPriv(ctx, listenAddrs, priv, lowWater, highWater)
+}
+
+func newHostWithPriv(
+	_ context.Context,
+	listenAddrs []string,
+	priv crypto.PrivKey,
+	lowWater int,
+	highWater int,
+) (host.Host, error) {
 	opts := []libp2p.Option{
 		libp2p.Identity(priv),
 
@@ -137,6 +189,18 @@ func NewHostWithPriv(ctx context.Context, listenAddrs []string, priv crypto.Priv
 	}
 	for _, a := range listenAddrs {
 		opts = append(opts, libp2p.ListenAddrStrings(a))
+	}
+	if highWater > 0 {
+		manager, err := basicconnmgr.NewConnManager(
+			lowWater,
+			highWater,
+			basicconnmgr.WithGracePeriod(0),
+			basicconnmgr.WithSilencePeriod(250*time.Millisecond),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("create connection manager: %w", err)
+		}
+		opts = append(opts, libp2p.ConnectionManager(manager))
 	}
 	// NAT service on by default; client relay enabled
 	opts = append(opts,
