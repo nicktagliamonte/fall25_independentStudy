@@ -24,6 +24,13 @@ mkdir -p "$cell_dir/workload" "$cell_dir/batches"
 kernel_diagnostics_since=$(date +%s)
 campaign_capture_host_manifest "$cell_dir/host.json"
 "$CAMPAIGN_DIR/generate_workload.sh" "$catalog_size" "$cell_dir/workload"
+compose_backup=""
+compose_existed=0
+if [[ -f "$COMPOSE_FILE" ]]; then
+  compose_backup=$(mktemp)
+  cp "$COMPOSE_FILE" "$compose_backup"
+  compose_existed=1
+fi
 
 jq -n \
   --arg cell_id "$(basename "$cell_dir")" \
@@ -61,6 +68,14 @@ finalize_artifacts() {
 cleanup() {
   finalize_artifacts
   docker-compose -f "$COMPOSE_FILE" down -v --remove-orphans >/dev/null 2>&1 || true
+  if [[ "$compose_existed" -eq 1 && -n "$compose_backup" ]]; then
+    cp "$compose_backup" "$COMPOSE_FILE"
+  else
+    rm -f "$COMPOSE_FILE"
+  fi
+  if [[ -n "$compose_backup" ]]; then
+    rm -f "$compose_backup"
+  fi
 }
 trap cleanup EXIT
 
