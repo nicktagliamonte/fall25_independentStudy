@@ -24,7 +24,7 @@ campaign_require_neighbor_capacity() {
   local node_count=$1
   local min_outbound=${2:-3}
   local threshold_file=/proc/sys/net/ipv4/neigh/default/gc_thresh3
-  local threshold required per_node_budget
+  local threshold required per_node_budget recommended
 
   if [[ ! "$node_count" =~ ^[0-9]+$ || ! "$min_outbound" =~ ^[0-9]+$ ]]; then
     echo "neighbor-capacity inputs must be non-negative integers: nodes=$node_count min_outbound=$min_outbound" >&2
@@ -32,10 +32,16 @@ campaign_require_neighbor_capacity() {
   fi
 
   # Every connection occupies one neighbor-cache entry at each endpoint.
-  # Reserve two additional entries per node for DHT/control-plane transients
-  # plus 128 entries for the host and unrelated network namespaces.
-  per_node_budget=$((2 * min_outbound + 2))
+  # Reserve four additional entries per node for Kademlia/control-plane
+  # transients plus 128 entries for the host and unrelated namespaces. The
+  # prior two-entry reserve admitted a 100-node run that crossed gc_thresh3
+  # as soon as its DHT routing views filled.
+  per_node_budget=$((2 * min_outbound + 4))
   required=$((node_count * per_node_budget + 128))
+  recommended=1024
+  while [[ "$recommended" -lt $((required * 2)) ]]; do
+    recommended=$((recommended * 2))
+  done
 
   if [[ ! -r "$threshold_file" ]]; then
     campaign_log "neighbor-capacity preflight unavailable: $threshold_file is not readable"
@@ -54,9 +60,9 @@ host IPv4 neighbor-table capacity is too small for this campaign:
   nodes=$node_count
   min_outbound=$min_outbound
 Reduce TARSUS_MIN_OUTBOUND or raise the host limits before retrying, for example:
-  sudo sysctl -w net.ipv4.neigh.default.gc_thresh1=$((required / 4))
-  sudo sysctl -w net.ipv4.neigh.default.gc_thresh2=$((required / 2))
-  sudo sysctl -w net.ipv4.neigh.default.gc_thresh3=$required
+  sudo sysctl -w net.ipv4.neigh.default.gc_thresh1=$((recommended / 4))
+  sudo sysctl -w net.ipv4.neigh.default.gc_thresh2=$((recommended / 2))
+  sudo sysctl -w net.ipv4.neigh.default.gc_thresh3=$recommended
 EOF
     return 1
   fi

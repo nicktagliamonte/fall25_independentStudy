@@ -110,6 +110,14 @@
   exactly seven replicas, stopped a proven holder, repaired to a distinct
   seventh provider in 35.046 seconds, passed both retrieval hash checks,
   contained no public bootstrap identities, and left zero containers.
+- The clean-commit `resilience-n100-c248025` pilot confirmed that removing
+  opportunistic dials delayed but did not eliminate host exhaustion: topology
+  progressed without degradation from node 100 through node 20, then the
+  kernel recorded 60 neighbor-table overflows and the first dial failure at
+  node 15. The run was stopped before its workload, its diagnostic artifact
+  was preserved, and all containers were removed. The preflight reserve now
+  accounts for the additional Kademlia/control-plane entries and requires a
+  temporary 4096-entry host limit for the 100-node campaign.
 
 ## Current plan
 
@@ -157,8 +165,9 @@ discarded connection diagnostics, stale libp2p dial backoff, and unbounded
 post-handshake over-connection. What initially appeared to be arbitrary Docker
 pair failure is now explained by a contemporaneous kernel neighbor-table
 overflow and guarded explicitly by the campaign. The immediate next step is
-to commit the bounded-dial/capacity changes and rerun the 100-node, one-trial
-pilot using the default 8 MiB payload. If that validates, run the full
+to rerun the 100-node, one-trial pilot using the default 8 MiB payload with
+temporary host neighbor limits of 1024/2048/4096, restoring the Fedora
+defaults of 128/512/1024 afterward. If that validates, run the full
 query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
 artifact, and only then generate manuscript figures. Do not use the dated
 vnIPFS/Swarm repair scripts as paper evidence.
