@@ -142,8 +142,9 @@ func NewHostWithPriv(ctx context.Context, listenAddrs []string, priv crypto.Priv
 
 // NewHostWithPrivAndConnectionLimits is NewHostWithPriv with explicit
 // connection-manager watermarks. New peers receive no grace period and the
-// manager checks four times per second so simultaneous Kademlia lookups cannot
-// accumulate an unbounded near-mesh before pruning begins.
+// manager checks once per second so simultaneous Kademlia lookups cannot
+// accumulate an unbounded near-mesh before pruning begins while the control
+// plane has time to protect both ends of a configured topology edge.
 func NewHostWithPrivAndConnectionLimits(
 	ctx context.Context,
 	listenAddrs []string,
@@ -195,7 +196,7 @@ func newHostWithPriv(
 			lowWater,
 			highWater,
 			basicconnmgr.WithGracePeriod(0),
-			basicconnmgr.WithSilencePeriod(250*time.Millisecond),
+			basicconnmgr.WithSilencePeriod(time.Second),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("create connection manager: %w", err)

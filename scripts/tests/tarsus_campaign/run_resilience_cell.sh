@@ -32,6 +32,7 @@ jq -n \
   '{cell_id:$cell_id,node_count:$node_count,payload_bytes:$payload_bytes,
     trials:$trials,replica_target:$replica_target,transport:"tcp",
     min_outbound:$min_outbound,max_connections:$max_connections,
+    topology:"protected_binary_tree",max_protected_topology_peers:3,
     failure_mode:"stopped proven replica holder",
     repair_mode:"automatic periodic audit"}' >"$cell_dir/cell.json"
 

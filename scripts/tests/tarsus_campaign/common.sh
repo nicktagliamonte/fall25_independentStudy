@@ -26,6 +26,7 @@ campaign_require_neighbor_capacity() {
   local max_connections=${3:-8}
   local threshold_file=/proc/sys/net/ipv4/neigh/default/gc_thresh3
   local protected_dht_connections=16
+  local protected_topology_connections=3
   local threshold required recommended
 
   if [[ ! "$node_count" =~ ^[0-9]+$ ||
@@ -42,9 +43,10 @@ campaign_require_neighbor_capacity() {
   # Every connection occupies one neighbor-cache entry at each endpoint.
   # The application connection manager enforces max_connections for
   # unprotected peers. go-libp2p-kad-dht exempts its two nearest k=8 buckets
-  # from pruning, so budget their 16 entries too, plus 128 entries for pruning
-  # transients, the host, and unrelated namespaces.
-  required=$((node_count * (max_connections + protected_dht_connections) + 128))
+  # from pruning. The campaign also protects the binary-tree parent/children
+  # backbone (at most three peers per node). Budget both protected classes,
+  # plus 128 entries for pruning transients, the host, and unrelated namespaces.
+  required=$((node_count * (max_connections + protected_dht_connections + protected_topology_connections) + 128))
   recommended=1024
   while [[ "$recommended" -lt $((required * 2)) ]]; do
     recommended=$((recommended * 2))
@@ -68,6 +70,7 @@ host IPv4 neighbor-table capacity is too small for this campaign:
   min_outbound=$min_outbound
   max_connections=$max_connections
   protected_dht_connections=$protected_dht_connections
+  protected_topology_connections=$protected_topology_connections
 Reduce TARSUS_MAX_CONNECTIONS or raise the host limits before retrying, for example:
   sudo sysctl -w net.ipv4.neigh.default.gc_thresh1=$((recommended / 4))
   sudo sysctl -w net.ipv4.neigh.default.gc_thresh2=$((recommended / 2))

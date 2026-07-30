@@ -215,6 +215,7 @@ connect_once() {
   local source_control=$2
   local target_addr=$3
   local target_peer=$4
+  local protect=${5:-false}
   local dial_timeout="${TARSUS_TOPOLOGY_DIAL_TIMEOUT:-5s}"
   local http_timeout="${TARSUS_TOPOLOGY_HTTP_TIMEOUT_SECONDS:-8}"
   local connect_body
@@ -222,7 +223,8 @@ connect_once() {
     --arg addr "$target_addr" \
     --arg peer "$target_peer" \
     --arg timeout "$dial_timeout" \
-    '{addr:$addr,peer:$peer,timeout:$timeout}')
+    --argjson protect "$protect" \
+    '{addr:$addr,peer:$peer,timeout:$timeout,protect:$protect}')
   docker-compose exec -T "$source_service" sh -c \
     'curl --max-time "$2" --fail-with-body --silent --show-error -H "Content-Type: application/json" --data-binary @- "$1/connect"' \
     sh "http://$source_control" "$http_timeout" <<<"$connect_body"
@@ -239,45 +241,37 @@ connection_survived_handshake() {
     'any((. // [])[]; .peer == $peer)' <<<"$neighbors" >/dev/null
 }
 
-has_any_live_neighbor() {
-  local source_service=$1
-  local source_control=$2
-  local neighbors
-  neighbors=$(docker-compose exec -T "$source_service" \
-    curl --max-time 5 --fail --silent "http://$source_control/neighbors" 2>/dev/null) || return 1
-  jq -e '(. // []) | length > 0' <<<"$neighbors" >/dev/null
-}
-
-dial_and_verify() {
-  local source_service=$1
-  local source_control=$2
-  local target_addr=$3
-  local target_peer=$4
-  local attempts=$5
-  local attempt output=""
+establish_protected_edge() {
+  local left_service=$1
+  local left_control=$2
+  local left_addr=$3
+  local left_peer=$4
+  local right_service=$5
+  local right_control=$6
+  local right_addr=$7
+  local right_peer=$8
+  local attempts=$9
+  local attempt left_output="" right_output=""
   for attempt in $(seq 1 "$attempts"); do
+    # Protect both endpoints through the trusted local control planes. Calling
+    # in both directions also handles an already-open transport: /connect
+    # short-circuits the dial but still installs the local protection tag.
+    left_output=$(connect_once \
+      "$left_service" "$left_control" "$right_addr" "$right_peer" true 2>&1) || true
+    right_output=$(connect_once \
+      "$right_service" "$right_control" "$left_addr" "$left_peer" true 2>&1) || true
+    sleep 1
     if connection_survived_handshake \
-      "$source_service" "$source_control" "$target_peer"; then
-      return 0
-    fi
-    if output=$(connect_once \
-      "$source_service" "$source_control" "$target_addr" "$target_peer" 2>&1); then
-      # /connect confirms the transport dial. The handshake gate runs
-      # asynchronously, so also require the edge to remain live afterwards.
-      sleep 1
-      if connection_survived_handshake \
-        "$source_service" "$source_control" "$target_peer"; then
-        return 0
-      fi
-      output="transport connected but did not survive handshake verification"
-    elif connection_survived_handshake \
-      "$source_service" "$source_control" "$target_peer"; then
-      # A background dial can complete while the explicit request is pending.
+      "$left_service" "$left_control" "$right_peer" &&
+      connection_survived_handshake \
+        "$right_service" "$right_control" "$left_peer"; then
       return 0
     fi
     sleep 2
   done
-  echo "  $source_service -> $target_peer failed after $attempts attempts: ${output:-no diagnostic}" >&2
+  echo "  protected edge $left_service <-> $right_service failed after $attempts attempts" >&2
+  echo "    $left_service: ${left_output:-no diagnostic}" >&2
+  echo "    $right_service: ${right_output:-no diagnostic}" >&2
   return 1
 }
 
@@ -285,7 +279,6 @@ echo "Connecting peer nodes in a bounded-degree tree..."
 # Join leaves before their parents so the peer-maintenance loops cannot turn a
 # growing root-connected prefix into a dense component before later nodes have
 # received their first edge.
-DEGRADED_EDGES=0
 for ((i = N; i >= 2; i--)); do
   SERVICE="node$i"
   PARENT=$((i / 2))
@@ -296,39 +289,23 @@ for ((i = N; i >= 2; i--)); do
   else
     PARENT_SERVICE="node$PARENT"
   fi
-  if dial_and_verify \
+  if ! establish_protected_edge \
     "$SERVICE" "${CONTROL_ADDRS[$i]}" \
-    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 2 ||
-    dial_and_verify \
-      "$PARENT_SERVICE" "${CONTROL_ADDRS[$PARENT]}" \
-      "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 2; then
-    :
-  elif has_any_live_neighbor "$SERVICE" "${CONTROL_ADDRS[$i]}"; then
-    DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
-    echo "  WARNING: node$i could not reach node$PARENT; retaining its existing alternate edge" >&2
-  elif [[ "$PARENT" -ne 1 ]] && {
-    dial_and_verify \
-      "$SERVICE" "${CONTROL_ADDRS[$i]}" \
-      "/ip4/172.20.0.10/tcp/4001" "${PEER_IDS[1]}" 1 ||
-      dial_and_verify \
-        bootstrap "${CONTROL_ADDRS[1]}" \
-        "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" 1
-  }; then
-    DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
-    echo "  WARNING: node$i could not reach node$PARENT; connected its subtree through bootstrap" >&2
-  else
-    DEGRADED_EDGES=$((DEGRADED_EDGES + 1))
-    echo "  WARNING: node$i and node$PARENT could not establish the requested edge" >&2
+    "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" \
+    "$PARENT_SERVICE" "${CONTROL_ADDRS[$PARENT]}" \
+    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 2; then
+    echo "ERROR: node$i and node$PARENT could not retain their required protected edge" >&2
     echo "  node$i peer=${PEER_IDS[$i]} control=${CONTROL_ADDRS[$i]}" >&2
     echo "  node$PARENT peer=${PEER_IDS[$PARENT]} control=${CONTROL_ADDRS[$PARENT]}" >&2
     docker-compose logs --no-color "$SERVICE" "$PARENT_SERVICE" |
       tail -80 >&2 || true
+    exit 1
   fi
   if [[ $((i % 10)) -eq 0 || "$i" -eq 2 ]]; then
     echo "  Processed topology edge node$i -> node$PARENT"
   fi
 done
-echo "Tree construction complete (fallback/degraded edges: $DEGRADED_EDGES)"
+echo "Tree construction complete ($((N - 1)) protected edges)"
 
 echo "Waiting for peer discovery..."
 sleep 10

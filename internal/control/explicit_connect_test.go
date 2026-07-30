@@ -80,3 +80,33 @@ func TestConnectExplicitPeerBypassesDialBackoff(t *testing.T) {
 		t.Fatalf("already-connected explicit dial consulted canceled context: %v", err)
 	}
 }
+
+func TestExplicitConnectionProtectionTagsAnchor(t *testing.T) {
+	anchor, err := myhost.NewHostWithConnectionLimits(
+		context.Background(),
+		[]string{"/ip4/127.0.0.1/tcp/0"},
+		1,
+		2,
+	)
+	if err != nil {
+		t.Fatalf("create anchor host: %v", err)
+	}
+	defer anchor.Close()
+
+	target, err := myhost.NewHost(context.Background(), []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatalf("create target host: %v", err)
+	}
+	defer target.Close()
+
+	info := peer.AddrInfo{ID: target.ID(), Addrs: target.Addrs()}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := connectExplicitPeer(ctx, anchor, info); err != nil {
+		t.Fatalf("connect explicit anchor: %v", err)
+	}
+	protectExplicitPeer(anchor, target.ID())
+	if !anchor.ConnManager().IsProtected(target.ID(), explicitConnectionProtectionTag) {
+		t.Fatal("explicit anchor is not protected from connection-manager trimming")
+	}
+}

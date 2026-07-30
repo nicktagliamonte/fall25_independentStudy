@@ -76,14 +76,12 @@
   retry into an immediate local `dial backoff` rejection without a network
   attempt. A focused regression creates exactly that cached-backoff state and
   proves the explicit dial reaches the newly available peer.
-- Topology construction treats the binary tree as a bounded-degree target,
-  not a requirement that every arbitrary Docker endpoint pair be reachable.
-  Explicit local-network dials use a five-second bound, skip work when the edge
-  is already live, and retry symmetrically. If the child already has another
-  live edge, a broken selected pair is recorded and skipped; only an isolated
-  child falls back through bootstrap. Every fallback is logged; the
-  subsequent 100/100 indexed-availability gate remains the acceptance proof
-  that all nodes joined one functional tuple/index cluster.
+- Topology construction now treats every binary-tree edge as a required,
+  bounded administrative anchor. `/connect` can protect a trusted configured
+  edge from opportunistic connection-manager trimming; the harness installs
+  that tag at both endpoints, verifies both endpoints after the asynchronous
+  handshake, and fails startup if any of the N-1 edges is absent. The tree
+  protects at most three peers per node.
 - Revalidated the hardened harness with
   `test_results/tarsus_campaign_smoke/resilience-n010-fresh-volumes-v2`.
   The validator-compliant 5 MiB run reached and restored exactly seven copies,
@@ -124,16 +122,34 @@
   connection-manager watermarks are 160/192. The startup guard rejected the
   resulting 100 kernel overflows before any workload.
 - Added explicit Tarsus connection-manager watermarks. Campaign nodes use
-  low/high 3/8, trim four times per second with no grace interval, and back
+  low/high 3/8, trim once per second with no grace interval, and back
   failed startup advertisements off from 500 milliseconds to 30 seconds.
   Kademlia's two nearest k=8 buckets are intentionally protected, so the host
-  preflight budgets up to 16 protected DHT peers in addition to the configured
-  high watermark.
+  preflight budgets up to 16 protected DHT peers and three protected topology
+  anchors in addition to the configured high watermark.
 - Revalidated the capped overlay at
   `test_results/tarsus_campaign_smoke/resilience-n010-connection-cap-v1`.
   The validator-compliant 5 MiB run again indexed all nodes, maintained and
   repaired exactly seven copies in 35.051 seconds, passed both retrieval hash
   checks, and recorded no kernel exhaustion.
+- The clean `resilience-n100-017054b` pilot proved the connection cap fixed
+  host exhaustion: all 100 nodes started with 7--21 live peers (mean 15.87,
+  versus the prior 37.31 mean and 74 maximum) and zero kernel events. It also
+  exposed a distinct overlay-partition defect. All nodes successfully
+  committed/refreshed their availability tuple, but the strict gate remained
+  at 37/100. Live graph inspection found exactly three components of 31, 32,
+  and 37 nodes, matching the three indexed query views; 27 requested tree
+  edges had been pruned, including both root edges. The run timed out
+  unchanged, preserved its artifact, restored host thresholds, and removed all
+  containers.
+- Added the protected-anchor topology described above and revalidated it at
+  `test_results/tarsus_campaign_smoke/resilience-n010-protected-anchors-v1`.
+  The fresh 5 MiB run retained all nine tree edges, reached exactly seven
+  replicas, stopped a proven holder, fetched from a survivor in 0.117 seconds,
+  repaired to a distinct seventh provider in 41.261 seconds, and completed a
+  cold non-provider fetch in 0.139 seconds. Both hashes passed, both kernel
+  diagnostics were empty, no public bootstrap identity appeared, and teardown
+  left zero containers.
 
 ## Current plan
 
@@ -177,16 +193,18 @@ replacement issues one batched call and successfully captured four complete
 
 The production-current failure/repair harness has passed its fresh-volume
 10-node end-to-end smoke gates. Successive 100-node pilots exposed and fixed
-discarded connection diagnostics, stale libp2p dial backoff, and unbounded
-post-handshake over-connection. What initially appeared to be arbitrary Docker
-pair failure is now explained by a contemporaneous kernel neighbor-table
-overflow and guarded explicitly by the campaign. The immediate next step is
-to rerun the 100-node, one-trial pilot using the default 8 MiB payload with
-temporary host neighbor limits of 2048/4096/8192, restoring the Fedora
-defaults of 128/512/1024 afterward. If that validates, run the full
-query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
-artifact, and only then generate manuscript figures. Do not use the dated
-vnIPFS/Swarm repair scripts as paper evidence.
+discarded connection diagnostics, stale libp2p dial backoff, unbounded
+post-handshake over-connection, and connection-manager pruning of the sparse
+backbone. What initially appeared to be arbitrary Docker pair failure is
+explained by contemporaneous kernel neighbor-table overflow; what looked like
+a lost-index-update plateau was proved to be three disconnected overlay
+components. Both failure modes now have explicit startup guards. The immediate
+next step is to rerun the 100-node, one-trial pilot using the default 8 MiB
+payload and protected tree, with temporary host neighbor limits of
+2048/4096/8192 and restoration of the Fedora defaults 128/512/1024 afterward.
+If that validates, run the full query-cost/shard/Bloom matrix and five-trial
+resilience cell, validate every artifact, and only then generate manuscript
+figures. Do not use the dated vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and

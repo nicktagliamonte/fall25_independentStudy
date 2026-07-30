@@ -338,7 +338,13 @@ type ConnectRequest struct {
 	Peer string `json:"peer"`
 	// Timeout is an optional Go duration string (e.g. "10s") bounding the dial; defaults to 10s if empty or unparsable.
 	Timeout string `json:"timeout"`
+	// Protect retains this trusted control-plane edge when the connection
+	// manager trims opportunistic peers. Operators must keep the protected
+	// topology bounded; campaign trees protect at most three peers per node.
+	Protect bool `json:"protect,omitempty"`
 }
+
+const explicitConnectionProtectionTag = "tarsus-explicit-anchor"
 
 // connectExplicitPeer performs a direct operator-requested dial. The explicit
 // address and deadline come from the local control plane, so a stale libp2p
@@ -349,6 +355,10 @@ func connectExplicitPeer(ctx context.Context, h host.Host, info peer.AddrInfo) e
 		return nil
 	}
 	return h.Connect(network.WithForceDirectDial(ctx, "explicit control-plane connect"), info)
+}
+
+func protectExplicitPeer(h host.Host, pid peer.ID) {
+	h.ConnManager().Protect(pid, explicitConnectionProtectionTag)
 }
 
 // GetRequest is the JSON request body for POST /get.
@@ -1444,6 +1454,13 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = w.Write([]byte(err.Error()))
 			return
+		}
+		if req.Protect {
+			// The control server is loopback-only and therefore a trusted
+			// administrative surface. Protecting both endpoints of a bounded
+			// configured edge prevents Kademlia trimming from partitioning the
+			// sparse backbone while leaving learned peers eligible for pruning.
+			protectExplicitPeer(h, pid)
 		}
 		w.WriteHeader(http.StatusOK)
 	})
