@@ -20,6 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
@@ -105,10 +106,21 @@ func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, toke
 	return rp
 }
 
-// MeasureRTT actively probes a peer using libp2p's ping protocol. A failed
-// probe is a liveness failure for the current repair audit and must not be
-// converted into a zero-RTT "near" result.
+// MeasureRTT actively probes a known peer using libp2p's ping protocol.
 func (rp *RepairProtocol) MeasureRTT(pid peer.ID) (time.Duration, error) {
+	return rp.measureRTT(pid, nil)
+}
+
+// MeasureRTTAt probes a token provider at its advertised address. Bounded
+// overlays intentionally keep most providers disconnected, so treating a
+// missing peerstore entry as a dead replica would cause false pruning and
+// repair amplification. The direct dial is still authenticated by libp2p and
+// the Tarsus handshake gate; ping is retried briefly while that gate completes.
+func (rp *RepairProtocol) MeasureRTTAt(pid peer.ID, addr multiaddr.Multiaddr) (time.Duration, error) {
+	return rp.measureRTT(pid, addr)
+}
+
+func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (time.Duration, error) {
 	if rp == nil {
 		return 0, errors.New("repair protocol unavailable")
 	}
@@ -132,35 +144,65 @@ func (rp *RepairProtocol) MeasureRTT(pid peer.ID) (time.Duration, error) {
 		if cached.err != nil {
 			ttl = 2 * time.Second
 		}
-		if time.Since(cached.measured) < ttl {
+		// A token address is new routing evidence, so never let an earlier
+		// no-address failure suppress the direct liveness attempt.
+		if time.Since(cached.measured) < ttl && (cached.err == nil || addr == nil) {
 			return cached.rtt, cached.err
 		}
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	var rtt time.Duration
-	var probeErr error
-	select {
-	case result, ok := <-ping.Ping(ctx, rp.host, pid):
-		if !ok {
-			probeErr = errors.New("ping ended without a result")
-		} else if result.Error != nil {
-			probeErr = result.Error
-		} else if result.RTT <= 0 {
-			probeErr = errors.New("ping returned non-positive RTT")
-		} else {
-			rtt = result.RTT
+	if addr != nil {
+		rp.host.Peerstore().AddAddr(pid, addr, peerstore.TempAddrTTL)
+		if rp.host.Network().Connectedness(pid) != network.Connected {
+			info := peer.AddrInfo{ID: pid, Addrs: []multiaddr.Multiaddr{addr}}
+			dialCtx := network.WithForceDirectDial(ctx, "token provider liveness probe")
+			if err := rp.host.Connect(dialCtx, info); err != nil {
+				rp.cacheRTT(pid, 0, err)
+				return 0, err
+			}
 		}
-	case <-ctx.Done():
-		probeErr = ctx.Err()
 	}
+	var rtt time.Duration
+	probeErr := errors.New("ping did not complete")
+	for {
+		select {
+		case result, ok := <-ping.Ping(ctx, rp.host, pid):
+			if !ok {
+				probeErr = errors.New("ping ended without a result")
+			} else if result.Error != nil {
+				probeErr = result.Error
+			} else if result.RTT <= 0 {
+				probeErr = errors.New("ping returned non-positive RTT")
+			} else {
+				rtt = result.RTT
+				probeErr = nil
+			}
+		case <-ctx.Done():
+			probeErr = ctx.Err()
+		}
+		if probeErr == nil || ctx.Err() != nil {
+			break
+		}
+		timer := time.NewTimer(100 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			probeErr = ctx.Err()
+		case <-timer.C:
+		}
+	}
+	rp.cacheRTT(pid, rtt, probeErr)
+	return rtt, probeErr
+}
+
+func (rp *RepairProtocol) cacheRTT(pid peer.ID, rtt time.Duration, probeErr error) {
 	rp.rttMu.Lock()
 	if rp.rttCache == nil {
 		rp.rttCache = make(map[peer.ID]cachedRTT)
 	}
 	rp.rttCache[pid] = cachedRTT{rtt: rtt, err: probeErr, measured: time.Now()}
 	rp.rttMu.Unlock()
-	return rtt, probeErr
 }
 
 // StartAdvertisingStorageAvailability advertises this peer's storage
@@ -295,7 +337,7 @@ func (rp *RepairProtocol) AuditAndRepair(ctx context.Context, key Key, replicati
 		rp.stack.RoutingTable,
 		tokenStore,
 		rp.host.ID(),
-		rp.MeasureRTT,
+		rp.MeasureRTTAt,
 		replicationFactor,
 		nil,
 	)

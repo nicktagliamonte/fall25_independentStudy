@@ -66,14 +66,25 @@ for ((trial = 1; trial <= trials; trial++)); do
     (.initial_status.providers | unique | length) == $target and
     (.repaired_status.providers | unique | length) == $target and
     (.repaired_status.providers | index($summary.killed_peer)) == null and
+    ([.repaired_status.providers[] |
+      select(. as $peer | ($summary.initial_status.providers | index($peer))) |
+      select(. != $summary.killed_peer)] | length) == ($target - 1) and
     (.initial_status.providers | index($summary.replacement_peer)) == null and
     (.repaired_status.providers | index($summary.replacement_peer)) != null and
     .repair_s > 0 and .survival_get_s >= 0 and .remote_get_s > 0
   ' "$trial_dir/summary.json" >/dev/null
 done
 
-jq -s -e --argjson trials "$trials" '
+jq -s -e --argjson trials "$trials" --argjson target "$target" '
+  . as $rows |
   ([.[] | select(.phase == "initial") | .trial] | unique | length) == $trials and
-  ([.[] | select(.phase == "repair") | .trial] | unique | length) == $trials
+  ([.[] | select(.phase == "repair") | .trial] | unique | length) == $trials and
+  all(.[]; .status.replica_count <= $target) and
+  ([range(1; $trials + 1) as $trial |
+    ([$rows[] | select(.trial == $trial and .phase == "repair") |
+      .status.replica_count] | min) >= ($target - 1)] | all) and
+  ([range(1; $trials + 1) as $trial |
+    ([$rows[] | select(.trial == $trial) | .status.providers[]] |
+      unique | length) <= ($target + 1)] | all)
 ' "$cell_dir/status.ndjson" >/dev/null
 echo "validated resilience $cell_dir"

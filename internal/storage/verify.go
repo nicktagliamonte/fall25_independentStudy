@@ -10,7 +10,13 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
+	"github.com/multiformats/go-multiaddr"
 )
+
+// ProviderRTTMeasurer probes one token provider using both its identity and
+// advertised dial address. The address is essential in bounded overlays where
+// a healthy replica need not already be an immediate neighbor.
+type ProviderRTTMeasurer func(peer.ID, multiaddr.Multiaddr) (time.Duration, error)
 
 // ReplicaStateVerification represents the result of verifying key state against replication vector.
 type ReplicaStateVerification struct {
@@ -80,8 +86,9 @@ type ProviderDistanceInfo struct {
 //     this source entirely (only routing-table providers are considered).
 //   - providerID (peer.ID): the local provider ID (currently unused in the body; reserved for
 //     RTT measurement reference).
-//   - rttMeasurer (func(peer.ID) (time.Duration, error)): optional function to measure RTT to a
-//     token location when its stored RTT is 0; nil leaves RTT as 0 (unknown).
+//   - rttMeasurer (ProviderRTTMeasurer): optional function to measure RTT to a
+//     token location using its peer ID and advertised address; nil leaves RTT
+//     as 0 (unknown).
 //   - replicationFactor (int): the total replication factor R; values <= 0 default to 7.
 //   - thresholds (*RTTThresholds): RTT thresholds for distance classification; nil uses
 //     ClassifyDistanceByRTT's defaults.
@@ -96,7 +103,7 @@ func VerifyKeyStateWithRepVector(
 	rt *RoutingTable,
 	tokenStore routing.ValueStore,
 	providerID peer.ID,
-	rttMeasurer func(peer.ID) (time.Duration, error),
+	rttMeasurer ProviderRTTMeasurer,
 	replicationFactor int,
 	thresholds *RTTThresholds,
 ) (*ReplicaStateVerification, error) {
@@ -151,7 +158,7 @@ func VerifyKeyStateWithRepVector(
 				if loc.ProviderID == providerID {
 					distanceCategory = DistanceNear
 				} else if rttMeasurer != nil {
-					measuredRTT, err := rttMeasurer(loc.ProviderID)
+					measuredRTT, err := rttMeasurer(loc.ProviderID, loc.Address)
 					if err != nil || measuredRTT <= 0 {
 						if !unreachableIDs[loc.ProviderID] {
 							unreachableIDs[loc.ProviderID] = true
@@ -201,7 +208,7 @@ func VerifyKeyStateWithRepVector(
 			if p.ProviderID == providerID {
 				category = DistanceNear
 			} else if rttMeasurer != nil {
-				measuredRTT, err := rttMeasurer(p.ProviderID)
+				measuredRTT, err := rttMeasurer(p.ProviderID, nil)
 				if err != nil || measuredRTT <= 0 {
 					unreachableIDs[p.ProviderID] = true
 					verification.UnreachableProviders = append(verification.UnreachableProviders, p.ProviderID)

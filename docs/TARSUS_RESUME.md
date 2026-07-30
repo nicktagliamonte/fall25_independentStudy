@@ -150,6 +150,26 @@
   cold non-provider fetch in 0.139 seconds. Both hashes passed, both kernel
   diagnostics were empty, no public bootstrap identity appeared, and teardown
   left zero containers.
+- The protected `resilience-n100-f2c044b` pilot retained all 99 tree edges,
+  reached 100/100 indexed availability across all 16 shards, stored 8 MiB at
+  exactly seven providers, survived a proven-holder stop, returned to seven in
+  153.603 seconds, passed both hash checks, and recorded no kernel exhaustion.
+  Its trace nevertheless invalidated it as final evidence: advertised replicas
+  ranged from 1 to 14, 41 providers appeared, and none of the six original
+  survivors remained in the final set. The old final-snapshot validator had
+  accepted this churn; its `COMPLETE` marker was removed and the artifact is
+  retained only as a diagnostic.
+- Fixed the resulting bounded-overlay liveness defect. Replica verification
+  now uses each token location's advertised address, forces a bounded direct
+  dial when the provider is not already connected, and retries ping while the
+  authenticated Tarsus handshake gate completes. An earlier no-address failure
+  cannot suppress this address-aware attempt. Repeated live-libp2p and race
+  tests cover a disconnected provider that is known only through its token.
+- Strengthened resilience validation for the single-holder failure experiment:
+  every repair observation must remain between six and seven providers, the
+  six live originals must survive, no over-replication is accepted, and only
+  one new provider may enter the trace. The churned 100-node pilot is rejected
+  under these rules while the clean protected 10-node artifact still passes.
 
 ## Current plan
 
@@ -198,13 +218,16 @@ post-handshake over-connection, and connection-manager pruning of the sparse
 backbone. What initially appeared to be arbitrary Docker pair failure is
 explained by contemporaneous kernel neighbor-table overflow; what looked like
 a lost-index-update plateau was proved to be three disconnected overlay
-components. Both failure modes now have explicit startup guards. The immediate
-next step is to rerun the 100-node, one-trial pilot using the default 8 MiB
-payload and protected tree, with temporary host neighbor limits of
-2048/4096/8192 and restoration of the Fedora defaults 128/512/1024 afterward.
-If that validates, run the full query-cost/shard/Bloom matrix and five-trial
-resilience cell, validate every artifact, and only then generate manuscript
-figures. Do not use the dated vnIPFS/Swarm repair scripts as paper evidence.
+components. Both failure modes now have explicit startup guards. The first
+protected 100-node workload then exposed false provider pruning and repair
+amplification, which the address-aware probe and stricter trace validator now
+target. The immediate next step is one fresh 10-node smoke run of that repair
+change, followed by a 100-node, one-trial pilot using the default 8 MiB payload
+and protected tree, with temporary host neighbor limits of 2048/4096/8192 and
+restoration of the Fedora defaults 128/512/1024 afterward. If that validates,
+run the full query-cost/shard/Bloom matrix and five-trial resilience cell,
+validate every artifact, and only then generate manuscript figures. Do not use
+the dated vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and

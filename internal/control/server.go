@@ -1694,9 +1694,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			if rt == nil || tokenStore == nil || hostRef == nil {
 				return
 			}
-			var measureRTT func(peer.ID) (time.Duration, error)
+			var measureRTT mystore.ProviderRTTMeasurer
 			if repairRef != nil {
-				measureRTT = repairRef.MeasureRTT
+				measureRTT = repairRef.MeasureRTTAt
 			}
 			ctxVerify, cancelVerify := context.WithTimeout(context.Background(), 5*time.Second)
 			verification, verifyErr := mystore.VerifyKeyStateWithRepVector(

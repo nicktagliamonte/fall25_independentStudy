@@ -24,6 +24,54 @@ func (noProviderRouter) FindProvidersAsync(context.Context, cid.Cid, int) <-chan
 	return out
 }
 
+func TestMeasureRTTAtDialsDisconnectedTokenProvider(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	source, err := myhost.NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close()
+	target, err := myhost.NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer target.Close()
+	localHandshake := myhost.HandshakeLocal{
+		Agent:    "sng40/0.1.0",
+		Services: ^uint64(0),
+	}
+	handshakePolicy := myhost.HandshakePolicy{
+		MinAgentVersion: "sng40/0.1.0",
+		ServicesAllow:   ^uint64(0),
+		Timeout:         2 * time.Second,
+	}
+	myhost.RegisterHandshake(source, localHandshake, handshakePolicy)
+	myhost.RegisterHandshake(target, localHandshake, handshakePolicy)
+	myhost.InstallHandshakeGate(source, localHandshake, handshakePolicy)
+	myhost.InstallHandshakeGate(target, localHandshake, handshakePolicy)
+
+	if source.Network().Connectedness(target.ID()) == network.Connected {
+		t.Fatal("test requires an initially disconnected token provider")
+	}
+	if len(source.Peerstore().Addrs(target.ID())) != 0 {
+		t.Fatal("source unexpectedly knew the token provider address")
+	}
+
+	repair := NewRepairProtocol(nil, source, tuplespace.NewNativeTupleSpace(), false)
+	rtt, err := repair.MeasureRTTAt(target.ID(), target.Addrs()[0])
+	if err != nil {
+		t.Fatalf("address-aware RTT probe: %v", err)
+	}
+	if rtt <= 0 {
+		t.Fatalf("address-aware RTT = %s, want positive", rtt)
+	}
+	if source.Network().Connectedness(target.ID()) != network.Connected {
+		t.Fatal("address-aware RTT probe did not dial the token provider")
+	}
+}
+
 func TestAuditRepairsCrashStaleReplicaToRTTDiversePeer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/multiformats/go-multiaddr"
 )
 
 func TestReplicationTargetsPreserveExactFactor(t *testing.T) {
@@ -47,7 +48,10 @@ func TestVerifyReplicaStateExcludesUnreachableProviders(t *testing.T) {
 		t.Fatalf("PutToken: %v", err)
 	}
 
-	measure := func(pid peer.ID) (time.Duration, error) {
+	measure := func(pid peer.ID, measuredAddr multiaddr.Multiaddr) (time.Duration, error) {
+		if measuredAddr == nil || measuredAddr.String() != addr.String() {
+			return 0, errors.New("token address was not supplied to liveness probe")
+		}
 		switch pid {
 		case midrange:
 			return 100 * time.Millisecond, nil
@@ -110,7 +114,7 @@ func TestVerifyReplicaCountHealthyWithBestEffortDistancePlacement(t *testing.T) 
 		nil,
 		store,
 		local,
-		func(peer.ID) (time.Duration, error) {
+		func(peer.ID, multiaddr.Multiaddr) (time.Duration, error) {
 			return time.Millisecond, nil
 		},
 		7,
