@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -595,18 +596,33 @@ type IndexedTupleSpace struct {
 // IndexedQueryStats aggregates direct index and owner-verification work across
 // all PHT shards for one tuple read.
 type IndexedQueryStats struct {
-	QueryKind          string `json:"query_kind"`
-	ShardsContacted    int    `json:"shards_contacted"`
-	ShardsSucceeded    int    `json:"shards_succeeded"`
-	ShardsFailed       int    `json:"shards_failed"`
+	QueryKind          string                   `json:"query_kind"`
+	ShardsContacted    int                      `json:"shards_contacted"`
+	ShardsSucceeded    int                      `json:"shards_succeeded"`
+	ShardsFailed       int                      `json:"shards_failed"`
+	NodesFetched       int                      `json:"nodes_fetched"`
+	BranchesConsidered int                      `json:"branches_considered"`
+	BranchesPruned     int                      `json:"branches_pruned"`
+	IndexCandidates    int                      `json:"index_candidates"`
+	IndexMatches       int                      `json:"index_matches"`
+	OwnerAttempts      int                      `json:"owner_attempts"`
+	VerifiedMatches    int                      `json:"verified_matches"`
+	DurationNS         int64                    `json:"duration_ns"`
+	ShardStats         []IndexedShardQueryStats `json:"shard_stats,omitempty"`
+}
+
+// IndexedShardQueryStats preserves the per-shard evidence behind aggregate
+// query counters. In particular, a partial query now identifies the failed
+// shard and its error instead of reporting only ShardsFailed.
+type IndexedShardQueryStats struct {
+	Shard              int    `json:"shard"`
+	Succeeded          bool   `json:"succeeded"`
+	Error              string `json:"error,omitempty"`
 	NodesFetched       int    `json:"nodes_fetched"`
 	BranchesConsidered int    `json:"branches_considered"`
 	BranchesPruned     int    `json:"branches_pruned"`
 	IndexCandidates    int    `json:"index_candidates"`
 	IndexMatches       int    `json:"index_matches"`
-	OwnerAttempts      int    `json:"owner_attempts"`
-	VerifiedMatches    int    `json:"verified_matches"`
-	DurationNS         int64  `json:"duration_ns"`
 }
 
 func NewIndexedTupleSpace(base TupleSpace, stores []pht.ValueStore, coordinator *IndexCoordinator) (*IndexedTupleSpace, error) {
@@ -860,13 +876,14 @@ func (i *IndexedTupleSpace) candidatesWithStats(expr string) ([]string, IndexedQ
 	ctx, cancel := context.WithTimeout(context.Background(), i.timeout)
 	defer cancel()
 	type result struct {
+		shard int
 		names []string
 		stats pht.QueryStats
 		err   error
 	}
 	results := make(chan result, len(i.stores))
-	for _, store := range i.stores {
-		go func(store pht.ValueStore) {
+	for shard, store := range i.stores {
+		go func(shard int, store pht.ValueStore) {
 			var names []string
 			var queryStats pht.QueryStats
 			var err error
@@ -882,18 +899,30 @@ func (i *IndexedTupleSpace) candidatesWithStats(expr string) ([]string, IndexedQ
 					err = ErrTupleNotFound
 				}
 			}
-			results <- result{names: names, stats: queryStats, err: err}
-		}(store)
+			results <- result{shard: shard, names: names, stats: queryStats, err: err}
+		}(shard, store)
 	}
 	var parts [][]string
 	var lastErr error
 	for range i.stores {
 		result := <-results
+		shardStats := IndexedShardQueryStats{
+			Shard:              result.shard,
+			Succeeded:          result.err == nil,
+			NodesFetched:       result.stats.NodesFetched,
+			BranchesConsidered: result.stats.BranchesConsidered,
+			BranchesPruned:     result.stats.BranchesPruned,
+			IndexCandidates:    result.stats.Candidates,
+			IndexMatches:       result.stats.Matches,
+		}
 		if result.err != nil {
+			shardStats.Error = result.err.Error()
+			stats.ShardStats = append(stats.ShardStats, shardStats)
 			stats.ShardsFailed++
 			lastErr = result.err
 			continue
 		}
+		stats.ShardStats = append(stats.ShardStats, shardStats)
 		stats.ShardsSucceeded++
 		stats.NodesFetched += result.stats.NodesFetched
 		stats.BranchesConsidered += result.stats.BranchesConsidered
@@ -902,6 +931,9 @@ func (i *IndexedTupleSpace) candidatesWithStats(expr string) ([]string, IndexedQ
 		stats.IndexMatches += result.stats.Matches
 		parts = append(parts, result.names)
 	}
+	sort.Slice(stats.ShardStats, func(a, b int) bool {
+		return stats.ShardStats[a].Shard < stats.ShardStats[b].Shard
+	})
 	names := pht.CombineResults(parts...)
 	if len(names) == 0 && lastErr != nil {
 		return nil, stats, lastErr

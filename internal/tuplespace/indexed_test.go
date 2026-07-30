@@ -15,11 +15,12 @@ import (
 )
 
 type indexedTestStore struct {
-	mu   sync.Mutex
-	data map[string][]byte
-	puts atomic.Int64
-	gets atomic.Int64
-	fail atomic.Bool
+	mu      sync.Mutex
+	data    map[string][]byte
+	puts    atomic.Int64
+	gets    atomic.Int64
+	fail    atomic.Bool
+	getFail atomic.Bool
 }
 
 type slowIndexedTestTupleSpace struct {
@@ -105,6 +106,9 @@ func (s *failingPutIndexedTestTupleSpace) TsPut(string, []byte) (int, error) {
 
 func (s *indexedTestStore) GetValue(_ context.Context, key string, _ ...interface{}) ([]byte, error) {
 	s.gets.Add(1)
+	if s.getFail.Load() {
+		return nil, errors.New("injected index read failure")
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.data[key]
@@ -421,8 +425,13 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	if queryStats.QueryKind != "prefix" || queryStats.ShardsContacted != len(stores) ||
 		queryStats.ShardsSucceeded != len(stores) || queryStats.NodesFetched == 0 ||
 		queryStats.IndexMatches != tuplesPerClient || queryStats.VerifiedMatches != 1 ||
-		queryStats.DurationNS <= 0 {
+		queryStats.DurationNS <= 0 || len(queryStats.ShardStats) != len(stores) {
 		t.Fatalf("indexed prefix stats = %+v", queryStats)
+	}
+	for shard, shardStats := range queryStats.ShardStats {
+		if shardStats.Shard != shard || !shardStats.Succeeded || shardStats.Error != "" {
+			t.Fatalf("indexed shard %d stats = %+v", shard, shardStats)
+		}
 	}
 	got, err = clientB.TsRead("*dataset-b:01*")
 	if err != nil || string(got[:20]) != "task:text:dataset-b:" {
@@ -592,6 +601,53 @@ func TestIndexedTupleSpaceRegexVerifiesExactOwnerCandidate(t *testing.T) {
 	value, err = indexed.TsGet(`task:(image|text):[0-9]+`)
 	if err != nil || string(value) != "image" {
 		t.Fatalf("regex get = %q, %v", value, err)
+	}
+}
+
+func TestIndexedTupleSpaceReportsPartialShardFailure(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	good := &indexedTestStore{}
+	bad := &indexedTestStore{}
+	bad.getFail.Store(true)
+	stores := []pht.ValueStore{good, bad}
+	index, err := pht.NewMutableIndex(good)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := index.Insert(context.Background(), "task:visible"); err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := NewIndexCoordinator(
+		h,
+		fixedOwnerResolver{owner: h.ID()},
+		stores,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	base := &exactOnlyIndexedTestTupleSpace{values: map[string][]byte{
+		"task:visible": []byte("value"),
+	}}
+	indexed, err := NewIndexedTupleSpace(base, stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	value, stats, err := indexed.TsReadWithStats("task:*")
+	if err != nil || string(value) != "value" {
+		t.Fatalf("partial-shard read = %q, %v", value, err)
+	}
+	if stats.ShardsSucceeded != 1 || stats.ShardsFailed != 1 ||
+		len(stats.ShardStats) != 2 ||
+		stats.ShardStats[0].Shard != 0 || !stats.ShardStats[0].Succeeded ||
+		stats.ShardStats[1].Shard != 1 || stats.ShardStats[1].Succeeded ||
+		stats.ShardStats[1].Error != "injected index read failure" {
+		t.Fatalf("partial-shard stats = %+v", stats)
 	}
 }
 

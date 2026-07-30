@@ -334,6 +334,7 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 		delay := deterministicPeerJitter(rp.host.ID(), rp.advertisementInitialJitterWindow)
 		retry := initialRetry
 		published := false
+		refreshFailed := false
 		for {
 			if delay > 0 {
 				timer := time.NewTimer(delay)
@@ -346,7 +347,13 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 			}
 			err := rp.storageAvailable.AdvertiseStorageAvailable(rp.host.ID(), 0, 1<<30, 1.0, offerLifetime)
 			if err == nil {
+				if !published {
+					log.Printf("storage availability advertisement published")
+				} else if refreshFailed {
+					log.Printf("storage availability advertisement refresh recovered")
+				}
 				published = true
+				refreshFailed = false
 				delay = refreshInterval + deterministicPeerJitter(rp.host.ID(), refreshInterval)
 				retry = initialRetry
 				continue
@@ -354,6 +361,7 @@ func (rp *RepairProtocol) StartAdvertisingStorageAvailability(ctx context.Contex
 			action := "advertisement"
 			if published {
 				action = "advertisement refresh"
+				refreshFailed = true
 			}
 			log.Printf("storage availability %s failed; retrying in %s: %v", action, retry, err)
 			delay = retry
