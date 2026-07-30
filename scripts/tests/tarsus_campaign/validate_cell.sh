@@ -7,9 +7,18 @@ required=(cell.json host.json workload/names.txt workload/patterns.tsv populate.
 for path in "${required[@]}"; do
   [[ -s "$cell_dir/$path" ]] || { echo "missing or empty artifact: $cell_dir/$path" >&2; exit 1; }
 done
+[[ -f "$cell_dir/kernel-network.log" ]] || {
+  echo "missing artifact: $cell_dir/kernel-network.log" >&2
+  exit 1
+}
+[[ ! -s "$cell_dir/kernel-network.log" ]] || {
+  echo "host kernel network exhaustion recorded in $cell_dir/kernel-network.log" >&2
+  exit 1
+}
 
 jq -e '.node_count > 1 and .catalog_size > 0 and .index_shards > 0' "$cell_dir/cell.json" >/dev/null
-jq -e '.git.commit != "" and .host.logical_cpus > 0' "$cell_dir/host.json" >/dev/null
+jq -e '.git.commit != "" and .host.logical_cpus > 0 and
+  .host.ipv4_neighbor_gc.thresh3 > 0' "$cell_dir/host.json" >/dev/null
 jq -e --slurpfile cell "$cell_dir/cell.json" \
   '.query_stats.verified_matches == 1
    and .query_stats.index_matches >= $cell[0].node_count' \

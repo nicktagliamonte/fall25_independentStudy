@@ -57,7 +57,7 @@ for i in $(seq 2 "$N"); do
       --listen /ip4/172.20.0.${IP_LAST}/tcp/4001
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
-      --min-outbound \${TARSUS_MIN_OUTBOUND:-4}
+      --min-outbound \${TARSUS_MIN_OUTBOUND:-3}
       --cluster-nodes $N
       --no-default-bootstrap
       --index-shards \${TARSUS_INDEX_SHARDS:-16}

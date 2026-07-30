@@ -813,43 +813,17 @@ func Run() error {
 						if _, _, _, _ = mystore.AppendPeerAddedIfNew(context.Background(), stack.Datastore, stack.BlockSvc, pid.String()); true {
 							// no-op
 						}
-						learnedToConnect := make([]peer.AddrInfo, 0)
 						for _, info2 := range res.Learned {
 							if info2.ID == h.ID() {
 								continue
 							}
 							_ = myhost.RememberLearnedPeer(h, peerStore, policyBase.AttackMitigation, info2.ID, info2.Addrs, 0, "handshake")
-							// Collect a small subset for immediate connection (cap at 2 per handshake)
-							if len(learnedToConnect) < 2 {
-								// Check if already connected
-								if h.Network().Connectedness(info2.ID) != network.Connected {
-									learnedToConnect = append(learnedToConnect, info2)
-								}
-							}
 						}
-						// Connect to learned peers (bounded, non-blocking)
-						for _, info2 := range learnedToConnect {
-							if am := policyBase.AttackMitigation; am != nil {
-								if am.BanList.IsBanned(info2.ID) {
-									continue
-								}
-								if ok, _ := am.Eclipse.CanAllow(ctx, info2.ID, info2.Addrs); !ok {
-									continue
-								}
-							}
-							_ = peerStore.RecordDialAttempt(info2.ID)
-							metrics.IncDialsAttempted()
-							ctxDial, cancel := context.WithTimeout(ctx, dialTimeout)
-							err := h.Connect(ctxDial, info2)
-							cancel()
-							if err != nil {
-								_ = peerStore.RecordDialFailure(info2.ID)
-								metrics.IncDialsFailed()
-							} else {
-								_ = peerStore.RecordDialSuccess(info2.ID)
-								metrics.IncDialsSucceeded()
-							}
-						}
+						// Learned addresses feed the next maintenance pass.
+						// Dialing extra peers here used to bypass minOutbound:
+						// each successful target dial could open two more
+						// connections and produce O(N) excess ARP entries in
+						// large same-host Docker campaigns.
 						// If remote height is ahead, attempt suffix sync with budget
 						if res.RemoteStateHeight > height {
 							remoteHead, err := cid.Decode(res.RemoteStateHead)

@@ -16,7 +16,7 @@ services:
       --listen /ip4/172.20.0.10/tcp/4001
       --key /app/keys/bootstrap.key
       --store /app/data/bootstrap
-      --min-outbound ${TARSUS_MIN_OUTBOUND:-4}
+      --min-outbound ${TARSUS_MIN_OUTBOUND:-3}
       --no-default-bootstrap
       --index-shards ${TARSUS_INDEX_SHARDS:-16}
       --disable-bloom-pruning=${TARSUS_DISABLE_BLOOM_PRUNING:-false}

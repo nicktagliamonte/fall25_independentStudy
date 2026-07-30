@@ -21,6 +21,7 @@ if [[ -f "$cell_dir/COMPLETE" ]]; then
 fi
 
 mkdir -p "$cell_dir/workload" "$cell_dir/batches"
+kernel_diagnostics_since=$(date +%s)
 campaign_capture_host_manifest "$cell_dir/host.json"
 "$CAMPAIGN_DIR/generate_workload.sh" "$catalog_size" "$cell_dir/workload"
 
@@ -32,7 +33,7 @@ jq -n \
   --argjson bloom_pruning "$bloom_pruning" \
   --argjson query_repetitions "$repetitions" \
   --argjson client_count "$client_count" \
-  --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-4}" \
+  --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-3}" \
   --arg transport "tcp" \
   '{cell_id:$cell_id,node_count:$node_count,catalog_size:$catalog_size,
     index_shards:$index_shards,bloom_pruning:$bloom_pruning,
@@ -51,6 +52,8 @@ finalize_artifacts() {
     monitor_pid=""
   fi
   docker-compose -f "$COMPOSE_FILE" logs --no-color >"$cell_dir/docker.log" 2>&1 || true
+  campaign_capture_kernel_network_diagnostics \
+    "$kernel_diagnostics_since" "$cell_dir/kernel-network.log"
   artifacts_finalized=1
 }
 cleanup() {
@@ -61,6 +64,7 @@ trap cleanup EXIT
 
 export TARSUS_NODE_COUNT="$node_count"
 export TARSUS_INDEX_SHARDS="$shard_count"
+export TARSUS_MIN_OUTBOUND="${TARSUS_MIN_OUTBOUND:-3}"
 export TARSUS_FRESH_VOLUMES=true
 if [[ "$bloom_pruning" == "true" ]]; then
   export TARSUS_DISABLE_BLOOM_PRUNING=false
@@ -68,8 +72,15 @@ else
   export TARSUS_DISABLE_BLOOM_PRUNING=true
 fi
 
+campaign_require_neighbor_capacity "$node_count" "$TARSUS_MIN_OUTBOUND"
 campaign_log "start nodes=$node_count shards=$shard_count bloom=$bloom_pruning"
 "$REPO_ROOT/scripts/docker/start.sh" "$node_count" >"$cell_dir/start.log" 2>&1
+campaign_capture_kernel_network_diagnostics \
+  "$kernel_diagnostics_since" "$cell_dir/kernel-network-startup.log"
+if [[ -s "$cell_dir/kernel-network-startup.log" ]]; then
+  echo "host kernel reported neighbor/conntrack exhaustion during startup; see $cell_dir/kernel-network-startup.log" >&2
+  exit 1
+fi
 "$REPO_ROOT/scripts/utils/resource_monitor.sh" \
   --output "$cell_dir/resources.csv" \
   --interval "${RESOURCE_INTERVAL_SECONDS:-5}" &

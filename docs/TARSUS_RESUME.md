@@ -89,6 +89,27 @@
   The validator-compliant 5 MiB run reached and restored exactly seven copies,
   repaired in 28.458 seconds, passed both hash checks, contained none of the
   public bootstrap IDs, emitted `COMPLETE`, and left zero containers running.
+- Diagnosed the apparent 100-node Docker pair-connectivity failures as host
+  IPv4 neighbor-table exhaustion, not Tarsus routing or public-IPFS traffic.
+  The failed `resilience-n100-a1d761c` pilot produced 2,150 kernel
+  `arp_cache: neighbor table overflow` messages against Fedora's default
+  `gc_thresh3=1024`; its 100 nodes averaged 10.29 live neighbors and three
+  nodes consequently became isolated. The strict availability gate correctly
+  rejected the run at 0/100 after ten minutes.
+- Removed a CLI-only dialer path that opened up to two opportunistic
+  connections after every successful target dial and therefore bypassed the
+  configured outbound bound. Learned authenticated addresses remain in the
+  peerstore for later bounded maintenance.
+- Set same-host campaign topology to three minimum outbound connections and
+  added a host neighbor-capacity preflight. Host manifests record all three
+  neighbor thresholds; startup and final artifacts capture kernel
+  neighbor/conntrack exhaustion; validators reject any run that records it.
+- Revalidated the bounded dialer at
+  `test_results/tarsus_campaign_smoke/resilience-n010-bounded-outbound-v3`.
+  The fresh 10-node, 5 MiB run indexed all ten availability tuples, reached
+  exactly seven replicas, stopped a proven holder, repaired to a distinct
+  seventh provider in 35.046 seconds, passed both retrieval hash checks,
+  contained no public bootstrap identities, and left zero containers.
 
 ## Current plan
 
@@ -130,17 +151,13 @@ replacement issues one batched call and successfully captured four complete
 
 ## Immediate next work
 
-The production-current failure/repair harness is complete and has passed its
-fresh-volume 10-node end-to-end smoke gate. The first 100-node pilot reached
-all 100 running containers but failed on the first requested tree edge because
-the old harness discarded every `/connect` diagnostic. The hardened retry
-reached 87 explicit edges before revealing that a lower-tree pair was trapped
-in libp2p dial backoff in both directions; neither pilot began the content
-workload. The explicit-dial path now bypasses that stale opportunistic backoff.
-A later pilot proved some selected pairs could not exchange even ICMP packets
-across the Docker bridge despite both endpoints communicating with many other
-peers; the harness now uses bounded alternate edges rather than retrying an
-impossible pair for minutes. The next step is to rerun the 100-node, one-trial
+The production-current failure/repair harness has passed its fresh-volume
+10-node end-to-end smoke gates. Successive 100-node pilots exposed and fixed
+discarded connection diagnostics, stale libp2p dial backoff, and unbounded
+post-handshake over-connection. What initially appeared to be arbitrary Docker
+pair failure is now explained by a contemporaneous kernel neighbor-table
+overflow and guarded explicitly by the campaign. The immediate next step is
+to commit the bounded-dial/capacity changes and rerun the 100-node, one-trial
 pilot using the default 8 MiB payload. If that validates, run the full
 query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
 artifact, and only then generate manuscript figures. Do not use the dated

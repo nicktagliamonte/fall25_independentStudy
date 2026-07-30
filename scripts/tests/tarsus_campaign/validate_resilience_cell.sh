@@ -14,10 +14,19 @@ for path in "${required[@]}"; do
     exit 1
   }
 done
+[[ -f "$cell_dir/kernel-network.log" ]] || {
+  echo "missing resilience artifact: $cell_dir/kernel-network.log" >&2
+  exit 1
+}
+[[ ! -s "$cell_dir/kernel-network.log" ]] || {
+  echo "host kernel network exhaustion recorded in $cell_dir/kernel-network.log" >&2
+  exit 1
+}
 
 jq -e '.node_count > 1 and .payload_bytes > 4194304 and
   .trials > 0 and .replica_target > 1' "$cell_dir/cell.json" >/dev/null
-jq -e '.git.commit != "" and .host.logical_cpus > 0' "$cell_dir/host.json" >/dev/null
+jq -e '.git.commit != "" and .host.logical_cpus > 0 and
+  .host.ipv4_neighbor_gc.thresh3 > 0' "$cell_dir/host.json" >/dev/null
 jq -e --slurpfile cell "$cell_dir/cell.json" \
   'length == $cell[0].node_count and
    ([.[].peer] | unique | length) == $cell[0].node_count' \

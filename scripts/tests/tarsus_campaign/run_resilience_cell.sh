@@ -19,6 +19,7 @@ if [[ -f "$cell_dir/COMPLETE" ]]; then
 fi
 
 mkdir -p "$cell_dir/trials"
+kernel_diagnostics_since=$(date +%s)
 campaign_capture_host_manifest "$cell_dir/host.json"
 jq -n \
   --arg cell_id "$(basename "$cell_dir")" \
@@ -26,8 +27,10 @@ jq -n \
   --argjson payload_bytes "$payload_bytes" \
   --argjson trials "$trials" \
   --argjson replica_target "$replica_target" \
+  --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-3}" \
   '{cell_id:$cell_id,node_count:$node_count,payload_bytes:$payload_bytes,
     trials:$trials,replica_target:$replica_target,transport:"tcp",
+    min_outbound:$min_outbound,
     failure_mode:"stopped proven replica holder",
     repair_mode:"automatic periodic audit"}' >"$cell_dir/cell.json"
 
@@ -44,6 +47,8 @@ finalize_artifacts() {
   fi
   docker-compose -f "$COMPOSE_FILE" ps -a >"$cell_dir/docker-ps-final.txt" 2>/dev/null || true
   docker-compose -f "$COMPOSE_FILE" logs --no-color >"$cell_dir/docker.log" 2>&1 || true
+  campaign_capture_kernel_network_diagnostics \
+    "$kernel_diagnostics_since" "$cell_dir/kernel-network.log"
   artifacts_finalized=1
 }
 cleanup() {
@@ -55,10 +60,18 @@ trap cleanup EXIT
 export TARSUS_NODE_COUNT="$node_count"
 export TARSUS_INDEX_SHARDS="${TARSUS_INDEX_SHARDS:-16}"
 export TARSUS_DISABLE_BLOOM_PRUNING="${TARSUS_DISABLE_BLOOM_PRUNING:-false}"
+export TARSUS_MIN_OUTBOUND="${TARSUS_MIN_OUTBOUND:-3}"
 export TARSUS_FRESH_VOLUMES=true
 
+campaign_require_neighbor_capacity "$node_count" "$TARSUS_MIN_OUTBOUND"
 campaign_log "resilience start nodes=$node_count payload_bytes=$payload_bytes trials=$trials target=$replica_target"
 "$REPO_ROOT/scripts/docker/start.sh" "$node_count" >"$cell_dir/start.log" 2>&1
+campaign_capture_kernel_network_diagnostics \
+  "$kernel_diagnostics_since" "$cell_dir/kernel-network-startup.log"
+if [[ -s "$cell_dir/kernel-network-startup.log" ]]; then
+  echo "host kernel reported neighbor/conntrack exhaustion during startup; see $cell_dir/kernel-network-startup.log" >&2
+  exit 1
+fi
 "$REPO_ROOT/scripts/utils/resource_monitor.sh" \
   --output "$cell_dir/resources.csv" \
   --interval "${RESOURCE_INTERVAL_SECONDS:-5}" &
