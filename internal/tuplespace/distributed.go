@@ -35,6 +35,7 @@ const (
 	maxTupleRouteWork     = 64
 	maxTupleRouteBranches = 4
 	maxTupleMemoEntries   = 4096
+	maxTupleFenceEntries  = 65536
 	handshakeVerifiedTag  = "handshake_ok"
 )
 
@@ -82,6 +83,9 @@ type DistributedTupleSpace struct {
 	memoMu               sync.Mutex
 	memo                 map[string]*tupleMemoEntry
 	durable              *durableTupleStore
+	fenceMu              sync.Mutex
+	fences               map[string]tupleFence
+	fenceOrder           []string
 }
 
 type tupleMemoEntry struct {
@@ -105,6 +109,7 @@ func NewDistributedTupleSpace(h host.Host, resolver TupleOwnerResolver) (*Distri
 		local:    NewNativeTupleSpace(),
 		timeout:  defaultTupleTimeout,
 		memo:     make(map[string]*tupleMemoEntry),
+		fences:   make(map[string]tupleFence),
 	}
 	h.SetStreamHandler(NativeTupleProtocolID, d.handleStream)
 	return d, nil
@@ -126,6 +131,7 @@ func (d *DistributedTupleSpace) EnableDurableState(store pht.ValueStore) error {
 	if err != nil {
 		return err
 	}
+	durable.project = d.local
 	d.durable = durable
 	return nil
 }
@@ -231,9 +237,14 @@ func (d *DistributedTupleSpace) exactDurable(
 			d.requestSequence.Add(1),
 		)
 	}
-	fence, err := d.durable.resolve(ctx, req.Name)
-	if err != nil {
-		return nil, fmt.Errorf("resolve durable tuple owner: %w", err)
+	fence, cached := d.cachedTupleFence(req.Name)
+	if !cached {
+		var err error
+		fence, err = d.durable.resolve(ctx, req.Name)
+		if err != nil {
+			return nil, fmt.Errorf("resolve durable tuple owner: %w", err)
+		}
+		d.cacheTupleFence(req.Name, fence)
 	}
 	for attempt := 0; attempt < 4; attempt++ {
 		owner, decodeErr := peer.Decode(fence.Writer)
@@ -244,6 +255,7 @@ func (d *DistributedTupleSpace) exactDurable(
 		req.Writer = fence.Writer
 		value, requestErr := d.requestPeer(ctx, owner, req)
 		if requestErr == nil || errors.Is(requestErr, ErrTupleNotFound) {
+			d.cacheTupleFence(req.Name, fence)
 			return value, requestErr
 		}
 		var stale *tupleAuthorityError
@@ -252,18 +264,50 @@ func (d *DistributedTupleSpace) exactDurable(
 				return nil, requestErr
 			}
 			fence = stale.Fence
+			d.cacheTupleFence(req.Name, fence)
 			continue
 		}
 		var application *tupleApplicationError
 		if errors.As(requestErr, &application) || owner == d.host.ID() {
 			return nil, requestErr
 		}
+		var err error
 		fence, err = d.durable.failover(ctx, req.Name, fence)
 		if err != nil {
 			return nil, fmt.Errorf("fail over durable tuple owner: %w", err)
 		}
+		d.cacheTupleFence(req.Name, fence)
 	}
 	return nil, errors.New("durable tuple authority did not converge")
+}
+
+func (d *DistributedTupleSpace) cachedTupleFence(name string) (tupleFence, bool) {
+	d.fenceMu.Lock()
+	fence, ok := d.fences[name]
+	d.fenceMu.Unlock()
+	return fence, ok
+}
+
+func (d *DistributedTupleSpace) cacheTupleFence(name string, fence tupleFence) {
+	if name == "" || fence.Epoch == 0 || fence.Writer == "" {
+		return
+	}
+	d.fenceMu.Lock()
+	defer d.fenceMu.Unlock()
+	if current, exists := d.fences[name]; exists {
+		if compareTupleFences(fence, current) >= 0 {
+			d.fences[name] = fence
+		}
+		return
+	}
+	d.fences[name] = fence
+	d.fenceOrder = append(d.fenceOrder, name)
+	for len(d.fences) > maxTupleFenceEntries {
+		oldest := d.fenceOrder[0]
+		d.fenceOrder[0] = ""
+		d.fenceOrder = d.fenceOrder[1:]
+		delete(d.fences, oldest)
+	}
 }
 
 // associative queries peers in stable peer-ID order. A consuming operation
@@ -636,11 +680,7 @@ func (d *DistributedTupleSpace) applyLocalOnce(
 	req tupleWireRequest,
 ) ([]byte, error) {
 	if d.durable != nil && !isTuplePattern(req.Name) {
-		value, err := d.durable.apply(ctx, req)
-		if syncErr := d.syncDurableLocalProjection(ctx, req.Name); err == nil && syncErr != nil {
-			err = syncErr
-		}
-		return value, err
+		return d.durable.apply(ctx, req)
 	}
 	if req.RequestID == "" {
 		return d.applyLocal(req)
@@ -672,18 +712,6 @@ func (d *DistributedTupleSpace) applyLocalOnce(
 	}
 	d.memoMu.Unlock()
 	return value, err
-}
-
-func (d *DistributedTupleSpace) syncDurableLocalProjection(
-	ctx context.Context,
-	name string,
-) error {
-	values, err := d.durable.values(ctx, name)
-	if err != nil {
-		return err
-	}
-	d.local.SetExactState(name, values)
-	return nil
 }
 
 type tupleApplicationError struct {

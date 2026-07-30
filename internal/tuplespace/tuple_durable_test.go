@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -129,5 +130,139 @@ func TestDurableTupleFailoverCopiesStateAndFencesOldOwner(t *testing.T) {
 		Writer:    initial.Writer,
 	}); !errors.Is(err, errStaleTupleAuthority) {
 		t.Fatalf("stale owner error = %v", err)
+	}
+}
+
+func TestDurableTupleOwnerCacheAvoidsRedundantDHTReads(t *testing.T) {
+	store := &indexedTestStore{}
+	owner := peer.ID("cached-durable-owner")
+	durable, err := newDurableTupleStore(
+		owner,
+		fixedOwnerResolver{owner: owner},
+		store,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	durable.setTiming(0, time.Minute, time.Second)
+	ctx := context.Background()
+	fence := tupleFence{Epoch: 1, Writer: owner.String()}
+	if _, err := durable.apply(ctx, tupleWireRequest{
+		Operation: "put",
+		Name:      "task:cached-owner",
+		Value:     []byte("payload"),
+		RequestID: "cache-put",
+		Epoch:     fence.Epoch,
+		Writer:    fence.Writer,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readsAfterCommit := store.gets.Load()
+	value, err := durable.apply(ctx, tupleWireRequest{
+		Operation: "read",
+		Name:      "task:cached-owner",
+		RequestID: "cache-read",
+		Epoch:     fence.Epoch,
+		Writer:    fence.Writer,
+	})
+	if err != nil || string(value) != "payload" {
+		t.Fatalf("cached read = %q, %v", value, err)
+	}
+	if got := store.gets.Load(); got != readsAfterCommit {
+		t.Fatalf("cached owner read performed %d extra DHT reads", got-readsAfterCommit)
+	}
+}
+
+func TestDurableTupleOwnerCacheExpiresBeforeLeaseRenewal(t *testing.T) {
+	store := &indexedTestStore{}
+	owner := peer.ID("expiring-durable-owner")
+	durable, err := newDurableTupleStore(
+		owner,
+		fixedOwnerResolver{owner: owner},
+		store,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	durable.setTiming(0, 30*time.Millisecond, 5*time.Millisecond)
+	ctx := context.Background()
+	initial := tupleFence{Epoch: 1, Writer: owner.String()}
+	if _, err := durable.apply(ctx, tupleWireRequest{
+		Operation: "put",
+		Name:      "task:expiring-cache",
+		Value:     []byte("payload"),
+		RequestID: "expiring-put",
+		Epoch:     initial.Epoch,
+		Writer:    initial.Writer,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	readsAfterCommit := store.gets.Load()
+	time.Sleep(30 * time.Millisecond)
+	_, err = durable.apply(ctx, tupleWireRequest{
+		Operation: "read",
+		Name:      "task:expiring-cache",
+		RequestID: "expiring-read",
+		Epoch:     initial.Epoch,
+		Writer:    initial.Writer,
+	})
+	var stale *tupleAuthorityError
+	if !errors.As(err, &stale) {
+		t.Fatalf("expired fence read = %v, want authority redirect", err)
+	}
+	if stale.Fence.Epoch <= initial.Epoch {
+		t.Fatalf("renewed fence = %+v, want epoch after %+v", stale.Fence, initial)
+	}
+	if got := store.gets.Load(); got <= readsAfterCommit {
+		t.Fatal("expired owner cache did not re-read durable state")
+	}
+}
+
+func TestDistributedDurableTupleCachesFenceAndOwnerState(t *testing.T) {
+	ownerHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerHost.Close()
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+	connectTupleHosts(t, clientHost, ownerHost)
+
+	store := &indexedTestStore{}
+	resolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	owner, err := NewDistributedTupleSpace(ownerHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	client, err := NewDistributedTupleSpace(clientHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	for _, space := range []*DistributedTupleSpace{owner, client} {
+		if err := space.EnableDurableState(store); err != nil {
+			t.Fatal(err)
+		}
+		space.SetDurableStateTiming(0, time.Minute, time.Second)
+	}
+
+	if _, err := client.TsPut("task:end-to-end-cache", []byte("payload")); err != nil {
+		t.Fatal(err)
+	}
+	readsAfterPut := store.gets.Load()
+	value, err := client.TsRead("task:end-to-end-cache")
+	if err != nil || string(value) != "payload" {
+		t.Fatalf("cached distributed read = %q, %v", value, err)
+	}
+	if got := store.gets.Load(); got != readsAfterPut {
+		t.Fatalf("cached distributed read performed %d extra DHT reads", got-readsAfterPut)
+	}
+	projected, err := owner.local.TsRead("task:end-to-end-cache")
+	if err != nil || string(projected) != "payload" {
+		t.Fatalf("local projection = %q, %v", projected, err)
 	}
 }

@@ -24,6 +24,8 @@ const (
 	defaultTupleStateMargin   = 500 * time.Millisecond
 	maxDurableOperationResult = 256
 	maxDurableTupleStateBytes = maxTupleRequestBytes
+	maxDurableTupleCacheBytes = 64 << 20
+	maxDurableTupleCacheItems = 4096
 	tupleStateLockStripes     = 256
 )
 
@@ -80,13 +82,18 @@ func (s durableTupleState) expiresAt() time.Time {
 }
 
 type durableTupleStore struct {
-	self     peer.ID
-	resolver TupleOwnerResolver
-	store    pht.ValueStore
-	settle   time.Duration
-	lease    time.Duration
-	margin   time.Duration
-	locks    [tupleStateLockStripes]sync.Mutex
+	self       peer.ID
+	resolver   TupleOwnerResolver
+	store      pht.ValueStore
+	settle     time.Duration
+	lease      time.Duration
+	margin     time.Duration
+	locks      [tupleStateLockStripes]sync.Mutex
+	cacheMu    sync.RWMutex
+	cache      map[string]durableTupleState
+	cacheSize  map[string]int
+	cacheBytes int
+	project    *NativeTupleSpace
 }
 
 func newDurableTupleStore(
@@ -98,12 +105,14 @@ func newDurableTupleStore(
 		return nil, errors.New("self, tuple owner resolver, and tuple state store required")
 	}
 	return &durableTupleStore{
-		self:     self,
-		resolver: resolver,
-		store:    store,
-		settle:   defaultTupleStateSettle,
-		lease:    defaultTupleStateLease,
-		margin:   defaultTupleStateMargin,
+		self:      self,
+		resolver:  resolver,
+		store:     store,
+		settle:    defaultTupleStateSettle,
+		lease:     defaultTupleStateLease,
+		margin:    defaultTupleStateMargin,
+		cache:     make(map[string]durableTupleState),
+		cacheSize: make(map[string]int),
 	}, nil
 }
 
@@ -252,7 +261,11 @@ func (d *durableTupleStore) apply(
 	lock.Lock()
 	defer lock.Unlock()
 
-	state, err := d.read(ctx, req.Name)
+	state, cached := d.cachedState(req.Name, requested, time.Now())
+	var err error
+	if !cached {
+		state, err = d.read(ctx, req.Name)
+	}
 	if err != nil {
 		if !isMissingTupleState(err) {
 			return nil, err
@@ -269,7 +282,7 @@ func (d *durableTupleStore) apply(
 			ValidAfter: now.UnixNano(),
 			ExpiresAt:  now.Add(d.lease).UnixNano(),
 		}
-	} else {
+	} else if !cached {
 		if state.Name != req.Name {
 			return nil, errors.New("tuple-state key/name mismatch")
 		}
@@ -288,6 +301,10 @@ func (d *durableTupleStore) apply(
 			if renewErr != nil {
 				return nil, renewErr
 			}
+			// Renewal advances the epoch. Redirect the in-flight request so it
+			// is retried under the newly confirmed fence rather than applying
+			// an operation that named the expired epoch.
+			return nil, &tupleAuthorityError{Fence: state.fence()}
 		}
 	}
 
@@ -295,6 +312,7 @@ func (d *durableTupleStore) apply(
 		if result.Operation != req.Operation {
 			return nil, errors.New("tuple request ID reused for a different operation")
 		}
+		d.projectState(state)
 		return append([]byte(nil), result.Value...), nil
 	}
 
@@ -315,11 +333,13 @@ func (d *durableTupleStore) apply(
 		mutated = true
 	case "read":
 		if len(state.Values) == 0 {
+			d.projectState(state)
 			return nil, ErrTupleNotFound
 		}
 		value = append([]byte(nil), state.Values[0]...)
 	case "get":
 		if len(state.Values) == 0 {
+			d.projectState(state)
 			return nil, ErrTupleNotFound
 		}
 		value = append([]byte(nil), state.Values[0]...)
@@ -330,6 +350,8 @@ func (d *durableTupleStore) apply(
 		return nil, fmt.Errorf("unsupported tuple operation %q", req.Operation)
 	}
 	if !mutated {
+		d.cacheState(state)
+		d.projectState(state)
 		return value, nil
 	}
 
@@ -349,6 +371,7 @@ func (d *durableTupleStore) apply(
 	if err := d.commit(ctx, state); err != nil {
 		return nil, err
 	}
+	d.projectState(state)
 	return value, nil
 }
 
@@ -375,8 +398,10 @@ func (d *durableTupleStore) renewLocked(
 	}
 	if compareTupleFences(winner.fence(), state.fence()) != 0 ||
 		winner.Writer != d.self.String() {
+		d.dropCachedState(state.Name)
 		return durableTupleState{}, &tupleAuthorityError{Fence: winner.fence()}
 	}
+	d.cacheState(winner)
 	return winner, nil
 }
 
@@ -397,12 +422,14 @@ func (d *durableTupleStore) commit(ctx context.Context, state durableTupleState)
 	for {
 		confirmed, readErr := d.store.GetValue(ctx, tupleStateKey(state.Name))
 		if readErr == nil && bytes.Equal(confirmed, expected) {
+			d.cacheState(state)
 			return nil
 		}
 		if readErr == nil {
 			var winner durableTupleState
 			if json.Unmarshal(confirmed, &winner) == nil &&
 				compareTupleFences(winner.fence(), state.fence()) > 0 {
+				d.dropCachedState(state.Name)
 				return &tupleAuthorityError{Fence: winner.fence()}
 			}
 		}
@@ -452,19 +479,94 @@ func (d *durableTupleStore) write(ctx context.Context, state durableTupleState) 
 	return d.store.PutValue(ctx, tupleStateKey(state.Name), data)
 }
 
-func (d *durableTupleStore) values(
-	ctx context.Context,
+func (d *durableTupleStore) cachedState(
 	name string,
-) ([][]byte, error) {
-	state, err := d.read(ctx, name)
-	if err != nil {
-		return nil, err
+	fence tupleFence,
+	now time.Time,
+) (durableTupleState, bool) {
+	d.cacheMu.RLock()
+	state, ok := d.cache[name]
+	d.cacheMu.RUnlock()
+	if !ok ||
+		state.Writer != d.self.String() ||
+		compareTupleFences(state.fence(), fence) != 0 ||
+		now.Before(state.validAfter()) ||
+		!now.Before(state.expiresAt().Add(-d.margin)) {
+		return durableTupleState{}, false
 	}
-	out := make([][]byte, len(state.Values))
+	return cloneDurableTupleState(state), true
+}
+
+func (d *durableTupleStore) cacheState(state durableTupleState) {
+	if state.Writer != d.self.String() {
+		return
+	}
+	cloned := cloneDurableTupleState(state)
+	size := durableTupleStateCacheSize(cloned)
+	d.cacheMu.Lock()
+	if previous, ok := d.cacheSize[state.Name]; ok {
+		d.cacheBytes -= previous
+	}
+	d.cache[state.Name] = cloned
+	d.cacheSize[state.Name] = size
+	d.cacheBytes += size
+	for len(d.cache) > maxDurableTupleCacheItems ||
+		d.cacheBytes > maxDurableTupleCacheBytes {
+		evicted := false
+		for name := range d.cache {
+			if name == state.Name && len(d.cache) > 1 {
+				continue
+			}
+			d.cacheBytes -= d.cacheSize[name]
+			delete(d.cacheSize, name)
+			delete(d.cache, name)
+			evicted = true
+			break
+		}
+		if !evicted {
+			break
+		}
+	}
+	d.cacheMu.Unlock()
+}
+
+func (d *durableTupleStore) dropCachedState(name string) {
+	d.cacheMu.Lock()
+	d.cacheBytes -= d.cacheSize[name]
+	delete(d.cacheSize, name)
+	delete(d.cache, name)
+	d.cacheMu.Unlock()
+}
+
+func (d *durableTupleStore) projectState(state durableTupleState) {
+	if d.project != nil {
+		d.project.SetExactState(state.Name, state.Values)
+	}
+}
+
+func cloneDurableTupleState(state durableTupleState) durableTupleState {
+	cloned := state
+	cloned.Values = make([][]byte, len(state.Values))
 	for i := range state.Values {
-		out[i] = append([]byte(nil), state.Values[i]...)
+		cloned.Values[i] = append([]byte(nil), state.Values[i]...)
 	}
-	return out, nil
+	cloned.Results = make([]durableTupleResult, len(state.Results))
+	for i := range state.Results {
+		cloned.Results[i] = state.Results[i]
+		cloned.Results[i].Value = append([]byte(nil), state.Results[i].Value...)
+	}
+	return cloned
+}
+
+func durableTupleStateCacheSize(state durableTupleState) int {
+	size := 128 + len(state.Name) + len(state.Writer)
+	for _, value := range state.Values {
+		size += len(value)
+	}
+	for _, result := range state.Results {
+		size += len(result.RequestID) + len(result.Operation) + len(result.Value)
+	}
+	return size
 }
 
 func (d *durableTupleStore) lockFor(name string) *sync.Mutex {

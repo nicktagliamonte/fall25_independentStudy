@@ -40,8 +40,10 @@ if [[ -z "$OUTPUT_FILE" ]]; then
   exit 1
 fi
 
-# Resolve container list: explicit names, or default to fall25-* and swarm-*
+# Resolve container list: explicit names, or default to fall25-* and swarm-*.
+AUTO_DETECT=0
 if [[ ${#CONTAINERS[@]} -eq 0 ]]; then
+  AUTO_DETECT=1
   CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^(fall25-|swarm-)' || true))
 fi
 
@@ -53,39 +55,36 @@ fi
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 echo "timestamp,container,cpu_pct,mem_usage_mb" > "$OUTPUT_FILE"
 
-# Parse mem string (e.g. "50.23MiB / 1.5GiB") to MB
-to_mb() {
-  local s="$1"
-  local part=$(echo "$s" | sed 's/\/.*//' | tr -d ' ')
-  local num=$(echo "$part" | grep -oE '[0-9]+\.?[0-9]*' | head -1 || echo "0")
-  local unit=$(echo "$part" | grep -oE 'KiB|MiB|GiB' | head -1 || echo "MiB")
-  case "$unit" in
-    KiB) echo "scale=2; $num / 1024" | bc 2>/dev/null || echo "$num";;
-    MiB) echo "$num";;
-    GiB) echo "scale=2; $num * 1024" | bc 2>/dev/null || echo "$num";;
-    *)   echo "$num";;
-  esac
-}
-
-# Track whether we had explicit containers (don't refresh) vs auto-detect (refresh each loop)
-HAD_EXPLICIT_CONTAINERS=$([[ ${#CONTAINERS[@]} -gt 0 ]] && echo 1 || echo 0)
-
 while true; do
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  if [[ "$HAD_EXPLICIT_CONTAINERS" -eq 0 ]]; then
+  if [[ "$AUTO_DETECT" -eq 1 ]]; then
     CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^(fall25-|swarm-)' || true))
   fi
   if [[ ${#CONTAINERS[@]} -gt 0 ]]; then
-    for c in "${CONTAINERS[@]}"; do
-      line=$(docker stats --no-stream --format "{{.Name}},{{.CPUPerc}},{{.MemUsage}}" "$c" 2>/dev/null || true)
-      if [[ -n "$line" ]]; then
-        name=$(echo "$line" | cut -d',' -f1)
-        cpu=$(echo "$line" | cut -d',' -f2 | tr -d '%')
-        mem_raw=$(echo "$line" | cut -d',' -f3-)
-        mem_mb=$(to_mb "$mem_raw" 2>/dev/null || echo "")
-        echo "$ts,$name,$cpu,$mem_mb" >> "$OUTPUT_FILE"
-      fi
-    done
+    # One docker-stats call samples every container concurrently. The previous
+    # per-container loop took O(N) blocking daemon round trips per sample and
+    # could spend an entire short campaign measuring itself, especially at
+    # 50--100 nodes.
+    docker stats --no-stream \
+      --format "{{.Name}},{{.CPUPerc}},{{.MemUsage}}" \
+      "${CONTAINERS[@]}" 2>/dev/null |
+      awk -F',' -v ts="$ts" '
+        function to_mb(raw, value, unit) {
+          sub(/[[:space:]]*\/.*/, "", raw)
+          gsub(/[[:space:]]/, "", raw)
+          value = raw
+          gsub(/[[:alpha:]]/, "", value)
+          unit = raw
+          gsub(/[0-9.]/, "", unit)
+          if (unit == "KiB") return value / 1024
+          if (unit == "GiB") return value * 1024
+          return value
+        }
+        {
+          gsub(/%/, "", $2)
+          printf "%s,%s,%s,%.2f\n", ts, $1, $2, to_mb($3)
+        }
+      ' >>"$OUTPUT_FILE" || true
   fi
   sleep "$INTERVAL"
 done

@@ -41,6 +41,15 @@
 - Added injected partial-write tests proving index-first publication cannot
   create an undiscoverable live tuple and stale hints cannot fabricate data or
   duplicate a consume.
+- Added bounded lease-safe caches for exact-name tuple fences and owner state.
+  Warm reads no longer repeat client and owner DHT lookups, while mutations
+  still require replicated write/read confirmation and expired leases still
+  advance the epoch before a request is retried.
+- Replaced the resource monitor's per-container Docker calls with one batched
+  sample per interval. The monitor now remains O(1) Docker daemon calls per
+  sample at 50--100 nodes.
+- Raised the campaign population default from 16 to 32 workers after a scaling
+  probe; 64 workers did not improve wall time and increased summed work.
 
 ## Current plan
 
@@ -53,22 +62,41 @@
    far.
 6. [x] Address the manuscript's remaining distributed-filesystem limitations
    in implementation and claims.
-7. [ ] Analyze and optimize the growing short-test latency and resource costs.
+7. [x] Analyze and optimize the growing short-test latency and resource costs.
 8. [ ] Run the full 100-node failure, repair, query-cost, and resource campaign.
 9. [ ] Produce figures/results and finish `paper/final.tex`.
 10. [ ] Remove obsolete results, dated harnesses, and abandoned planning files.
 11. [ ] Emit a brief, parseable plain-English document describing the Tarsus
     rewrite for the research group.
 
+## Performance checkpoint
+
+The 10-node, 100-name regression used identical workload cells with one query
+repetition. Before the tuple caches, exact reads took 2.28--2.76 ms and pattern
+reads took 11.85--17.81 ms. Across three post-cache cells, exact reads took
+0.42--1.47 ms and pattern reads took 3.65--15.12 ms; all writes and queries
+were correct. Warm exact reads perform zero tuple-state DHT calls after the
+confirmed mutation.
+
+Population at 16 workers remained bimodal at 2.15--4.11 seconds rather than
+showing monotonic degradation. A 32-worker probe completed in 2.09 seconds
+with 100/100 successful writes. A 64-worker probe also took 2.09 seconds but
+used 18.76 seconds of summed mutation service time versus 16.86 seconds at 32,
+so 32 is the new default.
+
+The old resource monitor issued one blocking `docker stats` call per
+container, which makes instrumentation itself scale with node count. The
+replacement issues one batched call and successfully captured four complete
+10-node samples in the regression cells.
+
 ## Immediate next work
 
-The implementation/claim limitation gate is complete. The next step is the
-scheduled latency and resource regression pass. Durable exact-name operations
-now add DHT reads plus write/read confirmation, placement adds active RTT
-probing, and periodic repair scans local content. Establish a reproducible
-10-node baseline, attribute time and resource growth to specific operations,
-then cache/coalesce or batch work without weakening fencing, confirmation, or
-repair correctness.
+The next step is the full approximately 100-node evidence campaign. First
+extend the current Tarsus campaign harness with production-current content
+replication, node-failure, repair-to-seven, post-failure retrieval, and
+resource artifacts; do not rely on the dated vnIPFS/Swarm scripts as evidence.
+Then run the query-cost/shard/bloom matrix plus the failure/repair cells,
+validate every artifact, and only then generate manuscript figures.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and

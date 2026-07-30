@@ -113,7 +113,7 @@ for batch in "$cell_dir"/batches/names-*; do
   request="$batch.json"
   jq -Rn \
     --arg value_base64 "dGFyc3VzLWV4cGVyaW1lbnQtdG9rZW4=" \
-    --argjson concurrency "${POPULATE_CONCURRENCY:-16}" \
+    --argjson concurrency "${POPULATE_CONCURRENCY:-32}" \
     '[inputs] | {names:.,value_base64:$value_base64,copies:1,concurrency:$concurrency}' \
     <"$batch" >"$request"
   campaign_tuple_put_file bootstrap "$request" | tee -a "$cell_dir/populate.ndjson"
