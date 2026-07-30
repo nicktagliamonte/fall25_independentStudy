@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -17,7 +19,8 @@ import (
 const (
 	// StorageAvailableTuplePrefix is the tuple name prefix for storage-available offers.
 	// Format: "storage-available:<peer_id>"
-	StorageAvailableTuplePrefix = "storage-available:"
+	StorageAvailableTuplePrefix        = "storage-available:"
+	defaultStorageCandidateConcurrency = 16
 )
 
 // StorageAvailableOffer represents a storage-available advertisement from a staker.
@@ -50,6 +53,8 @@ type StorageAvailableProtocol struct {
 	RTTMeasurer func(peerID peer.ID) (time.Duration, error)
 	// RTTThresholds for distance classification (nil uses defaults).
 	RTTThresholds *RTTThresholds
+	// CandidateConcurrency bounds distributed offer reads and RTT probes.
+	CandidateConcurrency int
 }
 
 // NewStorageAvailableProtocol creates a new StorageAvailableProtocol backed by tuple space ts,
@@ -63,8 +68,9 @@ type StorageAvailableProtocol struct {
 //   - *StorageAvailableProtocol: the constructed protocol handler.
 func NewStorageAvailableProtocol(ts tuplespace.TupleSpace) *StorageAvailableProtocol {
 	return &StorageAvailableProtocol{
-		ts:            ts,
-		RTTThresholds: nil, // Will use defaults
+		ts:                   ts,
+		RTTThresholds:        nil, // Will use defaults
+		CandidateConcurrency: defaultStorageCandidateConcurrency,
 	}
 }
 
@@ -206,44 +212,94 @@ func (sap *StorageAvailableProtocol) findStorageAvailableCandidates(
 	seenPeers := make(map[string]bool)
 
 	if sap.PeerIDsToCheck != nil {
-		// DHT tuple space: no pattern matching; iterate over known peers
-		for _, pid := range sap.PeerIDsToCheck() {
+		// DHT tuple space: exact-read the known peers with bounded concurrency.
+		// Serial reads multiply one slow owner lookup or RTT probe by the full
+		// peerstore size, which made 100-node repair take minutes.
+		knownPeers := sap.PeerIDsToCheck()
+		uniquePeers := make([]peer.ID, 0, len(knownPeers))
+		seenPeerIDs := make(map[peer.ID]bool, len(knownPeers))
+		for _, pid := range knownPeers {
+			if pid == "" || seenPeerIDs[pid] {
+				continue
+			}
+			seenPeerIDs[pid] = true
 			if excluded[pid] {
 				continue
 			}
-			if maxCandidates > 0 && len(candidates) >= maxCandidates {
-				break
-			}
-			tupleName := StorageAvailableTuplePrefix + pid.String()
-			offerData, err := sap.ts.TsRead(tupleName)
-			if err != nil {
-				continue
-			}
-			var offer StorageAvailableOffer
-			if err := json.Unmarshal(offerData, &offer); err != nil {
-				continue
-			}
-			if offerExpired(offer, time.Now()) {
-				continue
-			}
-			if seenPeers[offer.PeerID] {
-				continue
-			}
-			seenPeers[offer.PeerID] = true
-			offerPeer, err := peer.Decode(offer.PeerID)
-			if err != nil || excluded[offerPeer] {
-				continue
-			}
-			candidate, err := sap.offerToCandidate(offer, providerID)
-			if err != nil {
-				continue
-			}
-			if desiredCategory == nil || candidate.DistanceCategory == *desiredCategory {
-				candidates = append(candidates, candidate)
+			uniquePeers = append(uniquePeers, pid)
+		}
+		sort.Slice(uniquePeers, func(i, j int) bool {
+			return uniquePeers[i].String() < uniquePeers[j].String()
+		})
+		workerCount := sap.CandidateConcurrency
+		if workerCount <= 0 {
+			workerCount = defaultStorageCandidateConcurrency
+		}
+		if workerCount > len(uniquePeers) {
+			workerCount = len(uniquePeers)
+		}
+		type candidateResult struct {
+			candidate PeerCandidate
+			ok        bool
+		}
+		jobs := make(chan peer.ID)
+		results := make(chan candidateResult, len(uniquePeers))
+		var workers sync.WaitGroup
+		workers.Add(workerCount)
+		for worker := 0; worker < workerCount; worker++ {
+			go func() {
+				defer workers.Done()
+				for pid := range jobs {
+					tupleName := StorageAvailableTuplePrefix + pid.String()
+					offerData, err := sap.ts.TsRead(tupleName)
+					if err != nil {
+						results <- candidateResult{}
+						continue
+					}
+					var offer StorageAvailableOffer
+					if err := json.Unmarshal(offerData, &offer); err != nil ||
+						offerExpired(offer, time.Now()) {
+						results <- candidateResult{}
+						continue
+					}
+					offerPeer, err := peer.Decode(offer.PeerID)
+					if err != nil || offerPeer != pid || excluded[offerPeer] {
+						results <- candidateResult{}
+						continue
+					}
+					candidate, err := sap.offerToCandidate(offer, providerID)
+					if err != nil ||
+						(desiredCategory != nil &&
+							candidate.DistanceCategory != *desiredCategory) {
+						results <- candidateResult{}
+						continue
+					}
+					results <- candidateResult{candidate: candidate, ok: true}
+				}
+			}()
+		}
+		for _, pid := range uniquePeers {
+			jobs <- pid
+		}
+		close(jobs)
+		workers.Wait()
+		close(results)
+		for result := range results {
+			if result.ok {
+				candidates = append(candidates, result.candidate)
 			}
 		}
+		sort.Slice(candidates, func(i, j int) bool {
+			return candidates[i].PeerID.String() < candidates[j].PeerID.String()
+		})
+		if maxCandidates > 0 && len(candidates) > maxCandidates {
+			candidates = candidates[:maxCandidates]
+		}
 		if len(candidates) == 0 {
-			return nil, fmt.Errorf("no storage-available offers found (checked %d peers)", len(sap.PeerIDsToCheck()))
+			return nil, fmt.Errorf(
+				"no storage-available offers found (checked %d peers)",
+				len(uniquePeers),
+			)
 		}
 		return candidates, nil
 	}

@@ -229,6 +229,113 @@ func TestIndexCoordinatorFailsOverUnreachableAuthorityAndRetries(t *testing.T) {
 	}
 }
 
+func TestIndexCoordinatorReconcilesAuthorityBehindPersistedFence(t *testing.T) {
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+	ownerAHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerAHost.Close()
+	ownerBHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerBHost.Close()
+	connectTupleHosts(t, clientHost, ownerAHost)
+	connectTupleHosts(t, clientHost, ownerBHost)
+	primaryHost, successorHost := ownerAHost, ownerBHost
+	if successorHost.ID().String() < primaryHost.ID().String() {
+		primaryHost, successorHost = successorHost, primaryHost
+	}
+
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := failoverOwnerResolver{
+		primary:   primaryHost.ID(),
+		successor: successorHost.ID(),
+	}
+	client, err := NewIndexCoordinator(clientHost, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	ownerA, err := NewIndexCoordinator(ownerAHost, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerA.Close()
+	ownerB, err := NewIndexCoordinator(ownerBHost, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerB.Close()
+	for _, coordinator := range []*IndexCoordinator{client, ownerA, ownerB} {
+		coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	initial, err := client.authority.resolve(ctx, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initial.Epoch != 1 || initial.Writer != primaryHost.ID().String() {
+		t.Fatalf("initial authority = %+v", initial)
+	}
+
+	index, err := pht.NewMutableIndex(stores[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	strongerSameEpoch := pht.WriteFence{
+		Epoch:  initial.Epoch,
+		Writer: successorHost.ID().String(),
+	}
+	if err := index.InsertFenced(ctx, "task:preexisting-stronger-fence", strongerSameEpoch); err != nil {
+		t.Fatal(err)
+	}
+
+	const key = "task:authority-reconciled"
+	if err := client.Insert(ctx, key); err != nil {
+		t.Fatal(err)
+	}
+	record, err := client.authority.read(ctx, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Epoch != initial.Epoch+1 ||
+		record.Writer != successorHost.ID().String() {
+		t.Fatalf("reconciled authority = %+v after %+v", record, initial)
+	}
+	root, err := pht.GetNode(ctx, stores[0], "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root.Epoch != record.Epoch || root.Writer != record.Writer {
+		t.Fatalf(
+			"PHT fence = (%d,%s), authority = (%d,%s)",
+			root.Epoch,
+			root.Writer,
+			record.Epoch,
+			record.Writer,
+		)
+	}
+	seen := make(map[string]bool)
+	for _, entry := range root.Entries {
+		seen[entry] = true
+	}
+	if !seen["task:preexisting-stronger-fence"] || !seen[key] {
+		t.Fatalf("PHT root entries after reconciliation = %v", root.Entries)
+	}
+}
+
 func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	ownerHost, _ := libp2p.New()
 	defer ownerHost.Close()

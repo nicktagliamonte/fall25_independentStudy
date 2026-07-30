@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -57,6 +58,7 @@ type RepairProtocol struct {
 	livenessFailures                    map[peer.ID]livenessFailureEvidence
 	livenessFailureThreshold            int
 	livenessFailureConfirmationInterval time.Duration
+	livenessProbeSequence               atomic.Uint64
 	// advertisementInitialJitterWindow spreads startup writes in large clusters.
 	// A zero value disables jitter for focused tests.
 	advertisementInitialJitterWindow time.Duration
@@ -76,6 +78,7 @@ type livenessFailureEvidence struct {
 const (
 	defaultLivenessFailureThreshold            = 2
 	defaultLivenessFailureConfirmationInterval = 10 * time.Second
+	replicaProbeProtectionTagPrefix            = "tarsus-replica-probe"
 )
 
 // NewRepairProtocol creates a new RepairProtocol bound to stack and host h. It builds an
@@ -170,6 +173,8 @@ func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (tim
 			return cached.rtt, cached.err
 		}
 	}
+	_, releaseProtection := rp.protectReplicaProbe(pid)
+	defer releaseProtection()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if addr != nil {
@@ -221,6 +226,25 @@ func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (tim
 	}
 	rp.clearLivenessFailureEvidence(pid)
 	return rtt, nil
+}
+
+func (rp *RepairProtocol) protectReplicaProbe(pid peer.ID) (string, func()) {
+	if rp == nil || rp.host == nil || pid == "" {
+		return "", func() {}
+	}
+	// A newly dialed probe can otherwise be trimmed before ping finishes when
+	// the bounded overlay is above its high watermark. Unique tags keep
+	// overlapping probes from revoking one another's protection.
+	tag := fmt.Sprintf(
+		"%s-%d",
+		replicaProbeProtectionTagPrefix,
+		rp.livenessProbeSequence.Add(1),
+	)
+	manager := rp.host.ConnManager()
+	manager.Protect(pid, tag)
+	return tag, func() {
+		manager.Unprotect(pid, tag)
+	}
 }
 
 func (rp *RepairProtocol) cacheRTT(pid peer.ID, rtt time.Duration, probeErr error) {

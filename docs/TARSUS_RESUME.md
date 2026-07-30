@@ -199,6 +199,33 @@
   30.641 seconds, retained all six survivors, admitted exactly one replacement,
   passed both hashes, restored `docker-compose.yml` byte-for-byte, and left the
   host neighbor limits at 128/512/1024.
+- The strict `resilience-n100-2ed51ae` pilot is the first valid 100-node
+  end-to-end failure artifact. It reached 100/100 indexed availability, stored
+  8 MiB at exactly seven providers, stopped proven holder node 64, fetched a
+  surviving copy in 0.167 seconds, repaired in 271.120 seconds, and completed a
+  cold non-provider fetch in 0.203 seconds. All six healthy originals remained,
+  exactly one replacement entered, every post-failure observation stayed at
+  six or seven, both hashes passed, all 99 topology anchors remained present,
+  live neighbor counts were 9--27 (mean 15.97), both kernel diagnostics were
+  empty, and no public bootstrap identity appeared.
+- That pilot exposed three post-pass hardening opportunities. Several healthy
+  replicas suffered one failed probe but were preserved by the
+  repeated-observation detector; active probe connections now carry unique
+  temporary connection-manager protections. Repair candidate discovery now
+  performs at most 16 concurrent exact reads/RTT probes and deterministically
+  sorts results instead of serially multiplying work by the peerstore size.
+  Finally, a stale PHT fence response now invokes higher-epoch authority
+  reconciliation rather than immediately re-reading the same lagging DHT
+  authority record. Focused regressions cover overlapping probe protections,
+  bounded candidate concurrency, and a stronger same-epoch PHT fence; complete
+  normal/race suites and `go vet` pass.
+- The pilot's ad hoc zsh restoration wrapper briefly restored only the leading
+  digit of each original procfs value after the artifact had completed. This
+  did not affect the run; it was caught immediately and the host was reset to
+  128/512/1024. The repository now includes
+  `with_neighbor_limits.sh`, which reads with `sysctl -n`, verifies temporary
+  and restored values, and has been tested for both successful and failing
+  wrapped commands.
 - Strengthened resilience validation for the single-holder failure experiment:
   every repair observation must remain between six and seven providers, the
   six live originals must survive, no over-replication is accepted, and only
@@ -258,11 +285,13 @@ amplification. Address-aware probes fixed missing route knowledge but one
 intermittent false negative remained, so pruning now requires two separated
 failures and the stricter trace validator rejects any recurrence. Two detector
 smokes passed and exposed a stale-offer retry responsible for the slower run.
-The candidate-pool fix then passed a fresh 10-node run in 30.641 seconds. The
-immediate next step is a 100-node, one-trial pilot using the default 8 MiB
-payload and protected tree, with temporary host neighbor limits of
-2048/4096/8192 and restoration of the Fedora defaults 128/512/1024 afterward.
-If that validates, run the full query-cost/shard/Bloom matrix and five-trial
+The candidate-pool fix then passed a fresh 10-node run in 30.641 seconds, and
+the next strict 100-node pilot passed the complete failure path. Its logs
+motivated temporary probe protection, parallel candidate discovery, and
+proactive stale-fence reconciliation; their full normal/race suites pass. The
+immediate next step is a fresh 10-node distributed smoke followed by a
+100-node validation at the new commit, using the checked neighbor-limit helper.
+If those validate, run the full query-cost/shard/Bloom matrix and five-trial
 resilience cell, validate every artifact, and only then generate manuscript
 figures. Do not use the dated vnIPFS/Swarm repair scripts as paper evidence.
 

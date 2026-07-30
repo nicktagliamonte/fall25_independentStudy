@@ -9,6 +9,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/peer"
+	basicconnmgr "github.com/libp2p/go-libp2p/p2p/net/connmgr"
 )
 
 type retryAdvertisementTupleSpace struct {
@@ -134,5 +135,43 @@ func TestReplicaLivenessSuccessClearsSuspicion(t *testing.T) {
 	}
 	if got := rp.livenessFailures[pid].count; got != 1 {
 		t.Fatalf("failure count after successful probe reset = %d, want 1", got)
+	}
+}
+
+func TestConcurrentReplicaProbesUseIndependentConnectionProtections(t *testing.T) {
+	manager, err := basicconnmgr.NewConnManager(1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := libp2p.New(
+		libp2p.NoListenAddrs,
+		libp2p.ConnectionManager(manager),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+
+	pid := tokenTestPeerID(t)
+	rp := &RepairProtocol{host: h}
+	firstTag, releaseFirst := rp.protectReplicaProbe(pid)
+	secondTag, releaseSecond := rp.protectReplicaProbe(pid)
+	if firstTag == "" || secondTag == "" || firstTag == secondTag {
+		t.Fatalf("probe protection tags = %q, %q; want unique non-empty tags", firstTag, secondTag)
+	}
+	if !manager.IsProtected(pid, firstTag) || !manager.IsProtected(pid, secondTag) {
+		t.Fatal("concurrent probe protections were not both active")
+	}
+
+	releaseFirst()
+	if manager.IsProtected(pid, firstTag) {
+		t.Fatal("first probe protection remained after release")
+	}
+	if !manager.IsProtected(pid, secondTag) {
+		t.Fatal("releasing the first probe removed the concurrent protection")
+	}
+	releaseSecond()
+	if manager.IsProtected(pid, "") {
+		t.Fatal("probe protection remained after both probes completed")
 	}
 }

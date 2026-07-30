@@ -48,6 +48,21 @@ CLIENT_COUNT=2
 Docker evidence does not establish independent regional failure behavior.
 Multi-host or controlled-delay experiments must be reported separately.
 
+The same-host 100-node cells require more IPv4 neighbor-table capacity than
+Fedora's default. Wrap the executable campaign command with the checked helper:
+
+```sh
+scripts/tests/tarsus_campaign/with_neighbor_limits.sh \
+  2048 4096 8192 -- \
+  scripts/tests/tarsus_campaign/run_campaign.sh \
+    --resume test_results/tarsus_campaign/<run-id> \
+    --execute
+```
+
+The helper uses a short-lived privileged container to set the three host
+limits, verifies the temporary values, preserves the wrapped command's exit
+status, and verifies restoration of the original values on success or failure.
+
 When `RUN_RESILIENCE=true`, the campaign also runs one production-current
 resilience deployment. Each trial writes an 8 MiB deterministic payload, waits
 for exactly seven token-advertised replicas, stops a mapped replica holder,

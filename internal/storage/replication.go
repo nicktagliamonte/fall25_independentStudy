@@ -395,7 +395,10 @@ func SelectReplicaCandidates(candidates []PeerCandidate, desiredCategory Distanc
 		if scored[i].candidate.ReputationScore != scored[j].candidate.ReputationScore {
 			return scored[i].candidate.ReputationScore > scored[j].candidate.ReputationScore
 		}
-		return scored[i].candidate.RTT < scored[j].candidate.RTT
+		if scored[i].candidate.RTT != scored[j].candidate.RTT {
+			return scored[i].candidate.RTT < scored[j].candidate.RTT
+		}
+		return scored[i].candidate.PeerID.String() < scored[j].candidate.PeerID.String()
 	})
 
 	// Return top 'count' candidates

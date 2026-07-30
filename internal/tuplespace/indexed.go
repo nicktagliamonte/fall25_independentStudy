@@ -246,6 +246,22 @@ func (c *IndexCoordinator) mutate(ctx context.Context, mutation indexMutation) (
 		if response.StaleAuthority {
 			lastErr = errors.New(response.Error)
 			c.authority.invalidate(mutation.Shard, fence)
+			// The authority record can lag a stronger fence already committed
+			// in the PHT. Re-reading the same stale record immediately only
+			// repeats the rejection. Reconcile through failover: if the DHT now
+			// exposes another live winner it is reused; otherwise a higher
+			// epoch is published and necessarily dominates the persisted fence.
+			if _, reconcileErr := c.authority.failover(
+				ctx,
+				mutation.Shard,
+				fence,
+			); reconcileErr != nil {
+				lastErr = fmt.Errorf(
+					"%v; reconcile stale index authority: %w",
+					lastErr,
+					reconcileErr,
+				)
+			}
 			continue
 		}
 		if response.Error != "" {
