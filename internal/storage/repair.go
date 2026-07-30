@@ -159,6 +159,13 @@ func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (tim
 			dialCtx := network.WithForceDirectDial(ctx, "token provider liveness probe")
 			if err := rp.host.Connect(dialCtx, info); err != nil {
 				rp.cacheRTT(pid, 0, err)
+				log.Printf(
+					"replica liveness dial from %s to %s at %s failed: %v",
+					rp.host.ID(),
+					pid,
+					addr,
+					err,
+				)
 				return 0, err
 			}
 		}
@@ -193,6 +200,15 @@ func (rp *RepairProtocol) measureRTT(pid peer.ID, addr multiaddr.Multiaddr) (tim
 		}
 	}
 	rp.cacheRTT(pid, rtt, probeErr)
+	if probeErr != nil && addr != nil {
+		log.Printf(
+			"replica liveness ping from %s to %s at %s failed: %v",
+			rp.host.ID(),
+			pid,
+			addr,
+			probeErr,
+		)
+	}
 	return rtt, probeErr
 }
 
