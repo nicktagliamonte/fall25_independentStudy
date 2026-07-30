@@ -167,7 +167,7 @@ func (sap *StorageAvailableProtocol) FindStorageAvailableCandidates(
 	desiredCategory DistanceCategory,
 	maxCandidates int,
 ) ([]PeerCandidate, error) {
-	return sap.findStorageAvailableCandidates(providerID, &desiredCategory, maxCandidates)
+	return sap.findStorageAvailableCandidates(providerID, &desiredCategory, maxCandidates, nil)
 }
 
 // FindAnyStorageAvailableCandidates returns unexpired offers without requiring
@@ -177,13 +177,26 @@ func (sap *StorageAvailableProtocol) FindAnyStorageAvailableCandidates(
 	providerID peer.ID,
 	maxCandidates int,
 ) ([]PeerCandidate, error) {
-	return sap.findStorageAvailableCandidates(providerID, nil, maxCandidates)
+	return sap.findStorageAvailableCandidates(providerID, nil, maxCandidates, nil)
+}
+
+// FindAnyStorageAvailableCandidatesExcluding returns unexpired offers while
+// skipping peers that are already replicas or were proved unreachable by the
+// current audit. Filtering before RTT measurement avoids spending repair time
+// probing or redialing a failed provider's not-yet-expired offer.
+func (sap *StorageAvailableProtocol) FindAnyStorageAvailableCandidatesExcluding(
+	providerID peer.ID,
+	maxCandidates int,
+	excluded map[peer.ID]bool,
+) ([]PeerCandidate, error) {
+	return sap.findStorageAvailableCandidates(providerID, nil, maxCandidates, excluded)
 }
 
 func (sap *StorageAvailableProtocol) findStorageAvailableCandidates(
 	providerID peer.ID,
 	desiredCategory *DistanceCategory,
 	maxCandidates int,
+	excluded map[peer.ID]bool,
 ) ([]PeerCandidate, error) {
 	if sap.ts == nil {
 		return nil, errors.New("tuple space required")
@@ -195,6 +208,9 @@ func (sap *StorageAvailableProtocol) findStorageAvailableCandidates(
 	if sap.PeerIDsToCheck != nil {
 		// DHT tuple space: no pattern matching; iterate over known peers
 		for _, pid := range sap.PeerIDsToCheck() {
+			if excluded[pid] {
+				continue
+			}
 			if maxCandidates > 0 && len(candidates) >= maxCandidates {
 				break
 			}
@@ -214,6 +230,10 @@ func (sap *StorageAvailableProtocol) findStorageAvailableCandidates(
 				continue
 			}
 			seenPeers[offer.PeerID] = true
+			offerPeer, err := peer.Decode(offer.PeerID)
+			if err != nil || excluded[offerPeer] {
+				continue
+			}
 			candidate, err := sap.offerToCandidate(offer, providerID)
 			if err != nil {
 				continue
@@ -254,6 +274,10 @@ func (sap *StorageAvailableProtocol) findStorageAvailableCandidates(
 			continue
 		}
 		seenPeers[offer.PeerID] = true
+		offerPeer, err := peer.Decode(offer.PeerID)
+		if err != nil || excluded[offerPeer] {
+			continue
+		}
 		candidate, err := sap.offerToCandidate(offer, providerID)
 		if err != nil {
 			continue

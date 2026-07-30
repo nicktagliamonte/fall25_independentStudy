@@ -180,6 +180,21 @@
   destructive one-shot false positives. Focused normal tests passed 20
   repetitions, focused race tests passed five, and the full normal and race
   suites passed.
+- Revalidated that detector in two fresh, strict 10-node cells:
+  `resilience-n010-repeated-liveness-9b3104d-v1` repaired in 67.068 seconds
+  and `resilience-n010-repeated-liveness-4fc1ccb-v2` repaired in 139.555
+  seconds. Both retained all six healthy originals, admitted exactly one new
+  provider, stayed between six and seven post-failure replicas, passed both
+  content hashes, and left clean host/repository state.
+- The second cell exposed why repair latency could vary by more than a minute:
+  a failed node's two-minute storage-availability offer could remain eligible
+  after its replica location was correctly pruned, causing repair to redial
+  the dead node as a prospective replacement. Repair now excludes both
+  existing providers and current-audit failures before candidate measurement,
+  discovers the distributed offer pool once rather than once per RTT class,
+  and reuses that pool for preferred placement and fixed-count fallback.
+  A regression asserts that a stale failed-node offer receives only its single
+  verification probe and is never attempted as its own replacement.
 - Strengthened resilience validation for the single-holder failure experiment:
   every repair observation must remain between six and seven providers, the
   six live originals must survive, no over-replication is accepted, and only
@@ -237,14 +252,15 @@ components. Both failure modes now have explicit startup guards. The first
 protected 100-node workload then exposed false provider pruning and repair
 amplification. Address-aware probes fixed missing route knowledge but one
 intermittent false negative remained, so pruning now requires two separated
-failures and the stricter trace validator rejects any recurrence. The immediate
-next step is repeated fresh 10-node smoke runs of that detector, followed by a
-100-node, one-trial pilot using the default 8 MiB payload and protected tree,
-with temporary host neighbor limits of 2048/4096/8192 and restoration of the
-Fedora defaults 128/512/1024 afterward. If that validates, run the full
-query-cost/shard/Bloom matrix and five-trial resilience cell, validate every
-artifact, and only then generate manuscript figures. Do not use the dated
-vnIPFS/Swarm repair scripts as paper evidence.
+failures and the stricter trace validator rejects any recurrence. Two detector
+smokes passed and exposed a stale-offer retry responsible for the slower run.
+The immediate next step is one fresh 10-node validation of that candidate-pool
+fix, followed by a 100-node, one-trial pilot using the default 8 MiB payload and
+protected tree, with temporary host neighbor limits of 2048/4096/8192 and
+restoration of the Fedora defaults 128/512/1024 afterward. If that validates,
+run the full query-cost/shard/Bloom matrix and five-trial resilience cell,
+validate every artifact, and only then generate manuscript figures. Do not use
+the dated vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and

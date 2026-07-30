@@ -209,6 +209,8 @@ func TestAuditRepairsReplicaCountWhenOnlyNearCandidateExists(t *testing.T) {
 	sharedTuples := tuplespace.NewNativeTupleSpace()
 	repairA := NewRepairProtocol(stackA, hA, sharedTuples, false)
 	repairC := NewRepairProtocol(stackC, hC, sharedTuples, false)
+	dead := tokenTestPeerID(t)
+	deadProbeCount := 0
 	handlerErrors := make(chan error, 1)
 	hC.SetStreamHandler(RepairProtocolID, func(stream network.Stream) {
 		handlerErrors <- repairC.HandleRepairStream(stream)
@@ -216,6 +218,9 @@ func TestAuditRepairsReplicaCountWhenOnlyNearCandidateExists(t *testing.T) {
 	repairA.rttProbe = func(pid peer.ID) (time.Duration, error) {
 		if pid == hC.ID() {
 			return time.Millisecond, nil
+		}
+		if pid == dead {
+			deadProbeCount++
 		}
 		return 0, errors.New("peer unavailable")
 	}
@@ -232,7 +237,6 @@ func TestAuditRepairsReplicaCountWhenOnlyNearCandidateExists(t *testing.T) {
 		t.Fatal(err)
 	}
 	stackA.UpdateRoutingTableOnPut(key, hA.ID(), nil, c)
-	dead := tokenTestPeerID(t)
 	deadAddr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/65534")
 	if err := SyncTokenOnReplication(
 		ctx,
@@ -241,6 +245,12 @@ func TestAuditRepairsReplicaCountWhenOnlyNearCandidateExists(t *testing.T) {
 		key,
 		dead,
 		deadAddr,
+	); err != nil {
+		t.Fatal(err)
+	}
+	hA.Peerstore().AddAddr(dead, deadAddr, time.Minute)
+	if err := repairA.storageAvailable.AdvertiseStorageAvailable(
+		dead, 0, 1<<30, 1, time.Minute,
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -262,6 +272,14 @@ func TestAuditRepairsReplicaCountWhenOnlyNearCandidateExists(t *testing.T) {
 		default:
 			t.Fatalf("repair result = %+v, want near fallback on C", result)
 		}
+	}
+	for _, failed := range result.FailedPeers {
+		if failed == dead {
+			t.Fatalf("repair retried unreachable provider %s as its own replacement", dead)
+		}
+	}
+	if deadProbeCount != 1 {
+		t.Fatalf("unreachable provider probe count = %d, want exactly one verification probe", deadProbeCount)
 	}
 	got, err := ResolvePayloadByKeyLocal(ctx, stackC.Datastore, stackC.BlockSvc, key)
 	if err != nil || !bytes.Equal(got, payload) {

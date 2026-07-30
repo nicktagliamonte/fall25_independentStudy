@@ -507,11 +507,11 @@ func (rp *RepairProtocol) auditLocalReplicas(ctx context.Context, replicationFac
 
 // TriggerRepair performs automatic repair for Key k based on a prior VerifyKeyStateWithRepVector
 // result. If verification.IsSynchronized is already true, it returns an empty (all-zero)
-// RepairResult with no work done. Otherwise it computes the shortfall per distance category
-// via calculateNeededReplicas, and for each category with a positive shortfall: finds
-// storage-available candidates via rp.storageAvailable.FindAndSelectReplicas, skips any
-// candidate already present in verification.Providers, replicates blockData to each remaining
-// candidate via rp.replicateToPeer, and on success records the peer in
+// RepairResult with no work done. Otherwise it computes the shortfall per distance category,
+// discovers and measures the eligible storage-available pool once, and selects candidates for
+// each positive category shortfall. It skips any candidate already present in
+// verification.Providers or proved unreachable by the audit, replicates blockData to each
+// remaining candidate via rp.replicateToPeer, and on success records the peer in
 // RepairResult.ReplicatedPeers and adds it to rp.stack.RoutingTable as a provider for k at that
 // distance category. A category is recorded as repaired if at least one replication succeeded,
 // otherwise as failed. verification.CID is used if defined; otherwise the CID is resolved from
@@ -584,6 +584,24 @@ func (rp *RepairProtocol) TriggerRepair(
 	for _, p := range verification.Providers {
 		existingProviders[p.ProviderID] = true
 	}
+	// A crashed provider's renewable storage offer can outlive its replica
+	// location. Never immediately select a peer that this same audit proved
+	// unreachable as the replacement for itself.
+	for _, pid := range verification.UnreachableProviders {
+		existingProviders[pid] = true
+	}
+	// Discover and measure the eligible offer pool once per audit. Repeating a
+	// distributed exact-name scan for every distance category multiplied
+	// repair latency, especially when a same-host deployment has no midrange
+	// or far-flung candidates.
+	candidatePool, candidateErr := rp.storageAvailable.FindAnyStorageAvailableCandidatesExcluding(
+		rp.host.ID(),
+		0,
+		existingProviders,
+	)
+	if candidateErr != nil {
+		log.Printf("repair candidate discovery for %s failed: %v", k.String(), candidateErr)
+	}
 
 	repairedCategories := make(map[DistanceCategory]bool)
 	recordSuccess := func(candidate PeerCandidate) {
@@ -638,14 +656,13 @@ func (rp *RepairProtocol) TriggerRepair(
 			count = remaining
 		}
 
-		// Find storage-available candidates for this category
-		candidates, err := rp.storageAvailable.FindAndSelectReplicas(
-			rp.host.ID(),
+		candidates := SelectReplicaCandidates(
+			candidatePool,
 			category,
 			rp.criteria,
 			count,
 		)
-		if err != nil || len(candidates) == 0 {
+		if len(candidates) == 0 {
 			continue
 		}
 
@@ -658,10 +675,7 @@ func (rp *RepairProtocol) TriggerRepair(
 	}
 
 	if remaining > 0 {
-		fallback, _ := rp.storageAvailable.FindAnyStorageAvailableCandidates(
-			rp.host.ID(),
-			0,
-		)
+		fallback := append([]PeerCandidate(nil), candidatePool...)
 		sort.Slice(fallback, func(i, j int) bool {
 			iNeeded := needed[fallback[i].DistanceCategory] > 0
 			jNeeded := needed[fallback[j].DistanceCategory] > 0
