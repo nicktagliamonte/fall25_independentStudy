@@ -30,6 +30,59 @@ func TestVersionedJSONValidatorSelectsNewestRecord(t *testing.T) {
 	}
 }
 
+func TestTokenRecordValidatorSelectsNewestVersion(t *testing.T) {
+	validator := tokenRecordValidator{}
+	values := [][]byte{
+		[]byte(`{"version":2,"timestamp":900,"locations":[]}`),
+		[]byte(`{"version":4,"timestamp":100,"locations":[]}`),
+		[]byte(`{"version":3,"timestamp":999,"locations":[]}`),
+	}
+	selected, err := validator.Select("/tokens/key", values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected != 1 {
+		t.Fatalf("selected index = %d, want highest version at 1", selected)
+	}
+}
+
+func TestVersionedJSONValidatorOrdersFencesBeforeLocalVersion(t *testing.T) {
+	validator := versionedJSONValidator{}
+	values := [][]byte{
+		[]byte(`{"epoch":4,"writer":"owner-z","version":999}`),
+		[]byte(`{"epoch":5,"writer":"owner-a","version":1}`),
+	}
+	selected, err := validator.Select("/pht/key", values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected != 1 {
+		t.Fatalf("selected index = %d, want newer epoch at 1", selected)
+	}
+}
+
+func TestVersionedJSONValidatorDeterministicallyFencesSameEpochWriters(t *testing.T) {
+	validator := versionedJSONValidator{}
+	values := [][]byte{
+		[]byte(`{"epoch":7,"writer":"owner-a","version":100}`),
+		[]byte(`{"epoch":7,"writer":"owner-z","version":1}`),
+	}
+	selected, err := validator.Select("/pht/key", values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected != 1 {
+		t.Fatalf("selected index = %d, want deterministic writer winner at 1", selected)
+	}
+	reversed, err := validator.Select("/pht/key", [][]byte{values[1], values[0]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reversed != 0 {
+		t.Fatalf("reversed selected index = %d, want same writer winner at 0", reversed)
+	}
+}
+
 func TestVersionedJSONValidatorRejectsMalformedRecord(t *testing.T) {
 	validator := versionedJSONValidator{}
 	if err := validator.Validate("/pht/key", []byte("not-json")); err == nil {
@@ -175,6 +228,34 @@ func TestNewDHT_ClientMode(t *testing.T) {
 
 	if d == nil {
 		t.Fatal("NewDHT returned nil DHT")
+	}
+}
+
+func TestNewDHT_ConfiguresBucketSize(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	h, err := NewHost(ctx, []string{"/ip4/127.0.0.1/tcp/0"})
+	if err != nil {
+		t.Fatalf("NewHost: %v", err)
+	}
+	defer h.Close()
+
+	const bucketSize = 8
+	d, err := NewDHT(ctx, h, DHTConfig{
+		Mode:        DHTModeServer,
+		UseTokenDHT: true,
+		BucketSize:  bucketSize,
+		BootstrapPeersFunc: func() []peer.AddrInfo {
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewDHT with bucket size: %v", err)
+	}
+	defer d.Close()
+	if got := d.BucketSize(); got != bucketSize {
+		t.Fatalf("DHT bucket size = %d, want %d", got, bucketSize)
 	}
 }
 

@@ -233,6 +233,37 @@ func SyncTokenOnDelete(ctx context.Context, dht routing.ValueStore, h host.Host,
 	return nil
 }
 
+// PruneTokenLocations removes provider IDs that failed an active liveness
+// check. At least one location must remain; callers should only prune from a
+// node that still holds and serves the payload.
+func PruneTokenLocations(ctx context.Context, dht routing.ValueStore, key Key, providers []peer.ID) error {
+	if dht == nil {
+		return fmt.Errorf("DHT required for token pruning")
+	}
+	if key.IsZero() {
+		return fmt.Errorf("key cannot be zero")
+	}
+	if len(providers) == 0 {
+		return nil
+	}
+	remove := make(map[peer.ID]bool, len(providers))
+	for _, provider := range providers {
+		remove[provider] = true
+	}
+	return UpdateTokenWithConflictResolution(ctx, dht, key, func(current Token) Token {
+		kept := make([]Location, 0, len(current.Locations))
+		for _, location := range current.Locations {
+			if !remove[location.ProviderID] {
+				kept = append(kept, location)
+			}
+		}
+		if len(kept) > 0 {
+			current.Locations = kept
+		}
+		return current
+	}, 3)
+}
+
 // SyncTokenOnReplication updates a token with new replica locations when replication occurs.
 // Per newReqs.txt: "the only function of the token is to sync with the data".
 // Adds the new replica peer to the token's Locations. Does not require the routing

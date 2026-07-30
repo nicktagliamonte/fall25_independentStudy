@@ -7,6 +7,7 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
+	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -40,6 +41,50 @@ func TestPeerStorePersistence(t *testing.T) {
 	}
 	if infos[0].ID != pid {
 		t.Fatalf("wrong pid: %s", infos[0].ID)
+	}
+}
+
+func TestRememberLearnedPeerPopulatesLibp2pDialingStore(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	ps, err := NewPeerStore(newMemDS())
+	if err != nil {
+		t.Fatal(err)
+	}
+	priv, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pid, err := peer.IDFromPrivateKey(priv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listen, err := ma.NewMultiaddr("/ip4/172.20.0.52/tcp/4001")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := RememberLearnedPeer(
+		h,
+		ps,
+		nil,
+		pid,
+		[]ma.Multiaddr{listen},
+		0,
+		"gossip",
+	); err != nil {
+		t.Fatal(err)
+	}
+	got := h.Peerstore().Addrs(pid)
+	if len(got) != 1 || !got[0].Equal(listen) {
+		t.Fatalf("libp2p dialing addresses = %v, want [%s]", got, listen)
+	}
+	stable, ok := ps.StablePeerInfo(pid)
+	if !ok || len(stable.Addrs) != 1 || !stable.Addrs[0].Equal(listen) {
+		t.Fatalf("stable peer info = %+v, %v; want [%s]", stable, ok, listen)
 	}
 }
 

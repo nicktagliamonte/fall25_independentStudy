@@ -2,6 +2,7 @@ package pht
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"testing"
@@ -99,6 +100,82 @@ func TestMutableIndexConcurrentInsertIsLossless(t *testing.T) {
 	}
 	if len(got) != 64 {
 		t.Fatalf("concurrent entries = %d, want 64", len(got))
+	}
+}
+
+func TestMutableIndexFencesStaleWriterAndMigratesExistingEntry(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	index, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := WriteFence{Epoch: 1, Writer: "owner-a"}
+	second := WriteFence{Epoch: 2, Writer: "owner-b"}
+	if err := index.InsertFenced(ctx, "task:fenced:001", first); err != nil {
+		t.Fatal(err)
+	}
+	// Reasserting an existing key under the new epoch must migrate the PHT
+	// record even though it does not add a duplicate entry.
+	if err := index.InsertFenced(ctx, "task:fenced:001", second); err != nil {
+		t.Fatal(err)
+	}
+	root, err := GetNode(ctx, store, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root.Epoch != second.Epoch || root.Writer != second.Writer {
+		t.Fatalf("root fence = (%d,%q), want (%d,%q)", root.Epoch, root.Writer, second.Epoch, second.Writer)
+	}
+	if err := index.InsertFenced(ctx, "task:fenced:002", first); !errors.Is(err, ErrStaleWriteFence) {
+		t.Fatalf("stale writer error = %v, want ErrStaleWriteFence", err)
+	}
+	rows, err := ExecutePrefixQuery(ctx, store, "task:fenced:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0] != "task:fenced:001" {
+		t.Fatalf("rows after rejected stale write = %#v", rows)
+	}
+}
+
+func TestMutableIndexAdoptFenceMigratesEntireTree(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	index, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 40; i++ {
+		if err := index.Insert(ctx, fmt.Sprintf("task:adopt:%03d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fence := WriteFence{Epoch: 9, Writer: "owner-new"}
+	if err := index.AdoptFence(ctx, fence); err != nil {
+		t.Fatal(err)
+	}
+	assertStoredFence(t, ctx, store, "", fence)
+}
+
+func assertStoredFence(
+	t *testing.T,
+	ctx context.Context,
+	store ValueStore,
+	prefix string,
+	want WriteFence,
+) {
+	t.Helper()
+	node, err := GetNode(ctx, store, prefix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := WriteFence{Epoch: node.Epoch, Writer: node.Writer}
+	if got != want {
+		t.Fatalf("node %q fence = %+v, want %+v", prefix, got, want)
+	}
+	for segment := range node.Children {
+		assertStoredFence(t, ctx, store, prefix+segment, want)
 	}
 }
 

@@ -29,6 +29,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	libpeerstore "github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
@@ -532,6 +533,7 @@ func Run() error {
 			}
 			if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil && info.ID != h.ID() {
 				_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
+				h.Peerstore().AddAddrs(info.ID, info.Addrs, libpeerstore.PermanentAddrTTL)
 			}
 		}
 
@@ -580,6 +582,7 @@ func Run() error {
 			var baseTS mytuplespace.TupleSpace = dhtTS
 			if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), dht); err == nil {
 				ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(clusterNodes))
+				ownerResolver.SetStablePeerFinder(peerStore)
 				if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 					nativeTS.SetRequireVerifiedPeers(true)
 					baseTS = nativeTS
@@ -611,6 +614,7 @@ func Run() error {
 		}
 		if repairProtocol != nil {
 			repairProtocol.StartAdvertisingStorageAvailability(ctx)
+			repairProtocol.StartPeriodicRepair(ctx, 30*time.Second, ctrl.ReplicationFactorR)
 		}
 
 		pcm := myhost.NewPeerConnectivityMonitor(h,
@@ -794,7 +798,7 @@ func Run() error {
 							if info2.ID == h.ID() {
 								continue
 							}
-							_ = myhost.UpsertLearnedPeer(peerStore, policyBase.AttackMitigation, info2.ID, info2.Addrs, 0, "handshake")
+							_ = myhost.RememberLearnedPeer(h, peerStore, policyBase.AttackMitigation, info2.ID, info2.Addrs, 0, "handshake")
 							// Collect a small subset for immediate connection (cap at 2 per handshake)
 							if len(learnedToConnect) < 2 {
 								// Check if already connected
@@ -869,7 +873,7 @@ func Run() error {
 								if info.ID == h.ID() {
 									continue
 								}
-								_ = myhost.UpsertLearnedPeer(peerStore, policyBase.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
+								_ = myhost.RememberLearnedPeer(h, peerStore, policyBase.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
 							}
 							metrics.AddGossipLearned(len(res.Learned))
 							// Try suffix sync if remote is ahead

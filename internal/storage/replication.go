@@ -48,6 +48,10 @@ func DefaultReplicationVector() ReplicationVector {
 type DistanceCategory int
 
 const (
+	// DistanceUnknown indicates that no usable RTT measurement is available.
+	// It is deliberately distinct from DistanceNear: treating a failed or
+	// absent measurement as zero RTT creates fictitious regional diversity.
+	DistanceUnknown DistanceCategory = -1
 	// DistanceNear indicates a peer is near the provider (low RTT, typically local/regional).
 	DistanceNear DistanceCategory = iota
 	// DistanceMidrange indicates a peer is at midrange distance (medium RTT, typically cross-region).
@@ -108,6 +112,9 @@ func DefaultRTTThresholds() RTTThresholds {
 //   - DistanceCategory: DistanceNear, DistanceMidrange, or DistanceFarFlung
 //     depending on where rtt falls relative to the thresholds.
 func ClassifyDistanceByRTT(rtt time.Duration, thresholds *RTTThresholds) DistanceCategory {
+	if rtt <= 0 {
+		return DistanceUnknown
+	}
 	if thresholds == nil {
 		defaults := DefaultRTTThresholds()
 		thresholds = &defaults
@@ -119,6 +126,48 @@ func ClassifyDistanceByRTT(rtt time.Duration, thresholds *RTTThresholds) Distanc
 		return DistanceMidrange
 	}
 	return DistanceFarFlung
+}
+
+// ReplicationTargets converts a fractional replication vector into exact
+// integer category targets whose sum is replicationFactor. It uses the largest
+// remainder method with stable Near, Midrange, Far-flung tie-breaking.
+func ReplicationTargets(vector ReplicationVector, replicationFactor int) (near, midrange, farFlung int) {
+	if replicationFactor <= 0 {
+		return 0, 0, 0
+	}
+	weights := []float64{vector.Near, vector.Midrange, vector.FarFlung}
+	totalWeight := 0.0
+	for i := range weights {
+		if weights[i] < 0 {
+			weights[i] = 0
+		}
+		totalWeight += weights[i]
+	}
+	if totalWeight <= 0 {
+		weights = []float64{1, 0, 0}
+		totalWeight = 1
+	}
+	type allocation struct {
+		index     int
+		remainder float64
+	}
+	counts := make([]int, 3)
+	remainders := make([]allocation, 3)
+	assigned := 0
+	for i, weight := range weights {
+		exact := float64(replicationFactor) * weight / totalWeight
+		counts[i] = int(exact)
+		assigned += counts[i]
+		remainders[i] = allocation{index: i, remainder: exact - float64(counts[i])}
+	}
+	sort.SliceStable(remainders, func(i, j int) bool {
+		return remainders[i].remainder > remainders[j].remainder
+	})
+	unassigned := replicationFactor - assigned
+	for i := 0; i < unassigned; i++ {
+		counts[remainders[i%len(remainders)].index]++
+	}
+	return counts[0], counts[1], counts[2]
 }
 
 // PeerCandidate represents a candidate peer for replica selection.

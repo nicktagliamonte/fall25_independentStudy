@@ -37,6 +37,9 @@ type ReplicaStateVerification struct {
 	}
 	// Providers lists all discovered providers with their distance classifications.
 	Providers []ProviderDistanceInfo
+	// UnreachableProviders lists token or routing-table providers that failed an
+	// active RTT/liveness probe. They are not counted toward durability.
+	UnreachableProviders []peer.ID
 	// IsSynchronized indicates if actual distribution matches expected (within tolerance).
 	IsSynchronized bool
 	// MissingCategories lists distance categories that are missing replicas.
@@ -61,10 +64,9 @@ type ProviderDistanceInfo struct {
 // by provider ID (token-discovered entries take precedence; routing-table-only entries are
 // added afterward): (1) if tokenStore is non-nil, via GetToken(k), classifying each location's
 // distance using its stored RTT (or rttMeasurer if the stored RTT is 0) and thresholds; (2) any
-// providers in rt's entry for k not already seen via the token. Finally it compares actual vs
-// expected counts per category with a tolerance of ±1, setting IsSynchronized only if all three
-// categories (Near/Midrange/FarFlung) are within tolerance, and populates MissingCategories
-// with any category that is both out of tolerance and under-provisioned (actual < expected).
+// providers in rt's entry for k not already seen via the token. Finally it
+// requires every category to meet or exceed its exact integer target; surplus
+// replicas are allowed, but a one-replica shortfall is not treated as healthy.
 //
 // Parameters:
 //   - ctx (context.Context): passed through to GetToken for cancellation.
@@ -100,8 +102,9 @@ func VerifyKeyStateWithRepVector(
 	}
 
 	verification := &ReplicaStateVerification{
-		Key:               k,
-		MissingCategories: make([]DistanceCategory, 0),
+		Key:                  k,
+		MissingCategories:    make([]DistanceCategory, 0),
+		UnreachableProviders: make([]peer.ID, 0),
 	}
 
 	// Get expected replication vector and routing table providers by Key
@@ -129,9 +132,10 @@ func VerifyKeyStateWithRepVector(
 
 	// Calculate expected counts based on replication factor
 	verification.ExpectedCounts.Total = replicationFactor
-	verification.ExpectedCounts.Near = int(float64(replicationFactor) * expectedRepVector.Near)
-	verification.ExpectedCounts.Midrange = int(float64(replicationFactor) * expectedRepVector.Midrange)
-	verification.ExpectedCounts.FarFlung = int(float64(replicationFactor) * expectedRepVector.FarFlung)
+	verification.ExpectedCounts.Near,
+		verification.ExpectedCounts.Midrange,
+		verification.ExpectedCounts.FarFlung = ReplicationTargets(expectedRepVector, replicationFactor)
+	unreachableIDs := make(map[peer.ID]bool)
 
 	// Discover providers via GetToken (key-based) when tokenStore is available
 	if tokenStore != nil {
@@ -140,13 +144,23 @@ func VerifyKeyStateWithRepVector(
 			verification.Providers = make([]ProviderDistanceInfo, 0, len(token.Locations))
 			for _, loc := range token.Locations {
 				var rtt time.Duration = loc.RTT
-				if rtt == 0 && rttMeasurer != nil {
+				distanceCategory := DistanceUnknown
+				if loc.ProviderID == providerID {
+					distanceCategory = DistanceNear
+				} else if rttMeasurer != nil {
 					measuredRTT, err := rttMeasurer(loc.ProviderID)
-					if err == nil {
-						rtt = measuredRTT
+					if err != nil || measuredRTT <= 0 {
+						if !unreachableIDs[loc.ProviderID] {
+							unreachableIDs[loc.ProviderID] = true
+							verification.UnreachableProviders = append(verification.UnreachableProviders, loc.ProviderID)
+						}
+						continue
 					}
+					rtt = measuredRTT
+					distanceCategory = ClassifyDistanceByRTT(rtt, thresholds)
+				} else {
+					distanceCategory = ClassifyDistanceByRTT(rtt, thresholds)
 				}
-				distanceCategory := ClassifyDistanceByRTT(rtt, thresholds)
 				info := ProviderDistanceInfo{
 					ProviderID:       loc.ProviderID,
 					DistanceCategory: distanceCategory,
@@ -176,17 +190,31 @@ func VerifyKeyStateWithRepVector(
 	}
 	if routingEntry != nil && len(routingEntry.Providers) > 0 {
 		for _, p := range routingEntry.Providers {
-			if seenProviderIDs[p.ProviderID] {
+			if seenProviderIDs[p.ProviderID] || unreachableIDs[p.ProviderID] {
 				continue
+			}
+			category := p.DistanceCategory
+			var rtt time.Duration
+			if p.ProviderID == providerID {
+				category = DistanceNear
+			} else if rttMeasurer != nil {
+				measuredRTT, err := rttMeasurer(p.ProviderID)
+				if err != nil || measuredRTT <= 0 {
+					unreachableIDs[p.ProviderID] = true
+					verification.UnreachableProviders = append(verification.UnreachableProviders, p.ProviderID)
+					continue
+				}
+				rtt = measuredRTT
+				category = ClassifyDistanceByRTT(rtt, thresholds)
 			}
 			seenProviderIDs[p.ProviderID] = true
 			info := ProviderDistanceInfo{
 				ProviderID:       p.ProviderID,
-				DistanceCategory: p.DistanceCategory,
-				RTT:              0,
+				DistanceCategory: category,
+				RTT:              rtt,
 			}
 			verification.Providers = append(verification.Providers, info)
-			switch p.DistanceCategory {
+			switch category {
 			case DistanceNear:
 				verification.ActualCounts.Near++
 			case DistanceMidrange:
@@ -200,39 +228,22 @@ func VerifyKeyStateWithRepVector(
 		}
 	}
 
-	// Check synchronization: actual vs expected (with tolerance)
-	// Allow some tolerance (e.g., ±1 replica per category)
-	tolerance := 1
-	nearOK := abs(verification.ActualCounts.Near-verification.ExpectedCounts.Near) <= tolerance
-	midrangeOK := abs(verification.ActualCounts.Midrange-verification.ExpectedCounts.Midrange) <= tolerance
-	farFlungOK := abs(verification.ActualCounts.FarFlung-verification.ExpectedCounts.FarFlung) <= tolerance
+	nearOK := verification.ActualCounts.Near >= verification.ExpectedCounts.Near
+	midrangeOK := verification.ActualCounts.Midrange >= verification.ExpectedCounts.Midrange
+	farFlungOK := verification.ActualCounts.FarFlung >= verification.ExpectedCounts.FarFlung
 
 	verification.IsSynchronized = nearOK && midrangeOK && farFlungOK
 
 	// Identify missing categories
-	if !nearOK && verification.ActualCounts.Near < verification.ExpectedCounts.Near {
+	if !nearOK {
 		verification.MissingCategories = append(verification.MissingCategories, DistanceNear)
 	}
-	if !midrangeOK && verification.ActualCounts.Midrange < verification.ExpectedCounts.Midrange {
+	if !midrangeOK {
 		verification.MissingCategories = append(verification.MissingCategories, DistanceMidrange)
 	}
-	if !farFlungOK && verification.ActualCounts.FarFlung < verification.ExpectedCounts.FarFlung {
+	if !farFlungOK {
 		verification.MissingCategories = append(verification.MissingCategories, DistanceFarFlung)
 	}
 
 	return verification, nil
-}
-
-// abs returns the absolute value of an integer.
-//
-// Parameters:
-//   - x (int): the integer to take the absolute value of.
-//
-// Returns:
-//   - int: |x|.
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

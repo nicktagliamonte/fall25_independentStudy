@@ -6,9 +6,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -18,6 +22,17 @@ type fixedOwnerResolver struct {
 
 func (r fixedOwnerResolver) ResolveTupleOwner(context.Context, string) (peer.ID, error) {
 	return r.owner, nil
+}
+
+type resolvingOwnerResolver struct {
+	fixedOwnerResolver
+	info  peer.AddrInfo
+	calls atomic.Int32
+}
+
+func (r *resolvingOwnerResolver) FindPeer(context.Context, peer.ID) (peer.AddrInfo, error) {
+	r.calls.Add(1)
+	return r.info, nil
 }
 
 func connectTupleHosts(t *testing.T, a, b peerHost) {
@@ -79,6 +94,223 @@ func TestDistributedTupleSpaceRoutesExactOperationsToOwner(t *testing.T) {
 	}
 	if _, err := clientTS.TsRead("task:image:001"); !errors.Is(err, ErrTupleNotFound) {
 		t.Fatalf("read after get = %v", err)
+	}
+}
+
+func TestDistributedTupleSpaceDeduplicatesRetriedPutAtOwner(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	space, err := NewDistributedTupleSpace(h, fixedOwnerResolver{owner: h.ID()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer space.Close()
+
+	request := tupleWireRequest{
+		Operation: "put",
+		Name:      "task:deduplicated",
+		Value:     []byte("payload"),
+		RequestID: "retry-id",
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if _, err := space.applyLocalOnce(context.Background(), request); err != nil {
+			t.Fatalf("attempt %d: %v", attempt+1, err)
+		}
+	}
+	value, err := space.local.TsGet(request.Name)
+	if err != nil || string(value) != "payload" {
+		t.Fatalf("first get = %q, %v", value, err)
+	}
+	if _, err := space.local.TsGet(request.Name); !errors.Is(err, ErrTupleNotFound) {
+		t.Fatalf("duplicate put created an extra tuple copy: %v", err)
+	}
+}
+
+func TestDistributedTupleSpaceRoutesOverEstablishedOverlay(t *testing.T) {
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+	relayHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer relayHost.Close()
+	ownerHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerHost.Close()
+
+	resolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	clientTS, err := NewDistributedTupleSpace(clientHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientTS.Close()
+	relayTS, err := NewDistributedTupleSpace(relayHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer relayTS.Close()
+	ownerTS, err := NewDistributedTupleSpace(ownerHost, resolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerTS.Close()
+	connectTupleHosts(t, clientHost, relayHost)
+	connectTupleHosts(t, relayHost, ownerHost)
+	if clientHost.Network().Connectedness(ownerHost.ID()) == network.Connected {
+		t.Fatal("test requires client and owner to have no direct connection")
+	}
+
+	if _, err := clientTS.TsPut("task:overlay-route", []byte("payload")); err != nil {
+		t.Fatalf("overlay put: %v", err)
+	}
+	got, err := clientTS.TsRead("task:overlay-route")
+	if err != nil || string(got) != "payload" {
+		t.Fatalf("overlay read = %q, %v", got, err)
+	}
+	if clientHost.Network().Connectedness(ownerHost.ID()) == network.Connected {
+		t.Fatal("overlay request unexpectedly created a direct client-owner connection")
+	}
+}
+
+func TestDistributedTupleSpaceRacesAroundBlockedOverlayBranch(t *testing.T) {
+	clientHost, _ := libp2p.New()
+	defer clientHost.Close()
+	firstCandidate, _ := libp2p.New()
+	defer firstCandidate.Close()
+	secondCandidate, _ := libp2p.New()
+	defer secondCandidate.Close()
+	ownerHost, _ := libp2p.New()
+	defer ownerHost.Close()
+	connectTupleHosts(t, clientHost, firstCandidate)
+	connectTupleHosts(t, clientHost, secondCandidate)
+
+	candidates := connectedRouteCandidates(clientHost, ownerHost.ID(), nil)
+	if len(candidates) != 2 {
+		t.Fatalf("route candidates = %v", candidates)
+	}
+	hosts := map[peer.ID]host.Host{
+		firstCandidate.ID():  firstCandidate,
+		secondCandidate.ID(): secondCandidate,
+	}
+	blocked := hosts[candidates[0]]
+	relay := hosts[candidates[1]]
+	blocked.SetStreamHandler(NativeTupleProtocolID, func(stream network.Stream) {
+		defer stream.Close()
+		time.Sleep(2 * time.Second)
+	})
+	resolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	client, _ := NewDistributedTupleSpace(clientHost, resolver)
+	defer client.Close()
+	relaySpace, _ := NewDistributedTupleSpace(relay, resolver)
+	defer relaySpace.Close()
+	owner, _ := NewDistributedTupleSpace(ownerHost, resolver)
+	defer owner.Close()
+	connectTupleHosts(t, relay, ownerHost)
+
+	started := time.Now()
+	if _, err := client.TsPut("task:parallel-route", []byte("payload")); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(started); elapsed >= time.Second {
+		t.Fatalf("parallel route took %v; blocked branch delayed success", elapsed)
+	}
+}
+
+func TestDistributedTupleSpaceResolvesUnknownOwnerAddress(t *testing.T) {
+	ownerHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerHost.Close()
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+
+	if got := clientHost.Peerstore().Addrs(ownerHost.ID()); len(got) != 0 {
+		t.Fatalf("client unexpectedly knows owner addresses: %v", got)
+	}
+	ownerResolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	clientResolver := &resolvingOwnerResolver{
+		fixedOwnerResolver: ownerResolver,
+		info: peer.AddrInfo{
+			ID:    ownerHost.ID(),
+			Addrs: ownerHost.Addrs(),
+		},
+	}
+	ownerTS, err := NewDistributedTupleSpace(ownerHost, ownerResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerTS.Close()
+	clientTS, err := NewDistributedTupleSpace(clientHost, clientResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientTS.Close()
+
+	if _, err := clientTS.TsPut("task:address-recovery", []byte("payload")); err != nil {
+		t.Fatalf("put via DHT-resolved address: %v", err)
+	}
+	if clientResolver.calls.Load() == 0 {
+		t.Fatal("owner address lookup was not attempted")
+	}
+	got, err := clientTS.TsRead("task:address-recovery")
+	if err != nil || string(got) != "payload" {
+		t.Fatalf("read = %q, %v", got, err)
+	}
+}
+
+func TestDistributedTupleSpaceRefreshesUndialableOwnerAddress(t *testing.T) {
+	ownerHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerHost.Close()
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+
+	stale, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientHost.Peerstore().AddAddr(ownerHost.ID(), stale, peerstore.PermanentAddrTTL)
+	ownerResolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	clientResolver := &resolvingOwnerResolver{
+		fixedOwnerResolver: ownerResolver,
+		info: peer.AddrInfo{
+			ID:    ownerHost.ID(),
+			Addrs: ownerHost.Addrs(),
+		},
+	}
+	ownerTS, err := NewDistributedTupleSpace(ownerHost, ownerResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ownerTS.Close()
+	clientTS, err := NewDistributedTupleSpace(clientHost, clientResolver)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientTS.Close()
+
+	if _, err := clientTS.TsPut("task:address-refresh", []byte("payload")); err != nil {
+		t.Fatalf("put after DHT address refresh: %v", err)
+	}
+	if clientResolver.calls.Load() == 0 {
+		t.Fatal("DHT address refresh was not attempted")
 	}
 }
 

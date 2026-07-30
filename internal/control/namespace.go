@@ -290,9 +290,8 @@ func registerNamespaceHandlers(mux *http.ServeMux, stack *mystore.Stack, h host.
 // putNamespaceBlock stores an encoded directory block through the normal
 // block-storage pipeline: PutBlock into the local store, an async routing
 // table update, and (if repairProtocol and h are non-nil) asynchronous
-// replication to peers using ReplicationFactorR. This mirrors the /put
-// handler's post-store behavior so directory blocks get the same durability
-// as user data.
+// replication to ReplicationFactorR-1 other peers. Including the local copy,
+// this mirrors the /put handler's total replication target.
 //
 // Parameters:
 //   - ctx (context.Context): context for the synchronous PutBlock call.
@@ -317,7 +316,7 @@ func putNamespaceBlock(ctx context.Context, stack *mystore.Stack, h host.Host, r
 		go func() {
 			ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
-			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, data, ReplicationFactorR)
+			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, data, ReplicationFactorR-1)
 		}()
 	}
 	return key, c, nil

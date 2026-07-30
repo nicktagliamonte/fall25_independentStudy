@@ -45,6 +45,8 @@ const DHTNamespace = "/pht/"
 // nodeWire is the serialized form of a Node for DHT storage.
 // Internal nodes store child segments (prefix suffixes); children are stored separately.
 type nodeWire struct {
+	Epoch    uint64   `json:"epoch,omitempty"`
+	Writer   string   `json:"writer,omitempty"`
 	Version  uint64   `json:"version"`
 	Kind     NodeKind `json:"kind"`
 	Prefix   string   `json:"prefix"`
@@ -108,7 +110,13 @@ func PutNode(ctx context.Context, store ValueStore, n *Node) error {
 	if store == nil || n == nil {
 		return errors.New("store and node required")
 	}
-	w := nodeWire{Version: n.Version, Kind: n.Kind, Prefix: n.Prefix}
+	w := nodeWire{
+		Epoch:   n.Epoch,
+		Writer:  n.Writer,
+		Version: n.Version,
+		Kind:    n.Kind,
+		Prefix:  n.Prefix,
+	}
 	if n.IsLeaf() {
 		w.Entries = make([]string, len(n.Entries))
 		copy(w.Entries, n.Entries)
@@ -157,7 +165,13 @@ func GetNode(ctx context.Context, store ValueStore, prefix string) (*Node, error
 	if err := json.Unmarshal(data, &w); err != nil {
 		return nil, fmt.Errorf("unmarshal node: %w", err)
 	}
-	n := &Node{Version: w.Version, Kind: w.Kind, Prefix: w.Prefix}
+	n := &Node{
+		Epoch:   w.Epoch,
+		Writer:  w.Writer,
+		Version: w.Version,
+		Kind:    w.Kind,
+		Prefix:  w.Prefix,
+	}
 	if n.Kind == KindLeaf {
 		n.Entries = w.Entries
 		if n.Entries == nil {
@@ -383,9 +397,6 @@ func (c *queryCounters) snapshot() QueryStats {
 // Returns:
 //   - error: non-nil if storing n itself or any descendant failed (stops at the first failure).
 func PutNodeRecursive(ctx context.Context, store ValueStore, n *Node) error {
-	if err := PutNode(ctx, store, n); err != nil {
-		return err
-	}
 	if n.IsInternal() {
 		for _, child := range n.Children {
 			if err := PutNodeRecursive(ctx, store, child); err != nil {
@@ -393,5 +404,8 @@ func PutNodeRecursive(ctx context.Context, store ValueStore, n *Node) error {
 			}
 		}
 	}
-	return nil
+	// Publish children before their parent. A failed split can then leave
+	// unreachable child records, but never a visible parent that points at
+	// children which were not persisted.
+	return PutNode(ctx, store, n)
 }

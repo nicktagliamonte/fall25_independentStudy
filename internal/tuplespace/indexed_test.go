@@ -5,16 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	libp2p "github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/nicktagliamonte/fall25_independentStudy/internal/pht"
 )
 
 type indexedTestStore struct {
 	mu   sync.Mutex
 	data map[string][]byte
+	puts atomic.Int64
+	gets atomic.Int64
 }
 
 type slowIndexedTestTupleSpace struct {
@@ -38,6 +42,7 @@ func (s *slowIndexedTestTupleSpace) TsRead(name string) ([]byte, error) {
 }
 
 func (s *indexedTestStore) PutValue(_ context.Context, key string, value []byte, _ ...interface{}) error {
+	s.puts.Add(1)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.data == nil {
@@ -48,6 +53,7 @@ func (s *indexedTestStore) PutValue(_ context.Context, key string, value []byte,
 }
 
 func (s *indexedTestStore) GetValue(_ context.Context, key string, _ ...interface{}) ([]byte, error) {
+	s.gets.Add(1)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	value, ok := s.data[key]
@@ -55,6 +61,121 @@ func (s *indexedTestStore) GetValue(_ context.Context, key string, _ ...interfac
 		return nil, errors.New("not found")
 	}
 	return append([]byte(nil), value...), nil
+}
+
+func TestIndexCoordinatorDeduplicatesRetriedMutationAtOwner(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := NewIndexCoordinator(
+		h,
+		fixedOwnerResolver{owner: h.ID()},
+		stores,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	fence, err := coordinator.authority.resolve(ctx, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutation := indexMutation{
+		Operation: "insert",
+		Key:       "task:deduplicated",
+		Shard:     0,
+		Fence:     fence,
+		RequestID: "retry-id",
+	}
+	if err := coordinator.applyAuthorizedOnce(ctx, mutation); err != nil {
+		t.Fatal(err)
+	}
+	putsAfterFirst := store.puts.Load()
+	getsAfterFirst := store.gets.Load()
+	if err := coordinator.applyAuthorizedOnce(ctx, mutation); err != nil {
+		t.Fatal(err)
+	}
+	if store.puts.Load() != putsAfterFirst || store.gets.Load() != getsAfterFirst {
+		t.Fatalf(
+			"duplicate mutation touched DHT: puts %d->%d, gets %d->%d",
+			putsAfterFirst,
+			store.puts.Load(),
+			getsAfterFirst,
+			store.gets.Load(),
+		)
+	}
+}
+
+func TestIndexCoordinatorFailsOverUnreachableAuthorityAndRetries(t *testing.T) {
+	clientHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientHost.Close()
+	failedHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer failedHost.Close()
+	successorHost, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer successorHost.Close()
+	connectTupleHosts(t, clientHost, successorHost)
+
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := failoverOwnerResolver{
+		primary:   failedHost.ID(),
+		successor: successorHost.ID(),
+	}
+	client, err := NewIndexCoordinator(clientHost, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	successor, err := NewIndexCoordinator(successorHost, resolver, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer successor.Close()
+	client.SetAuthorityTiming(0, time.Minute, 0)
+	successor.SetAuthorityTiming(0, time.Minute, 0)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	const key = "task:authority-failover"
+	if err := client.Insert(ctx, key); err != nil {
+		t.Fatal(err)
+	}
+	record, err := client.authority.read(ctx, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Epoch != 2 || record.Writer != successorHost.ID().String() {
+		t.Fatalf("authority after retry = %+v", record)
+	}
+	root, err := pht.GetNode(ctx, stores[0], "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(root.Entries) != 1 || root.Entries[0] != key {
+		t.Fatalf("PHT root entries = %v", root.Entries)
+	}
 }
 
 func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
@@ -85,6 +206,13 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	defer clientACoordinator.Close()
 	clientBCoordinator, _ := NewIndexCoordinator(clientBHost, resolver, stores)
 	defer clientBCoordinator.Close()
+	for _, coordinator := range []*IndexCoordinator{
+		ownerCoordinator,
+		clientACoordinator,
+		clientBCoordinator,
+	} {
+		coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	}
 	clientA, _ := NewIndexedTupleSpace(clientABase, stores, clientACoordinator)
 	clientB, _ := NewIndexedTupleSpace(clientBBase, stores, clientBCoordinator)
 
@@ -156,6 +284,61 @@ func TestIndexedTupleSpaceMultiPeerMutationAndQuery(t *testing.T) {
 	}
 }
 
+func TestIndexedTupleSpaceRoutesMutationAndExactTupleOverOverlay(t *testing.T) {
+	clientHost, _ := libp2p.New()
+	defer clientHost.Close()
+	relayHost, _ := libp2p.New()
+	defer relayHost.Close()
+	ownerHost, _ := libp2p.New()
+	defer ownerHost.Close()
+	connectTupleHosts(t, clientHost, relayHost)
+	connectTupleHosts(t, relayHost, ownerHost)
+
+	resolver := fixedOwnerResolver{owner: ownerHost.ID()}
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	clientBase, _ := NewDistributedTupleSpace(clientHost, resolver)
+	defer clientBase.Close()
+	relayBase, _ := NewDistributedTupleSpace(relayHost, resolver)
+	defer relayBase.Close()
+	ownerBase, _ := NewDistributedTupleSpace(ownerHost, resolver)
+	defer ownerBase.Close()
+	clientCoordinator, _ := NewIndexCoordinator(clientHost, resolver, stores)
+	defer clientCoordinator.Close()
+	relayCoordinator, _ := NewIndexCoordinator(relayHost, resolver, stores)
+	defer relayCoordinator.Close()
+	ownerCoordinator, _ := NewIndexCoordinator(ownerHost, resolver, stores)
+	defer ownerCoordinator.Close()
+	for _, coordinator := range []*IndexCoordinator{
+		clientCoordinator,
+		relayCoordinator,
+		ownerCoordinator,
+	} {
+		coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	}
+	client, err := NewIndexedTupleSpace(clientBase, stores, clientCoordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if clientHost.Network().Connectedness(ownerHost.ID()) == network.Connected {
+		t.Fatal("test requires client and owner to have no direct connection")
+	}
+
+	if _, err := client.TsPut("task:overlay:indexed", []byte("payload")); err != nil {
+		t.Fatalf("overlay indexed put: %v", err)
+	}
+	got, err := client.TsRead("task:overlay:*")
+	if err != nil || string(got) != "payload" {
+		t.Fatalf("overlay indexed read = %q, %v", got, err)
+	}
+	if clientHost.Network().Connectedness(ownerHost.ID()) == network.Connected {
+		t.Fatal("indexed overlay request unexpectedly created a direct connection")
+	}
+}
+
 func TestIndexedTupleSpaceVerifiesStaleCandidatesConcurrently(t *testing.T) {
 	h, err := libp2p.New()
 	if err != nil {
@@ -173,6 +356,7 @@ func TestIndexedTupleSpaceVerifiesStaleCandidatesConcurrently(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
 
 	const live = "task:stale:040"
 	base := &slowIndexedTestTupleSpace{live: live}
@@ -221,6 +405,7 @@ func TestIndexedTupleSpaceReplaceReassertsIndexMembership(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
 	indexed, err := NewIndexedTupleSpace(NewNativeTupleSpace(), stores, coordinator)
 	if err != nil {
 		t.Fatal(err)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
@@ -12,13 +13,16 @@ import (
 )
 
 type instrumentedTupleSpaceStub struct {
+	mu    sync.Mutex
 	value []byte
 	err   error
 	puts  int
 }
 
 func (s *instrumentedTupleSpaceStub) TsPut(string, []byte) (int, error) {
+	s.mu.Lock()
 	s.puts++
+	s.mu.Unlock()
 	return 0, nil
 }
 
@@ -48,7 +52,15 @@ func (s *instrumentedTupleSpaceStub) TsReadWithStats(string) ([]byte, mytuplespa
 }
 
 func (s *instrumentedTupleSpaceStub) MutationSnapshot() mytuplespace.IndexMutationStats {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	return mytuplespace.IndexMutationStats{Total: uint64(4 + s.puts), Local: uint64(s.puts), PerShard: []uint64{uint64(1 + s.puts), 3}}
+}
+
+func (s *instrumentedTupleSpaceStub) putCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.puts
 }
 
 func TestTupleQueryEndpointReturnsInstrumentation(t *testing.T) {
@@ -98,8 +110,8 @@ func TestTuplePutEndpointPopulatesWorkload(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
-	if ts.puts != 6 {
-		t.Fatalf("puts = %d, want 6", ts.puts)
+	if puts := ts.putCount(); puts != 6 {
+		t.Fatalf("puts = %d, want 6", puts)
 	}
 	var response tuplePutResponse
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {

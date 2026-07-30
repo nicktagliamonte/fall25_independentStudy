@@ -75,10 +75,41 @@ type tuplePutResponse struct {
 	Requested      int                             `json:"requested"`
 	Succeeded      int                             `json:"succeeded"`
 	Failed         int                             `json:"failed"`
+	FailureReasons map[string]int                  `json:"failure_reasons,omitempty"`
+	FailureSamples []tuplePutFailure               `json:"failure_samples,omitempty"`
 	DurationNS     int64                           `json:"duration_ns"`
 	MutationBefore mytuplespace.IndexMutationStats `json:"mutation_before"`
 	MutationDelta  mytuplespace.IndexMutationStats `json:"mutation_delta"`
 	MutationStats  mytuplespace.IndexMutationStats `json:"mutation_stats"`
+}
+
+type tuplePutFailure struct {
+	Name  string `json:"name"`
+	Error string `json:"error"`
+}
+
+func tuplePutFailureReason(err error) string {
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "stale index mutation authority"):
+		return "stale_authority"
+	case strings.Contains(message, "resolve index authority"):
+		return "authority_resolution"
+	case strings.Contains(message, "no index overlay route"),
+		strings.Contains(message, "index-owner stream"),
+		strings.Contains(message, "read index response"):
+		return "index_route"
+	case strings.Contains(message, "no tuple overlay route"),
+		strings.Contains(message, "tuple-owner stream"),
+		strings.Contains(message, "read tuple response"):
+		return "tuple_route"
+	case strings.Contains(message, "pht"):
+		return "pht"
+	case strings.Contains(message, "deadline"), strings.Contains(message, "timeout"):
+		return "timeout"
+	default:
+		return "other"
+	}
 }
 
 func addMutationStats(total *mytuplespace.IndexMutationStats, add mytuplespace.IndexMutationStats) {
@@ -87,6 +118,10 @@ func addMutationStats(total *mytuplespace.IndexMutationStats, add mytuplespace.I
 	total.Remote += add.Remote
 	total.Failures += add.Failures
 	total.DurationNS += add.DurationNS
+	total.AuthorityClaims += add.AuthorityClaims
+	total.AuthorityTransitions += add.AuthorityTransitions
+	total.AuthorityRenewals += add.AuthorityRenewals
+	total.FenceRejections += add.FenceRejections
 	if len(total.PerShard) < len(add.PerShard) {
 		grown := make([]uint64, len(add.PerShard))
 		copy(grown, total.PerShard)
@@ -203,6 +238,7 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 		requested := len(names) * request.Copies
 		jobs := make(chan string)
 		type putResult struct {
+			name  string
 			stats mytuplespace.IndexMutationStats
 			err   error
 		}
@@ -214,7 +250,7 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 				defer workers.Done()
 				for name := range jobs {
 					_, stats, err := putInstrumented.TsPutWithMutationStats(name, value)
-					results <- putResult{stats: stats, err: err}
+					results <- putResult{name: name, stats: stats, err: err}
 				}
 			}()
 		}
@@ -232,6 +268,8 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 		}()
 		succeeded := 0
 		failed := 0
+		failureReasons := make(map[string]int)
+		failureSamples := make([]tuplePutFailure, 0, 20)
 		mutationDelta := mytuplespace.IndexMutationStats{}
 		for result := range results {
 			addMutationStats(&mutationDelta, result.stats)
@@ -239,6 +277,13 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 				succeeded++
 			} else {
 				failed++
+				failureReasons[tuplePutFailureReason(result.err)]++
+				if len(failureSamples) < cap(failureSamples) {
+					failureSamples = append(failureSamples, tuplePutFailure{
+						Name:  result.name,
+						Error: result.err.Error(),
+					})
+				}
 			}
 		}
 		mutationAfter := instrumented.MutationSnapshot()
@@ -246,6 +291,8 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			Requested:      requested,
 			Succeeded:      succeeded,
 			Failed:         failed,
+			FailureReasons: failureReasons,
+			FailureSamples: failureSamples,
 			DurationNS:     time.Since(started).Nanoseconds(),
 			MutationBefore: mutationBefore,
 			MutationDelta:  mutationDelta,
@@ -1115,15 +1162,13 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	//
 	// maxPutBodyBytes bounds the accepted raw-bytes /put body size (64 MiB);
 	// larger bodies are rejected with 413.
-	const maxPutBodyBytes = 64 << 20
+	const maxPutBodyBytes = mystore.MaxTransferBlockSize
 	// POST /put stores a block, deriving its content Key as SHA256(data).
 	// Body is read as raw bytes when Content-Type is
-	// application/octet-stream, otherwise as JSON PutRequest. Payloads larger
-	// than mystore.DefaultContentChunkSize are split into fixed-size chunks
-	// (mystore.SplitPayloadChunks), each stored individually via
-	// PutRawBlockIndexed, with a ChunkIndex recording the ordered chunk keys
-	// under the overall content key; smaller payloads go through
-	// stack.PutBlock directly. After storing, the routing table is updated
+	// application/octet-stream, otherwise as JSON PutRequest. A logical payload
+	// is stored under one key/CID pair so the repair and direct-fetch protocols
+	// transfer exactly the bytes identified by the returned key. After storing,
+	// the routing table is updated
 	// asynchronously (UpdateRoutingTableOnPutAsync) and, if repairProtocol
 	// and h are available, replication to peers is scheduled on a background
 	// goroutine with a 4-minute budget (independent of the request's/test's
@@ -1169,38 +1214,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			blockData = []byte(req.Data)
 		}
 		t0 := time.Now()
-		var key mystore.Key
-		var c cid.Cid
-		if len(blockData) > mystore.DefaultContentChunkSize {
-			key = mystore.KeyFromData(blockData)
-			chunks := mystore.SplitPayloadChunks(blockData, mystore.DefaultContentChunkSize)
-			chunkKeys := make([]string, 0, len(chunks))
-			for i := range chunks {
-				chunkKey, chunkCID, putErr := mystore.PutRawBlockIndexed(r.Context(), stack.Datastore, stack.BlockSvc, chunks[i], nil)
-				if putErr != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					_, _ = w.Write([]byte(putErr.Error()))
-					return
-				}
-				if !c.Defined() {
-					c = chunkCID
-				}
-				chunkKeys = append(chunkKeys, chunkKey.String())
-			}
-			idx := mystore.ChunkIndex{
-				Version:    1,
-				ChunkSize:  mystore.DefaultContentChunkSize,
-				TotalBytes: len(blockData),
-				ChunkKeys:  chunkKeys,
-			}
-			if idxErr := mystore.StoreChunkIndex(r.Context(), stack.Datastore, key, idx); idxErr != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				_, _ = w.Write([]byte(idxErr.Error()))
-				return
-			}
-		} else {
-			key, c, err = stack.PutBlock(r.Context(), blockData)
-		}
+		key, c, err := stack.PutPayload(r.Context(), blockData)
 		t1 := time.Now()
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -1603,6 +1617,10 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			if rt == nil || tokenStore == nil || hostRef == nil {
 				return
 			}
+			var measureRTT func(peer.ID) (time.Duration, error)
+			if repairRef != nil {
+				measureRTT = repairRef.MeasureRTT
+			}
 			ctxVerify, cancelVerify := context.WithTimeout(context.Background(), 5*time.Second)
 			verification, verifyErr := mystore.VerifyKeyStateWithRepVector(
 				ctxVerify,
@@ -1610,7 +1628,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 				rt,
 				tokenStore,
 				hostRef.ID(),
-				nil,
+				measureRTT,
 				ReplicationFactorR,
 				nil,
 			)

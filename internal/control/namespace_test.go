@@ -24,7 +24,10 @@ func TestNamespaceHandlers_MkdirLinkLsResolveRename(t *testing.T) {
 	}
 	defer h.Close()
 
-	stack, err := mystore.NewStack(ctx, h)
+	// Namespace behavior does not need a DHT. Use the in-memory content router
+	// so this fixture does not attempt custom /tokens/ writes against the
+	// public-protocol DHT validator.
+	stack, err := mystore.NewStackWithRouter(ctx, h, NewDynamicRouter())
 	if err != nil {
 		t.Fatal(err)
 	}

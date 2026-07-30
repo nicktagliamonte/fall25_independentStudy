@@ -3,8 +3,10 @@
 package net
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 
 	kaddht "github.com/libp2p/go-libp2p-kad-dht"
 	record "github.com/libp2p/go-libp2p-record"
@@ -55,6 +57,9 @@ type DHTConfig struct {
 	// UseTokenDHT: when true, uses custom protocol prefix + /tokens/ validator for token storage.
 	// Incompatible with standard /ipfs DHT; use only for token-routing tests or isolated networks.
 	UseTokenDHT bool
+	// BucketSize sets Kademlia k, which is also the record replication factor.
+	// Zero retains the library default.
+	BucketSize int
 }
 
 // tokenRecordValidator validates /tokens/ namespace records for DHT token routing.
@@ -81,14 +86,15 @@ func (tokenRecordValidator) Validate(key string, value []byte) error {
 }
 
 // versionedJSONValidator accepts non-empty JSON records and resolves concurrent
-// DHT values by their monotonically increasing "version" field.
+// DHT values by (epoch, writer, version). Epoch and writer form a fencing token
+// for PHT mutation authority; legacy records without those fields remain epoch
+// zero records ordered by version. A final bytewise comparison makes exact
+// ties deterministic instead of dependent on network arrival order.
 type versionedJSONValidator struct{}
 
 func (versionedJSONValidator) Validate(_ string, value []byte) error {
-	var record struct {
-		Version uint64 `json:"version"`
-	}
-	if len(value) == 0 || json.Unmarshal(value, &record) != nil {
+	var order versionedJSONOrder
+	if len(value) == 0 || json.Unmarshal(value, &order) != nil {
 		return routing.ErrNotFound
 	}
 	return nil
@@ -99,17 +105,20 @@ func (versionedJSONValidator) Select(_ string, values [][]byte) (int, error) {
 		return -1, routing.ErrNotFound
 	}
 	selected := -1
-	var highest uint64
+	var selectedOrder versionedJSONOrder
 	for i, value := range values {
-		var record struct {
-			Version uint64 `json:"version"`
-		}
-		if json.Unmarshal(value, &record) != nil {
+		var order versionedJSONOrder
+		if json.Unmarshal(value, &order) != nil {
 			continue
 		}
-		if selected == -1 || record.Version > highest {
+		if selected == -1 || compareVersionedJSON(
+			order,
+			value,
+			selectedOrder,
+			values[selected],
+		) > 0 {
 			selected = i
-			highest = record.Version
+			selectedOrder = order
 		}
 	}
 	if selected == -1 {
@@ -118,22 +127,71 @@ func (versionedJSONValidator) Select(_ string, values [][]byte) (int, error) {
 	return selected, nil
 }
 
-// Select implements record.Validator for the /tokens/ namespace. It always picks
-// the first candidate value; callers are expected to merge/reconcile token
-// versions themselves (see token conflict resolution via version+timestamp).
+type versionedJSONOrder struct {
+	Epoch   uint64 `json:"epoch,omitempty"`
+	Writer  string `json:"writer,omitempty"`
+	Version uint64 `json:"version"`
+}
+
+func compareVersionedJSON(a versionedJSONOrder, aBytes []byte, b versionedJSONOrder, bBytes []byte) int {
+	if a.Epoch < b.Epoch {
+		return -1
+	}
+	if a.Epoch > b.Epoch {
+		return 1
+	}
+	if writerOrder := strings.Compare(a.Writer, b.Writer); writerOrder != 0 {
+		return writerOrder
+	}
+	if a.Version < b.Version {
+		return -1
+	}
+	if a.Version > b.Version {
+		return 1
+	}
+	return bytes.Compare(aBytes, bBytes)
+}
+
+// Select implements record.Validator for the /tokens/ namespace. It chooses
+// the greatest (version, timestamp, bytes) tuple so DHT convergence preserves
+// successful provider additions and removals instead of depending on network
+// arrival order.
 //
 // Parameters:
 //   - key (string): the DHT record key (unused).
 //   - values ([][]byte): candidate record values for the same key.
 //
 // Returns:
-//   - int: index of the selected value (always 0 when values is non-empty).
+//   - int: index of the newest valid token record.
 //   - error: routing.ErrNotFound if values is empty, nil otherwise.
 func (tokenRecordValidator) Select(key string, values [][]byte) (int, error) {
 	if len(values) == 0 {
 		return -1, routing.ErrNotFound
 	}
-	return 0, nil
+	type tokenOrder struct {
+		Version   int   `json:"version"`
+		Timestamp int64 `json:"timestamp"`
+	}
+	selected := -1
+	var selectedOrder tokenOrder
+	for i, value := range values {
+		var order tokenOrder
+		if len(value) == 0 || json.Unmarshal(value, &order) != nil {
+			continue
+		}
+		if selected == -1 ||
+			order.Version > selectedOrder.Version ||
+			(order.Version == selectedOrder.Version && order.Timestamp > selectedOrder.Timestamp) ||
+			(order.Version == selectedOrder.Version && order.Timestamp == selectedOrder.Timestamp &&
+				bytes.Compare(value, values[selected]) > 0) {
+			selected = i
+			selectedOrder = order
+		}
+	}
+	if selected == -1 {
+		return -1, routing.ErrNotFound
+	}
+	return selected, nil
 }
 
 // DefaultBootstrapPeerInfos returns parsed AddrInfos for DefaultDHTBootstrapAddrs.
@@ -174,6 +232,9 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 		opts = append(opts, kaddht.ProtocolPrefix(TokenDHTProtocolPrefix))
 		opts = append(opts, kaddht.NamespacedValidator("tokens", &tokenRecordValidator{}))
 		opts = append(opts, kaddht.NamespacedValidator("pht", &versionedJSONValidator{}))
+	}
+	if cfg.BucketSize > 0 {
+		opts = append(opts, kaddht.BucketSize(cfg.BucketSize))
 	}
 
 	if cfg.BootstrapPeersFunc != nil {

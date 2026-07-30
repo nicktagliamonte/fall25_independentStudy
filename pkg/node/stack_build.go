@@ -15,6 +15,11 @@ import (
 	mystore "github.com/nicktagliamonte/fall25_independentStudy/internal/storage"
 )
 
+// DefaultTarsusDHTBucketSize replicates mutable metadata across eight
+// Kademlia peers. This retains independently placed metadata replicas while
+// bounding PHT read-modify-write amplification in private clusters.
+const DefaultTarsusDHTBucketSize = 8
+
 // BuildStackWithDHT creates a storage.Stack backed by a Kademlia DHT (with a
 // DynamicRouter fallback layered underneath it) and wires the DHT's bootstrap
 // peer function to also draw candidates from peerStore.
@@ -49,6 +54,7 @@ func BuildStackWithDHT(ctx context.Context, h host.Host, bs bstore.Blockstore, d
 	dhtCfg := myhost.DHTConfig{
 		Mode:        mode,
 		UseTokenDHT: true, // required for /tokens/ namespace (SyncTokenOnPut, GetToken, replication)
+		BucketSize:  DefaultTarsusDHTBucketSize,
 		// BootstrapPeersFunc supplies up to 50 candidates from peerStore on
 		// demand. Callers decide whether peerStore contains the public libp2p
 		// defaults, which also permits explicitly bootstrapped private clusters

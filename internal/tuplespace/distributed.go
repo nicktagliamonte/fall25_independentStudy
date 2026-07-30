@@ -9,8 +9,11 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"sync"
+	"sync/atomic"
 	"time"
 
+	kbucket "github.com/libp2p/go-libp2p-kbucket"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -19,11 +22,22 @@ import (
 
 const (
 	// NativeTupleProtocolID is the libp2p protocol used by Tarsus tuple owners.
-	NativeTupleProtocolID protocol.ID = "/tarsus/tuplespace/1.0.0"
-	defaultTupleTimeout               = 10 * time.Second
-	maxTupleRequestBytes              = 1 << 20
-	handshakeVerifiedTag              = "handshake_ok"
+	NativeTupleProtocolID        protocol.ID = "/tarsus/tuplespace/1.0.0"
+	defaultTupleTimeout                      = 45 * time.Second
+	establishedStreamOpenTimeout             = 5 * time.Second
+	tupleRouteAttemptTimeout                 = 8 * time.Second
+	maxTupleRequestBytes                     = 1 << 20
+	// Route work is conserved across recursive branches, so these values cap
+	// one request at 64 relay visits rather than multiplying at every hop.
+	// Four branches tolerate multiple unusable established connections while
+	// remaining bounded at and above the 50-node correctness gate.
+	maxTupleRouteWork     = 64
+	maxTupleRouteBranches = 4
+	maxTupleMemoEntries   = 4096
+	handshakeVerifiedTag  = "handshake_ok"
 )
+
+var errNoTupleOverlayRoute = errors.New("no tuple overlay route")
 
 // TupleOwnerResolver deterministically chooses the peer that serializes exact
 // operations for a tuple name. Production resolvers should derive ownership
@@ -33,9 +47,13 @@ type TupleOwnerResolver interface {
 }
 
 type tupleWireRequest struct {
-	Operation string `json:"operation"`
-	Name      string `json:"name"`
-	Value     []byte `json:"value,omitempty"`
+	Operation   string   `json:"operation"`
+	Name        string   `json:"name"`
+	Value       []byte   `json:"value,omitempty"`
+	RequestID   string   `json:"request_id,omitempty"`
+	Target      string   `json:"target,omitempty"`
+	Visited     []string `json:"visited,omitempty"`
+	RouteBudget int      `json:"route_budget,omitempty"`
 }
 
 type tupleWireResponse struct {
@@ -54,6 +72,16 @@ type DistributedTupleSpace struct {
 	local                *NativeTupleSpace
 	timeout              time.Duration
 	requireVerifiedPeers bool
+	requestSequence      atomic.Uint64
+	memoMu               sync.Mutex
+	memo                 map[string]*tupleMemoEntry
+}
+
+type tupleMemoEntry struct {
+	done      chan struct{}
+	value     []byte
+	err       error
+	completed time.Time
 }
 
 // NewDistributedTupleSpace installs the native tuple protocol on h.
@@ -69,6 +97,7 @@ func NewDistributedTupleSpace(h host.Host, resolver TupleOwnerResolver) (*Distri
 		resolver: resolver,
 		local:    NewNativeTupleSpace(),
 		timeout:  defaultTupleTimeout,
+		memo:     make(map[string]*tupleMemoEntry),
 	}
 	h.SetStreamHandler(NativeTupleProtocolID, d.handleStream)
 	return d, nil
@@ -184,9 +213,38 @@ func (d *DistributedTupleSpace) associative(ctx context.Context, operation, expr
 }
 
 func (d *DistributedTupleSpace) requestPeer(ctx context.Context, owner peer.ID, req tupleWireRequest) ([]byte, error) {
-	if owner == d.host.ID() {
-		return d.applyLocal(req)
+	if req.RequestID == "" {
+		req.RequestID = fmt.Sprintf(
+			"%s-%x-%x",
+			d.host.ID(),
+			time.Now().UnixNano(),
+			d.requestSequence.Add(1),
+		)
 	}
+	if owner == d.host.ID() {
+		return d.applyLocalOnce(ctx, req)
+	}
+	req.Target = owner.String()
+	req.RouteBudget = maxTupleRouteWork
+	req.Visited = appendVisitedPeer(req.Visited, d.host.ID())
+	value, err := d.forwardTupleRequest(ctx, req)
+	if err == nil {
+		return value, nil
+	}
+	if !errors.Is(err, errNoTupleOverlayRoute) {
+		return nil, err
+	}
+	if err := ensureTuplePeerAddress(ctx, d.host, d.resolver, owner); err != nil {
+		return nil, fmt.Errorf("resolve tuple-owner address: %w", err)
+	}
+	return d.requestPeerDirect(ctx, owner, req)
+}
+
+func (d *DistributedTupleSpace) requestPeerDirect(
+	ctx context.Context,
+	owner peer.ID,
+	req tupleWireRequest,
+) ([]byte, error) {
 	stream, err := openTuplePeerStream(ctx, d.host, owner, NativeTupleProtocolID, d.requireVerifiedPeers)
 	if err != nil {
 		return nil, fmt.Errorf("open tuple-owner stream: %w", err)
@@ -212,9 +270,199 @@ func (d *DistributedTupleSpace) requestPeer(ctx context.Context, owner peer.ID, 
 	return response.Value, nil
 }
 
+func (d *DistributedTupleSpace) forwardTupleRequest(
+	ctx context.Context,
+	req tupleWireRequest,
+) ([]byte, error) {
+	target, err := peer.Decode(req.Target)
+	if err != nil {
+		return nil, fmt.Errorf("decode tuple route target: %w", err)
+	}
+	if target == d.host.ID() {
+		return d.applyLocalOnce(ctx, req)
+	}
+	if req.RouteBudget <= 0 {
+		return nil, fmt.Errorf("%w: route budget exhausted for %s", errNoTupleOverlayRoute, target)
+	}
+	branchLimit := 1
+	if routeStartedHere(req.Visited, d.host.ID()) {
+		branchLimit = maxTupleRouteBranches
+	}
+	req.Visited = appendVisitedPeer(req.Visited, d.host.ID())
+	candidates := connectedRouteCandidates(d.host, target, req.Visited)
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("%w: no unvisited neighbor for %s", errNoTupleOverlayRoute, target)
+	}
+	if len(candidates) > branchLimit {
+		candidates = candidates[:branchLimit]
+	}
+	if len(candidates) > req.RouteBudget {
+		candidates = candidates[:req.RouteBudget]
+	}
+	remainingBudget := req.RouteBudget - len(candidates)
+	budgetPerBranch := remainingBudget / len(candidates)
+	extraBudget := remainingBudget % len(candidates)
+	type routeResult struct {
+		value []byte
+		err   error
+	}
+	routeCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	results := make(chan routeResult, len(candidates))
+	for candidateIndex, next := range candidates {
+		next := next
+		forwarded := req
+		forwarded.RouteBudget = budgetPerBranch
+		if candidateIndex < extraBudget {
+			forwarded.RouteBudget++
+		}
+		go func() {
+			attemptCtx, attemptCancel := boundedAttemptContext(
+				routeCtx,
+				tupleRouteAttemptTimeout,
+			)
+			value, err := d.requestPeerDirect(attemptCtx, next, forwarded)
+			attemptCancel()
+			results <- routeResult{value: value, err: err}
+		}()
+	}
+	var lastErr error
+	for range candidates {
+		result := <-results
+		if result.err == nil {
+			cancel()
+			return result.value, nil
+		}
+		if errors.Is(result.err, ErrTupleNotFound) {
+			cancel()
+			return nil, ErrTupleNotFound
+		}
+		lastErr = result.err
+		if ctx.Err() != nil {
+			break
+		}
+	}
+	return nil, fmt.Errorf("%w: target %s: %v", errNoTupleOverlayRoute, target, lastErr)
+}
+
+func appendVisitedPeer(visited []string, id peer.ID) []string {
+	encoded := id.String()
+	for _, existing := range visited {
+		if existing == encoded {
+			return visited
+		}
+	}
+	return append(visited, encoded)
+}
+
+// routeStartedHere distinguishes the one originating fan-out from relays.
+// Relays receive a path that does not yet contain themselves and advance only
+// one branch, preventing recursive speculative trees from outliving a
+// successful sibling request.
+func routeStartedHere(visited []string, id peer.ID) bool {
+	encoded := id.String()
+	for _, existing := range visited {
+		if existing == encoded {
+			return true
+		}
+	}
+	return false
+}
+
+func connectedRouteCandidates(h host.Host, target peer.ID, visited []string) []peer.ID {
+	excluded := make(map[string]struct{}, len(visited)+1)
+	for _, encoded := range visited {
+		excluded[encoded] = struct{}{}
+	}
+	excluded[h.ID().String()] = struct{}{}
+	candidates := make([]peer.ID, 0, len(h.Network().Peers()))
+	for _, candidate := range h.Network().Peers() {
+		if _, skip := excluded[candidate.String()]; skip {
+			continue
+		}
+		if h.Network().Connectedness(candidate) != network.Connected {
+			continue
+		}
+		candidates = append(candidates, candidate)
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i] == target {
+			return true
+		}
+		if candidates[j] == target {
+			return false
+		}
+		return kbucket.Closer(candidates[i], candidates[j], string(target))
+	})
+	return candidates
+}
+
+type tuplePeerFinder interface {
+	FindPeer(context.Context, peer.ID) (peer.AddrInfo, error)
+}
+
+func ensureTuplePeerAddress(
+	ctx context.Context,
+	h host.Host,
+	resolver TupleOwnerResolver,
+	owner peer.ID,
+) error {
+	if owner == h.ID() || h.Network().Connectedness(owner) == network.Connected {
+		return nil
+	}
+	finder, canResolve := resolver.(tuplePeerFinder)
+	var resolvedErr error
+	if canResolve {
+		info, err := finder.FindPeer(ctx, owner)
+		if err == nil {
+			if info.ID == "" {
+				info.ID = owner
+			}
+			if info.ID != owner || len(info.Addrs) == 0 {
+				resolvedErr = fmt.Errorf("peer lookup returned no addresses for %s", owner)
+			} else if err := h.Connect(ctx, info); err == nil {
+				return nil
+			} else {
+				resolvedErr = fmt.Errorf("connect via resolved addresses %v: %w", info.Addrs, err)
+			}
+		} else {
+			resolvedErr = err
+		}
+	}
+	known := peer.AddrInfo{ID: owner, Addrs: h.Peerstore().Addrs(owner)}
+	if len(known.Addrs) > 0 {
+		if err := h.Connect(ctx, known); err == nil {
+			return nil
+		} else if resolvedErr != nil {
+			return fmt.Errorf(
+				"resolved address attempt failed: %v; known addresses %v failed: %w",
+				resolvedErr,
+				known.Addrs,
+				err,
+			)
+		} else {
+			return fmt.Errorf("known addresses %v failed: %w", known.Addrs, err)
+		}
+	}
+	if resolvedErr != nil {
+		return resolvedErr
+	}
+	return nil
+}
+
 func openTuplePeerStream(ctx context.Context, h host.Host, owner peer.ID, protocolID protocol.ID, requireVerified bool) (network.Stream, error) {
+	openCtx := ctx
+	cancel := func() {}
+	// Connectedness can briefly remain "connected" after an underlying path
+	// becomes unusable. Bound only stream establishment on an existing
+	// connection so overlay routing still has time to try another neighbor;
+	// the stream itself retains the caller's full operation deadline.
+	if h.Network().Connectedness(owner) == network.Connected {
+		openCtx, cancel = context.WithTimeout(ctx, establishedStreamOpenTimeout)
+	}
+	defer cancel()
 	info := peer.AddrInfo{ID: owner, Addrs: h.Peerstore().Addrs(owner)}
-	if err := h.Connect(ctx, info); err != nil {
+	if err := h.Connect(openCtx, info); err != nil {
 		return nil, fmt.Errorf("connect to peer: %w", err)
 	}
 	if requireVerified {
@@ -226,13 +474,13 @@ func openTuplePeerStream(ctx context.Context, h host.Host, owner peer.ID, protoc
 				break
 			}
 			select {
-			case <-ctx.Done():
-				return nil, fmt.Errorf("wait for peer verification: %w", ctx.Err())
+			case <-openCtx.Done():
+				return nil, fmt.Errorf("wait for peer verification: %w", openCtx.Err())
 			case <-ticker.C:
 			}
 		}
 	}
-	return h.NewStream(ctx, owner, protocolID)
+	return h.NewStream(openCtx, owner, protocolID)
 }
 
 func (d *DistributedTupleSpace) handleStream(stream network.Stream) {
@@ -244,7 +492,15 @@ func (d *DistributedTupleSpace) handleStream(stream network.Stream) {
 		_ = json.NewEncoder(stream).Encode(tupleWireResponse{Error: "decode tuple request: " + err.Error()})
 		return
 	}
-	value, err := d.applyLocal(req)
+	ctx, cancel := context.WithTimeout(context.Background(), d.timeout)
+	defer cancel()
+	var value []byte
+	var err error
+	if req.Target != "" && req.Target != d.host.ID().String() {
+		value, err = d.forwardTupleRequest(ctx, req)
+	} else {
+		value, err = d.applyLocalOnce(ctx, req)
+	}
 	response := tupleWireResponse{Value: value}
 	if err != nil {
 		response.Error = err.Error()
@@ -267,6 +523,69 @@ func (d *DistributedTupleSpace) applyLocal(req tupleWireRequest) ([]byte, error)
 	default:
 		return nil, fmt.Errorf("unsupported tuple operation %q", req.Operation)
 	}
+}
+
+func (d *DistributedTupleSpace) applyLocalOnce(
+	ctx context.Context,
+	req tupleWireRequest,
+) ([]byte, error) {
+	if req.RequestID == "" {
+		return d.applyLocal(req)
+	}
+	d.memoMu.Lock()
+	if existing := d.memo[req.RequestID]; existing != nil {
+		d.memoMu.Unlock()
+		select {
+		case <-existing.done:
+			return append([]byte(nil), existing.value...), existing.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	entry := &tupleMemoEntry{done: make(chan struct{})}
+	d.memo[req.RequestID] = entry
+	d.memoMu.Unlock()
+
+	value, err := d.applyLocal(req)
+	d.memoMu.Lock()
+	entry.value = append([]byte(nil), value...)
+	entry.err = err
+	entry.completed = time.Now()
+	close(entry.done)
+	if err != nil {
+		delete(d.memo, req.RequestID)
+	} else {
+		d.evictTupleMemoLocked()
+	}
+	d.memoMu.Unlock()
+	return value, err
+}
+
+func (d *DistributedTupleSpace) evictTupleMemoLocked() {
+	for len(d.memo) > maxTupleMemoEntries {
+		var oldestID string
+		var oldest time.Time
+		for requestID, entry := range d.memo {
+			if entry.completed.IsZero() {
+				continue
+			}
+			if oldestID == "" || entry.completed.Before(oldest) {
+				oldestID = requestID
+				oldest = entry.completed
+			}
+		}
+		if oldestID == "" {
+			return
+		}
+		delete(d.memo, oldestID)
+	}
+}
+
+func boundedAttemptContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if deadline, ok := parent.Deadline(); ok && time.Until(deadline) <= timeout {
+		return context.WithCancel(parent)
+	}
+	return context.WithTimeout(parent, timeout)
 }
 
 func isTuplePattern(expr string) bool {

@@ -3,14 +3,51 @@
 package storage
 
 import (
+	"context"
 	"crypto/rand"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multihash"
 )
+
+func TestTokenUpdateCanRemoveProvider(t *testing.T) {
+	ctx := context.Background()
+	store := newMockTokenDHT()
+	key := KeyFromData([]byte("removal"))
+	keep := tokenTestPeerID(t)
+	remove := tokenTestPeerID(t)
+	addr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/4001")
+	initial := Token{
+		Key: key,
+		Locations: []Location{
+			{ProviderID: keep, Address: addr},
+			{ProviderID: remove, Address: addr},
+		},
+		Timestamp: time.Now().UnixNano(),
+		Version:   1,
+	}
+	if err := PutToken(ctx, store, key, initial); err != nil {
+		t.Fatalf("PutToken: %v", err)
+	}
+	err := UpdateTokenWithConflictResolution(ctx, store, key, func(current Token) Token {
+		current.Locations = []Location{current.Locations[0]}
+		return current
+	}, 3)
+	if err != nil {
+		t.Fatalf("UpdateTokenWithConflictResolution: %v", err)
+	}
+	got, err := GetToken(ctx, store, key)
+	if err != nil {
+		t.Fatalf("GetToken: %v", err)
+	}
+	if len(got.Locations) != 1 || got.Locations[0].ProviderID != keep {
+		t.Fatalf("locations = %+v, want only %s", got.Locations, keep)
+	}
+}
 
 func TestVersion_Structure(t *testing.T) {
 	pref, _ := cid.Prefix{Version: 1, Codec: 0x55, MhType: multihash.SHA2_256, MhLength: 32}.Sum([]byte("x"))

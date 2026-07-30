@@ -18,8 +18,12 @@ const (
 // Node represents a PHT node. Leaf nodes hold indexed keys; internal nodes hold
 // child pointers for tree navigation. The prefix is the path from root to this node.
 type Node struct {
+	// Epoch and Writer form the distributed-writer fencing token. They are
+	// ordered before Version by the DHT validator.
+	Epoch  uint64
+	Writer string
 	// Version increases on every persisted mutation so DHT validators can
-	// select the newest value for a prefix.
+	// select the newest value from the current fenced writer for a prefix.
 	Version uint64
 	// Kind distinguishes a leaf (holds Entries) from an internal node (holds Children).
 	Kind NodeKind

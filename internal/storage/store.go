@@ -150,6 +150,22 @@ type Stack struct {
 	HopSink NetworkHopsSink
 }
 
+// tokenValueStore returns the configured token store without constructing an
+// interface containing a nil *IpfsDHT. Such an interface compares non-nil and
+// panics when its methods are called.
+func (s *Stack) tokenValueStore() routing.ValueStore {
+	if s == nil {
+		return nil
+	}
+	if s.TokenStore != nil {
+		return s.TokenStore
+	}
+	if s.DHT != nil {
+		return s.DHT
+	}
+	return nil
+}
+
 // NewEphemeralBlockstore creates an in-memory blockstore and datastore, suitable for tests
 // or ephemeral nodes that do not need persistence across restarts.
 //
@@ -176,7 +192,10 @@ func NewEphemeralBlockstore() (bstore.Blockstore, ds.Batching) {
 //   - *Stack: the constructed stack, with DHT, Router, Host, and KeyLockManager populated.
 //   - error: non-nil if DHT creation or stack construction fails.
 func NewStack(ctx context.Context, h host.Host) (*Stack, error) {
-	dht, err := myhost.NewDHT(ctx, h, myhost.DHTConfig{Mode: myhost.DHTModeServer})
+	dht, err := myhost.NewDHT(ctx, h, myhost.DHTConfig{
+		Mode:        myhost.DHTModeServer,
+		UseTokenDHT: true,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -282,6 +301,12 @@ const keyToProviderIDNS = "/manifest/key-to-provider/"
 // DirectFetchProtocolID is the libp2p protocol ID for direct data fetch by key.
 const DirectFetchProtocolID = "/sng40/direct-fetch/1.0.0"
 
+// MaxTransferBlockSize bounds one logical payload transferred by the direct
+// fetch and repair protocols. Keeping one shared limit prevents the HTTP put
+// path from accepting an object that peers will later refuse to fetch or
+// replicate.
+const MaxTransferBlockSize = 64 << 20
+
 // PutRawBlock stores raw data in the blockstore via bsvc, letting the block-format library
 // compute the block's CID. On the first AddBlock error, it retries once before giving up.
 //
@@ -370,10 +395,7 @@ func (s *Stack) GetBlock(ctx context.Context, k Key) ([]byte, int, error) {
 		}
 	}
 
-	tokenStore := s.TokenStore
-	if tokenStore == nil && s.DHT != nil {
-		tokenStore = routing.ValueStore(s.DHT)
-	}
+	tokenStore := s.tokenValueStore()
 	if tokenStore == nil {
 		return nil, 0, fmt.Errorf("token store or DHT required for token-based routing")
 	}
@@ -532,7 +554,7 @@ func DirectFetch(ctx context.Context, stack *Stack, location Location, key Key) 
 	if err != nil {
 		return nil, fmt.Errorf("parse size: %w", err)
 	}
-	if blockSize <= 0 || blockSize > 10*1024*1024 {
+	if blockSize <= 0 || blockSize > MaxTransferBlockSize {
 		return nil, fmt.Errorf("invalid block size: %d", blockSize)
 	}
 
@@ -959,6 +981,15 @@ func (s *Stack) PutBlock(ctx context.Context, data []byte) (Key, cid.Cid, error)
 	return PutRawBlockIndexed(ctx, s.Datastore, s.BlockSvc, data, opts)
 }
 
+// PutPayload stores one logical payload as one content-addressed block. The
+// network replication protocol transfers logical payloads atomically, so the
+// local representation must use the same key/CID pair. A prior HTTP-only
+// chunking path returned the first chunk's CID for the whole-payload key,
+// making replication reject every payload larger than the chunk threshold.
+func (s *Stack) PutPayload(ctx context.Context, data []byte) (Key, cid.Cid, error) {
+	return s.PutBlock(ctx, data)
+}
+
 // DeleteBlock removes the block identified by CID c: it resolves c to a Key via
 // s.RoutingTable (if set), deletes the block via DeleteBlockIndexed (protected by a per-key
 // lock when s.KeyLockManager, s.Host, and a resolved key are all available), and then updates
@@ -1189,10 +1220,7 @@ func (s *Stack) updateRoutingTableOnPut(k Key, providerID peer.ID, repVector *Re
 
 	// Auto-sync token on Put operations (use TokenStore when set, else DHT)
 	if s.Host != nil {
-		var store routing.ValueStore = s.DHT
-		if s.TokenStore != nil {
-			store = s.TokenStore
-		}
+		store := s.tokenValueStore()
 		if store != nil {
 			doSync := func() {
 				ctx := context.Background()
@@ -1231,10 +1259,7 @@ func (s *Stack) UpdateRoutingTableOnDelete(c cid.Cid) {
 		_ = RemoveKeyToProviderIDMapping(context.Background(), s.Datastore, entry.Key)
 
 		// Auto-sync token on Delete operations
-		var store routing.ValueStore = s.DHT
-		if s.TokenStore != nil {
-			store = s.TokenStore
-		}
+		store := s.tokenValueStore()
 		if store != nil && s.Host != nil {
 			ctx := context.Background()
 			_ = SyncTokenOnDelete(ctx, store, s.Host, entry.Key)
@@ -1259,10 +1284,7 @@ func (s *Stack) UpdateRoutingTableOnDeleteByKey(k Key) {
 	_ = RemoveKeyToProviderIDMapping(context.Background(), s.Datastore, k)
 
 	// Auto-sync token on Delete operations
-	var store routing.ValueStore = s.DHT
-	if s.TokenStore != nil {
-		store = s.TokenStore
-	}
+	store := s.tokenValueStore()
 	if store != nil && s.Host != nil {
 		ctx := context.Background()
 		_ = SyncTokenOnDelete(ctx, store, s.Host, k)
@@ -1289,48 +1311,15 @@ func (s *Stack) TriggerRepairForAllCIDsOnRecovery(ctx context.Context, h host.Ho
 	if s.RoutingTable == nil || repairProtocol == nil {
 		return
 	}
-	// Get snapshot of all routing table entries
-	entries := s.RoutingTable.Snapshot()
-	if len(entries) == 0 {
-		return
-	}
-	// Verify each key and trigger repair if needed
-	for _, entry := range entries {
+	for _, entry := range s.RoutingTable.Snapshot() {
 		if entry.Key.IsZero() {
 			continue
 		}
-		// Verify key state with replication vector
-		ctxVerify, cancelVerify := context.WithTimeout(ctx, 5*time.Second)
-		tokenStore := s.TokenStore
-		if tokenStore == nil {
-			tokenStore = routing.ValueStore(s.DHT)
-		}
-		verification, verifyErr := VerifyKeyStateWithRepVector(
-			ctxVerify,
-			entry.Key,
-			s.RoutingTable,
-			tokenStore,
-			h.ID(),
-			nil, // RTT measurer (nil = use 0, unknown distance)
-			7,   // replication factor (default)
-			nil, // RTT thresholds (nil = use defaults)
-		)
-		cancelVerify()
-		// If verification succeeded and shows not synchronized, trigger repair
-		if verifyErr == nil && verification != nil && !verification.IsSynchronized {
-			// Get block data locally using Key (primary identifier)
-			blockData, _, err := s.GetBlock(ctx, entry.Key)
-			if err != nil || len(blockData) == 0 {
-				// Block not available locally, skip repair for this key
-				continue
-			}
-			// Trigger repair asynchronously (don't block recovery callback)
-			go func(k Key, v *ReplicaStateVerification, data []byte) {
-				ctxRepair, cancelRepair := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancelRepair()
-				_, _ = repairProtocol.TriggerRepair(ctxRepair, k, v, data)
-			}(entry.Key, verification, blockData)
-		}
+		go func(key Key) {
+			auditCtx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			defer cancel()
+			_, _, _ = repairProtocol.AuditAndRepair(auditCtx, key, 7)
+		}(entry.Key)
 	}
 }
 

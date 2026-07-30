@@ -27,6 +27,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	libpeerstore "github.com/libp2p/go-libp2p/core/peerstore"
 	"github.com/multiformats/go-multiaddr"
 	ctrl "github.com/nicktagliamonte/fall25_independentStudy/internal/control"
 	mygateway "github.com/nicktagliamonte/fall25_independentStudy/internal/gateway"
@@ -184,6 +185,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		if maddr, err := multiaddr.NewMultiaddr(saddr); err == nil {
 			if info, err := peer.AddrInfoFromP2pAddr(maddr); err == nil && info.ID != h.ID() {
 				_ = peerStore.Upsert(info.ID, info.Addrs, 0, "seed")
+				h.Peerstore().AddAddrs(info.ID, info.Addrs, libpeerstore.PermanentAddrTTL)
 			}
 		}
 	}
@@ -255,6 +257,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 		var baseTS mytuplespace.TupleSpace = dhtTS
 		if ownerResolver, err := mytuplespace.NewDHTTupleOwnerResolver(h.ID(), d); err == nil {
 			ownerResolver.SetMinimumCandidates(ownerElectionCandidateMinimum(opts.ClusterNodeCount))
+			ownerResolver.SetStablePeerFinder(peerStore)
 			if nativeTS, err := mytuplespace.NewDistributedTupleSpace(h, ownerResolver); err == nil {
 				nativeTS.SetRequireVerifiedPeers(true)
 				baseTS = nativeTS
@@ -290,6 +293,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 	}
 	if repairProtocol != nil {
 		repairProtocol.StartAdvertisingStorageAvailability(ctx)
+		repairProtocol.StartPeriodicRepair(ctx, 30*time.Second, ctrl.ReplicationFactorR)
 	}
 
 	pcm := myhost.NewPeerConnectivityMonitor(h,
@@ -426,6 +430,12 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				pol.Timeout = opts.DialTimeout
 				if res, err := myhost.PerformHandshakeWithState(context.Background(), h, pid, pol, myhost.HandshakeLocal{Agent: "sng40/0.1.0", Services: ^uint64(0), StartHeight: 0, WantPeerlist: true, ListenAddrs: hostAddrsStrings(h)}); err == nil {
 					handshakeGate.MarkVerified(pid)
+					for _, learned := range res.Learned {
+						if learned.ID == h.ID() {
+							continue
+						}
+						_ = myhost.RememberLearnedPeer(h, peerStore, basePolicy.AttackMitigation, learned.ID, learned.Addrs, 0, "handshake")
+					}
 					if opts.OnHandshake != nil {
 						opts.OnHandshake(pid.String(), map[string]any{"direction": "outbound", "remote_height": res.RemoteStateHeight})
 					}
@@ -466,7 +476,7 @@ func Start(parent context.Context, opts Options) (Service, error) {
 							if info.ID == h.ID() {
 								continue
 							}
-							_ = myhost.UpsertLearnedPeer(peerStore, basePolicy.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
+							_ = myhost.RememberLearnedPeer(h, peerStore, basePolicy.AttackMitigation, info.ID, info.Addrs, 0, "gossip")
 						}
 						metrics.AddGossipLearned(len(res.Learned))
 						if opts.OnHandshake != nil {

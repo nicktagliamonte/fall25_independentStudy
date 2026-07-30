@@ -14,7 +14,9 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	dsnames "github.com/ipfs/go-datastore/namespace"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
+	libpeerstore "github.com/libp2p/go-libp2p/core/peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -316,6 +318,36 @@ func (ps *PeerStore) GetDialCandidates(limit int, wantServices uint64, exclude m
 	return infos, retMeta
 }
 
+// StablePeerInfo returns the persistent, advertised listen addresses for one
+// peer. Unlike libp2p's observed inbound address, these addresses came from a
+// seed or authenticated handshake peer list and are suitable for redialing.
+func (ps *PeerStore) StablePeerInfo(pid peer.ID) (peer.AddrInfo, bool) {
+	if ps == nil || pid == "" {
+		return peer.AddrInfo{}, false
+	}
+	ps.mu.RLock()
+	record := ps.byID[pid.String()]
+	if record == nil {
+		ps.mu.RUnlock()
+		return peer.AddrInfo{}, false
+	}
+	copyRecord := *record
+	copyRecord.Addrs = append([]string(nil), record.Addrs...)
+	ps.mu.RUnlock()
+
+	if copyRecord.ExpireAtUnix != 0 && copyRecord.ExpireAtUnix <= time.Now().Unix() {
+		return peer.AddrInfo{}, false
+	}
+	info := peer.AddrInfo{ID: pid}
+	for _, raw := range copyRecord.Addrs {
+		addr, err := ma.NewMultiaddr(raw)
+		if err == nil {
+			info.Addrs = append(info.Addrs, addr)
+		}
+	}
+	return info, len(info.Addrs) > 0
+}
+
 // CountKnownPeersWithAddrs returns how many distinct peers (excluding exclude) have at least one address and are not expired.
 //
 // Parameters:
@@ -528,4 +560,26 @@ func UpsertLearnedPeer(ps *PeerStore, am *AttackMitigation, pid peer.ID, addrs [
 		}
 	}
 	return ps.Upsert(pid, addrs, services, source)
+}
+
+// RememberLearnedPeer keeps the persistent Tarsus peer database and libp2p's
+// dialing peerstore in sync. The latter is what DHT and tuple streams actually
+// consult; omitting it can leave only an observed inbound source port, which is
+// not a remotely dialable listen address.
+func RememberLearnedPeer(
+	h host.Host,
+	ps *PeerStore,
+	am *AttackMitigation,
+	pid peer.ID,
+	addrs []ma.Multiaddr,
+	services uint64,
+	source string,
+) error {
+	if err := UpsertLearnedPeer(ps, am, pid, addrs, services, source); err != nil {
+		return err
+	}
+	if h != nil && pid != h.ID() && len(addrs) > 0 {
+		h.Peerstore().AddAddrs(pid, addrs, libpeerstore.PermanentAddrTTL)
+	}
+	return nil
 }

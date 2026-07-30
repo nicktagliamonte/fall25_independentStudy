@@ -131,39 +131,31 @@ func PutTokenWithConflictResolution(ctx context.Context, dht routing.ValueStore,
 			return PutToken(ctx, dht, key, newToken)
 		}
 
-		// Check for conflict: if versions differ, we have a conflict
-		if currentToken.Version != newToken.Version {
-			// Conflict detected - resolve it
-			resolvedToken := ResolveTokenConflict(newToken, currentToken)
-
-			// Try to write resolved token
-			// Note: DHT PutValue is eventually consistent, so we may still have conflicts
-			// But we've merged the locations, so the result is still valid
-			if err := PutToken(ctx, dht, key, resolvedToken); err != nil {
+		// A caller that read current version v and produced v+1 owns the normal
+		// update path. Writing it directly is required for removals: merging the
+		// old record back into a deletion resurrects the removed provider.
+		if newToken.Version == currentToken.Version+1 {
+			newToken.Timestamp = time.Now().UnixNano()
+			if err := PutToken(ctx, dht, key, newToken); err != nil {
 				if attempt < maxRetries-1 {
-					// Retry after a short delay
 					time.Sleep(time.Millisecond * time.Duration(50*(attempt+1)))
 					continue
 				}
-				return fmt.Errorf("put resolved token failed after %d attempts: %w", maxRetries, err)
+				return fmt.Errorf("put token failed after %d attempts: %w", maxRetries, err)
 			}
 			return nil
 		}
 
-		// No conflict - versions match, safe to update
-		// Increment version for this update
-		newToken.Version = currentToken.Version + 1
-		newToken.Timestamp = time.Now().UnixNano()
-
-		if err := PutToken(ctx, dht, key, newToken); err != nil {
+		// Same-version or stale candidates may represent concurrent writers;
+		// merge their provider sets and advance beyond both versions.
+		resolvedToken := ResolveTokenConflict(newToken, currentToken)
+		if err := PutToken(ctx, dht, key, resolvedToken); err != nil {
 			if attempt < maxRetries-1 {
-				// Retry after a short delay
 				time.Sleep(time.Millisecond * time.Duration(50*(attempt+1)))
 				continue
 			}
-			return fmt.Errorf("put token failed after %d attempts: %w", maxRetries, err)
+			return fmt.Errorf("put resolved token failed after %d attempts: %w", maxRetries, err)
 		}
-
 		return nil
 	}
 

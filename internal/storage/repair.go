@@ -11,7 +11,9 @@ import (
 	"hash/fnv"
 	"io"
 	"log"
+	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -19,6 +21,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/nicktagliamonte/fall25_independentStudy/internal/tuplespace"
@@ -39,9 +42,22 @@ type RepairProtocol struct {
 	storageAvailable *StorageAvailableProtocol
 	// criteria are the weights used when selecting among storage-available candidates.
 	criteria SelectionCriteria
+	// rttProbe overrides the active ping probe when tests or controlled
+	// deployments provide an explicit network-distance oracle.
+	rttProbe func(peer.ID) (time.Duration, error)
+	// rttCache amortizes liveness probes across many objects in the same repair
+	// sweep or upload burst.
+	rttMu    sync.Mutex
+	rttCache map[peer.ID]cachedRTT
 	// advertisementInitialJitterWindow spreads startup writes in large clusters.
 	// A zero value disables jitter for focused tests.
 	advertisementInitialJitterWindow time.Duration
+}
+
+type cachedRTT struct {
+	rtt      time.Duration
+	err      error
+	measured time.Time
 }
 
 // NewRepairProtocol creates a new RepairProtocol bound to stack and host h. It builds an
@@ -77,13 +93,74 @@ func NewRepairProtocol(stack *Stack, h host.Host, ts tuplespace.TupleSpace, toke
 		}
 		return pids
 	}
-	return &RepairProtocol{
+	rp := &RepairProtocol{
 		stack:                            stack,
 		host:                             h,
 		storageAvailable:                 sap,
 		criteria:                         DefaultSelectionCriteria(tokenized),
+		rttCache:                         make(map[peer.ID]cachedRTT),
 		advertisementInitialJitterWindow: 30 * time.Second,
 	}
+	sap.RTTMeasurer = rp.MeasureRTT
+	return rp
+}
+
+// MeasureRTT actively probes a peer using libp2p's ping protocol. A failed
+// probe is a liveness failure for the current repair audit and must not be
+// converted into a zero-RTT "near" result.
+func (rp *RepairProtocol) MeasureRTT(pid peer.ID) (time.Duration, error) {
+	if rp == nil {
+		return 0, errors.New("repair protocol unavailable")
+	}
+	if rp.rttProbe != nil {
+		return rp.rttProbe(pid)
+	}
+	if rp.host == nil {
+		return 0, errors.New("repair host unavailable")
+	}
+	if pid == "" {
+		return 0, errors.New("peer ID required")
+	}
+	if pid == rp.host.ID() {
+		return time.Nanosecond, nil
+	}
+	rp.rttMu.Lock()
+	cached, ok := rp.rttCache[pid]
+	rp.rttMu.Unlock()
+	if ok {
+		ttl := 10 * time.Second
+		if cached.err != nil {
+			ttl = 2 * time.Second
+		}
+		if time.Since(cached.measured) < ttl {
+			return cached.rtt, cached.err
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	var rtt time.Duration
+	var probeErr error
+	select {
+	case result, ok := <-ping.Ping(ctx, rp.host, pid):
+		if !ok {
+			probeErr = errors.New("ping ended without a result")
+		} else if result.Error != nil {
+			probeErr = result.Error
+		} else if result.RTT <= 0 {
+			probeErr = errors.New("ping returned non-positive RTT")
+		} else {
+			rtt = result.RTT
+		}
+	case <-ctx.Done():
+		probeErr = ctx.Err()
+	}
+	rp.rttMu.Lock()
+	if rp.rttCache == nil {
+		rp.rttCache = make(map[peer.ID]cachedRTT)
+	}
+	rp.rttCache[pid] = cachedRTT{rtt: rtt, err: probeErr, measured: time.Now()}
+	rp.rttMu.Unlock()
+	return rtt, probeErr
 }
 
 // StartAdvertisingStorageAvailability advertises this peer's storage
@@ -183,8 +260,121 @@ type RepairResult struct {
 	ReplicatedPeers []peer.ID
 	// FailedPeers lists peer IDs where replication failed.
 	FailedPeers []peer.ID
+	// FailureDetails maps failed peer IDs to the transfer error observed by
+	// the repair coordinator.
+	FailureDetails map[string]string
 	// TotalReplicasCreated is the number of new replicas successfully created.
 	TotalReplicasCreated int
+}
+
+// AuditAndRepair verifies one locally stored payload using active peer probes,
+// removes unreachable providers from local and token metadata, and repairs any
+// resulting shortfall. To limit duplicate work, only the lexicographically
+// smallest reachable provider performs replication for the current audit.
+func (rp *RepairProtocol) AuditAndRepair(ctx context.Context, key Key, replicationFactor int) (*ReplicaStateVerification, *RepairResult, error) {
+	if rp == nil || rp.stack == nil || rp.host == nil {
+		return nil, nil, errors.New("repair protocol is not initialized")
+	}
+	if key.IsZero() {
+		return nil, nil, errors.New("invalid key")
+	}
+	blockData, err := ResolvePayloadByKeyLocal(ctx, rp.stack.Datastore, rp.stack.BlockSvc, key)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(blockData) == 0 {
+		return nil, nil, errors.New("payload is not stored locally")
+	}
+	tokenStore := rp.getTokenStore()
+	if tokenStore == nil {
+		return nil, nil, errors.New("token store unavailable")
+	}
+	verification, err := VerifyKeyStateWithRepVector(
+		ctx,
+		key,
+		rp.stack.RoutingTable,
+		tokenStore,
+		rp.host.ID(),
+		rp.MeasureRTT,
+		replicationFactor,
+		nil,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, provider := range verification.UnreachableProviders {
+		if rp.stack.RoutingTable != nil {
+			rp.stack.RoutingTable.RemoveProvider(key, provider)
+		}
+	}
+	if len(verification.UnreachableProviders) > 0 {
+		if err := PruneTokenLocations(ctx, tokenStore, key, verification.UnreachableProviders); err != nil {
+			log.Printf("prune unreachable token locations for %s: %v", key.String(), err)
+		}
+	}
+	if verification.IsSynchronized || !rp.isRepairCoordinator(verification) {
+		return verification, nil, nil
+	}
+	result, err := rp.TriggerRepair(ctx, key, verification, blockData)
+	return verification, result, err
+}
+
+func (rp *RepairProtocol) isRepairCoordinator(verification *ReplicaStateVerification) bool {
+	if rp == nil || rp.host == nil || verification == nil {
+		return false
+	}
+	local := rp.host.ID()
+	winner := local.String()
+	for _, provider := range verification.Providers {
+		candidate := provider.ProviderID.String()
+		if candidate != "" && candidate < winner {
+			winner = candidate
+		}
+	}
+	return winner == local.String()
+}
+
+// StartPeriodicRepair continuously audits locally indexed payloads. It is
+// intentionally separate from partition-recovery callbacks so ordinary peer
+// crashes are repaired even when the network never reports a full partition.
+func (rp *RepairProtocol) StartPeriodicRepair(ctx context.Context, interval time.Duration, replicationFactor int) {
+	if rp == nil || rp.stack == nil || rp.host == nil {
+		return
+	}
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	go func() {
+		delay := interval + deterministicPeerJitter(rp.host.ID(), interval)
+		timer := time.NewTimer(delay)
+		defer timer.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				rp.auditLocalReplicas(ctx, replicationFactor)
+				timer.Reset(interval)
+			}
+		}
+	}()
+}
+
+func (rp *RepairProtocol) auditLocalReplicas(ctx context.Context, replicationFactor int) {
+	if rp.stack.RoutingTable == nil {
+		return
+	}
+	for _, entry := range rp.stack.RoutingTable.Snapshot() {
+		if entry.Key.IsZero() {
+			continue
+		}
+		auditCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+		_, _, err := rp.AuditAndRepair(auditCtx, entry.Key, replicationFactor)
+		cancel()
+		if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			log.Printf("periodic repair audit for %s failed: %v", entry.Key.String(), err)
+		}
+	}
 }
 
 // TriggerRepair performs automatic repair for Key k based on a prior VerifyKeyStateWithRepVector
@@ -244,6 +434,7 @@ func (rp *RepairProtocol) TriggerRepair(
 		FailedCategories:     make([]DistanceCategory, 0),
 		ReplicatedPeers:      make([]peer.ID, 0),
 		FailedPeers:          make([]peer.ID, 0),
+		FailureDetails:       make(map[string]string),
 		TotalReplicasCreated: 0,
 	}
 
@@ -287,6 +478,7 @@ func (rp *RepairProtocol) TriggerRepair(
 			}
 			if err := rp.replicateToPeer(ctx, c, candidate.PeerID, blockData); err != nil {
 				result.FailedPeers = append(result.FailedPeers, candidate.PeerID)
+				result.FailureDetails[candidate.PeerID.String()] = err.Error()
 				continue
 			}
 
@@ -365,7 +557,7 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 	}
 	var peers []peer.ID
 	for attempt := 0; attempt < 20; attempt++ {
-		peers = rp.peersForReplication(n)
+		peers = rp.peersForReplication(0)
 		if len(peers) > 0 {
 			break
 		}
@@ -375,23 +567,106 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
+	candidates := rp.rankReplicationCandidates(peers, n)
 	replicated := 0
-	for _, pid := range peers {
+	for _, candidate := range candidates {
 		peerCtx, cancelPeer := context.WithTimeout(ctx, 60*time.Second)
-		err := rp.replicateToPeer(peerCtx, c, pid, blockData)
+		err := rp.replicateToPeer(peerCtx, c, candidate.PeerID, blockData)
 		cancelPeer()
 		if err != nil {
 			continue
 		}
 		replicated++
 		if rp.stack.RoutingTable != nil {
-			rp.stack.RoutingTable.AddProvider(key, pid, DistanceMidrange)
+			rp.stack.RoutingTable.AddProvider(key, candidate.PeerID, candidate.DistanceCategory)
 		}
 		if replicated >= n {
 			break
 		}
 	}
 	return replicated
+}
+
+// rankReplicationCandidates actively measures every known candidate in
+// parallel, selects the requested Near/Midrange/Far-flung shares first, and
+// then appends the remaining peers as opportunistic fallbacks. Failed probes
+// remain eligible only as unknown-distance fallbacks so initial replication
+// can still make progress in networks that block ping.
+func (rp *RepairProtocol) rankReplicationCandidates(peers []peer.ID, replicas int) []PeerCandidate {
+	if len(peers) == 0 || replicas <= 0 {
+		return nil
+	}
+	type measured struct {
+		candidate PeerCandidate
+	}
+	results := make(chan measured, len(peers))
+	var wg sync.WaitGroup
+	for _, pid := range peers {
+		pid := pid
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			rtt, err := rp.MeasureRTT(pid)
+			category := DistanceUnknown
+			if err == nil {
+				category = ClassifyDistanceByRTT(rtt, nil)
+			} else {
+				rtt = 0
+			}
+			results <- measured{candidate: PeerCandidate{
+				PeerID:           pid,
+				RTT:              rtt,
+				DistanceCategory: category,
+			}}
+		}()
+	}
+	wg.Wait()
+	close(results)
+
+	all := make([]PeerCandidate, 0, len(peers))
+	for result := range results {
+		all = append(all, result.candidate)
+	}
+	sort.Slice(all, func(i, j int) bool {
+		if all[i].DistanceCategory != all[j].DistanceCategory {
+			return all[i].DistanceCategory < all[j].DistanceCategory
+		}
+		if all[i].RTT != all[j].RTT {
+			return all[i].RTT < all[j].RTT
+		}
+		return all[i].PeerID.String() < all[j].PeerID.String()
+	})
+
+	near, midrange, farFlung := ReplicationTargets(DefaultReplicationVector(), replicas+1)
+	if near > 0 {
+		near-- // the local durable copy occupies one near slot
+	}
+	quotas := []struct {
+		category DistanceCategory
+		count    int
+	}{
+		{DistanceNear, near},
+		{DistanceMidrange, midrange},
+		{DistanceFarFlung, farFlung},
+	}
+	ordered := make([]PeerCandidate, 0, len(all))
+	selected := make(map[peer.ID]bool, len(all))
+	for _, quota := range quotas {
+		for _, candidate := range SelectReplicaCandidates(all, quota.category, rp.criteria, quota.count) {
+			if selected[candidate.PeerID] {
+				continue
+			}
+			selected[candidate.PeerID] = true
+			ordered = append(ordered, candidate)
+		}
+	}
+	for _, candidate := range all {
+		if selected[candidate.PeerID] {
+			continue
+		}
+		ordered = append(ordered, candidate)
+	}
+	return ordered
 }
 
 // peersForReplication returns up to max candidate peer IDs for replication, excluding rp.host's
@@ -419,7 +694,7 @@ func (rp *RepairProtocol) peersForReplication(max int) []peer.ID {
 		}
 		seen[pid] = true
 		out = append(out, pid)
-		if len(out) >= max {
+		if max > 0 && len(out) >= max {
 			return out
 		}
 	}
@@ -432,7 +707,7 @@ func (rp *RepairProtocol) peersForReplication(max int) []peer.ID {
 		}
 		seen[pid] = true
 		out = append(out, pid)
-		if len(out) >= max {
+		if max > 0 && len(out) >= max {
 			return out
 		}
 	}
@@ -693,7 +968,7 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 		return fmt.Errorf("parse size: %w", err)
 	}
 
-	if blockSize <= 0 || blockSize > 10*1024*1024 { // 10MB limit
+	if blockSize <= 0 || blockSize > MaxTransferBlockSize {
 		_, _ = stream.Write([]byte("ERROR: invalid block size\n"))
 		return fmt.Errorf("invalid block size: %d", blockSize)
 	}
@@ -743,6 +1018,9 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 		// The original provider ID is the one who initiated repair
 		sourcePeer := stream.Conn().RemotePeer()
 		rp.stack.RoutingTable.Set(key, sourcePeer, repVector, storedCID)
+		if rp.host != nil {
+			rp.stack.RoutingTable.AddProvider(key, rp.host.ID(), DistanceNear)
+		}
 	}
 
 	// Auto-sync token: update token with our location (we received replicated content)

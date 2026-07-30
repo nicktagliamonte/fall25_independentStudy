@@ -1,81 +1,84 @@
-# Tarsus work checkpoint — 2026-07-29
+# Tarsus work checkpoint — 2026-07-30
 
-## Where work stopped
+## Current state
 
 - Branch: `tarsus-paper-rewrite`
-- The interrupted 50-node run and all Compose containers have been stopped.
-- Generated `docker-compose.yml` has been restored.
-- The current production work is preserved in a WIP checkpoint commit on this
-  branch. Continue from it; do not reset to an earlier branch state.
-- `git diff --check` passes.
+- The strict 50-node discovery/correctness gate is complete at 50/50.
+- Passing artifact:
+  `test_results/tarsus_campaign_smoke/n050-authority-cache/cells/smoke-n050-c0000100-s016-bloom-on`
+- That run reached readiness on all 50 nodes and completed 100/100 writes with
+  zero failures in 112.188 seconds.
+- Generated `docker-compose.yml` is restored and no campaign is running.
+- The full race suite, normal suite, shuffled suite, `go vet`, shell syntax
+  checks, Python compilation checks, repeated distributed integration tests,
+  and focused network/storage repetitions passed after the changes below.
 
-The immediate correctness gate is strict discovery of all 50 live storage
-advertisements in the Docker campaign. The best completed 50-node runs reached
-49/50, not 50/50. Treat that as failure evidence, not a passing result.
+## Completed implementation
 
-## What was fixed during this investigation
+- Added leased, epoch-fenced PHT mutation authority.
+- Persisted write fences in PHT nodes so stale writers cannot overwrite state
+  adopted by a newer authority epoch.
+- Added mutation request IDs, retry deduplication, bounded routing, authority
+  failover, and authority metrics.
+- Corrected DHT validator ordering and typed-nil value-store handling.
+- Fixed the default token-DHT construction path and several pre-existing test
+  fixture/race failures.
+- Corrected whole-payload storage for objects larger than 4 MiB and aligned
+  transfer limits.
+- Made the default replication target exactly seven total copies: three near,
+  two mid-distance, and two far.
+- Added active RTT/liveness checks, RTT-aware placement, unreachable-provider
+  pruning, periodic crash auditing, deterministic repair coordination, and
+  automatic replication repair.
+- Corrected token-location removal/convergence and added a live libp2p
+  durability/repair regression.
 
-- bounded-degree private TCP startup topology;
-- reconnect handshake verification and cleanup;
-- mutual responder acceptance in the handshake gate;
-- removal of the low-level stale tagging path and centralized tagging;
-- bounded parallel candidate verification;
-- renewable storage-offer replacement without changing general Linda-style
-  `TsPut` multiset semantics;
-- expiration, staggered refresh, and anti-entropy reassertion;
-- an owner-candidate quorum guard for index mutation.
+## Current plan
 
-Focused tests passed after the latest owner threshold change. The full suite had
-passed before that final threshold adjustment; rerun it after settling the
-ownership design.
+1. [x] Preserve the branch/checkpoint and baseline 49/50 evidence.
+2. [x] Implement and test fenced index authority, retry deduplication, and
+   failover.
+3. [x] Fix the native authority timing stall and bound overlay routing.
+4. [x] Pass the strict 50/50 distributed correctness gate.
+5. [x] Diagnose and fix the pre-existing and distributed failures exposed so
+   far.
+6. [ ] Address the manuscript's remaining distributed-filesystem limitations
+   in implementation and claims.
+7. [ ] Analyze and optimize the growing short-test latency and resource costs.
+8. [ ] Run the full 100-node failure, repair, query-cost, and resource campaign.
+9. [ ] Produce figures/results and finish `paper/final.tex`.
+10. [ ] Remove obsolete results, dated harnesses, and abandoned planning files.
+11. [ ] Emit a brief, parseable plain-English document describing the Tarsus
+    rewrite for the research group.
 
-## Current diagnosis
+## Immediate next limitation
 
-The remaining failure is not adequately explained as an ordinary startup delay.
-Concurrent PHT/index mutation is serialized through an elected overlay owner, but
-nodes can elect from inconsistent routing views and the DHT record/version
-semantics do not provide a robust fencing boundary. This can leave a query with
-only 14/16 or 15/16 index shards and/or 49 indexed storage advertisements.
+Exact tuple state still exists only in the deterministic owner's in-memory
+`NativeTupleSpace`. The new authority fencing protects PHT/index mutations, not
+tuple values. A tuple owner crash can therefore lose tuple state, and request
+deduplication is also owner-memory-local.
 
-The current minimum owner-candidate threshold is 16. That threshold is a
-diagnostic guard, not a proof of single-owner safety. The interrupted run using
-it is incomplete and must not be reported as a result:
+The next production-real slice is durable, fenced exact-tuple state:
 
-`test_results/tarsus_campaign_smoke/n050-owner-quorum16/cells/smoke-n050-c000100-s016-bloom-on`
+1. persist tuple state and operation IDs before acknowledging mutations;
+2. identify the current tuple authority with an epoch/fence;
+3. reject commits from stale owners after authority transfer;
+4. load committed state when a successor assumes ownership;
+5. prove retry and failover behavior for `put`, `read`, `get`, and `replace`;
+6. preserve the Linda-style interface without claiming that Tarsus uses Linda.
 
-Useful completed failure evidence:
-
-- `test_results/tarsus_campaign_smoke/n050-gated-tags`
-- `test_results/tarsus_campaign_smoke/n050-owner-quorum`
-
-## Recommended next move
-
-Do not redefine 49/50 as success for the production-real system or paper. Begin
-with an ownership-protocol review and implement an explicit mutation epoch plus
-fencing token (or an equivalently strong single-writer mechanism). Required
-properties:
-
-1. one mutation authority per shard and epoch;
-2. stale owners cannot commit after a newer epoch is visible;
-3. authority transfer is recoverable and observable;
-4. retries are idempotent or deduplicated;
-5. failover tests demonstrate no lost index updates.
-
-Then:
-
-1. run focused ownership and tuple-space tests;
-2. run `go test ./...` with the repository's `/tmp` Go/ccache settings;
-3. rerun the strict 50/50 cell at 50 nodes;
-4. repeat it enough times to distinguish a fix from a lucky run;
-5. proceed to 100-node publication cells only after the correctness gate passes.
+Do not update the manuscript to claim tuple-owner failover until these tests
+pass. RTT diversity also remains a latency heuristic, not proof of geographic
+or administrative failure-domain independence.
 
 ## Resume prompt
 
-Open this same conversation and send:
+Open this conversation and send:
 
 > Resume the Tarsus work from `docs/TARSUS_RESUME.md`. Inspect the branch and
-> working tree first. Do not accept 49/50 as a pass; review and implement
-> epoch/fencing for PHT mutation authority, then rerun the strict 50-node gate.
+> working tree first, then continue the durable fenced exact-tuple ownership
+> slice. The 50/50 gate is complete; do not rerun it unless a relevant change
+> invalidates that result.
 
-If this conversation is unavailable, a new Codex conversation in the repository
-can use the same prompt.
+If this conversation is unavailable, a new Codex conversation opened in the
+repository can use the same prompt.
