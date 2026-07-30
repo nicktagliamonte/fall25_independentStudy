@@ -24,6 +24,12 @@ done
 if [[ -n "$config_file" ]]; then
   # shellcheck disable=SC1090
   source "$config_file"
+elif [[ -n "$resume_dir" && -f "$resume_dir/resolved.env" ]]; then
+  # A planned campaign is an immutable experiment specification. Reload its
+  # recorded runtime values so --resume does not silently replace an explicit
+  # configuration with this script's defaults.
+  # shellcheck disable=SC1090
+  source "$resume_dir/resolved.env"
 fi
 
 NODE_COUNTS=${NODE_COUNTS:-"10 50 100"}
