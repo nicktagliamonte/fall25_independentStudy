@@ -226,6 +226,22 @@
   targeted only the stopped node; no healthy provider was suspected and no
   stale PHT fence occurred. Kernel diagnostics, compose restoration, container
   teardown, and the default 128/512/1024 host limits were clean.
+- The strict post-hardening `resilience-n100-0017aec` cell validates those
+  changes at 100 nodes. It reached 100/100 indexed availability, stored 8 MiB
+  at exactly seven providers, stopped proven holder node 77, fetched from a
+  survivor in 0.156 seconds, repaired in 51.281 seconds, and fetched from a
+  cold non-provider in 0.223 seconds. Repair was 5.287 times faster than the
+  271.120-second pre-hardening pilot. All six healthy originals remained,
+  exactly one replacement entered, and all 24 repair observations stayed
+  between six and seven providers. Every liveness suspicion targeted only the
+  stopped peer. Stale PHT writer errors fell from 261 to zero and handshake
+  verification failures fell from 201 to 13. Startup availability
+  advertisements still retried heavily (1,200 failures versus 1,213), so
+  startup efficiency remains an optimization target rather than a correctness
+  gate. Both hashes passed; live neighbor counts were 6--22 (mean 14.13);
+  both kernel diagnostics were empty; no public bootstrap identity appeared;
+  the helper restored 128/512/1024; Compose was restored byte-for-byte; and
+  teardown left zero campaign containers.
 - The pilot's ad hoc zsh restoration wrapper briefly restored only the leading
   digit of each original procfs value after the artifact had completed. This
   did not affect the run; it was caught immediately and the host was reset to
@@ -252,6 +268,9 @@
    in implementation and claims.
 7. [x] Analyze and optimize the growing short-test latency and resource costs.
 8. [ ] Run the full 100-node failure, repair, query-cost, and resource campaign.
+   - [x] Pass a strict one-trial post-hardening 100-node resilience validation.
+   - [ ] Run and validate the full query-cost/shard/Bloom/resource matrix.
+   - [ ] Run and validate the five-trial 100-node resilience cell.
 9. [ ] Produce figures/results and finish `paper/final.tex`.
 10. [ ] Remove obsolete results, dated harnesses, and abandoned planning files.
 11. [ ] Emit a brief, parseable plain-English document describing the Tarsus
@@ -296,11 +315,12 @@ The candidate-pool fix then passed a fresh 10-node run in 30.641 seconds, and
 the next strict 100-node pilot passed the complete failure path. Its logs
 motivated temporary probe protection, parallel candidate discovery, and
 proactive stale-fence reconciliation; their full normal/race suites and fresh
-10-node distributed smoke pass. The immediate next step is a 100-node
-validation at the new commit, using the checked neighbor-limit helper. If that
-validates, run the full query-cost/shard/Bloom matrix and five-trial resilience
-cell, validate every artifact, and only then generate manuscript figures. Do
-not use the dated vnIPFS/Swarm repair scripts as paper evidence.
+10-node distributed smoke pass. The strict post-hardening 100-node validation
+also passes, with an 81.1 percent repair-time reduction and no healthy-provider
+false suspicion. The immediate next step is the full
+query-cost/shard/Bloom/resource matrix, followed by the five-trial 100-node
+resilience cell. Validate every artifact before generating manuscript figures.
+Do not use the dated vnIPFS/Swarm repair scripts as paper evidence.
 
 The remaining manuscript boundaries are deliberate or experimental: DHT
 convergence is not consensus under arbitrary partitions; retry results and
@@ -318,10 +338,11 @@ reported TeX syntax error.
 Open this conversation and send:
 
 > Resume the Tarsus work from `docs/TARSUS_RESUME.md`. Inspect the branch and
-> working tree first, then continue the 100-node resilience pilot. The
-> 50/50 gate and the distributed-filesystem implementation/claim gate are
-> complete; do not rerun the large 50-node cell unless a relevant change
-> invalidates that result.
+> working tree first, then continue the full query-cost/shard/Bloom/resource
+> campaign and five-trial 100-node resilience cell. The 50/50 gate,
+> distributed-filesystem implementation/claim gate, and strict post-hardening
+> one-trial 100-node validation are complete; do not rerun them unless a
+> relevant change invalidates those results.
 
 If this conversation is unavailable, a new Codex conversation opened in the
 repository can use the same prompt.
