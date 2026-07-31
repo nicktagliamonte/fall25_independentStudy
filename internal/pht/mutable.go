@@ -18,8 +18,9 @@ import (
 var ErrStaleWriteFence = errors.New("stale PHT writer fence")
 
 const (
-	fenceAdoptionReadAttempts = 6
+	fenceAdoptionReadAttempts = 10
 	fenceAdoptionReadBackoff  = 50 * time.Millisecond
+	fenceAdoptionMaxBackoff   = time.Second
 )
 
 // MutableIndex maintains tuple names in a PHT. A MutableIndex serializes local
@@ -176,6 +177,9 @@ func (m *MutableIndex) getDescendantForFenceAdoption(
 			break
 		}
 		delay := fenceAdoptionReadBackoff << attempt
+		if delay > fenceAdoptionMaxBackoff {
+			delay = fenceAdoptionMaxBackoff
+		}
 		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
