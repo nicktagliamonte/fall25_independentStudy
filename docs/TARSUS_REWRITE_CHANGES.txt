@@ -1,8 +1,9 @@
 TARSUS REWRITE CHANGE SUMMARY
-FORMAT: AREA | CHANGE | WHY
 
+|AREA|CHANGE|WHY|
+|-----------|------------|:--------:|
 NAME | Renamed the current system and paper from vnIPFS to Tarsus. | Separate this architecture from IPFS and the rejected design.
-TUPLE MODEL | Replaced the two-space design with one native Linda-style tuple space. | Give applications and storage metadata one coordination interface without depending on Linda.
+TUPLE MODEL | Replaced the two-space design with one native tuple space. | Give applications and storage metadata one coordination interface without depending on Linda.
 TUPLE OPERATIONS | Put adds one tuple, Read observes one tuple, and Get atomically removes one tuple. | Support publication, non-consuming observation, and exclusive work claims.
 TUPLE MULTISET | Store duplicate names and values as distinct instances. | Preserve tuple-space semantics and allow repeated work or advertisements.
 EXACT OWNERSHIP | Route each exact tuple name to one deterministic Kademlia owner. | Avoid catalog scans and provide one serialization point.
@@ -34,8 +35,3 @@ CAMPAIGN VALIDATION | Require topology, population, query rows, returned matches
 CAMPAIGN RESUME | Skip COMPLETE cells and recreate interrupted population batches. | Preserve accepted work and prevent request JSON from becoming tuple names.
 CAMPAIGN ANALYSIS | Merge only validated cells and generate request-level summaries and figures. | Keep manuscript claims tied to accepted raw evidence.
 LEGACY TSH | Retain the old TSH client only as an optional compatibility adapter. | Avoid breaking historical integrations while keeping it out of the default Tarsus path.
-CLEANUP | Remove dated Swarm/vnIPFS scripts, binaries, result trees, and raw planning documents. | Keep the repository centered on the architecture and evidence actually described by the paper.
-
-LIMIT | No multi-tuple transaction, arbitrary-partition consensus, Byzantine metadata agreement, or POSIX API. | These properties are not implemented and must not be inferred from the current mechanisms.
-EVIDENCE | Preserve 10 accepted primary cells with 10500 query rows through 90 peers. | Support peer, catalog, shard, and Bloom results without rerunning cells 1 through 5.
-EVIDENCE | Preserve one strict 100-peer provider-loss and automatic-repair case. | Support only a bounded repair-mechanism claim, not a repair distribution or regional-resilience claim.
