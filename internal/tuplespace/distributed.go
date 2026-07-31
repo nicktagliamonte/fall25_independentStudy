@@ -32,11 +32,12 @@ const (
 	// one request at 64 relay visits rather than multiplying at every hop.
 	// Four branches tolerate multiple unusable established connections while
 	// remaining bounded at and above the 50-node correctness gate.
-	maxTupleRouteWork     = 64
-	maxTupleRouteBranches = 4
-	maxTupleMemoEntries   = 4096
-	maxTupleFenceEntries  = 65536
-	handshakeVerifiedTag  = "handshake_ok"
+	maxTupleRouteWork       = 64
+	maxTupleRouteBranches   = 4
+	maxTupleMemoEntries     = 4096
+	maxTupleFenceEntries    = 65536
+	maxDurableTupleAttempts = 8
+	handshakeVerifiedTag    = "handshake_ok"
 )
 
 var errNoTupleOverlayRoute = errors.New("no tuple overlay route")
@@ -246,7 +247,11 @@ func (d *DistributedTupleSpace) exactDurable(
 		}
 		d.cacheTupleFence(req.Name, fence)
 	}
-	for attempt := 0; attempt < 4; attempt++ {
+	// Every request ID is committed with the durable tuple state, so following
+	// several consecutive lease redirects is idempotent. Large clusters can
+	// legitimately advance through more than four short tuple-owner epochs
+	// while routing converges.
+	for attempt := 0; attempt < maxDurableTupleAttempts; attempt++ {
 		owner, decodeErr := peer.Decode(fence.Writer)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("decode durable tuple owner: %w", decodeErr)
