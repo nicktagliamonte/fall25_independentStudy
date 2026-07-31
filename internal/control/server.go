@@ -75,6 +75,7 @@ type tuplePutResponse struct {
 	Requested      int                             `json:"requested"`
 	Succeeded      int                             `json:"succeeded"`
 	Failed         int                             `json:"failed"`
+	Retried        int                             `json:"retried,omitempty"`
 	FailureReasons map[string]int                  `json:"failure_reasons,omitempty"`
 	FailureSamples []tuplePutFailure               `json:"failure_samples,omitempty"`
 	DurationNS     int64                           `json:"duration_ns"`
@@ -86,6 +87,22 @@ type tuplePutResponse struct {
 type tuplePutFailure struct {
 	Name  string `json:"name"`
 	Error string `json:"error"`
+}
+
+const tuplePutMaxAttempts = 4
+
+// retryableTuplePutError identifies the narrow failure that occurs before the
+// authoritative tuple publication: a newly adopted index owner can observe a
+// parent PHT node before one of the parent's child records has propagated. The
+// index is a repairable hint and insertion is idempotent, so retrying this
+// pre-publication failure cannot create an extra tuple instance.
+func retryableTuplePutError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "adopt index authority fence: read pht child") &&
+		strings.Contains(message, "routing: not found")
 }
 
 func tuplePutFailureReason(err error) string {
@@ -238,9 +255,10 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 		requested := len(names) * request.Copies
 		jobs := make(chan string)
 		type putResult struct {
-			name  string
-			stats mytuplespace.IndexMutationStats
-			err   error
+			name    string
+			stats   mytuplespace.IndexMutationStats
+			retried int
+			err     error
 		}
 		results := make(chan putResult, requested)
 		var workers sync.WaitGroup
@@ -249,8 +267,18 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			go func() {
 				defer workers.Done()
 				for name := range jobs {
-					_, stats, err := putInstrumented.TsPutWithMutationStats(name, value)
-					results <- putResult{name: name, stats: stats, err: err}
+					var stats mytuplespace.IndexMutationStats
+					var err error
+					retried := 0
+					for attempt := 1; attempt <= tuplePutMaxAttempts; attempt++ {
+						_, stats, err = putInstrumented.TsPutWithMutationStats(name, value)
+						if err == nil || !retryableTuplePutError(err) || attempt == tuplePutMaxAttempts {
+							break
+						}
+						retried++
+						time.Sleep(time.Duration(100*(1<<(attempt-1))) * time.Millisecond)
+					}
+					results <- putResult{name: name, stats: stats, retried: retried, err: err}
 				}
 			}()
 		}
@@ -268,11 +296,13 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 		}()
 		succeeded := 0
 		failed := 0
+		retried := 0
 		failureReasons := make(map[string]int)
 		failureSamples := make([]tuplePutFailure, 0, 20)
 		mutationDelta := mytuplespace.IndexMutationStats{}
 		for result := range results {
 			addMutationStats(&mutationDelta, result.stats)
+			retried += result.retried
 			if result.err == nil {
 				succeeded++
 			} else {
@@ -291,6 +321,7 @@ func registerTupleExperimentEndpoints(mux *http.ServeMux, gateway *mygateway.Gat
 			Requested:      requested,
 			Succeeded:      succeeded,
 			Failed:         failed,
+			Retried:        retried,
 			FailureReasons: failureReasons,
 			FailureSamples: failureSamples,
 			DurationNS:     time.Since(started).Nanoseconds(),
