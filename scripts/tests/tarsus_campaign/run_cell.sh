@@ -145,10 +145,15 @@ while true; do
   sleep 2
 done
 
+# An interrupted cell may contain both split inputs (names-00000) and the JSON
+# requests derived from them (names-00000.json).  Clear only these generated
+# batch artifacts before rebuilding them; otherwise a resumed broad names-*
+# glob can ingest request JSON as tuple names.
+find "$cell_dir/batches" -maxdepth 1 -type f -name 'names-*' -delete
 split -d -a 5 -l "${POPULATE_BATCH_SIZE:-2500}" \
   "$cell_dir/workload/names.txt" "$cell_dir/batches/names-"
 : >"$cell_dir/populate.ndjson"
-for batch in "$cell_dir"/batches/names-*; do
+for batch in "$cell_dir"/batches/names-[0-9][0-9][0-9][0-9][0-9]; do
   request="$batch.json"
   jq -Rn \
     --arg value_base64 "dGFyc3VzLWV4cGVyaW1lbnQtdG9rZW4=" \

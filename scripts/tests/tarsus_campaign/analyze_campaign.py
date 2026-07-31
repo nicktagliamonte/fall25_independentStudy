@@ -96,10 +96,16 @@ def main() -> int:
         "duration_stdev_ms",
         "median_ci95_low_ms",
         "median_ci95_high_ms",
+        "shards_contacted_mean",
+        "shards_succeeded_mean",
+        "shards_failed_mean",
         "nodes_fetched_mean",
+        "branches_considered_mean",
         "branches_pruned_mean",
         "index_candidates_mean",
         "index_matches_mean",
+        "owner_attempts_mean",
+        "verified_matches_mean",
     ]
     summaries: list[dict[str, object]] = []
     for key, group in sorted(groups.items()):
@@ -115,10 +121,16 @@ def main() -> int:
                 "duration_stdev_ms": statistics.stdev(durations) if len(durations) > 1 else 0,
                 "median_ci95_low_ms": ci_low,
                 "median_ci95_high_ms": ci_high,
+                "shards_contacted_mean": statistics.fmean(float(row["shards_contacted"]) for row in group),
+                "shards_succeeded_mean": statistics.fmean(float(row["shards_succeeded"]) for row in group),
+                "shards_failed_mean": statistics.fmean(float(row["shards_failed"]) for row in group),
                 "nodes_fetched_mean": statistics.fmean(float(row["nodes_fetched"]) for row in group),
+                "branches_considered_mean": statistics.fmean(float(row["branches_considered"]) for row in group),
                 "branches_pruned_mean": statistics.fmean(float(row["branches_pruned"]) for row in group),
                 "index_candidates_mean": statistics.fmean(float(row["index_candidates"]) for row in group),
                 "index_matches_mean": statistics.fmean(float(row["index_matches"]) for row in group),
+                "owner_attempts_mean": statistics.fmean(float(row["owner_attempts"]) for row in group),
+                "verified_matches_mean": statistics.fmean(float(row["verified_matches"]) for row in group),
             }
         )
     with (analysis_dir / "query_summary.csv").open("w", newline="") as handle:
