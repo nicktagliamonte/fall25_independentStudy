@@ -89,7 +89,7 @@ def query_scaling(rows: list[dict[str, str]], output: Path) -> None:
     ax.set_yscale("log")
     ax.set_xticks(peers)
     ax.set_xlabel("peers")
-    ax.set_ylabel("median latency (ms, log scale)")
+    ax.set_ylabel("median query-path latency (ms, log scale)")
     ax.grid(True, which="both", linewidth=0.35, alpha=0.5)
     # Keep the key outside the axes: the high-selectivity curves occupy most
     # of the useful plot area and an in-axes legend hides measured points.
@@ -132,15 +132,12 @@ def shard_tradeoff(rows: list[dict[str, str]], population: list[dict[str, str]],
     axes[1].set_yscale("log")
     axes[1].set_xticks(shards, [str(value) for value in shards])
     axes[1].set_xlabel("index shards")
-    axes[1].set_ylabel("median query latency (ms)")
+    axes[1].set_ylabel("median query-path latency (ms)")
     axes[1].grid(True, which="both", linewidth=0.35, alpha=0.5)
-    # As in the scaling plot, reserve space above the panel for the key so it
-    # cannot obscure the query curves.
     axes[1].set_title("(b) query path")
     handles, legend_labels = axes[1].get_legend_handles_labels()
-    # Leave a dedicated band above the query panel for its key.  Anchoring the
-    # legend to the figure, rather than the axes, also keeps it clear of the
-    # panel title.
+    # Reserve a figure-level header band for the key so it cannot obscure the
+    # query panel, its title, or measured points.
     fig.tight_layout(pad=0.5, w_pad=1.0, rect=(0, 0, 1, 0.84))
     fig.legend(
         handles,
@@ -157,7 +154,7 @@ def shard_tradeoff(rows: list[dict[str, str]], population: list[dict[str, str]],
 
 
 def bloom_ablation(rows: list[dict[str, str]], output: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.25))
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.55))
     labels = ["substring-rare", "substring-medium", "substring-common"]
     display = ["1%", "9%", "40%"]
     x = list(range(len(labels)))
@@ -175,12 +172,21 @@ def bloom_ablation(rows: list[dict[str, str]], output: Path) -> None:
         ax.set_xticks(x, display)
         ax.set_xlabel("matching catalog fraction")
         ax.grid(True, axis="y", linewidth=0.35, alpha=0.5)
-    axes[0].set_ylabel("median latency (ms)")
-    axes[0].set_title("(a) end-to-end query")
-    axes[0].legend(frameon=False)
+    axes[0].set_ylabel("median query-path latency (ms)")
+    axes[0].set_title("(a) server-side query")
     axes[1].set_ylabel("mean PHT nodes fetched")
     axes[1].set_title("(b) index work")
-    fig.tight_layout(pad=0.5, w_pad=1.0)
+    handles, legend_labels = axes[0].get_legend_handles_labels()
+    fig.tight_layout(pad=0.5, w_pad=1.0, rect=(0, 0, 1, 0.88))
+    fig.legend(
+        handles,
+        legend_labels,
+        frameon=False,
+        ncol=2,
+        loc="upper center",
+        bbox_to_anchor=(0.25, 0.99),
+        borderaxespad=0,
+    )
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
 
