@@ -2,7 +2,7 @@
 
 ## Model
 
-A **directory** is a normal content-addressed block stored with the same `PutBlock` path as any other payload. Its key is `SHA256(encoded_bytes)` (64 hex). The wire format is JSON with discriminator `kind: "vnipfs-directory-v1"` and `entries`: a map from single-segment names (no `/`, no `..`) to **child object keys** (64 hex), each pointing at either another directory block or an arbitrary blob.
+A **directory** is a normal content-addressed block stored with the same `PutBlock` path as any other payload. Its key is `SHA256(encoded_bytes)` (64 hex). The wire format is JSON with discriminator `kind: "tarsus-directory-v1"` and `entries`: a map from single-segment names (no `/`, no `..`) to **child object keys** (64 hex), each pointing at either another directory block or an arbitrary blob. The decoder also accepts the pre-rename discriminator for read compatibility.
 
 This mirrors IPLD / UnixFS-style directory nodes: the tree is a Merkle structure; listing and traversal are walks over immutable blocks.
 

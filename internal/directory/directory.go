@@ -12,7 +12,11 @@ import (
 )
 
 // Kind is the JSON discriminator for directory blocks stored via normal PutBlock (key = SHA256(bytes)).
-const Kind = "vnipfs-directory-v1"
+const Kind = "tarsus-directory-v1"
+
+// legacyKind remains readable so content-addressed directory blocks produced
+// before the Tarsus rename do not become inaccessible. New encodings use Kind.
+const legacyKind = "vnipfs-directory-v1"
 
 // Directory is a Merkle-style folder: content-addressed blob listing name → child object key (64 hex).
 // Updates are copy-on-write: mutating produces a new block and thus a new key (UnixFS-like).
@@ -21,8 +25,8 @@ const Kind = "vnipfs-directory-v1"
 // on the struct.
 type Directory struct {
 	// Kind is the JSON discriminator, always equal to the Kind constant
-	// ("vnipfs-directory-v1") for a valid directory block. Decode rejects any
-	// other value.
+	// ("tarsus-directory-v1") for a new directory block. Decode also accepts
+	// the pre-rename discriminator for read compatibility.
 	Kind string `json:"kind"`
 	// Entries maps single-segment child names (no "/", not "." or "..") to
 	// the 64-hex-char content key of the child block (which may itself be
@@ -54,7 +58,7 @@ func Decode(data []byte) (*Directory, error) {
 	if err := json.Unmarshal(data, &d); err != nil {
 		return nil, fmt.Errorf("directory decode: %w", err)
 	}
-	if d.Kind != Kind {
+	if d.Kind != Kind && d.Kind != legacyKind {
 		return nil, fmt.Errorf("directory decode: want kind %q, got %q", Kind, d.Kind)
 	}
 	if d.Entries == nil {

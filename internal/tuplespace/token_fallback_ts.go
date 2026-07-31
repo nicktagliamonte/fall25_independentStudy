@@ -1,6 +1,6 @@
 // Purpose: TupleSpace that tries token lookup (/tokens/) first, then falls back to DHT tuple space.
 // Enables Gateway.Query to return token data for exact-key lookups while supporting tuple space for other patterns.
-// Per planTwo Phase 5.3: Gateway handles token routing; token keys are 32-byte hash = 64 hex chars.
+// Token keys are 32-byte hashes encoded as 64 hexadecimal characters.
 
 package tuplespace
 
@@ -17,7 +17,7 @@ const tokenNamespace = "/tokens/"
 var _ TupleSpace = (*TokenFallbackTupleSpace)(nil)
 
 // TokenFallbackTupleSpace wraps a ValueStore and a fallback TupleSpace so that
-// exact 64-character hex tuple names (vn-IPFS content keys) are served
+// exact 64-character hex tuple names (Tarsus content keys) are served
 // directly from the /tokens/ namespace of the ValueStore, while every other
 // tuple name/pattern is delegated to the fallback TupleSpace (typically a
 // Router). This lets Gateway.Query resolve token lookups for exact keys
@@ -170,7 +170,7 @@ func (t *TokenFallbackTupleSpace) MutationSnapshot() IndexMutationStats {
 }
 
 // isHexKey reports whether s is a 64-character lowercase/uppercase hex string,
-// the shape of a vn-IPFS content key (SHA-256 hex digest), used to decide
+// the shape of a Tarsus content key (SHA-256 hex digest), used to decide
 // whether a tuple name should be treated as a token lookup.
 //
 // Parameters:

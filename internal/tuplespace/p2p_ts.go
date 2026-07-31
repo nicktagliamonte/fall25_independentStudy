@@ -1,6 +1,5 @@
-// Purpose: P2P tuple space implementation for regex/wildcard matching and administrative tasks.
-// Per planTwo 6.2: P2P tuple space is for application management (permissioned).
-// Supports O(log_20 k) hops with O(N) messaging. Used for KYC, administrative coordination.
+// Purpose: compatibility client for the legacy TSH tuple-space daemon.
+// The native distributed tuple space is the default Tarsus implementation.
 
 package tuplespace
 
@@ -105,9 +104,8 @@ type UvrReturnStruct struct {
 }
 
 // P2PTupleSpace implements TupleSpace using P2P tuple space handler (TSH) daemon.
-// Application management layer: permissioned; requires PermissionChecker.
-// Supports regex matching at O(log_20 k) hops, O(N) messaging.
-// Used for KYC, administrative coordination, and non-exact-match operations.
+// It is retained for deployments that still require the historical TSH wire
+// protocol and is not part of the default native Tarsus query path.
 type P2PTupleSpace struct {
 	// TshAddr is the "host:port" address of the TSH (tuple space handler) daemon.
 	TshAddr string // "host:port" of the TSH daemon

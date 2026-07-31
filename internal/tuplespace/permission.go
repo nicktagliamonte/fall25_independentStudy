@@ -20,7 +20,8 @@ const (
 )
 
 // PermissionChecker checks if the caller has permission for a tuple space operation.
-// Implementations may use KYC token, handshake/auth system, or other identity.
+// Implementations may use an admission token, handshake identity, or another
+// application authorization policy.
 // When nil or not set, no permission check is performed (backward compatible).
 type PermissionChecker interface {
 	// CheckPermission verifies the caller is authorized to perform the named

@@ -45,7 +45,7 @@ PUT returns immediately after the first successful store (local + routing table)
 
 ## Namespace (first-class directories)
 
-Directory blocks are JSON (`kind: "vnipfs-directory-v1"`) stored via the same `PutBlock` pipeline as opaque bytes; each mutating call returns a **new** `dir_key` (copy-on-write). See `docs/NAMESPACE.md` for semantics.
+Directory blocks are JSON (`kind: "tarsus-directory-v1"`) stored via the same `PutBlock` pipeline as opaque bytes; each mutating call returns a **new** `dir_key` (copy-on-write). The decoder retains read compatibility with the pre-rename discriminator. See `docs/NAMESPACE.md` for semantics.
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|

@@ -1,22 +1,30 @@
-# Purpose: Replication and routing semantics (theory vs measured comparison metrics)
+# Replication and repair
 
-## Token routing and DHT
+Tarsus stores immutable content locally, publishes a provider-location token,
+and then creates opportunistic replicas. Tuple metadata coordinates placement;
+bulk bytes move directly between peers and are accepted only after content-key
+verification.
 
-vn-IPFS uses a key-based token stored in the DHT (`TokenNamespace` + key hash) with provider locations. PUT triggers local persistence first; token sync and peer replication can proceed asynchronously (see `docs/API.md`).
+The default target is seven providers. Placement attempts three near, two
+middle, and two far copies using observed round-trip time. These classes are a
+best-effort latency-diversity objective, not proof of geographic or
+administrative independence. If a class lacks candidates, placement may use a
+healthy candidate from another class without exceeding the target.
 
-**Dial maintenance:** The node targets **20** minimum outbound libp2p connections by default (`--min-outbound`). The effective target is capped at **N−1** when `CLUSTER_NODE_COUNT` or `--cluster-nodes` is set to **N**, and otherwise capped by the number of distinct peers known in the peer store with addresses (so small clusters do not chase an unreachable target).
+Periodic audits:
 
-**Directory blocks:** Namespace directories are stored as ordinary blocks (see `docs/NAMESPACE.md`). Each directory key is announced and replicated like any other put; path resolution walks directory keys to child keys using the same Get/token path.
+1. resolve and probe the recorded providers;
+2. retain healthy providers and require repeated evidence before removing an
+   unreachable location;
+3. elect one reachable repair coordinator;
+4. prefer replacements from missing RTT classes; and
+5. fill any remaining count deficit from another healthy advertised peer.
 
-## Lookup hop count vs ideal O(log N)
+The source provider is published before asynchronous copies. Exactly one
+coordinator publishes each completed transfer, avoiding lost provider updates
+between transfer endpoints.
 
-- **Theory (Kademlia-style)**: In a mature table with many peers, iterative lookups often visit **O(log N)** peers in expectation.
-- **What we measure**: `network_hops` in the control API and `lookup-key` counts **`routing.SendingQuery`** events during the instrumented window (e.g. `GetToken` on `/lookup`, or the `GetClosestPeers` phase in `lookup-key`). That count correlates with routing work but is **not** a full formal proof of asymptotic behavior.
-- **Comparison suite**: `lookup_complexity_test.sh` writes **`hops`** as an **O(log N) reference** in cluster size (for complexity plots) and **`hops_raw`** as the measured cold `lookup-key` counter when available.
-- **Fig06 reference curve** (`scripts/analysis/matrix_paper_plots.py`): smooth **k·log₂(N)** uses **k_ls = (1−w)·k_network + w·k_reference** with **k_network** / **k_reference** from least-squares through the origin on per-**N** means of **`hops_raw`** and **`hops`**, and **w = LOOKUP_PLOT_K_BLEND_REF** (default **0.5**). Use **`LOOKUP_PLOT_K_FACTOR`** (default **1**) as an extra scalar on **k_ls** for the plotted line only.
-- **Upload latency at large N** reflects replication load, disk, and HTTP path — **not** the same axis as hop count.
-
-## Further reading
-
-- `docs/SWARM_COMPARISON_TESTS.md` — lookup complexity, catalog-growth upload/download vs object count, and interpretation. Catalog **download** for both stacks defaults to **host-wall** timing (`CATALOG_GROWTH_HOST_WALL_GET`, default **1**) so vn-IPFS and Swarm CSVs are comparable in magnitude (docker exec + request). Default catalog **payload** is **262144** bytes; multi-trial runs use **`catalog_growth_merge.sh`** for row-wise averages when **`CATALOG_GROWTH_TRIALS` > 1** with a clean store per trial. Swarm **`CATALOG_GROWTH_SWARM_FETCH`**: **`latest`** vs **`first`** + pinning tradeoffs as documented there.
-- `docs/API.md` — `network_hops`, PUT semantics, `/lookup`.
+Replica count is an availability policy, not a Byzantine quorum. Repair
+requires a reachable source and suitable advertised peers. Same-host container
+tests validate mechanism behavior but cannot establish regional independence;
+that claim requires multi-host failure experiments.

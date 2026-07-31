@@ -365,7 +365,7 @@ func GetBlockByKey(ctx context.Context, d ds.Batching, bsvc *bserv.BlockService,
 	return blk.RawData(), nil
 }
 
-// GetBlock retrieves a block by Key, implementing the full vn-IPFS Get flow: unless the
+// GetBlock retrieves a block by Key, implementing the full Tarsus Get flow: unless the
 // context requests remote-only behavior (WithRemoteOnlyGet), it first checks the local store
 // via GetBlockByKey. On a local miss (or when bypassed), it looks up a Token for k via
 // GetToken against s.TokenStore (falling back to s.DHT), counting DHT query hops as it goes,

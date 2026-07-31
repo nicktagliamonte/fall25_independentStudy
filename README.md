@@ -1,100 +1,75 @@
-# vn-IPFS Prototype Node
+# Tarsus
 
-P2P content node with key-based storage and token routing. Part of the vn-IPFS architecture (von Neumann–principled IPFS).
+Tarsus is a peer-to-peer, content-addressed storage prototype with an
+integrated Linda-style tuple space. It is an independent implementation; it
+does not embed or depend on Linda or IPFS.
 
-## Architecture
+The tuple plane supports:
 
-**Key-based storage:** The primary identifier is `Key = SHA256(data)` (64 hex chars). CID is kept for IPFS blockstore compatibility.
+- `put(name, value)` to publish one tuple instance;
+- `read(pattern)` to return one match without consuming it; and
+- `get(pattern)` to atomically remove and return one match at its exact-name
+  owner.
 
-**Token routing:** The DHT routes **tokens** (physical locations: ProviderID + Address), not block data. Discovery flow: `GetToken(key)` → `DirectFetch` to each location in parallel. Block data flows peer-to-peer via `/sng40/direct-fetch/1.0.0`.
+Exact tuple names have deterministic Kademlia owners. Prefix and substring
+queries use hash-sharded Prefix Hash Trees and Bloom summaries to discover
+candidate names, then contact exact owners for authoritative verification.
+Tuple metadata and provider locations remain separate from bulk content, which
+is fetched directly and verified against its content key.
 
-**Put flow:** `Key = KeyFromData(data)` → store in blockstore → index Key→CID → update routing table → sync token to DHT (`/tokens/<hex(key)>`).
+## Build and test
 
-**Get flow:** Local lookup → token lookup (Gateway or DHT) → DirectFetch to providers → verify `KeyFromData(blockData) == key`.
+Requirements are Go, Docker, Docker Compose, `jq`, and `curl`.
 
-**Optional locking:** `KeyLockManager` provides write mutual exclusion per key. Reads are lock-free.
-
-### Documentation
-| Doc | Description |
-|-----|-------------|
-| [docs/API.md](docs/API.md) | Key-based HTTP API (put, get, delete, snapshot) |
-| [docs/TOKEN_PROTOCOL.md](docs/TOKEN_PROTOCOL.md) | Token structure, DHT routing, DirectFetch |
-| [docs/LOCKING_API.md](docs/LOCKING_API.md) | KeyLockManager, acquire/release, retry |
-| [docs/GATEWAY_QUERY_API.md](docs/GATEWAY_QUERY_API.md) | Gateway Query, QueryOptimizer, routing |
-
-## Build
-```
-go build -o node ./cmd/node/main.go
-```
-
-## Quick start
-- Terminal A (serve):
-```
-./node put --data "hello" --serve
-```
-Returns `multihash_hex` (Key) and `cid`.
-- Terminal B (fetch):
-```
-./node get --cid "<CID_FROM_A>" --from-addr "/ip4/<IP>/tcp/2893" --from-peer "<PEERID_FROM_A>" --out /tmp/out.txt
-```
-For key-based get, use the HTTP API: `POST /get` with `{"key": "<multihash_hex>"}`. See [docs/API.md](docs/API.md).
-
-## Run a node
-```
-./node run
-```
-- Prints PeerID, local addrs, and Public Addr (if detectable)
-- Default ports: TCP 2893, UDP 2894 (QUIC)
-
-## Connect (manual dial)
-```
-./node connect --addr "/ip4/<IP>/tcp/2893" --peer "<PEERID>"
+```bash
+go build ./cmd/node
+go test ./...
+go vet ./...
 ```
 
-## Notes
-- Ensure 2893/tcp and 2894/udp are open on the remote host (cloud SG/NACL + firewall).
-- If Public Addr isn’t printed, the host may not have a public IPv4; use a public IP or port-forward.
-- For daemonized run: `./node run --daemon` (logs: /tmp/fall25_node/daemon.log)
+The highest-risk coordination packages can also be checked with the race
+detector:
 
-## Public vs Private networks (application-layer admission)
-
-This node can run open (public) or require admission (private) using per-node tokens signed by a CA. By default, if no token env vars are set, the node runs open (any libp2p peer can connect; streams are still gated by verack).
-
-### Public mode (default)
-- Do nothing; just run `./node run`. No token required.
-
-### Private mode (token-gated)
-1) Prepare a CA keypair (issuer machine):
+```bash
+go test -race ./internal/tuplespace ./internal/pht ./internal/gateway
 ```
-openssl genpkey -algorithm ED25519 -out ~/.sng40/ca.key
-openssl pkey -in ~/.sng40/ca.key -pubout -outform DER | tail -c 32 | base64 -w0
-```
-Copy the base64 output; this is `SNG40_CA_PUBS` (one or more, comma-separated).
 
-2) Get the node’s PeerID (run once to print it), then stop the node.
+## Local cluster
 
-3) Issue a token for that PeerID (issuer machine):
-```
-printf "%s" "<PEER_ID>" > /tmp/peer.txt
-openssl pkeyutl -sign -inkey ~/.sng40/ca.key -rawin -in /tmp/peer.txt -out /tmp/sig.bin
-base64 -w0 /tmp/sig.bin
-```
-Use the base64 signature as `SNG40_TOKEN`.
+Start a fresh private cluster with:
 
-4) Start the node with env vars:
+```bash
+./scripts/docker/start.sh 10
 ```
-export SNG40_CA_PUBS="<base64_ca_pub>[,<base64_ca_pub_2>]"
-export SNG40_TOKEN="<base64_signature_over_peerid>"
-./node run
+
+The script generates `docker-compose.yml`, builds the node image, disables
+public bootstrap peers, and establishes a protected bounded-degree topology.
+Use `scripts/docker/status.sh`, `logs.sh`, and `stop.sh` to inspect or stop it.
+
+## Experiments
+
+The production experiment harness is in
+[`scripts/tests/tarsus_campaign`](scripts/tests/tarsus_campaign/README.md). It
+generates versioned, resumable cells, records request-scoped mutation and query
+counters, and validates every accepted artifact before analysis.
+
+The manuscript source is [`paper/final.tex`](paper/final.tex). The campaign
+plotter regenerates its figures from a validated run:
+
+```bash
+python3 scripts/tests/tarsus_campaign/analyze_campaign.py RUN_DIR
+python3 scripts/tests/tarsus_campaign/plot_campaign.py RUN_DIR paper/figures
 ```
-- To force private mode even if envs are unset/mis-set, set `SNG40_REQUIRE_TOKEN=true`.
 
-### How it works (PoC)
-- Verack carries a token (base64 ed25519 signature over the node’s PeerID). Peers verify tokens against any trusted CA in `SNG40_CA_PUBS`. If valid, streams are allowed; otherwise the connection is dropped at handshake.
-- In public mode, no token is required; the node behaves like IPFS’s public net at the application layer.
+## Documentation
 
-## State head/height (monotone G-set)
-- The node maintains a tiny append-only event log (DAG-CBOR) for a grow-only set of facts.
-- Today’s fact: `peer_added` when a peer successfully completes verack.
-- The current head CID and height are advertised in the handshake to signal progress; no equality checks are required.
-- Head advances via `peer_added` appends; repeated appends for the same peer are harmless.
+- [`docs/API.md`](docs/API.md): HTTP storage API
+- [`docs/GATEWAY_QUERY_API.md`](docs/GATEWAY_QUERY_API.md): tuple query path
+- [`docs/REPLICATION.md`](docs/REPLICATION.md): placement and repair
+- [`docs/TOKEN_PROTOCOL.md`](docs/TOKEN_PROTOCOL.md): provider-location records
+- [`docs/TARSUS_REWRITE_CHANGES.txt`](docs/TARSUS_REWRITE_CHANGES.txt): brief
+  implementation-change summary
+
+Tarsus currently provides immutable content objects and tuple coordination. It
+is not a POSIX file system and does not claim consensus availability during
+arbitrary network partitions.

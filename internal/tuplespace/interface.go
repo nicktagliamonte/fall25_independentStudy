@@ -1,4 +1,4 @@
-// Package tuplespace provides tuple space implementations for vn-IPFS.
+// Package tuplespace provides Tarsus tuple-space implementations.
 package tuplespace
 
 // TupleSpace defines the interface for tuple space operations.

@@ -1,0 +1,41 @@
+TARSUS REWRITE CHANGE SUMMARY
+
+NAME: The current system and paper use Tarsus instead of vnIPFS.
+TUPLE MODEL: One native Linda-style tuple space coordinates application tuples and storage metadata.
+TUPLE OPERATIONS: Put adds one tuple, Read returns one tuple without removing it, and Get atomically removes one tuple.
+TUPLE MULTISET: Duplicate names and values are stored as separate tuple instances.
+EXACT OWNERSHIP: Each exact tuple name routes to one deterministic Kademlia owner.
+EXCLUSIVE GET: The exact owner selects and removes a tuple in one serialized critical section.
+DURABLE STATE: Tuple instances, ownership fence, version, and retained mutation results share one DHT record.
+RETRY SAFETY: Reusing a retained request ID returns the committed result without repeating the mutation.
+OWNER HANDOFF: Lease expiry and epoch/writer fences let a successor adopt committed exact-name state.
+STALE WRITERS: Lower-fence writes lose DHT record selection after ownership converges.
+ASSOCIATIVE SEARCH: Prefix Hash Trees discover names for prefix and substring queries.
+BLOOM SEARCH: Per-subtree Bloom summaries can prune branches that cannot contain required query grams.
+AUTHORITATIVE MATCH: Index results are hints; the exact owner verifies every returned or consumed tuple.
+INDEX UPDATES: PHT insertion and deletion are incremental instead of full-catalog rebuilds.
+INDEX SHARDS: Full tuple names hash across configurable PHT shards.
+MUTATION AUTHORITY: One elected overlay owner serializes each shard's PHT mutations.
+INDEX VERSIONS: DHT validators select the highest valid PHT node version and fence stale shard writers.
+QUERY FANOUT: Indexed queries read configured shards in parallel and report partial shard failure.
+QUERY METRICS: The query path records shard, PHT, pruning, candidate, owner-attempt, match, and latency counters.
+MUTATION METRICS: The mutation path records local, remote, failed, per-shard, authority, and service-time counters.
+CONTENT IDENTITY: Immutable bytes use a SHA-256-derived content key.
+PROVIDER METADATA: Content keys and provider locations are routed separately from content bytes.
+DIRECT FETCH: Requesters fetch bytes directly from providers and reject a content-key mismatch.
+DIRECTORY NAME: New directory blocks use tarsus-directory-v1; pre-rename blocks remain readable.
+REPLICA POLICY: The default target is seven opportunistic replicas with a three-near, two-middle, two-far RTT goal.
+REPAIR: Periodic audits probe providers, require repeated failure evidence, elect one coordinator, and replace deficits.
+REPAIR SAFETY: Healthy original providers are retained and completed copies publish one provider update.
+PRIVATE OVERLAY: Campaign clusters disable public bootstrap peers and build a protected bounded-degree topology.
+CONNECTION BOUNDS: Startup and background dialing respect configurable outbound and high-water limits.
+CAMPAIGN: A versioned resumable harness creates fresh cells and records source, workload, topology, resources, and logs.
+CAMPAIGN VALIDATION: A cell is accepted only after topology, population, row-count, result, and kernel checks pass.
+CAMPAIGN RESUME: Completed cells are never rerun and interrupted population batches are recreated safely.
+CAMPAIGN ANALYSIS: The analyzer merges only validated cells and generates request-level summaries and paper figures.
+LEGACY TSH: The old TSH client remains optional for wire compatibility and is not the default Tarsus path.
+REMOVED: Dated Swarm/vnIPFS benchmarks, generated binaries, old result trees, and raw planning documents were removed.
+
+CURRENT LIMITS: No multi-tuple transaction, arbitrary-partition consensus, Byzantine metadata agreement, or POSIX API.
+CURRENT EVIDENCE: The primary campaign contains 10 accepted cells and 10500 validated query rows through 90 peers.
+CURRENT EVIDENCE: A separate 100-peer mechanism case validates one provider loss and automatic replica repair.

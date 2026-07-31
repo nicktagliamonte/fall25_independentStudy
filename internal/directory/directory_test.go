@@ -31,6 +31,16 @@ func TestEncodeDecodeRoundTrip(t *testing.T) {
 	}
 }
 
+func TestDecodeAcceptsPreRenameDirectoryKind(t *testing.T) {
+	got, err := Decode([]byte(`{"kind":"vnipfs-directory-v1","entries":{}}`))
+	if err != nil {
+		t.Fatalf("Decode legacy directory: %v", err)
+	}
+	if got.Kind != legacyKind {
+		t.Fatalf("kind: got %q, want %q", got.Kind, legacyKind)
+	}
+}
+
 func TestAddLinkValidate(t *testing.T) {
 	d := New()
 	if err := d.AddLink("bad/name", storage.KeyFromData([]byte("x")).String()); err == nil {
