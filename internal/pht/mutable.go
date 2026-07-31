@@ -243,13 +243,13 @@ func (m *MutableIndex) InsertFenced(ctx context.Context, key string, fence Write
 			break
 		}
 	}
-	currentFence := WriteFence{Epoch: cur.Epoch, Writer: cur.Writer}
-	if exists && CompareWriteFences(fence, currentFence) == 0 {
-		return nil
-	}
 	if !exists {
 		cur.Entries = append(cur.Entries, key)
 	}
+	// A duplicate under the current fence is an anti-entropy reassertion, not
+	// a no-op. Republish the leaf and ancestor path with stronger versions so
+	// DHT replicas that missed an earlier write can converge. TsReplace relies
+	// on this behavior for renewable singleton records.
 	MaybeSplit(cur)
 	BuildNodeBloom(cur, 0, 0, 0)
 	stampWriteFence(cur, fence)

@@ -241,6 +241,44 @@ func TestMutableIndexFencesStaleWriterAndMigratesExistingEntry(t *testing.T) {
 	}
 }
 
+func TestMutableIndexDuplicateInsertRepublishesCurrentPath(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	index, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fence := WriteFence{Epoch: 4, Writer: "owner-a"}
+	if err := index.InsertFenced(ctx, "task:reassert:001", fence); err != nil {
+		t.Fatal(err)
+	}
+	firstRoot, err := GetNode(ctx, store, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := index.InsertFenced(ctx, "task:reassert:001", fence); err != nil {
+		t.Fatal(err)
+	}
+	secondRoot, err := GetNode(ctx, store, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondRoot.Version <= firstRoot.Version {
+		t.Fatalf(
+			"root version after reassertion = %d, want > %d",
+			secondRoot.Version,
+			firstRoot.Version,
+		)
+	}
+	rows, err := ExecutePrefixQuery(ctx, store, "task:reassert:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || rows[0] != "task:reassert:001" {
+		t.Fatalf("rows after reassertion = %#v", rows)
+	}
+}
+
 func TestMutableIndexAdoptFenceMigratesEntireTree(t *testing.T) {
 	ctx := context.Background()
 	store := &mockStore{}
