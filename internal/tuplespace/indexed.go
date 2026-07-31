@@ -25,6 +25,7 @@ const (
 	defaultIndexMutationTimeout              = 60 * time.Second
 	indexRouteAttemptTimeout                 = 15 * time.Second
 	indexAuthorityAttemptTimeout             = 20 * time.Second
+	maxIndexMutationAttempts                 = 5
 	maxIndexMemoEntries                      = 4096
 )
 
@@ -195,7 +196,7 @@ func (c *IndexCoordinator) mutate(ctx context.Context, mutation indexMutation) (
 	}()
 	classified := false
 	var lastErr error
-	for attempt := 0; attempt < 3 && ctx.Err() == nil; attempt++ {
+	for attempt := 0; attempt < maxIndexMutationAttempts && ctx.Err() == nil; attempt++ {
 		fence, resolveErr := c.authority.resolve(ctx, mutation.Shard)
 		if resolveErr != nil {
 			return stats, fmt.Errorf("resolve index authority: %w", resolveErr)

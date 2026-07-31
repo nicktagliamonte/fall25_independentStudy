@@ -244,6 +244,21 @@ func (m *indexAuthorityManager) failover(
 	if err != nil {
 		return pht.WriteFence{}, fmt.Errorf("read failed index authority: %w", err)
 	}
+	if pht.CompareWriteFences(current.fence(), failed) != 0 &&
+		time.Now().Before(current.validAfter()) &&
+		time.Now().Before(current.expiresAt()) {
+		// Another caller has already installed a stronger pending winner.
+		// Wait for that claim instead of immediately creating yet another
+		// epoch while its propagation window is still open.
+		if err := waitUntilAuthority(ctx, current.validAfter()); err != nil {
+			return pht.WriteFence{}, err
+		}
+		current, err = m.read(ctx, shard)
+		if err != nil {
+			return pht.WriteFence{}, fmt.Errorf("confirm pending failover authority: %w", err)
+		}
+		now = time.Now()
+	}
 	if pht.CompareWriteFences(current.fence(), failed) != 0 && m.usable(current, now) {
 		state.cached = &current
 		state.validatedAt = now
@@ -266,7 +281,25 @@ func (m *indexAuthorityManager) failover(
 	if err := waitForAuthority(ctx, time.Until(notBefore)); err != nil {
 		return pht.WriteFence{}, err
 	}
-	winner, err := m.read(ctx, shard)
+	var winner indexAuthorityRecord
+	for attempt := 0; attempt < 4; attempt++ {
+		winner, err = m.read(ctx, shard)
+		if err == nil {
+			if wait := time.Until(winner.validAfter()); wait > 0 &&
+				time.Now().Before(winner.expiresAt()) {
+				if err := waitUntilAuthority(ctx, winner.validAfter()); err != nil {
+					return pht.WriteFence{}, err
+				}
+			} else if m.usable(winner, time.Now()) {
+				break
+			}
+		}
+		if attempt < 3 {
+			if err := waitForAuthority(ctx, time.Duration(attempt+1)*50*time.Millisecond); err != nil {
+				return pht.WriteFence{}, err
+			}
+		}
+	}
 	if err != nil {
 		if writeErr != nil {
 			return pht.WriteFence{}, fmt.Errorf(
@@ -278,7 +311,7 @@ func (m *indexAuthorityManager) failover(
 		return pht.WriteFence{}, fmt.Errorf("confirm failover authority: %w", err)
 	}
 	if !m.usable(winner, time.Now()) {
-		return pht.WriteFence{}, errors.New("failover authority did not converge")
+		return pht.WriteFence{}, errors.New("failover authority did not converge after retries")
 	}
 	if winner.Epoch > current.Epoch {
 		m.metrics.transitions.Add(1)

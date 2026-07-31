@@ -92,6 +92,59 @@ func TestIndexAuthorityImmediateRouteFailoverAdvancesFence(t *testing.T) {
 	}
 }
 
+func TestIndexAuthorityFailoverWaitsForDifferentPendingWinner(t *testing.T) {
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownerA := peer.ID("authority-owner-a")
+	ownerB := peer.ID("authority-owner-b")
+	manager, err := newIndexAuthorityManager(
+		ownerB,
+		failoverOwnerResolver{primary: ownerA, successor: ownerB},
+		stores,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.setTiming(0, time.Minute, 0)
+	now := time.Now()
+	pending := indexAuthorityRecord{
+		Epoch:      2,
+		Writer:     ownerB.String(),
+		Version:    1,
+		ValidAfter: now.Add(50 * time.Millisecond).UnixNano(),
+		ExpiresAt:  now.Add(time.Minute).UnixNano(),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := manager.write(ctx, 0, pending); err != nil {
+		t.Fatal(err)
+	}
+	got, err := manager.failover(
+		ctx,
+		0,
+		pht.WriteFence{Epoch: 1, Writer: ownerA.String()},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != pending.fence() {
+		t.Fatalf("failover fence = %+v, want pending %+v", got, pending.fence())
+	}
+	stored, err := manager.read(ctx, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Epoch != pending.Epoch {
+		t.Fatalf("pending epoch escalated from %d to %d", pending.Epoch, stored.Epoch)
+	}
+	if stats := manager.snapshot(); stats.claims != 0 {
+		t.Fatalf("claims while pending winner existed = %d, want 0", stats.claims)
+	}
+}
+
 func TestIndexAuthorityLeaseFailoverFencesPreviousOwner(t *testing.T) {
 	store := &indexedTestStore{}
 	stores, err := pht.NewShardStores(store, 1)
