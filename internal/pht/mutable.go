@@ -27,15 +27,66 @@ const (
 // authoritative index coordinator (or an equivalent distributed transaction
 // mechanism) to prevent lost read-modify-write updates.
 type MutableIndex struct {
-	store ValueStore
+	store *mutationCacheStore
 	mu    sync.Mutex
+}
+
+// mutationCacheStore gives the elected writer read-after-write consistency
+// while retaining the DHT as durable, queryable storage. A DHT Put can
+// complete before a following distributed Get observes that version; without
+// this cache, a serialized writer can read an older PHT node and overwrite a
+// newer mutation. The cache belongs to one MutableIndex and is protected by
+// its mutation mutex.
+type mutationCacheStore struct {
+	base   ValueStore
+	values map[string][]byte
+}
+
+func newMutationCacheStore(base ValueStore) *mutationCacheStore {
+	return &mutationCacheStore{
+		base:   base,
+		values: make(map[string][]byte),
+	}
+}
+
+func (s *mutationCacheStore) PutValue(
+	ctx context.Context,
+	key string,
+	value []byte,
+	opts ...interface{},
+) error {
+	if err := s.base.PutValue(ctx, key, value, opts...); err != nil {
+		return err
+	}
+	s.values[key] = append([]byte(nil), value...)
+	return nil
+}
+
+func (s *mutationCacheStore) GetValue(
+	ctx context.Context,
+	key string,
+	opts ...interface{},
+) ([]byte, error) {
+	if value, ok := s.values[key]; ok {
+		return append([]byte(nil), value...), nil
+	}
+	value, err := s.base.GetValue(ctx, key, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s.values[key] = append([]byte(nil), value...)
+	return append([]byte(nil), value...), nil
+}
+
+func (s *mutationCacheStore) reset() {
+	s.values = make(map[string][]byte)
 }
 
 func NewMutableIndex(store ValueStore) (*MutableIndex, error) {
 	if store == nil {
 		return nil, errors.New("PHT store required")
 	}
-	return &MutableIndex{store: store}, nil
+	return &MutableIndex{store: newMutationCacheStore(store)}, nil
 }
 
 // AdoptFence migrates every persisted node in the index to a new writer fence
@@ -46,6 +97,10 @@ func (m *MutableIndex) AdoptFence(ctx context.Context, fence WriteFence) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// A different elected writer may have mutated the PHT since this process
+	// last held authority. Fence adoption must therefore rebuild from the DHT,
+	// not migrate a stale writer-local snapshot into the stronger epoch.
+	m.store.reset()
 	root, err := GetNode(ctx, m.store, "")
 	if err != nil {
 		if isMissingNode(err) {

@@ -104,6 +104,72 @@ func TestMutableIndexConcurrentInsertIsLossless(t *testing.T) {
 	}
 }
 
+type laggingStore struct {
+	mu      sync.Mutex
+	visible map[string][]byte
+	latest  map[string][]byte
+}
+
+func (s *laggingStore) PutValue(
+	_ context.Context,
+	key string,
+	value []byte,
+	_ ...interface{},
+) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.latest == nil {
+		s.latest = make(map[string][]byte)
+	}
+	s.latest[key] = append([]byte(nil), value...)
+	return nil
+}
+
+func (s *laggingStore) GetValue(
+	_ context.Context,
+	key string,
+	_ ...interface{},
+) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.visible[key]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return append([]byte(nil), value...), nil
+}
+
+func (s *laggingStore) publishLatest() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.visible = make(map[string][]byte, len(s.latest))
+	for key, value := range s.latest {
+		s.visible[key] = append([]byte(nil), value...)
+	}
+}
+
+func TestMutableIndexPreservesWritesWhenDHTReadsLag(t *testing.T) {
+	ctx := context.Background()
+	store := &laggingStore{}
+	index, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 40; i++ {
+		if err := index.Insert(ctx, fmt.Sprintf("task:lagging:%03d", i)); err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+	}
+	store.publishLatest()
+	rows, err := ExecutePrefixQuery(ctx, store, "task:lagging:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 40 {
+		t.Fatalf("rows after delayed DHT visibility = %d, want 40", len(rows))
+	}
+}
+
 func TestRegexQueryScansAndFiltersNames(t *testing.T) {
 	ctx := context.Background()
 	store := &mockStore{}
@@ -254,6 +320,48 @@ func TestMutableIndexAdoptFenceRetriesTransientlyMissingChild(t *testing.T) {
 		t.Fatalf("AdoptFence after transient missing child: %v", err)
 	}
 	assertStoredFence(t, ctx, base, "", fence)
+}
+
+func TestMutableIndexAdoptFenceDiscardsPriorWriterCache(t *testing.T) {
+	ctx := context.Background()
+	store := &mockStore{}
+	first, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := NewMutableIndex(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fence1 := WriteFence{Epoch: 1, Writer: "owner-a"}
+	fence2 := WriteFence{Epoch: 2, Writer: "owner-b"}
+	fence3 := WriteFence{Epoch: 3, Writer: "owner-a"}
+	if err := first.InsertFenced(ctx, "task:cache:001", fence1); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.AdoptFence(ctx, fence2); err != nil {
+		t.Fatal(err)
+	}
+	if err := second.InsertFenced(ctx, "task:cache:002", fence2); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.AdoptFence(ctx, fence3); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.InsertFenced(ctx, "task:cache:003", fence3); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := ExecutePrefixQuery(ctx, store, "task:cache:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(rows)
+	if len(rows) != 3 ||
+		rows[0] != "task:cache:001" ||
+		rows[1] != "task:cache:002" ||
+		rows[2] != "task:cache:003" {
+		t.Fatalf("rows after authority returned to prior writer = %#v", rows)
+	}
 }
 
 func TestMutableIndexAdoptFenceFailsClosedForPersistentlyMissingChild(t *testing.T) {
