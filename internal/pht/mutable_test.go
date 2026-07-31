@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync"
 	"testing"
 )
 
@@ -191,6 +192,94 @@ func TestMutableIndexAdoptFenceMigratesEntireTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertStoredFence(t, ctx, store, "", fence)
+}
+
+type transientMissingStore struct {
+	ValueStore
+	mu        sync.Mutex
+	key       string
+	remaining int
+}
+
+func (s *transientMissingStore) GetValue(
+	ctx context.Context,
+	key string,
+	opts ...interface{},
+) ([]byte, error) {
+	s.mu.Lock()
+	if key == s.key && s.remaining > 0 {
+		s.remaining--
+		s.mu.Unlock()
+		return nil, ErrNotFound
+	}
+	s.mu.Unlock()
+	return s.ValueStore.GetValue(ctx, key, opts...)
+}
+
+func TestMutableIndexAdoptFenceRetriesTransientlyMissingChild(t *testing.T) {
+	ctx := context.Background()
+	base := &mockStore{}
+	index, err := NewMutableIndex(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 40; i++ {
+		if err := index.Insert(ctx, fmt.Sprintf("task:adopt-retry:%03d", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	root, err := GetNode(ctx, base, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var childPrefix string
+	for segment := range root.Children {
+		childPrefix = root.Prefix + segment
+		break
+	}
+	if childPrefix == "" {
+		t.Fatal("test tree did not split")
+	}
+	transient := &transientMissingStore{
+		ValueStore: base,
+		key:        dhtKey(childPrefix),
+		remaining:  2,
+	}
+	restarted, err := NewMutableIndex(transient)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fence := WriteFence{Epoch: 9, Writer: "owner-new"}
+	if err := restarted.AdoptFence(ctx, fence); err != nil {
+		t.Fatalf("AdoptFence after transient missing child: %v", err)
+	}
+	assertStoredFence(t, ctx, base, "", fence)
+}
+
+func TestMutableIndexAdoptFenceFailsClosedForPersistentlyMissingChild(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	base := &mockStore{}
+	root := NewInternal("")
+	root.Children["t"] = nil
+	if err := PutNode(ctx, base, root); err != nil {
+		t.Fatal(err)
+	}
+	index, err := NewMutableIndex(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = index.AdoptFence(ctx, WriteFence{Epoch: 9, Writer: "owner-new"})
+	if err == nil {
+		t.Fatal("AdoptFence succeeded with a persistently missing child")
+	}
+	storedRoot, getErr := GetNode(context.Background(), base, "")
+	if getErr != nil {
+		t.Fatal(getErr)
+	}
+	if storedRoot.Epoch != 0 || storedRoot.Writer != "" {
+		t.Fatalf("root fence changed after failed adoption: %+v", storedRoot)
+	}
 }
 
 func assertStoredFence(

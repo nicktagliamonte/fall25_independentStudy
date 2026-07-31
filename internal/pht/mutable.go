@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/routing"
 )
@@ -15,6 +16,11 @@ import (
 // distributed-writer epoch is already persisted. Callers may refresh the
 // authority record and retry the same idempotent mutation.
 var ErrStaleWriteFence = errors.New("stale PHT writer fence")
+
+const (
+	fenceAdoptionReadAttempts = 6
+	fenceAdoptionReadBackoff  = 50 * time.Millisecond
+)
 
 // MutableIndex maintains tuple names in a PHT. A MutableIndex serializes local
 // mutations; distributed callers must additionally route mutations through one
@@ -80,7 +86,7 @@ func (m *MutableIndex) loadDescendants(ctx context.Context, n *Node, fence Write
 	}
 	for segment := range n.Children {
 		prefix := n.Prefix + segment
-		child, err := GetNode(ctx, m.store, prefix)
+		child, err := m.getDescendantForFenceAdoption(ctx, prefix)
 		if err != nil {
 			return fmt.Errorf("read PHT child %q for fence adoption: %w", prefix, err)
 		}
@@ -90,6 +96,45 @@ func (m *MutableIndex) loadDescendants(ctx context.Context, n *Node, fence Write
 		n.Children[segment] = child
 	}
 	return nil
+}
+
+// A parent is published only after its children, but DHT reads performed by a
+// newly elected owner can still observe the parent before a child has reached
+// that owner's lookup path. Retry only missing descendants: fabricating a leaf
+// would lose indexed names, while retrying arbitrary errors would mask real
+// transport or validation failures.
+func (m *MutableIndex) getDescendantForFenceAdoption(
+	ctx context.Context,
+	prefix string,
+) (*Node, error) {
+	var lastErr error
+	for attempt := 0; attempt < fenceAdoptionReadAttempts; attempt++ {
+		node, err := GetNode(ctx, m.store, prefix)
+		if err == nil {
+			return node, nil
+		}
+		if !isMissingNode(err) {
+			return nil, err
+		}
+		lastErr = err
+		if attempt == fenceAdoptionReadAttempts-1 {
+			break
+		}
+		delay := fenceAdoptionReadBackoff << attempt
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+	return nil, lastErr
 }
 
 // Insert adds key to the index if it is not already present.
