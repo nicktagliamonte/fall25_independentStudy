@@ -91,18 +91,21 @@ type tuplePutFailure struct {
 
 const tuplePutMaxAttempts = 4
 
-// retryableTuplePutError identifies the narrow failure that occurs before the
-// authoritative tuple publication: a newly adopted index owner can observe a
-// parent PHT node before one of the parent's child records has propagated. The
-// index is a repairable hint and insertion is idempotent, so retrying this
-// pre-publication failure cannot create an extra tuple instance.
+// retryableTuplePutError identifies index-stage failures that occur before the
+// authoritative tuple publication. The index is a repairable hint and its
+// insertion is idempotent, so retrying these pre-publication failures cannot
+// create an extra tuple instance. Exact tuple-owner failures are deliberately
+// excluded because a lost acknowledgment there may follow a committed put.
 func retryableTuplePutError(err error) bool {
 	if err == nil {
 		return false
 	}
 	message := strings.ToLower(err.Error())
-	return strings.Contains(message, "adopt index authority fence: read pht child") &&
-		strings.Contains(message, "routing: not found")
+	return strings.Contains(message, "index authority") ||
+		strings.Contains(message, "index mutation") ||
+		strings.Contains(message, "index overlay route") ||
+		strings.Contains(message, "index-owner") ||
+		strings.Contains(message, "pht")
 }
 
 func tuplePutFailureReason(err error) string {

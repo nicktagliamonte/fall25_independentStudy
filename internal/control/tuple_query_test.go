@@ -157,3 +157,23 @@ func TestTuplePutEndpointRetriesPrePublicationPHTAdoptionFailure(t *testing.T) {
 		t.Fatalf("logical mutation delta includes transient attempt: %+v", response.MutationDelta)
 	}
 }
+
+func TestRetryableTuplePutErrorExcludesExactTupleOwnerFailures(t *testing.T) {
+	for _, message := range []string{
+		"adopt index authority fence: read PHT child: routing: not found",
+		"index authority peer unreachable: no index overlay route",
+		"read index-owner response: connection closed",
+	} {
+		if !retryableTuplePutError(errors.New(message)) {
+			t.Fatalf("index-stage error was not retryable: %q", message)
+		}
+	}
+	for _, message := range []string{
+		"tuple-owner stream: connection closed after write",
+		"read tuple response: deadline exceeded",
+	} {
+		if retryableTuplePutError(errors.New(message)) {
+			t.Fatalf("exact tuple-stage error was retryable: %q", message)
+		}
+	}
+}
