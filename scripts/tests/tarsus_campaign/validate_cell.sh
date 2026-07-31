@@ -23,7 +23,7 @@ jq -e '.git.commit != "" and .host.logical_cpus > 0 and
   .host.ipv4_neighbor_gc.thresh3 > 0' "$cell_dir/host.json" >/dev/null
 jq -e --slurpfile cell "$cell_dir/cell.json" \
   '.query_stats.verified_matches == 1
-   and .query_stats.index_matches >= $cell[0].node_count' \
+   and .query_stats.index_matches >= ($cell[0].availability_required // $cell[0].node_count)' \
   "$cell_dir/startup-availability.json" >/dev/null
 jq -e 'all(.nodes[]; .neighbor_count > 0)' "$cell_dir/topology.json" >/dev/null
 jq -e '.requested > 0 and .failed == 0 and .requested == .succeeded

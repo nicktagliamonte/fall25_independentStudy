@@ -14,6 +14,12 @@ shard_count=$4
 bloom_pruning=$5
 repetitions=$6
 client_count=$7
+availability_required=${AVAILABILITY_MIN_MATCHES:-$node_count}
+if [[ ! "$availability_required" =~ ^[1-9][0-9]*$ ||
+  "$availability_required" -gt "$node_count" ]]; then
+  echo "AVAILABILITY_MIN_MATCHES must be between 1 and node_count=$node_count" >&2
+  exit 2
+fi
 
 if [[ -f "$cell_dir/COMPLETE" ]]; then
   campaign_log "skip complete cell $cell_dir"
@@ -42,10 +48,12 @@ jq -n \
   --argjson client_count "$client_count" \
   --argjson min_outbound "${TARSUS_MIN_OUTBOUND:-3}" \
   --argjson max_connections "${TARSUS_MAX_CONNECTIONS:-8}" \
+  --argjson availability_required "$availability_required" \
   --arg transport "tcp" \
   '{cell_id:$cell_id,node_count:$node_count,catalog_size:$catalog_size,
     index_shards:$index_shards,bloom_pruning:$bloom_pruning,
     query_repetitions:$query_repetitions,client_count:$client_count,
+    availability_required:$availability_required,
     min_outbound:$min_outbound,max_connections:$max_connections,
     transport:$transport}' >"$cell_dir/cell.json"
 
@@ -115,7 +123,7 @@ while true; do
   availability_ready=0
   if campaign_tuple_query bootstrap "storage-available:*" >"$availability_response"; then
     availability_matches=$(jq -r '.query_stats.index_matches // 0' "$availability_response")
-    if [[ "$availability_matches" -ge "$node_count" ]]; then
+    if [[ "$availability_matches" -ge "$availability_required" ]]; then
       availability_ready=1
     fi
   else
@@ -130,10 +138,10 @@ while true; do
     break
   fi
   if [[ "$SECONDS" -ge "$availability_deadline" ]]; then
-    echo "availability advertisements indexed=$availability_matches, want >=$node_count" >&2
+    echo "availability advertisements indexed=$availability_matches, want >=$availability_required" >&2
     exit 1
   fi
-  campaign_log "availability advertisements indexed=$availability_matches/$node_count; awaiting refresh"
+  campaign_log "availability advertisements indexed=$availability_matches/$node_count; required=$availability_required; awaiting refresh"
   sleep 2
 done
 
