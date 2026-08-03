@@ -82,10 +82,14 @@ acquires the old and new name leases in ascending `NameID` order, creates the
 new record, and tombstones the old record.
 
 Secondary PHT/Bloom entries contain current searchable logical names only.
-Historical generations and provider copies are never indexed. Results are
-accepted only after fetching and verifying the current signed head. Search
-responses report fanout attempted/completed and an explicit `complete` flag.
-Exact lookup needs no secondary index.
+They occupy an independent `/pht/names/` keyspace with independent fenced
+mutation owners; transient tuple names cannot enter this plane. Historical
+generations and provider copies are never indexed. Results are accepted only
+after a direct `/names/<NameID>` lookup and verification of the current signed
+head. Search responses report fanout attempted/completed, pending index
+repairs, and an explicit `complete` flag. An index mutation failure leaves the
+name head authoritative, marks search incomplete, and is retried idempotently
+by the policy controller. Exact lookup needs no secondary index.
 
 Deletion publishes a signed tombstone and schedules collection after retention
 and grace rules permit it. This removes the Tarsus namespace reference. Erasing

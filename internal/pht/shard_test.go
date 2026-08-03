@@ -25,6 +25,30 @@ func TestShardStoresUseIndependentNamespaces(t *testing.T) {
 	}
 }
 
+func TestNamedShardPlaneSeparatesRoots(t *testing.T) {
+	base := &mockStore{}
+	tupleStores, err := NewShardStores(base, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nameStores, err := NewShardStoresForPlane(base, 2, "names")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := tupleStores[0].PutValue(ctx, "/pht/root", []byte("tuple")); err != nil {
+		t.Fatal(err)
+	}
+	if err := nameStores[0].PutValue(ctx, "/pht/root", []byte("name")); err != nil {
+		t.Fatal(err)
+	}
+	tupleValue, _ := tupleStores[0].GetValue(ctx, "/pht/root")
+	nameValue, _ := nameStores[0].GetValue(ctx, "/pht/root")
+	if string(tupleValue) != "tuple" || string(nameValue) != "name" {
+		t.Fatalf("tuple=%q name=%q", tupleValue, nameValue)
+	}
+}
+
 func TestShardForKeyIsStableAndDistributed(t *testing.T) {
 	const shards = 16
 	seen := make(map[int]bool)

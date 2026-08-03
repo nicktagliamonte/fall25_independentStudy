@@ -57,8 +57,8 @@ for i in $(seq 2 "$N"); do
       --listen /ip4/172.20.0.${IP_LAST}/tcp/4001
       --key /app/keys/node${i}.key
       --store /app/data/node${i}
-      --min-outbound \${TARSUS_MIN_OUTBOUND:-3}
-      --max-connections \${TARSUS_MAX_CONNECTIONS:-8}
+      --min-outbound \${TARSUS_MIN_OUTBOUND:-12}
+      --max-connections \${TARSUS_MAX_CONNECTIONS:-32}
       --cluster-nodes $N
       --no-default-bootstrap
       --index-shards \${TARSUS_INDEX_SHARDS:-16}
@@ -216,8 +216,8 @@ connect_once() {
   local target_addr=$3
   local target_peer=$4
   local protect=${5:-false}
-  local dial_timeout="${TARSUS_TOPOLOGY_DIAL_TIMEOUT:-5s}"
-  local http_timeout="${TARSUS_TOPOLOGY_HTTP_TIMEOUT_SECONDS:-8}"
+  local dial_timeout="${TARSUS_TOPOLOGY_DIAL_TIMEOUT:-15s}"
+  local http_timeout="${TARSUS_TOPOLOGY_HTTP_TIMEOUT_SECONDS:-20}"
   local connect_body
   connect_body=$(jq -nc \
     --arg addr "$target_addr" \
@@ -293,7 +293,7 @@ for ((i = N; i >= 2; i--)); do
     "$SERVICE" "${CONTROL_ADDRS[$i]}" \
     "/ip4/172.20.0.${CHILD_IP_LAST}/tcp/4001" "${PEER_IDS[$i]}" \
     "$PARENT_SERVICE" "${CONTROL_ADDRS[$PARENT]}" \
-    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 2; then
+    "/ip4/172.20.0.${PARENT_IP_LAST}/tcp/4001" "${PEER_IDS[$PARENT]}" 4; then
     echo "ERROR: node$i and node$PARENT could not retain their required protected edge" >&2
     echo "  node$i peer=${PEER_IDS[$i]} control=${CONTROL_ADDRS[$i]}" >&2
     echo "  node$PARENT peer=${PEER_IDS[$PARENT]} control=${CONTROL_ADDRS[$PARENT]}" >&2
@@ -307,8 +307,43 @@ for ((i = N; i >= 2; i--)); do
 done
 echo "Tree construction complete ($((N - 1)) protected edges)"
 
-echo "Waiting for peer discovery..."
-sleep 10
+echo "Waiting for DHT convergence..."
+SAMPLES=(1 2 3 $((N / 2)) "$N")
+declare -A SAMPLE_SEEN
+UNIQUE_SAMPLES=()
+for sample in "${SAMPLES[@]}"; do
+  if [[ -z "${SAMPLE_SEEN[$sample]:-}" ]]; then
+    SAMPLE_SEEN[$sample]=1
+    UNIQUE_SAMPLES+=("$sample")
+  fi
+done
+DHT_READY=false
+for attempt in $(seq 1 60); do
+  ready=0
+  for sample in "${UNIQUE_SAMPLES[@]}"; do
+    if [[ "$sample" -eq 1 ]]; then
+      service=bootstrap
+    else
+      service="node$sample"
+    fi
+    status=$(docker-compose exec -T "$service" \
+      curl --max-time 3 --fail --silent "http://${CONTROL_ADDRS[$sample]}/dht/status" 2>/dev/null || true)
+    size=$(jq -r '.routing_table_size // 0' <<<"$status" 2>/dev/null || echo 0)
+    if [[ "$size" =~ ^[0-9]+$ ]] && [[ "$size" -ge 8 ]]; then
+      ready=$((ready + 1))
+    fi
+  done
+  if [[ "$ready" -eq "${#UNIQUE_SAMPLES[@]}" ]]; then
+    DHT_READY=true
+    echo "DHT ready on ${#UNIQUE_SAMPLES[@]} representative nodes (attempt $attempt)"
+    break
+  fi
+  sleep 2
+done
+if [[ "$DHT_READY" != true ]]; then
+  echo "ERROR: DHT did not converge to eight routing candidates on representative nodes" >&2
+  exit 1
+fi
 
 # Print status
 echo ""

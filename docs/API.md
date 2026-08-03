@@ -79,10 +79,11 @@ capabilities, policies, tombstones, encodings, or predecessor hashes return
 `400`. Failure to satisfy strict prepublication replication returns `503` and
 does not expose the proposed head.
 
-Search accepts `prefix`, `suffix`, `fanout_attempted`, and
-`fanout_completed`. Results include only verified, non-tombstoned current
-records and report `complete=false` whenever the requested fanout did not
-finish.
+Search accepts `prefix` and `suffix`. Results include only verified,
+non-tombstoned current records and report `fanout_attempted`,
+`fanout_completed`, `index_repairs_pending`, and `complete`. A failed shard or
+pending idempotent index repair sets `complete=false` and supplies
+`incomplete_cause`; exact NameID resolution remains available.
 
 The supported client workflow is:
 
@@ -294,6 +295,7 @@ Returns disk usage for the node's persistent blockstore directory (when started 
 | Endpoint       | Method | Purpose                    |
 |----------------|--------|----------------------------|
 | /health        | GET    | Liveness (returns "ok")    |
+| /dht/status    | GET    | DHT table and live-peer counts |
 | /metrics       | GET    | Node metrics (JSON)        |
 | /storage/stats | GET    | Disk bytes for blockstore  |
 | /restore       | POST   | Restore blocks by CID list |
@@ -301,7 +303,7 @@ Returns disk usage for the node's persistent blockstore directory (when started 
 | /shutdown      | POST   | Graceful node stop         |
 | /peers         | GET    | Dial candidates            |
 | /connect       | POST   | Connect to peer            |
-| /neighbors     | GET    | DHT neighbors              |
+| /neighbors     | GET    | Live libp2p neighbors      |
 | /id            | GET    | Peer ID                    |
 | /events        | GET    | Event stream (SSE)         |
 | /lookup        | GET/POST | Token lookup only (hops + ms) |

@@ -118,6 +118,68 @@ func (s *indexedTestStore) GetValue(_ context.Context, key string, _ ...interfac
 	return append([]byte(nil), value...), nil
 }
 
+func TestLogicalNameIndexMaterializesEveryShardRoot(t *testing.T) {
+	h, err := libp2p.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	store := &indexedTestStore{}
+	stores, err := pht.NewShardStores(store, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	coordinator, err := NewIndexCoordinator(h, fixedOwnerResolver{owner: h.ID()}, stores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer coordinator.Close()
+	coordinator.SetAuthorityTiming(0, time.Minute, 0)
+	nameStores, err := pht.NewShardStoresForPlane(store, 4, "names")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nameCoordinator, err := NewLogicalNameIndexCoordinator(h, fixedOwnerResolver{owner: h.ID()}, nameStores)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer nameCoordinator.Close()
+	nameCoordinator.SetAuthorityTiming(0, time.Minute, 0)
+	indexed, err := NewIndexedTupleSpace(NewNativeTupleSpace(), stores, coordinator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := indexed.SetLogicalNamePlane(nameStores, nameCoordinator); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := indexed.IndexLogicalName(ctx, "/projects/a.dat\x00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); err != nil {
+		t.Fatal(err)
+	}
+	for shard, shardStore := range nameStores {
+		root, err := pht.GetNode(ctx, shardStore, "")
+		if err != nil {
+			t.Fatalf("shard %d root: %v", shard, err)
+		}
+		if root == nil {
+			t.Fatalf("shard %d has nil root", shard)
+		}
+	}
+	logicalRows, _, _, err := indexed.SearchLogicalNames(ctx, "/projects/", ".dat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(logicalRows) != 1 {
+		t.Fatalf("logical-name rows = %v", logicalRows)
+	}
+	for shard, tupleStore := range stores {
+		if _, err := pht.GetNode(ctx, tupleStore, ""); err == nil {
+			t.Fatalf("logical-name initialization contaminated tuple shard %d", shard)
+		}
+	}
+}
+
 func TestIndexCoordinatorDeduplicatesRetriedMutationAtOwner(t *testing.T) {
 	h, err := libp2p.New()
 	if err != nil {

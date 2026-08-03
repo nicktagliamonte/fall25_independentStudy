@@ -329,7 +329,24 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			cancel()
 			return nil, fmt.Errorf("create index coordinator: %w", err)
 		}
+		nameShardStores, err := mypht.NewShardStoresForPlane(dhtAdapter, shardCount, "names")
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create logical-name PHT shards: %w", err)
+		}
+		nameIndexCoordinator, err := mytuplespace.NewLogicalNameIndexCoordinator(h, ownerResolver, nameShardStores)
+		if err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("create logical-name index coordinator: %w", err)
+		}
 		indexCoordinator.SetRequireVerifiedPeers(true)
+		nameIndexCoordinator.SetRequireVerifiedPeers(true)
 		indexedTS, err := mytuplespace.NewIndexedTupleSpace(nativeTS, shardStores, indexCoordinator)
 		if err != nil {
 			stack.Close()
@@ -337,6 +354,13 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			_ = h.Close()
 			cancel()
 			return nil, fmt.Errorf("create indexed tuple space: %w", err)
+		}
+		if err := indexedTS.SetLogicalNamePlane(nameShardStores, nameIndexCoordinator); err != nil {
+			stack.Close()
+			_ = d.Close()
+			_ = h.Close()
+			cancel()
+			return nil, fmt.Errorf("configure logical-name search plane: %w", err)
 		}
 		indexedTS.SetBloomPruning(!opts.DisableBloomPruning)
 		baseTS = indexedTS

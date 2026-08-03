@@ -34,9 +34,18 @@ func ShardForKey(key string, shardCount int) int {
 type ShardStore struct {
 	base  ValueStore
 	shard int
+	plane string
 }
 
 func NewShardStores(base ValueStore, shardCount int) ([]ValueStore, error) {
+	return NewShardStoresForPlane(base, shardCount, "")
+}
+
+// NewShardStoresForPlane creates an independent set of PHT shards beneath a
+// named sub-keyspace. Planes share the DHT's strict /pht validator while never
+// sharing roots or entries. The empty plane preserves the legacy tuple index;
+// the mutable-name service uses plane "names".
+func NewShardStoresForPlane(base ValueStore, shardCount int, plane string) ([]ValueStore, error) {
 	if base == nil {
 		return nil, errors.New("base PHT store required")
 	}
@@ -45,7 +54,7 @@ func NewShardStores(base ValueStore, shardCount int) ([]ValueStore, error) {
 	}
 	stores := make([]ValueStore, shardCount)
 	for shard := 0; shard < shardCount; shard++ {
-		stores[shard] = &ShardStore{base: base, shard: shard}
+		stores[shard] = &ShardStore{base: base, shard: shard, plane: strings.Trim(plane, "/")}
 	}
 	return stores, nil
 }
@@ -60,5 +69,8 @@ func (s *ShardStore) GetValue(ctx context.Context, key string, opts ...interface
 
 func (s *ShardStore) key(key string) string {
 	suffix := strings.TrimPrefix(key, DHTNamespace)
+	if s.plane != "" {
+		return fmt.Sprintf("%s%s/%d/%s", DHTNamespace, s.plane, s.shard, suffix)
+	}
 	return fmt.Sprintf("%s%d/%s", DHTNamespace, s.shard, suffix)
 }

@@ -15,6 +15,7 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"golang.org/x/crypto/curve25519"
 )
 
@@ -226,11 +227,82 @@ type memorySearchIndex struct {
 	mu                   sync.Mutex
 	entries              map[string]struct{}
 	attempted, completed int
+	failInserts          int
 }
 
 type memoryCASAuthority struct {
 	mu     sync.Mutex
 	values map[string][]byte
+}
+
+type memoryNameValueStore struct {
+	mu     sync.Mutex
+	values map[string][]byte
+}
+
+func (m *memoryNameValueStore) PutValue(_ context.Context, key string, value []byte, _ ...routing.Option) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.values[key] = append([]byte(nil), value...)
+	return nil
+}
+
+func (m *memoryNameValueStore) GetValue(_ context.Context, key string, _ ...routing.Option) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	value, ok := m.values[key]
+	if !ok {
+		return nil, routing.ErrNotFound
+	}
+	return append([]byte(nil), value...), nil
+}
+
+func (m *memoryNameValueStore) SearchValue(ctx context.Context, key string, options ...routing.Option) (<-chan []byte, error) {
+	out := make(chan []byte, 1)
+	value, err := m.GetValue(ctx, key, options...)
+	if err != nil {
+		close(out)
+		return out, err
+	}
+	out <- value
+	close(out)
+	return out, nil
+}
+
+type countingReadAuthority struct {
+	reads atomic.Int64
+}
+
+func (a *countingReadAuthority) Read(context.Context, string) ([]byte, error) {
+	a.reads.Add(1)
+	return nil, ErrNotFound
+}
+
+func (*countingReadAuthority) CompareAndSwap(context.Context, string, []byte, []byte) error {
+	return nil
+}
+
+func TestExactResolutionUsesDirectDHTBeforeCASAuthority(t *testing.T) {
+	owner, private := testKeys(t)
+	namespace, _ := NewNamespaceID()
+	record := testRecord(t, namespace, "/direct-dht", owner, private, 0, nil)
+	raw, _ := record.Marshal()
+	id := bytesToNameID(record.NameID)
+	network := &memoryNameValueStore{values: map[string][]byte{DHTNameKey(id): raw}}
+	authority := &countingReadAuthority{}
+	service := NewService(dssync.MutexWrap(ds.NewMapDatastore()), network, nil)
+	service.SetAuthority(authority)
+
+	resolved, _, err := service.Get(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved.Generation != 0 || !bytes.Equal(resolved.NameID, id[:]) {
+		t.Fatalf("resolved record = %+v", resolved)
+	}
+	if authority.reads.Load() != 0 {
+		t.Fatalf("CAS authority read on DHT hit: %d", authority.reads.Load())
+	}
 }
 
 func (m *memoryCASAuthority) Read(_ context.Context, name string) ([]byte, error) {
@@ -302,6 +374,10 @@ func TestSharedExactAuthorityAllowsOneCommitAcrossServices(t *testing.T) {
 func (m *memorySearchIndex) Insert(_ context.Context, entry string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.failInserts > 0 {
+		m.failInserts--
+		return errors.New("injected transient index failure")
+	}
 	m.entries[entry] = struct{}{}
 	return nil
 }
@@ -361,6 +437,42 @@ func TestDistributedSearchIndexCardinalityTracksNamesNotVersions(t *testing.T) {
 	}
 	if len(index.entries) != 0 {
 		t.Fatal("tombstoned name remained indexed")
+	}
+}
+
+func TestSearchReportsAndRepairsTransientIndexFailure(t *testing.T) {
+	owner, private := testKeys(t)
+	namespace, _ := NewNamespaceID()
+	index := &memorySearchIndex{
+		entries:     map[string]struct{}{},
+		attempted:   4,
+		completed:   4,
+		failInserts: 1,
+	}
+	service := testService()
+	service.SetSearchIndex(index)
+	record := testRecord(t, namespace, "/repair-index.dat", owner, private, 0, nil)
+	raw, _ := record.Marshal()
+	if _, err := service.Create(context.Background(), raw); err != nil {
+		t.Fatal(err)
+	}
+	initial, err := service.Search(context.Background(), "/repair", ".dat", 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if initial.Complete || initial.IndexRepairs != 1 || initial.IncompleteCause == "" {
+		t.Fatalf("initial search did not expose pending repair: %+v", initial)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		result, err := service.Search(context.Background(), "/repair", ".dat", 0, 0)
+		if err == nil && result.Complete && result.IndexRepairs == 0 && len(result.Records) == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("index repair did not converge: result=%+v err=%v", result, err)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 

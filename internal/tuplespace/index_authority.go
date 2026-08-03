@@ -61,6 +61,7 @@ type indexAuthorityManager struct {
 	self     peer.ID
 	resolver TupleOwnerResolver
 	stores   []pht.ValueStore
+	ownerKey string
 	states   []indexAuthorityState
 	settle   time.Duration
 	lease    time.Duration
@@ -91,13 +92,26 @@ func newIndexAuthorityManager(
 	resolver TupleOwnerResolver,
 	stores []pht.ValueStore,
 ) (*indexAuthorityManager, error) {
+	return newIndexAuthorityManagerForKey(self, resolver, stores, indexOwnershipKey)
+}
+
+func newIndexAuthorityManagerForKey(
+	self peer.ID,
+	resolver TupleOwnerResolver,
+	stores []pht.ValueStore,
+	ownerKey string,
+) (*indexAuthorityManager, error) {
 	if self == "" || resolver == nil || len(stores) == 0 {
 		return nil, errors.New("self, owner resolver, and authority stores required")
+	}
+	if ownerKey == "" {
+		return nil, errors.New("index ownership key required")
 	}
 	return &indexAuthorityManager{
 		self:     self,
 		resolver: resolver,
 		stores:   stores,
+		ownerKey: ownerKey,
 		states:   make([]indexAuthorityState, len(stores)),
 		settle:   defaultIndexAuthoritySettle,
 		lease:    defaultIndexAuthorityLease,
@@ -326,7 +340,7 @@ func (m *indexAuthorityManager) resolveCandidate(
 	shard int,
 	previousWriter string,
 ) (peer.ID, error) {
-	key := fmt.Sprintf("%s:%d", indexOwnershipKey, shard)
+	key := fmt.Sprintf("%s:%d", m.ownerKey, shard)
 	if previousWriter == "" {
 		return m.resolver.ResolveTupleOwner(ctx, key)
 	}

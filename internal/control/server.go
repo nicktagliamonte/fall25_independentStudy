@@ -641,6 +641,25 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// GET /dht/status exposes convergence state needed by orchestration. Live
+	// transport neighbors and Kademlia routing-table entries are deliberately
+	// separate: a connected tree is not yet a ready lookup overlay.
+	mux.HandleFunc("/dht/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		routingSize := 0
+		if stack != nil && stack.DHT != nil {
+			routingSize = stack.DHT.RoutingTable().Size()
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]int{
+			"routing_table_size": routingSize,
+			"connected_peers":    len(h.Network().Peers()),
+		})
+	})
+
 	// GET /metrics returns the node's current metrics as JSON (see
 	// NodeMetrics.Snapshot / MetricsSnapshot). Before encoding, it refreshes
 	// ProviderRecordsCount from stack.ProviderRecords if both are available.

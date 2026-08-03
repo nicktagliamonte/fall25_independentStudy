@@ -22,7 +22,9 @@ import (
 
 const (
 	indexMutationProtocolID      protocol.ID = "/tarsus/pht-mutation/1.0.0"
+	nameIndexMutationProtocolID  protocol.ID = "/tarsus/name-index-mutation/1.0.0"
 	indexOwnershipKey                        = "__tarsus_global_tuple_name_index__"
+	nameIndexOwnershipKey                    = "__tarsus_logical_name_index__"
 	maxConcurrentOwnerReads                  = 32
 	defaultIndexMutationTimeout              = 60 * time.Second
 	indexRouteAttemptTimeout                 = 15 * time.Second
@@ -69,6 +71,7 @@ type IndexCoordinator struct {
 	requestSequence      atomic.Uint64
 	memoMu               sync.Mutex
 	memo                 map[string]*indexMemoEntry
+	protocolID           protocol.ID
 }
 
 type indexFenceAdoption struct {
@@ -106,6 +109,17 @@ type IndexMutationStats struct {
 }
 
 func NewIndexCoordinator(h host.Host, resolver TupleOwnerResolver, stores []pht.ValueStore) (*IndexCoordinator, error) {
+	return newIndexCoordinator(h, resolver, stores, indexMutationProtocolID, indexOwnershipKey)
+}
+
+// NewLogicalNameIndexCoordinator creates the independent search-plane
+// mutation authority. It uses a separate protocol, owner key, and PHT plane so
+// transient tuple names can never inflate or contaminate logical-name search.
+func NewLogicalNameIndexCoordinator(h host.Host, resolver TupleOwnerResolver, stores []pht.ValueStore) (*IndexCoordinator, error) {
+	return newIndexCoordinator(h, resolver, stores, nameIndexMutationProtocolID, nameIndexOwnershipKey)
+}
+
+func newIndexCoordinator(h host.Host, resolver TupleOwnerResolver, stores []pht.ValueStore, protocolID protocol.ID, ownerKey string) (*IndexCoordinator, error) {
 	if h == nil || resolver == nil || len(stores) == 0 {
 		return nil, errors.New("host, owner resolver, and PHT shard stores required")
 	}
@@ -117,20 +131,21 @@ func NewIndexCoordinator(h host.Host, resolver TupleOwnerResolver, stores []pht.
 		}
 		indexes[shard] = index
 	}
-	authority, err := newIndexAuthorityManager(h.ID(), resolver, stores)
+	authority, err := newIndexAuthorityManagerForKey(h.ID(), resolver, stores, ownerKey)
 	if err != nil {
 		return nil, err
 	}
 	c := &IndexCoordinator{
-		host:      h,
-		authority: authority,
-		indexes:   indexes,
-		adoptions: make([]indexFenceAdoption, len(indexes)),
-		timeout:   defaultIndexMutationTimeout,
-		memo:      make(map[string]*indexMemoEntry),
+		host:       h,
+		authority:  authority,
+		indexes:    indexes,
+		adoptions:  make([]indexFenceAdoption, len(indexes)),
+		timeout:    defaultIndexMutationTimeout,
+		memo:       make(map[string]*indexMemoEntry),
+		protocolID: protocolID,
 	}
 	c.metrics.perShard = make([]atomic.Uint64, len(indexes))
-	h.SetStreamHandler(indexMutationProtocolID, c.handleStream)
+	h.SetStreamHandler(protocolID, c.handleStream)
 	return c, nil
 }
 
@@ -149,7 +164,7 @@ func (c *IndexCoordinator) SetAuthorityTiming(settle, lease, margin time.Duratio
 
 func (c *IndexCoordinator) Close() {
 	if c != nil && c.host != nil {
-		c.host.RemoveStreamHandler(indexMutationProtocolID)
+		c.host.RemoveStreamHandler(c.protocolID)
 	}
 }
 
@@ -324,7 +339,7 @@ func (c *IndexCoordinator) sendMutationDirect(
 	owner peer.ID,
 	mutation indexMutation,
 ) (indexMutationResponse, error) {
-	stream, err := openTuplePeerStream(ctx, c.host, owner, indexMutationProtocolID, c.requireVerifiedPeers)
+	stream, err := openTuplePeerStream(ctx, c.host, owner, c.protocolID, c.requireVerifiedPeers)
 	if err != nil {
 		return indexMutationResponse{}, fmt.Errorf("open index-owner stream: %w", err)
 	}
@@ -586,14 +601,18 @@ func (c *IndexCoordinator) ensureFenceAdopted(
 // authoritative tuple space. Index records are hints: every candidate is
 // verified by an exact operation at its tuple owner.
 type IndexedTupleSpace struct {
-	base            TupleSpace
-	stores          []pht.ValueStore
-	coordinator     *IndexCoordinator
-	timeout         time.Duration
-	mutationTimeout time.Duration
-	bloomPruning    bool
-	indexedNames    sync.Map
-	mutationLocks   []sync.Mutex
+	base                   TupleSpace
+	stores                 []pht.ValueStore
+	coordinator            *IndexCoordinator
+	timeout                time.Duration
+	mutationTimeout        time.Duration
+	bloomPruning           bool
+	indexedNames           sync.Map
+	mutationLocks          []sync.Mutex
+	logicalRootsMu         sync.Mutex
+	logicalRootsOK         bool
+	logicalNameStores      []pht.ValueStore
+	logicalNameCoordinator *IndexCoordinator
 }
 
 // IndexedQueryStats aggregates direct index and owner-verification work across
@@ -633,14 +652,31 @@ func NewIndexedTupleSpace(base TupleSpace, stores []pht.ValueStore, coordinator 
 		return nil, errors.New("base tuple space, PHT shard stores, and index coordinator required")
 	}
 	return &IndexedTupleSpace{
-		base:            base,
-		stores:          stores,
-		coordinator:     coordinator,
-		timeout:         defaultTupleTimeout,
-		mutationTimeout: defaultIndexMutationTimeout,
-		bloomPruning:    true,
-		mutationLocks:   make([]sync.Mutex, len(stores)),
+		base:                   base,
+		stores:                 stores,
+		coordinator:            coordinator,
+		timeout:                defaultTupleTimeout,
+		mutationTimeout:        defaultIndexMutationTimeout,
+		bloomPruning:           true,
+		mutationLocks:          make([]sync.Mutex, len(stores)),
+		logicalNameStores:      stores,
+		logicalNameCoordinator: coordinator,
 	}, nil
+}
+
+// SetLogicalNamePlane decouples the current-name search index from the tuple
+// coordination index. It must be called during node construction, before the
+// service accepts logical-name operations.
+func (i *IndexedTupleSpace) SetLogicalNamePlane(stores []pht.ValueStore, coordinator *IndexCoordinator) error {
+	if len(stores) == 0 || coordinator == nil {
+		return errors.New("logical-name PHT stores and coordinator required")
+	}
+	i.logicalRootsMu.Lock()
+	defer i.logicalRootsMu.Unlock()
+	i.logicalNameStores = stores
+	i.logicalNameCoordinator = coordinator
+	i.logicalRootsOK = false
+	return nil
 }
 
 // SetBloomPruning enables or disables Bloom-based branch pruning. Disabling it
@@ -722,26 +758,87 @@ func (i *IndexedTupleSpace) MutationSnapshot() IndexMutationStats {
 // IndexLogicalName and DeleteLogicalName expose the existing fenced PHT
 // mutation path to the mutable-name plane without creating tuple instances.
 func (i *IndexedTupleSpace) IndexLogicalName(ctx context.Context, entry string) error {
-	return i.coordinator.Insert(ctx, entry)
+	if err := i.ensureLogicalNameRoots(ctx); err != nil {
+		return err
+	}
+	return i.logicalNameCoordinator.Insert(ctx, entry)
 }
 
 func (i *IndexedTupleSpace) DeleteLogicalName(ctx context.Context, entry string) error {
-	return i.coordinator.Delete(ctx, entry)
+	return i.logicalNameCoordinator.Delete(ctx, entry)
+}
+
+// ensureLogicalNameRoots materializes an empty root in every shard before the
+// first logical-name insertion from this process. Without these roots, a
+// complete search pays a full Kademlia negative lookup for every unused shard;
+// at 50+ peers the slowest negative lookup dominated search latency. Empty
+// version-zero roots are safe to publish concurrently and always lose to a
+// fenced, versioned root containing real entries.
+func (i *IndexedTupleSpace) ensureLogicalNameRoots(ctx context.Context) error {
+	i.logicalRootsMu.Lock()
+	defer i.logicalRootsMu.Unlock()
+	if i.logicalRootsOK {
+		return nil
+	}
+	type rootResult struct {
+		shard int
+		err   error
+	}
+	results := make(chan rootResult, len(i.logicalNameStores))
+	for shard, store := range i.logicalNameStores {
+		shard, store := shard, store
+		go func() {
+			if _, err := pht.GetNode(ctx, store, ""); err == nil {
+				results <- rootResult{shard: shard}
+				return
+			} else if !errors.Is(err, routing.ErrNotFound) && !strings.Contains(strings.ToLower(err.Error()), "not found") {
+				results <- rootResult{shard: shard, err: err}
+				return
+			}
+			root := pht.NewLeaf("")
+			if err := pht.PutNode(ctx, store, root); err != nil {
+				// A concurrent initializer or first logical-name mutation may
+				// have installed a stronger fenced root between our miss and
+				// version-zero write. Confirm that root instead of failing the
+				// index operation on the expected race.
+				if _, readErr := pht.GetNode(ctx, store, ""); readErr == nil {
+					results <- rootResult{shard: shard}
+					return
+				}
+				results <- rootResult{shard: shard, err: err}
+				return
+			}
+			results <- rootResult{shard: shard}
+		}()
+	}
+	var failures []string
+	for range i.logicalNameStores {
+		result := <-results
+		if result.err != nil {
+			failures = append(failures, fmt.Sprintf("shard %d: %v", result.shard, result.err))
+		}
+	}
+	if len(failures) > 0 {
+		sort.Strings(failures)
+		return fmt.Errorf("initialize logical-name index roots: %s", strings.Join(failures, "; "))
+	}
+	i.logicalRootsOK = true
+	return nil
 }
 
 // SearchLogicalNames queries every PHT shard and reports partial fanout. The
 // mutable-name service subsequently resolves and verifies each exact NameID;
 // these entries are candidates, not authority.
 func (i *IndexedTupleSpace) SearchLogicalNames(ctx context.Context, prefix, suffix string) ([]string, int, int, error) {
-	if i == nil || len(i.stores) == 0 {
+	if i == nil || len(i.logicalNameStores) == 0 {
 		return nil, 0, 0, errors.New("logical-name index unavailable")
 	}
 	type shardResult struct {
 		rows []string
 		err  error
 	}
-	results := make(chan shardResult, len(i.stores))
-	for _, store := range i.stores {
+	results := make(chan shardResult, len(i.logicalNameStores))
+	for _, store := range i.logicalNameStores {
 		store := store
 		go func() {
 			var rows []string
@@ -776,7 +873,7 @@ func (i *IndexedTupleSpace) SearchLogicalNames(ctx context.Context, prefix, suff
 	var combined []string
 	completed := 0
 	var lastErr error
-	for range i.stores {
+	for range i.logicalNameStores {
 		result := <-results
 		if result.err != nil {
 			lastErr = result.err
@@ -786,9 +883,9 @@ func (i *IndexedTupleSpace) SearchLogicalNames(ctx context.Context, prefix, suff
 		combined = append(combined, result.rows...)
 	}
 	if completed == 0 && lastErr != nil {
-		return nil, len(i.stores), 0, lastErr
+		return nil, len(i.logicalNameStores), 0, lastErr
 	}
-	return pht.CombineResults(combined), len(i.stores), completed, nil
+	return pht.CombineResults(combined), len(i.logicalNameStores), completed, nil
 }
 
 func (i *IndexedTupleSpace) TsRead(expr string) ([]byte, error) {

@@ -42,6 +42,8 @@ type Service struct {
 	leaseMu         sync.Mutex
 	index           SearchIndex
 	indexIncomplete atomic.Bool
+	indexPending    atomic.Int64
+	indexError      atomic.Value
 	onCommit        func(*NameRecord)
 	authority       CASAuthority
 }
@@ -175,20 +177,6 @@ func (s *Service) Delete(ctx context.Context, id NameID, expected uint64, raw []
 }
 
 func (s *Service) Get(ctx context.Context, id NameID) (*NameRecord, []byte, error) {
-	if s.authority != nil {
-		raw, err := s.authority.Read(ctx, authorityName(id))
-		if err != nil {
-			return nil, nil, err
-		}
-		record, err := DecodeNameRecord(raw)
-		if err != nil {
-			return nil, nil, err
-		}
-		if !bytes.Equal(record.NameID, id[:]) || validateRecordEnvelope(record, s.now()) != nil {
-			return nil, nil, errors.New("exact authority returned invalid name record")
-		}
-		return record, raw, nil
-	}
 	var localRaw []byte
 	if s.datastore != nil {
 		cached, _ := s.datastore.Get(ctx, currentKey(id))
@@ -206,6 +194,23 @@ func (s *Service) Get(ctx context.Context, id NameID) (*NameRecord, []byte, erro
 				if best == nil || remote.Generation > best.Generation {
 					best, bestRaw = remote, remoteRaw
 				}
+			}
+		}
+	}
+	// Resolution is a direct NameID DHT lookup. The fenced exact owner is the
+	// mutation/CAS authority, not the normal read path: routing every read
+	// through that protocol added an owner election and an overlay stream to a
+	// lookup that already has a canonical DHT key. The update path performs its
+	// PutValue synchronously before returning, so normal post-commit reads see
+	// the committed head without another authority round trip.
+	// The authority remains a recovery fallback when neither the local cache
+	// nor the DHT can supply a verified record.
+	if best == nil && s.authority != nil {
+		authorityRaw, err := s.authority.Read(ctx, authorityName(id))
+		if err == nil {
+			authorityRecord, decodeErr := DecodeNameRecord(authorityRaw)
+			if decodeErr == nil && bytes.Equal(authorityRecord.NameID, id[:]) && validateRecordEnvelope(authorityRecord, s.now()) == nil {
+				best, bestRaw = authorityRecord, authorityRaw
 			}
 		}
 	}
@@ -289,6 +294,8 @@ type SearchResult struct {
 	FanoutCompleted int           `json:"fanout_completed"`
 	Complete        bool          `json:"complete"`
 	Scope           string        `json:"scope"`
+	IndexRepairs    int64         `json:"index_repairs_pending,omitempty"`
+	IncompleteCause string        `json:"incomplete_cause,omitempty"`
 }
 
 func (s *Service) Search(ctx context.Context, prefix, suffix string, fanoutAttempted, fanoutCompleted int) (SearchResult, error) {
@@ -353,20 +360,71 @@ func (s *Service) updateSearchIndex(ctx context.Context, previous, next *NameRec
 	wasIndexed := previous != nil && !previous.Tombstone && previous.Policy.Searchable
 	isIndexed := next != nil && !next.Tombstone && next.Policy.Searchable
 	var err error
+	operation := ""
+	entry := ""
 	if !wasIndexed && isIndexed {
-		err = s.index.Insert(ctx, searchIndexEntry(next))
+		operation, entry = "insert", searchIndexEntry(next)
+		err = s.index.Insert(ctx, entry)
 	}
 	if wasIndexed && !isIndexed {
-		err = s.index.Delete(ctx, searchIndexEntry(previous))
+		operation, entry = "delete", searchIndexEntry(previous)
+		err = s.index.Delete(ctx, entry)
 	}
 	if err != nil {
 		s.indexIncomplete.Store(true)
+		s.indexPending.Add(1)
+		s.indexError.Store(err.Error())
+		go s.repairSearchIndex(operation, entry)
+	}
+}
+
+// repairSearchIndex is the policy-controller retry path for the secondary
+// index. NameRecord commit remains authoritative; an index failure is exposed
+// as incomplete search until this idempotent repair succeeds.
+func (s *Service) repairSearchIndex(operation, entry string) {
+	delay := 100 * time.Millisecond
+	for {
+		timer := time.NewTimer(delay)
+		<-timer.C
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		var err error
+		switch operation {
+		case "insert":
+			err = s.index.Insert(ctx, entry)
+		case "delete":
+			err = s.index.Delete(ctx, entry)
+		default:
+			err = errors.New("unknown search-index repair operation")
+		}
+		cancel()
+		if err == nil {
+			if s.indexPending.Add(-1) == 0 {
+				s.indexIncomplete.Store(false)
+				s.indexError.Store("")
+			}
+			return
+		}
+		s.indexError.Store(err.Error())
+		if delay < 30*time.Second {
+			delay *= 2
+			if delay > 30*time.Second {
+				delay = 30 * time.Second
+			}
+		}
+	}
+}
+
+func (s *Service) annotateIndexCompleteness(result *SearchResult) {
+	result.IndexRepairs = s.indexPending.Load()
+	if value := s.indexError.Load(); value != nil {
+		result.IncompleteCause, _ = value.(string)
 	}
 }
 
 func (s *Service) searchDistributedIndex(ctx context.Context, prefix, suffix string) (SearchResult, error) {
 	entries, attempted, completed, queryErr := s.index.Query(ctx, prefix, suffix)
 	result := SearchResult{Records: []*NameRecord{}, FanoutAttempted: attempted, FanoutCompleted: completed, Complete: queryErr == nil && attempted == completed && !s.indexIncomplete.Load(), Scope: "current-searchable-names"}
+	s.annotateIndexCompleteness(&result)
 	seen := make(map[NameID]struct{})
 	for _, entry := range entries {
 		id, err := parseSearchIndexEntry(entry)
