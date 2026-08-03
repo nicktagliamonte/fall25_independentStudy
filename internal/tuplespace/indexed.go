@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
+	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/nicktagliamonte/fall25_independentStudy/internal/pht"
 )
 
@@ -751,6 +752,10 @@ func (i *IndexedTupleSpace) SearchLogicalNames(ctx context.Context, prefix, suff
 				rows, _, err = pht.ExecuteSubstringQueryWithStatsAndPruning(ctx, store, suffix, pht.DefaultNGramSize, i.bloomPruning)
 			} else {
 				rows, err = pht.ExecutePrefixQuery(ctx, store, "")
+			}
+			if err != nil && (errors.Is(err, routing.ErrNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found")) {
+				err = nil
+				rows = nil
 			}
 			if err == nil {
 				filtered := rows[:0]
