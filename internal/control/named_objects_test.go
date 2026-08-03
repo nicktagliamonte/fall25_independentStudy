@@ -61,7 +61,21 @@ func TestNamedObjectHTTPCreateResolveUpdateAndSearch(t *testing.T) {
 		return response
 	}
 	initial := newRecord(0, nil)
-	response := postRecord(http.MethodPost, "/v1/names", 0, initial)
+	response := postRecord(http.MethodPost, "/v1/names/preflight", 0, initial)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("preflight status=%d", response.StatusCode)
+	}
+	var preflight struct {
+		Ready bool `json:"ready"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&preflight); err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if !preflight.Ready {
+		t.Fatal("non-strict preflight was not ready")
+	}
+	response = postRecord(http.MethodPost, "/v1/names", 0, initial)
 	if response.StatusCode != http.StatusCreated {
 		t.Fatalf("create status=%d", response.StatusCode)
 	}

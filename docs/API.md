@@ -57,6 +57,7 @@ signed schemas and authorization rules.
 | `/v1/names/{NameID}` | GET | Resolve and verify the newest generation |
 | `/v1/names/{NameID}` | PUT | Expected-generation signed update |
 | `/v1/names/{NameID}` | DELETE | Expected-generation signed tombstone |
+| `/v1/names/preflight` | POST | Check the signed strict-publication predicate without committing |
 | `/v1/names/search` | GET | Prefix/suffix search of current searchable heads |
 | `/v1/locks/acquire` | POST | Acquire a signed exact-name or subtree lease |
 | `/v1/locks/renew` | POST | Renew the same holder/fencing lease |
@@ -96,8 +97,10 @@ bin/tarsusctl object get --api http://127.0.0.1:2892 \
 ```
 
 `object put` and `object update` stream, chunk, encrypt, wrap keys, sign, stage
-blocks, wait for the requested copy count, and only then submit the mutable
-head. `object get` verifies and reconstructs every chunk. `object delete` signs
+blocks, wait until the same signed-provider and placement predicate used by
+the commit gate passes, and only then submit the mutable head. Legacy token
+location counts are not treated as publication readiness. `object get`
+verifies and reconstructs every chunk. `object delete` signs
 a tombstone; `object search` exposes completeness metadata.
 
 **Key-based usage:** Use `multihash_hex` as the key for subsequent GET operations.

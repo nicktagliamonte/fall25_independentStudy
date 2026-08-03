@@ -59,6 +59,8 @@ the required number of verified provider claims. Provider claims use the
 `tarsus-provider-claim-v1\x00` domain and bind a provider identity, content key,
 expiry, timestamp, nonce, and signature. A policy controller, rather than the
 block store, schedules placement, repair, indexing, retention, and collection.
+The client preflight and commit gate evaluate the same predicate; a legacy
+provider-location token reaching the target count is insufficient by itself.
 
 ## Data format
 

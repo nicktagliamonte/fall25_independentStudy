@@ -211,10 +211,6 @@ func runPut(args []string, update bool) error {
 		policy.KeyEpoch = *keyEpoch
 		policy.Searchable = *searchable
 	}
-	if err := c.waitForReplication(ctx, built.Manifest, built.ManifestKey, policy); err != nil {
-		return err
-	}
-
 	id := names.DeriveNameID(namespace, normalized)
 	generation := uint64(0)
 	var previousHash []byte
@@ -233,6 +229,9 @@ func runPut(args []string, update bool) error {
 		return err
 	}
 	recordRaw, _ := record.Marshal()
+	if err := c.waitForPublication(ctx, recordRaw); err != nil {
+		return err
+	}
 	body := map[string]any{"expected_generation": uint64(0), "record_cbor": recordRaw}
 	method, endpoint := http.MethodPost, "/v1/names"
 	if update {
@@ -446,38 +445,27 @@ func (c *client) getRecord(ctx context.Context, id names.NameID) (*names.NameRec
 	return record, response.RecordCBOR, nil
 }
 
-func (c *client) waitForReplication(ctx context.Context, manifest *names.ObjectManifest, manifestKey names.ContentKey, policy names.ObjectPolicy) error {
-	keys := []names.ContentKey{manifestKey}
-	for _, chunk := range manifest.Chunks {
-		var key names.ContentKey
-		copy(key[:], chunk.CiphertextKey)
-		keys = append(keys, key)
-	}
+func (c *client) waitForPublication(ctx context.Context, recordRaw []byte) error {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
+	lastDetail := "signed provider claims have not converged"
 	for {
-		all := true
-		for _, key := range keys {
-			var status struct {
-				Count  int `json:"replica_count"`
-				Near   int `json:"near_count"`
-				Middle int `json:"midrange_count"`
-				Far    int `json:"farflung_count"`
-			}
-			if err := c.json(ctx, http.MethodGet, "/replication/status?key="+key.String(), nil, &status); err != nil {
-				return err
-			}
-			if status.Count < int(policy.Replicas) {
-				all = false
-				break
-			}
+		var status struct {
+			Ready  bool   `json:"ready"`
+			Detail string `json:"detail"`
 		}
-		if all {
+		if err := c.json(ctx, http.MethodPost, "/v1/names/preflight", map[string]any{"record_cbor": recordRaw}, &status); err != nil {
+			return err
+		}
+		if status.Ready {
 			return nil
+		}
+		if status.Detail != "" {
+			lastDetail = status.Detail
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("replication target was not reached: %w", ctx.Err())
+			return fmt.Errorf("strict publication preflight did not become ready (%s): %w", lastDetail, ctx.Err())
 		case <-ticker.C:
 		}
 	}

@@ -345,6 +345,34 @@ if [[ "$DHT_READY" != true ]]; then
   exit 1
 fi
 
+# Replication consumes signed, exact-name storage offers. DHT convergence can
+# precede the jittered first offer publication, so require eight known nodes to
+# publish before returning a campaign-ready cluster.
+echo "Waiting for storage-offer publication..."
+OFFER_TARGET=$N
+if [[ "$OFFER_TARGET" -gt 8 ]]; then OFFER_TARGET=8; fi
+OFFERS_READY=false
+for attempt in $(seq 1 90); do
+  published=0
+  for sample in $(seq 1 "$OFFER_TARGET"); do
+    if [[ "$sample" -eq 1 ]]; then service=bootstrap; else service="node$sample"; fi
+    if docker-compose logs --no-color --tail=120 "$service" 2>/dev/null | \
+      grep -q "storage availability advertisement published"; then
+      published=$((published + 1))
+    fi
+  done
+  if [[ "$published" -eq "$OFFER_TARGET" ]]; then
+    OFFERS_READY=true
+    echo "$published storage offers published (attempt $attempt)"
+    break
+  fi
+  sleep 2
+done
+if [[ "$OFFERS_READY" != true ]]; then
+  echo "ERROR: fewer than $OFFER_TARGET storage offers became ready" >&2
+  exit 1
+fi
+
 # Print status
 echo ""
 echo "=== Node Status ==="

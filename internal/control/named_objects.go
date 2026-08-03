@@ -70,7 +70,8 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 	if stack.DHT != nil {
 		network = stack.DHT
 	}
-	service := names.NewService(stack.Datastore, network, strictPublicationGate(stack, h, repair))
+	publicationGate := strictPublicationGate(stack, h, repair)
+	service := names.NewService(stack.Datastore, network, publicationGate)
 	service.SetCommitHook(namedPolicyCommitHook(stack, repair))
 	if gateway != nil && gateway.TupleSpace != nil {
 		if logical, ok := gateway.TupleSpace.(logicalNamePHT); ok {
@@ -94,6 +95,40 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 			return
 		}
 		writeNamedJSON(w, http.StatusOK, result)
+	})
+
+	mux.HandleFunc("/v1/names/preflight", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w, http.MethodPost)
+			return
+		}
+		var request signedNameRequest
+		if err := decodeBoundedJSON(r, &request); err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		raw, err := request.canonicalRecord()
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		record, err := names.DecodeNameRecord(raw)
+		if err == nil {
+			err = record.ValidateEnvelope(time.Now())
+		}
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		if !record.Policy.StrictPublish {
+			writeNamedJSON(w, http.StatusOK, map[string]any{"ready": true})
+			return
+		}
+		if err := publicationGate(r.Context(), record); err != nil {
+			writeNamedJSON(w, http.StatusOK, map[string]any{"ready": false, "detail": err.Error()})
+			return
+		}
+		writeNamedJSON(w, http.StatusOK, map[string]any{"ready": true})
 	})
 
 	mux.HandleFunc("/v1/names", func(w http.ResponseWriter, r *http.Request) {
@@ -360,32 +395,50 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 		return counts, err
 	}
 	validator := &names.ProviderClaimValidator{}
+	type verifiedProvider struct {
+		category mystore.DistanceCategory
+		valid    bool
+	}
+	results := make(chan verifiedProvider, len(token.Locations))
 	for _, location := range token.Locations {
-		public, err := location.ProviderID.ExtractPublicKey()
-		if err != nil {
-			continue
-		}
-		publicRaw, err := public.Raw()
-		if err != nil || len(publicRaw) != 32 {
-			continue
-		}
-		claimKey := fmt.Sprintf("/providers/%x/%x", key[:], publicRaw)
-		raw, err := stack.DHT.GetValue(ctx, claimKey)
-		if err != nil || validator.Validate(claimKey, raw) != nil {
-			continue
-		}
-		category := mystore.DistanceUnknown
-		if location.ProviderID == local {
-			category = mystore.DistanceNear
-		} else if measurer != nil {
-			rtt, measureErr := measurer(location.ProviderID, location.Address)
-			if measureErr == nil {
-				category = mystore.ClassifyDistanceByRTT(rtt, nil)
+		location := location
+		go func() {
+			public, err := location.ProviderID.ExtractPublicKey()
+			if err != nil {
+				results <- verifiedProvider{}
+				return
 			}
-		} else {
-			category = mystore.ClassifyDistanceByRTT(location.RTT, nil)
+			publicRaw, err := public.Raw()
+			if err != nil || len(publicRaw) != 32 {
+				results <- verifiedProvider{}
+				return
+			}
+			claimKey := fmt.Sprintf("/providers/%x/%x", key[:], publicRaw)
+			raw, err := stack.DHT.GetValue(ctx, claimKey)
+			if err != nil || validator.Validate(claimKey, raw) != nil {
+				results <- verifiedProvider{}
+				return
+			}
+			category := mystore.DistanceUnknown
+			if location.ProviderID == local {
+				category = mystore.DistanceNear
+			} else if measurer != nil {
+				rtt, measureErr := measurer(location.ProviderID, location.Address)
+				if measureErr == nil {
+					category = mystore.ClassifyDistanceByRTT(rtt, nil)
+				}
+			} else {
+				category = mystore.ClassifyDistanceByRTT(location.RTT, nil)
+			}
+			results <- verifiedProvider{category: category, valid: category != mystore.DistanceUnknown}
+		}()
+	}
+	for range token.Locations {
+		result := <-results
+		if !result.valid {
+			continue
 		}
-		switch category {
+		switch result.category {
 		case mystore.DistanceNear:
 			counts.near++
 		case mystore.DistanceMidrange:

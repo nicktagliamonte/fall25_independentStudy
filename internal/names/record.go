@@ -158,6 +158,13 @@ func (r *NameRecord) Validate(now time.Time, previous *NameRecord) error {
 	return nil
 }
 
+// ValidateEnvelope verifies the self-contained, signed portion of a name
+// record without requiring its predecessor. DHT validators and publication
+// preflight use this; expected-generation CAS still performs full Validate.
+func (r *NameRecord) ValidateEnvelope(now time.Time) error {
+	return validateRecordEnvelope(r, now)
+}
+
 // validateRecordEnvelope verifies the self-contained portions of a record.
 // It is used by DHT validators, which deliberately cannot decide CAS or
 // predecessor relationships; those checks remain at the fenced exact owner.
