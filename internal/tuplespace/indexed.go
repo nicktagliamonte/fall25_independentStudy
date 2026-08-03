@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -697,9 +698,92 @@ func (i *IndexedTupleSpace) TsReplace(name string, value []byte) (int, error) {
 	return replacer.TsReplace(name, value)
 }
 
+func (i *IndexedTupleSpace) CompareAndSwapExact(ctx context.Context, name string, expected, next []byte) error {
+	authority, ok := i.base.(ExactCompareAndSwapper)
+	if !ok {
+		return errors.New("base tuple space does not support exact CAS")
+	}
+	return authority.CompareAndSwapExact(ctx, name, expected, next)
+}
+func (i *IndexedTupleSpace) ReadExact(ctx context.Context, name string) ([]byte, error) {
+	authority, ok := i.base.(ExactCompareAndSwapper)
+	if !ok {
+		return nil, errors.New("base tuple space does not support exact reads")
+	}
+	return authority.ReadExact(ctx, name)
+}
+
 // MutationSnapshot returns the coordinator counters visible from this node.
 func (i *IndexedTupleSpace) MutationSnapshot() IndexMutationStats {
 	return i.coordinator.Snapshot()
+}
+
+// IndexLogicalName and DeleteLogicalName expose the existing fenced PHT
+// mutation path to the mutable-name plane without creating tuple instances.
+func (i *IndexedTupleSpace) IndexLogicalName(ctx context.Context, entry string) error {
+	return i.coordinator.Insert(ctx, entry)
+}
+
+func (i *IndexedTupleSpace) DeleteLogicalName(ctx context.Context, entry string) error {
+	return i.coordinator.Delete(ctx, entry)
+}
+
+// SearchLogicalNames queries every PHT shard and reports partial fanout. The
+// mutable-name service subsequently resolves and verifies each exact NameID;
+// these entries are candidates, not authority.
+func (i *IndexedTupleSpace) SearchLogicalNames(ctx context.Context, prefix, suffix string) ([]string, int, int, error) {
+	if i == nil || len(i.stores) == 0 {
+		return nil, 0, 0, errors.New("logical-name index unavailable")
+	}
+	type shardResult struct {
+		rows []string
+		err  error
+	}
+	results := make(chan shardResult, len(i.stores))
+	for _, store := range i.stores {
+		store := store
+		go func() {
+			var rows []string
+			var err error
+			if prefix != "" {
+				rows, err = pht.ExecutePrefixQuery(ctx, store, prefix)
+			} else if suffix != "" {
+				rows, _, err = pht.ExecuteSubstringQueryWithStatsAndPruning(ctx, store, suffix, pht.DefaultNGramSize, i.bloomPruning)
+			} else {
+				rows, err = pht.ExecutePrefixQuery(ctx, store, "")
+			}
+			if err == nil {
+				filtered := rows[:0]
+				for _, entry := range rows {
+					namePath := entry
+					if cut := strings.LastIndexByte(entry, 0); cut >= 0 {
+						namePath = entry[:cut]
+					}
+					if (prefix == "" || strings.HasPrefix(namePath, prefix)) && (suffix == "" || strings.HasSuffix(namePath, suffix)) {
+						filtered = append(filtered, entry)
+					}
+				}
+				rows = filtered
+			}
+			results <- shardResult{rows: rows, err: err}
+		}()
+	}
+	var combined []string
+	completed := 0
+	var lastErr error
+	for range i.stores {
+		result := <-results
+		if result.err != nil {
+			lastErr = result.err
+			continue
+		}
+		completed++
+		combined = append(combined, result.rows...)
+	}
+	if completed == 0 && lastErr != nil {
+		return nil, len(i.stores), 0, lastErr
+	}
+	return pht.CombineResults(combined), len(i.stores), completed, nil
 }
 
 func (i *IndexedTupleSpace) TsRead(expr string) ([]byte, error) {

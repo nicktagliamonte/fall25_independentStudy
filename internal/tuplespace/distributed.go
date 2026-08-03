@@ -53,12 +53,28 @@ type tupleWireRequest struct {
 	Operation   string   `json:"operation"`
 	Name        string   `json:"name"`
 	Value       []byte   `json:"value,omitempty"`
+	Expected    []byte   `json:"expected,omitempty"`
 	RequestID   string   `json:"request_id,omitempty"`
 	Target      string   `json:"target,omitempty"`
 	Visited     []string `json:"visited,omitempty"`
 	RouteBudget int      `json:"route_budget,omitempty"`
 	Epoch       uint64   `json:"epoch,omitempty"`
 	Writer      string   `json:"writer,omitempty"`
+}
+
+func (d *DistributedTupleSpace) CompareAndSwapExact(ctx context.Context, name string, expected, next []byte) error {
+	if name == "" || isTuplePattern(name) {
+		return errors.New("CAS requires an exact name")
+	}
+	_, err := d.exact(ctx, tupleWireRequest{Operation: "cas", Name: name, Expected: expected, Value: next})
+	return err
+}
+
+func (d *DistributedTupleSpace) ReadExact(ctx context.Context, name string) ([]byte, error) {
+	if name == "" || isTuplePattern(name) {
+		return nil, errors.New("exact name required")
+	}
+	return d.exact(ctx, tupleWireRequest{Operation: "read", Name: name})
 }
 
 type tupleWireResponse struct {
@@ -396,6 +412,8 @@ func (d *DistributedTupleSpace) requestPeerDirect(
 		switch response.ErrorCode {
 		case "not_found":
 			return nil, ErrTupleNotFound
+		case "conflict":
+			return nil, ErrTupleCASConflict
 		case "stale_authority":
 			return nil, &tupleAuthorityError{Fence: tupleFence{
 				Epoch:  response.CurrentEpoch,
@@ -649,6 +667,8 @@ func (d *DistributedTupleSpace) handleStream(stream network.Stream) {
 		switch {
 		case errors.Is(err, ErrTupleNotFound):
 			response.ErrorCode = "not_found"
+		case errors.Is(err, ErrTupleCASConflict):
+			response.ErrorCode = "conflict"
 		default:
 			var stale *tupleAuthorityError
 			if errors.As(err, &stale) {
@@ -671,6 +691,8 @@ func (d *DistributedTupleSpace) applyLocal(req tupleWireRequest) ([]byte, error)
 	case "replace":
 		_, err := d.local.TsReplace(req.Name, req.Value)
 		return nil, err
+	case "cas":
+		return nil, d.local.CompareAndSwapExact(context.Background(), req.Name, req.Expected, req.Value)
 	case "read":
 		return d.local.TsRead(req.Name)
 	case "get":

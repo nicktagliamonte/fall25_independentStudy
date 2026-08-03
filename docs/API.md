@@ -8,8 +8,10 @@ Control server HTTP API. Base URL: `http://127.0.0.1:<port>` (port from daemon c
 
 ## PUT /put
 
-Stores a block. Key is derived from data (`SHA256(data)`). Token is synced to DHT for discovery.
-Payloads larger than 4 KiB are stored as fixed 4 KiB content chunks with a per-key chunk index.
+Stores one immutable block. Key is derived from data (`SHA256(data)`). Token is
+synced to the DHT for discovery. This compatibility endpoint does not chunk a
+logical object; the named-object client streams objects into 1 MiB immutable
+blocks before calling it.
 
 **Method:** `POST`
 
@@ -34,6 +36,68 @@ Payloads larger than 4 KiB are stored as fixed 4 KiB content chunks with a per-k
 `network_hops`: DHT lookup hops for this operation (0 for put; token sync is not instrumented).
 
 PUT returns immediately after the first successful store (local + routing table). Token DHT sync and replication to peers run asynchronously, matching Swarm's "return after local accept" semantics for fair comparison.
+
+Named-object publication has different semantics: a strict signed name head is
+rejected until its manifest and every chunk meet that record's replica and
+placement counts.
+
+---
+
+## Mutable named objects (v1)
+
+All mutating requests contain either `record_cbor` (base64 in JSON) or a
+`record` object. Nodes re-encode record objects as canonical DAG-CBOR and
+verify the Ed25519 signature. `NameID` is 64 lower-case hex characters derived
+from the namespace and normalized path. See `docs/MUTABLE_NAMES.md` for the
+signed schemas and authorization rules.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/v1/names` | POST | Commit a signed generation-zero name |
+| `/v1/names/{NameID}` | GET | Resolve and verify the newest generation |
+| `/v1/names/{NameID}` | PUT | Expected-generation signed update |
+| `/v1/names/{NameID}` | DELETE | Expected-generation signed tombstone |
+| `/v1/names/search` | GET | Prefix/suffix search of current searchable heads |
+| `/v1/locks/acquire` | POST | Acquire a signed exact-name or subtree lease |
+| `/v1/locks/renew` | POST | Renew the same holder/fencing lease |
+| `/v1/locks/release` | POST | Release a signed lease without resetting its fence |
+
+Create request:
+
+```json
+{"record_cbor":"<base64 canonical DAG-CBOR>"}
+```
+
+Update or delete request:
+
+```json
+{"expected_generation":4,"record_cbor":"<base64 canonical DAG-CBOR>"}
+```
+
+A stale generation returns `409 Conflict`. Invalid identifiers, signatures,
+capabilities, policies, tombstones, encodings, or predecessor hashes return
+`400`. Failure to satisfy strict prepublication replication returns `503` and
+does not expose the proposed head.
+
+Search accepts `prefix`, `suffix`, `fanout_attempted`, and
+`fanout_completed`. Results include only verified, non-tombstoned current
+records and report `complete=false` whenever the requested fanout did not
+finish.
+
+The supported client workflow is:
+
+```bash
+go build -o bin/tarsusctl ./cmd/tarsusctl
+bin/tarsusctl object put --api http://127.0.0.1:2892 \
+  --file ./a.dat --path /projects/a.dat --signing-key "$ED25519_PRIVATE_HEX"
+bin/tarsusctl object get --api http://127.0.0.1:2892 \
+  --name-id "$NAME_ID" --reader-private "$X25519_PRIVATE_HEX" --output ./a.dat
+```
+
+`object put` and `object update` stream, chunk, encrypt, wrap keys, sign, stage
+blocks, wait for the requested copy count, and only then submit the mutable
+head. `object get` verifies and reconstructs every chunk. `object delete` signs
+a tombstone; `object search` exposes completeness metadata.
 
 **Key-based usage:** Use `multihash_hex` as the key for subsequent GET operations.
 

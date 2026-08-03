@@ -24,6 +24,9 @@ type Options struct {
 	// ListenMultiaddrs are the multiaddrs the libp2p host listens on. If
 	// empty, Start defaults to TCP/2893 and QUIC/2894 on all interfaces.
 	ListenMultiaddrs []string
+	// AdvertiseMultiaddrs, when non-empty, replaces inferred addresses with
+	// operator-supplied addresses reachable from other inventory hosts.
+	AdvertiseMultiaddrs []string
 	// BootstrapPeers are additional seed multiaddrs (beyond the built-in
 	// myhost.DefaultDHTBootstrapAddrs) used to populate the peerstore and DHT
 	// bootstrap list before first connection.

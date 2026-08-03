@@ -124,9 +124,10 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			cancel()
 			return nil, err
 		}
-		hh, err := myhost.NewHostWithPrivAndConnectionLimits(
+		hh, err := myhost.NewHostWithPrivAndConnectionLimitsAndAdvertise(
 			ctx,
 			opts.ListenMultiaddrs,
+			opts.AdvertiseMultiaddrs,
 			priv,
 			connectionLowWater,
 			connectionHighWater,
@@ -145,9 +146,10 @@ func Start(parent context.Context, opts Options) (Service, error) {
 				cancel()
 				return nil, err
 			}
-			hh, err := myhost.NewHostWithPrivAndConnectionLimits(
+			hh, err := myhost.NewHostWithPrivAndConnectionLimitsAndAdvertise(
 				ctx,
 				opts.ListenMultiaddrs,
+				opts.AdvertiseMultiaddrs,
 				priv,
 				connectionLowWater,
 				connectionHighWater,
@@ -158,9 +160,10 @@ func Start(parent context.Context, opts Options) (Service, error) {
 			}
 			h = hh
 		} else {
-			hh, err := myhost.NewHostWithConnectionLimits(
+			hh, err := myhost.NewHostWithConnectionLimitsAndAdvertise(
 				ctx,
 				opts.ListenMultiaddrs,
+				opts.AdvertiseMultiaddrs,
 				connectionLowWater,
 				connectionHighWater,
 			)

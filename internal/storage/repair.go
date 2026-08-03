@@ -1271,6 +1271,12 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 			rp.stack.RoutingTable.AddProvider(key, rp.host.ID(), DistanceNear)
 		}
 	}
+	if rp.host != nil && rp.stack.DHT != nil {
+		if err := PublishSignedProviderClaim(ctx, rp.stack, rp.host, key); err != nil {
+			_, _ = stream.Write([]byte("ERROR: provider claim\n"))
+			return fmt.Errorf("publish provider claim: %w", err)
+		}
+	}
 
 	// Send success acknowledgment
 	_, err = stream.Write([]byte("OK\n"))

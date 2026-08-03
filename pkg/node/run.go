@@ -328,6 +328,7 @@ func Run() error {
 	case "run":
 		fs := flag.NewFlagSet("run", flag.ExitOnError)
 		var listenAddrs stringSlice
+		var advertiseAddrs stringSlice
 		var daemon bool
 		var logPath string
 		var controlPath string
@@ -347,6 +348,7 @@ func Run() error {
 		var disableBloomPruning bool
 		var noDefaultBootstrap bool
 		fs.Var(&listenAddrs, "listen", "multiaddr to listen on (repeatable)")
+		fs.Var(&advertiseAddrs, "advertise", "explicit reachable multiaddr to advertise (repeatable)")
 		fs.BoolVar(&daemon, "daemon", false, "run the node in the background and return immediately")
 		fs.StringVar(&logPath, "log", "", "when backgrounding, write logs to this file (appended)")
 		fs.StringVar(&controlPath, "control", "/tmp/fall25_node/daemon.json", "path to write control endpoint info")
@@ -396,6 +398,9 @@ func Run() error {
 			childArgs := []string{"run"}
 			for _, a := range listenAddrs {
 				childArgs = append(childArgs, "--listen", a)
+			}
+			for _, a := range advertiseAddrs {
+				childArgs = append(childArgs, "--advertise", a)
 			}
 			if logPath != "" {
 				childArgs = append(childArgs, "--log", logPath)
@@ -467,9 +472,10 @@ func Run() error {
 			if err != nil {
 				return err
 			}
-			h, err = myhost.NewHostWithPrivAndConnectionLimits(
+			h, err = myhost.NewHostWithPrivAndConnectionLimitsAndAdvertise(
 				ctx,
 				listenAddrs,
+				advertiseAddrs,
 				priv,
 				connectionLowWater,
 				connectionHighWater,
@@ -479,9 +485,10 @@ func Run() error {
 			}
 		} else {
 			var err error
-			h, err = myhost.NewHostWithConnectionLimits(
+			h, err = myhost.NewHostWithConnectionLimitsAndAdvertise(
 				ctx,
 				listenAddrs,
+				advertiseAddrs,
 				connectionLowWater,
 				connectionHighWater,
 			)

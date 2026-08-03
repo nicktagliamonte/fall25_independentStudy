@@ -331,6 +331,15 @@ func (d *durableTupleStore) apply(
 		}
 		state.Values = [][]byte{append([]byte(nil), req.Value...)}
 		mutated = true
+	case "cas":
+		if len(state.Values) > 1 || req.Expected == nil && len(state.Values) != 0 || req.Expected != nil && (len(state.Values) != 1 || !bytes.Equal(state.Values[0], req.Expected)) {
+			return nil, ErrTupleCASConflict
+		}
+		state.Values = nil
+		if req.Value != nil {
+			state.Values = [][]byte{append([]byte(nil), req.Value...)}
+		}
+		mutated = true
 	case "read":
 		if len(state.Values) == 0 {
 			d.projectState(state)

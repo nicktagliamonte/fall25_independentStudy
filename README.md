@@ -1,8 +1,11 @@
 # Tarsus
 
-Tarsus is a peer-to-peer, content-addressed storage prototype with an
-integrated Linda-style tuple space. It is an independent implementation; it
-does not embed or depend on Linda or IPFS.
+Tarsus is a peer-to-peer storage prototype providing globally addressable,
+searchable mutable names over immutable, encrypted, content-addressed data.
+Each signed name has independent replication, RTT-placement, authorization,
+encryption, retention, searchability, locking, versioning, and deletion
+policy. The integrated Linda-style tuple space remains the coordination plane
+for offers, work, repair, and application queues.
 
 The tuple plane supports:
 
@@ -23,6 +26,7 @@ Requirements are Go, Docker, Docker Compose, `jq`, and `curl`.
 
 ```bash
 go build ./cmd/node
+go build ./cmd/tarsusctl
 go test ./...
 go vet ./...
 ```
@@ -53,8 +57,9 @@ The production experiment harness is in
 generates versioned, resumable cells, records request-scoped mutation and query
 counters, and validates every accepted artifact before analysis.
 
-The manuscript source is [`paper/final.tex`](paper/final.tex). The campaign
-plotter regenerates its figures from a validated run:
+The prior tuple-centered manuscript is preserved as
+[`paper/tupleFinal.tex`](paper/tupleFinal.tex). The mutable-name manuscript is
+[`paper/final.tex`](paper/final.tex).
 
 ```bash
 python3 scripts/tests/tarsus_campaign/analyze_campaign.py RUN_DIR
@@ -64,12 +69,15 @@ python3 scripts/tests/tarsus_campaign/plot_campaign.py RUN_DIR paper/figures
 ## Documentation
 
 - [`docs/API.md`](docs/API.md): HTTP storage API
+- [`docs/MUTABLE_NAMES.md`](docs/MUTABLE_NAMES.md): signed record and consistency specification
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md): guarantees and explicit boundaries
 - [`docs/GATEWAY_QUERY_API.md`](docs/GATEWAY_QUERY_API.md): tuple query path
 - [`docs/REPLICATION.md`](docs/REPLICATION.md): placement and repair
 - [`docs/TOKEN_PROTOCOL.md`](docs/TOKEN_PROTOCOL.md): provider-location records
 - [`docs/TARSUS_REWRITE_CHANGES.txt`](docs/TARSUS_REWRITE_CHANGES.txt): brief
   implementation-change summary
 
-Tarsus currently provides immutable content objects and tuple coordination. It
-is not a POSIX file system and does not claim consensus availability during
-arbitrary network partitions.
+The raw `/put` and `/get` content APIs remain available. Named-object clients
+use `/v1/names/*` or `tarsusctl object ...`; chunking, encryption, signing, and
+reconstruction happen client-side. Tarsus is not a POSIX file system and does
+not claim consensus availability during arbitrary network partitions.

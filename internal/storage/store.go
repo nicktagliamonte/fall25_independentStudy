@@ -1226,7 +1226,10 @@ func (s *Stack) SyncLocalTokenLocation(ctx context.Context, k Key, c cid.Cid) er
 	if store == nil {
 		return fmt.Errorf("token store unavailable")
 	}
-	return SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink)
+	if err := SyncTokenOnPut(ctx, store, s.Host, k, c, s.MessageSink); err != nil {
+		return err
+	}
+	return PublishSignedProviderClaim(ctx, s, s.Host, k)
 }
 
 // updateRoutingTableOnPut is the shared implementation behind UpdateRoutingTableOnPut and

@@ -1,6 +1,13 @@
 // Package tuplespace provides Tarsus tuple-space implementations.
 package tuplespace
 
+import (
+	"context"
+	"errors"
+)
+
+var ErrTupleCASConflict = errors.New("tuple compare-and-swap conflict")
+
 // TupleSpace defines the interface for tuple space operations.
 // Implementations provide Put (non-consuming), Read (non-consuming), and Get (consuming) semantics.
 // Concrete implementations in this package include DHTTupleSpace (exact-match,
@@ -45,6 +52,13 @@ type TupleSpace interface {
 // TsPut multiset semantics: callers must opt into replacement explicitly.
 type NamedTupleReplacer interface {
 	TsReplace(tpname string, tpvalue []byte) (int, error)
+}
+
+// ExactCompareAndSwapper is implemented by the fenced exact-owner path. A
+// nil expected value means the exact name must not exist.
+type ExactCompareAndSwapper interface {
+	CompareAndSwapExact(context.Context, string, []byte, []byte) error
+	ReadExact(context.Context, string) ([]byte, error)
 }
 
 // Error codes matching tslib.go (synergy.h). These are returned as the int

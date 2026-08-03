@@ -7,12 +7,48 @@
 package tuplespace
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 	"sync"
 )
+
+func (n *NativeTupleSpace) CompareAndSwapExact(_ context.Context, name string, expected, next []byte) error {
+	if name == "" || isTuplePattern(name) {
+		return errors.New("CAS requires an exact name")
+	}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	var current []byte
+	count := 0
+	for _, tuple := range n.tuples {
+		if tuple.Name == name {
+			current = tuple.Value
+			count++
+		}
+	}
+	if count > 1 || expected == nil && count != 0 || expected != nil && (count != 1 || !bytes.Equal(current, expected)) {
+		return ErrTupleCASConflict
+	}
+	kept := n.tuples[:0]
+	for _, tuple := range n.tuples {
+		if tuple.Name != name {
+			kept = append(kept, tuple)
+		}
+	}
+	n.tuples = kept
+	if next != nil {
+		n.tuples = append(n.tuples, NativeTuple{Name: name, Value: append([]byte(nil), next...)})
+	}
+	return nil
+}
+
+func (n *NativeTupleSpace) ReadExact(_ context.Context, name string) ([]byte, error) {
+	return n.TsRead(name)
+}
 
 var (
 	// ErrTupleNotFound is returned when no tuple currently matches an expression.

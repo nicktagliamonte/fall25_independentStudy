@@ -15,6 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	"github.com/multiformats/go-multiaddr"
+	"github.com/nicktagliamonte/fall25_independentStudy/internal/names"
 )
 
 // TokenDHTProtocolPrefix is used when token storage in DHT is needed.
@@ -233,6 +234,12 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 		opts = append(opts, kaddht.NamespacedValidator("tokens", &tokenRecordValidator{}))
 		opts = append(opts, kaddht.NamespacedValidator("pht", &versionedJSONValidator{}))
 		opts = append(opts, kaddht.NamespacedValidator("tuplestate", &versionedJSONValidator{}))
+		// Mutable-name records use independent, strict validators. Unlike the
+		// legacy token namespace, these validators check canonical encoding,
+		// derived identifiers, signatures, capabilities, expiries, and forks.
+		opts = append(opts, kaddht.NamespacedValidator("names", &names.NameValidator{}))
+		opts = append(opts, kaddht.NamespacedValidator("providers", &names.ProviderClaimValidator{}))
+		opts = append(opts, kaddht.NamespacedValidator("leases", &names.LeaseValidator{}))
 	}
 	if cfg.BucketSize > 0 {
 		opts = append(opts, kaddht.BucketSize(cfg.BucketSize))

@@ -1,8 +1,9 @@
 .PHONY: build local quick-activity plots scaling-test
 
 build:
-	@echo "Building node..."
+	@echo "Building node and tarsusctl..."
 	@go build -o bin/node ./cmd/node
+	@go build -o bin/tarsusctl ./cmd/tarsusctl
 
 local:
 	@bash scripts/harness/local_mesh.sh
@@ -131,5 +132,4 @@ plot-propagation-depth:
 		exit 1; \
 	fi
 	@python3 scripts/plots/propagation_depth_plot.py $(RESULTS_DIR)
-
 

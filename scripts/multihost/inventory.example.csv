@@ -1,0 +1,4 @@
+# host,user,listen_ip,advertise_ip,control_port,peer_port,workdir
+desktop,alice,0.0.0.0,192.0.2.10,2892,4001,/opt/tarsus
+laptop,bob,0.0.0.0,192.0.2.20,2892,4001,/opt/tarsus
+host3,carol,0.0.0.0,192.0.2.30,2892,4001,/opt/tarsus

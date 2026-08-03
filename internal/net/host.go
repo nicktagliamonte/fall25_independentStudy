@@ -18,6 +18,7 @@ import (
 	tlssec "github.com/libp2p/go-libp2p/p2p/security/tls"
 	libp2pquic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+	"github.com/multiformats/go-multiaddr"
 )
 
 // ECDHSecurityProtocolIDs are the libp2p security protocol IDs that use ECDH key derivation.
@@ -137,7 +138,7 @@ func NewHostWithConnectionLimits(
 //   - host.Host: the constructed libp2p host.
 //   - error: non-nil if libp2p host construction fails.
 func NewHostWithPriv(ctx context.Context, listenAddrs []string, priv crypto.PrivKey) (host.Host, error) {
-	return newHostWithPriv(ctx, listenAddrs, priv, 0, 0)
+	return newHostWithPriv(ctx, listenAddrs, nil, priv, 0, 0)
 }
 
 // NewHostWithPrivAndConnectionLimits is NewHostWithPriv with explicit
@@ -162,12 +163,37 @@ func NewHostWithPrivAndConnectionLimits(
 			lowWater,
 		)
 	}
-	return newHostWithPriv(ctx, listenAddrs, priv, lowWater, highWater)
+	return newHostWithPriv(ctx, listenAddrs, nil, priv, lowWater, highWater)
+}
+
+// NewHostWithConnectionLimitsAndAdvertise is the multi-host counterpart to
+// NewHostWithConnectionLimits. When advertisedAddrs is non-empty, only those
+// operator-supplied reachable addresses are announced to peers; listeners are
+// not guessed or hairpinned through a local container address.
+func NewHostWithConnectionLimitsAndAdvertise(ctx context.Context, listenAddrs, advertisedAddrs []string, lowWater, highWater int) (host.Host, error) {
+	priv, _, err := crypto.GenerateEd25519Key(nil)
+	if err != nil {
+		return nil, err
+	}
+	return newHostWithPriv(ctx, listenAddrs, advertisedAddrs, priv, lowWater, highWater)
+}
+
+// NewHostWithPrivAndConnectionLimitsAndAdvertise is the persistent-identity
+// variant used by explicit host inventories.
+func NewHostWithPrivAndConnectionLimitsAndAdvertise(ctx context.Context, listenAddrs, advertisedAddrs []string, priv crypto.PrivKey, lowWater, highWater int) (host.Host, error) {
+	if lowWater <= 0 {
+		return nil, fmt.Errorf("connection low watermark must be positive: %d", lowWater)
+	}
+	if highWater < lowWater {
+		return nil, fmt.Errorf("connection high watermark %d is below low watermark %d", highWater, lowWater)
+	}
+	return newHostWithPriv(ctx, listenAddrs, advertisedAddrs, priv, lowWater, highWater)
 }
 
 func newHostWithPriv(
 	_ context.Context,
 	listenAddrs []string,
+	advertisedAddrs []string,
 	priv crypto.PrivKey,
 	lowWater int,
 	highWater int,
@@ -187,6 +213,19 @@ func newHostWithPriv(
 		libp2p.Muxer(yamux.ID, yamux.DefaultTransport),
 
 		// Listen addrs
+	}
+	if len(advertisedAddrs) > 0 {
+		resolved := make([]multiaddr.Multiaddr, 0, len(advertisedAddrs))
+		for _, value := range advertisedAddrs {
+			address, err := multiaddr.NewMultiaddr(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid advertised multiaddr %q: %w", value, err)
+			}
+			resolved = append(resolved, address)
+		}
+		opts = append(opts, libp2p.AddrsFactory(func([]multiaddr.Multiaddr) []multiaddr.Multiaddr {
+			return append([]multiaddr.Multiaddr(nil), resolved...)
+		}))
 	}
 	for _, a := range listenAddrs {
 		opts = append(opts, libp2p.ListenAddrStrings(a))

@@ -81,6 +81,48 @@ func (t *TokenFallbackTupleSpace) TsReplace(tpname string, tpvalue []byte) (int,
 	return replacer.TsReplace(tpname, tpvalue)
 }
 
+func (t *TokenFallbackTupleSpace) CompareAndSwapExact(ctx context.Context, name string, expected, next []byte) error {
+	authority, ok := t.fallback.(ExactCompareAndSwapper)
+	if !ok {
+		return errors.New("fallback does not support exact CAS")
+	}
+	return authority.CompareAndSwapExact(ctx, name, expected, next)
+}
+func (t *TokenFallbackTupleSpace) ReadExact(ctx context.Context, name string) ([]byte, error) {
+	authority, ok := t.fallback.(ExactCompareAndSwapper)
+	if !ok {
+		return nil, errors.New("fallback does not support exact reads")
+	}
+	return authority.ReadExact(ctx, name)
+}
+func (t *TokenFallbackTupleSpace) IndexLogicalName(ctx context.Context, entry string) error {
+	index, ok := t.fallback.(interface {
+		IndexLogicalName(context.Context, string) error
+	})
+	if !ok {
+		return errors.New("fallback does not support logical-name indexing")
+	}
+	return index.IndexLogicalName(ctx, entry)
+}
+func (t *TokenFallbackTupleSpace) DeleteLogicalName(ctx context.Context, entry string) error {
+	index, ok := t.fallback.(interface {
+		DeleteLogicalName(context.Context, string) error
+	})
+	if !ok {
+		return errors.New("fallback does not support logical-name indexing")
+	}
+	return index.DeleteLogicalName(ctx, entry)
+}
+func (t *TokenFallbackTupleSpace) SearchLogicalNames(ctx context.Context, prefix, suffix string) ([]string, int, int, error) {
+	index, ok := t.fallback.(interface {
+		SearchLogicalNames(context.Context, string, string) ([]string, int, int, error)
+	})
+	if !ok {
+		return nil, 0, 0, errors.New("fallback does not support logical-name indexing")
+	}
+	return index.SearchLogicalNames(ctx, prefix, suffix)
+}
+
 // TsPutWithMutationStats delegates non-token writes to an instrumented
 // fallback and returns exact per-call index mutation work.
 func (t *TokenFallbackTupleSpace) TsPutWithMutationStats(tpname string, tpvalue []byte) (int, IndexMutationStats, error) {

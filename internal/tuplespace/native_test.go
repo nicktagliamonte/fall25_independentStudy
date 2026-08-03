@@ -1,12 +1,44 @@
 package tuplespace
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 )
+
+// Exact-name CAS is shared with the mutable-name head path. Keep its conflict
+// behavior covered alongside the tuple compatibility semantics.
+func TestNativeExactCASOneWinner(t *testing.T) {
+	space := NewNativeTupleSpace()
+	if err := space.CompareAndSwapExact(context.Background(), "__name__", nil, []byte("g0")); err != nil {
+		t.Fatal(err)
+	}
+	var wins atomic.Int32
+	var conflicts atomic.Int32
+	var wg sync.WaitGroup
+	for _, next := range [][]byte{[]byte("g1-a"), []byte("g1-b")} {
+		next := next
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := space.CompareAndSwapExact(context.Background(), "__name__", []byte("g0"), next)
+			if err == nil {
+				wins.Add(1)
+			} else if errors.Is(err, ErrTupleCASConflict) {
+				conflicts.Add(1)
+			} else {
+				t.Errorf("CAS: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+	if wins.Load() != 1 || conflicts.Load() != 1 {
+		t.Fatalf("wins=%d conflicts=%d", wins.Load(), conflicts.Load())
+	}
+}
 
 func TestNativeTupleSpacePutReadGet(t *testing.T) {
 	ts := NewNativeTupleSpace()
