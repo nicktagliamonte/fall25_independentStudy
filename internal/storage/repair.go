@@ -51,6 +51,11 @@ type RepairProtocol struct {
 	// sweep or upload burst.
 	rttMu    sync.Mutex
 	rttCache map[peer.ID]cachedRTT
+	// tokenMutationMu serializes the legacy provider-location token's local
+	// read-modify-write updates per content-key stripe. Replica byte transfers
+	// and unrelated objects may run concurrently, but acknowledgments for one
+	// key must not race and erase sibling locations.
+	tokenMutationMu [64]sync.Mutex
 	// livenessFailures implements conservative repeated-observation failure
 	// detection for replica pruning. A single failed active probe is only a
 	// suspicion; removal requires repeated failures separated in time.
@@ -774,9 +779,10 @@ func (rp *RepairProtocol) calculateNeededReplicas(verification *ReplicaStateVeri
 // the replication factor policy. Peer candidates come from peersForReplication (connected
 // peers first, then peerstore entries with known addresses); if none are available yet, it
 // retries every 500ms for up to 20 attempts (returning 0 early if ctx is canceled first) to
-// give the node time to establish connections. For each candidate it calls replicateToPeer
-// with a 60s per-peer timeout; on success it registers the peer in rp.stack.RoutingTable at
-// DistanceMidrange and stops once n replicas have been created.
+// give the node time to establish connections. It transfers in bounded batches
+// containing at most the number of replicas still needed, then launches
+// replacements only for failed members. This preserves the requested copy
+// count while avoiding one slow peer serializing every later replica.
 //
 // Parameters:
 //   - ctx (context.Context): bounds the connection-wait retry loop; canceling it aborts early.
@@ -805,19 +811,35 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 	}
 	candidates := rp.rankReplicationCandidates(peers, n)
 	replicated := 0
-	for _, candidate := range candidates {
-		peerCtx, cancelPeer := context.WithTimeout(ctx, 60*time.Second)
-		err := rp.replicateToPeer(peerCtx, c, candidate.PeerID, blockData)
-		cancelPeer()
-		if err != nil {
-			continue
+	for next := 0; next < len(candidates) && replicated < n; {
+		batchSize := n - replicated
+		if remaining := len(candidates) - next; batchSize > remaining {
+			batchSize = remaining
 		}
-		replicated++
-		if rp.stack.RoutingTable != nil {
-			rp.stack.RoutingTable.AddProvider(key, candidate.PeerID, candidate.DistanceCategory)
+		type replicationResult struct {
+			candidate PeerCandidate
+			err       error
 		}
-		if replicated >= n {
-			break
+		results := make(chan replicationResult, batchSize)
+		for _, candidate := range candidates[next : next+batchSize] {
+			candidate := candidate
+			go func() {
+				peerCtx, cancelPeer := context.WithTimeout(ctx, 60*time.Second)
+				err := rp.replicateToPeer(peerCtx, c, candidate.PeerID, blockData)
+				cancelPeer()
+				results <- replicationResult{candidate: candidate, err: err}
+			}()
+		}
+		next += batchSize
+		for completed := 0; completed < batchSize; completed++ {
+			result := <-results
+			if result.err != nil {
+				continue
+			}
+			replicated++
+			if rp.stack.RoutingTable != nil {
+				rp.stack.RoutingTable.AddProvider(key, result.candidate.PeerID, result.candidate.DistanceCategory)
+			}
 		}
 	}
 	return replicated
@@ -1141,6 +1163,8 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 				}
 			}
 			if targetAddr != nil {
+				mutationMu := &rp.tokenMutationMu[int(key[0])%len(rp.tokenMutationMu)]
+				mutationMu.Lock()
 				if err := SyncTokenOnReplication(
 					ctx,
 					tokenStore,
@@ -1149,8 +1173,10 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 					targetPeer,
 					targetAddr,
 				); err != nil {
+					mutationMu.Unlock()
 					return fmt.Errorf("publish replica token location: %w", err)
 				}
+				mutationMu.Unlock()
 			}
 		}
 	}

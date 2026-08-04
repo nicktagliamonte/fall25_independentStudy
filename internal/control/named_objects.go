@@ -390,7 +390,9 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 	if stack.DHT == nil {
 		return counts, errors.New("signed provider claims require DHT")
 	}
-	token, err := mystore.GetToken(ctx, stack.DHT, key)
+	tokenCtx, cancelToken := context.WithTimeout(ctx, 10*time.Second)
+	token, err := mystore.GetToken(tokenCtx, stack.DHT, key)
+	cancelToken()
 	if err != nil {
 		return counts, err
 	}
@@ -414,7 +416,9 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 				return
 			}
 			claimKey := fmt.Sprintf("/providers/%x/%x", key[:], publicRaw)
-			raw, err := stack.DHT.GetValue(ctx, claimKey)
+			claimCtx, cancelClaim := context.WithTimeout(ctx, 5*time.Second)
+			raw, err := stack.DHT.GetValue(claimCtx, claimKey)
+			cancelClaim()
 			if err != nil || validator.Validate(claimKey, raw) != nil {
 				results <- verifiedProvider{}
 				return

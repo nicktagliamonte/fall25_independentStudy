@@ -20,9 +20,13 @@ Periodic audits:
 4. prefer replacements from missing RTT classes; and
 5. fill any remaining count deficit from another healthy advertised peer.
 
-The source provider is published before asynchronous copies. Exactly one
-coordinator publishes each completed transfer, avoiding lost provider updates
-between transfer endpoints.
+The source provider is published before raw-API asynchronous copies. A named
+object does not advance its mutable head until signed claims satisfy its full
+manifest-and-chunk placement policy. Replica byte streams run in bounded
+parallel batches; the initiating coordinator publishes each completed
+transfer, and per-content-key token merging prevents concurrent
+acknowledgements from erasing sibling locations. Unrelated keys can merge in
+parallel.
 
 Replica count is an availability policy, not a Byzantine quorum. Repair
 requires a reachable source and suitable advertised peers. Same-host container

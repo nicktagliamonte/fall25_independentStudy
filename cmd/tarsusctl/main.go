@@ -454,10 +454,15 @@ func (c *client) waitForPublication(ctx context.Context, recordRaw []byte) error
 			Ready  bool   `json:"ready"`
 			Detail string `json:"detail"`
 		}
-		if err := c.json(ctx, http.MethodPost, "/v1/names/preflight", map[string]any{"record_cbor": recordRaw}, &status); err != nil {
-			return err
-		}
-		if status.Ready {
+		attemptCtx, cancelAttempt := context.WithTimeout(ctx, 25*time.Second)
+		err := c.json(attemptCtx, http.MethodPost, "/v1/names/preflight", map[string]any{"record_cbor": recordRaw}, &status)
+		cancelAttempt()
+		if err != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("strict publication preflight did not become ready (%s): %w", lastDetail, ctx.Err())
+			}
+			lastDetail = err.Error()
+		} else if status.Ready {
 			return nil
 		}
 		if status.Detail != "" {
