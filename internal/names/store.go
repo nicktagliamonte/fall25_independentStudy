@@ -308,13 +308,15 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 	if !sameCommittedHead {
 		s.updateSearchIndex(ctx, current, record)
 	}
-	if s.onCommit != nil {
+	if s.onCommit != nil && !sameCommittedHead {
 		s.onCommit(record)
 	}
-	s.publish(ctx, id, certified.Record)
-	if s.network != nil {
-		_ = s.network.PutValue(ctx, DHTNamespaceRootKey(bytesToNamespaceID(certified.Root.Namespace)), rootRaw)
-		_ = s.network.PutValue(ctx, DHTCertifiedNameKey(id), raw)
+	if !sameCommittedHead {
+		s.publish(ctx, id, certified.Record)
+		if s.network != nil {
+			_ = s.network.PutValue(ctx, DHTNamespaceRootKey(bytesToNamespaceID(certified.Root.Namespace)), rootRaw)
+			_ = s.network.PutValue(ctx, DHTCertifiedNameKey(id), raw)
+		}
 	}
 	return &certified, record, nil
 }
