@@ -7,6 +7,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -131,8 +133,24 @@ func BenchmarkSevenMemberThreePhaseCommit(b *testing.B) {
 // fresh current-name index and complete version history so index cardinality
 // and total update work are measured independently.
 func BenchmarkLogicalNameScale(b *testing.B) {
-	for _, count := range []int{10_000, 100_000} {
-		for _, versions := range []int{1, 4, 16} {
+	counts := []int{10_000, 100_000}
+	versionsList := []int{1, 4, 16}
+	if value := os.Getenv("TARSUS_SCALE_NAMES"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 {
+			b.Fatalf("TARSUS_SCALE_NAMES must be a positive integer: %q", value)
+		}
+		counts = []int{parsed}
+	}
+	if value := os.Getenv("TARSUS_SCALE_VERSIONS"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 {
+			b.Fatalf("TARSUS_SCALE_VERSIONS must be a positive integer: %q", value)
+		}
+		versionsList = []int{parsed}
+	}
+	for _, count := range counts {
+		for _, versions := range versionsList {
 			b.Run(fmt.Sprintf("names_%d/versions_%d", count, versions), func(b *testing.B) {
 				for iteration := 0; iteration < b.N; iteration++ {
 					owner, private := testKeys(b)
