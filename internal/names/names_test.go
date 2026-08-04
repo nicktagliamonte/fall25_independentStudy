@@ -325,7 +325,11 @@ func (m *memoryCASAuthority) CompareAndSwap(_ context.Context, name string, expe
 	} else if !ok || !bytes.Equal(current, expected) {
 		return ErrConflict
 	}
-	m.values[name] = append([]byte(nil), next...)
+	if next == nil {
+		delete(m.values, name)
+	} else {
+		m.values[name] = append([]byte(nil), next...)
+	}
 	return nil
 }
 
@@ -368,6 +372,42 @@ func TestSharedExactAuthorityAllowsOneCommitAcrossServices(t *testing.T) {
 	wg.Wait()
 	if commits.Load() != 1 || conflicts.Load() != 1 {
 		t.Fatalf("commits=%d conflicts=%d", commits.Load(), conflicts.Load())
+	}
+}
+
+func TestLeaseRegistryRejectsExactSubtreeOverlapAcrossServices(t *testing.T) {
+	owner, private := testKeys(t)
+	namespace, _ := NewNamespaceID()
+	authority := &memoryCASAuthority{values: map[string][]byte{}}
+	first := testService()
+	second := testService()
+	first.SetAuthority(authority)
+	second.SetAuthority(authority)
+	record := testRecord(t, namespace, "/projects/a.dat", owner, private, 0, nil)
+	record.Policy.StrictPublish = false
+	_ = record.Sign(private)
+	recordRaw, _ := record.Marshal()
+	if _, err := first.Create(context.Background(), recordRaw); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	exact := &LeaseRecord{Version: FormatVersion, Scope: LeaseScope{NameID: append([]byte(nil), record.NameID...)}, Owner: owner, Holder: owner, Fencing: 1, Issued: now.UnixNano(), Expires: now.Add(time.Minute).UnixNano(), Nonce: bytes.Repeat([]byte{41}, 16)}
+	_ = exact.Sign(private)
+	exactRaw, _ := MarshalCanonical(exact)
+	if _, err := first.AcquireLease(context.Background(), exactRaw); err != nil {
+		t.Fatal(err)
+	}
+	subtree := &LeaseRecord{Version: FormatVersion, Scope: LeaseScope{Namespace: namespace[:], PathPrefix: "/projects"}, Owner: owner, Holder: owner, Fencing: 1, Issued: now.UnixNano(), Expires: now.Add(time.Minute).UnixNano(), Nonce: bytes.Repeat([]byte{42}, 16)}
+	_ = subtree.Sign(private)
+	subtreeRaw, _ := MarshalCanonical(subtree)
+	if _, err := second.AcquireLease(context.Background(), subtreeRaw); !errors.Is(err, ErrLocked) {
+		t.Fatalf("overlapping subtree acquire error = %v, want ErrLocked", err)
+	}
+	if err := first.ReleaseLease(context.Background(), exactRaw); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := second.AcquireLease(context.Background(), subtreeRaw); err != nil {
+		t.Fatalf("subtree lease after exact release: %v", err)
 	}
 }
 
@@ -625,5 +665,9 @@ func FuzzDecodeSignedStructures(f *testing.F) {
 		_, _ = DecodeObjectManifest(raw)
 		var claim ProviderClaim
 		_ = UnmarshalCanonical(raw, &claim)
+		var root NamespaceRoot
+		_ = UnmarshalCanonical(raw, &root)
+		var certified CertifiedNameRecord
+		_ = UnmarshalCanonical(raw, &certified)
 	})
 }

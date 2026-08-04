@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
@@ -20,6 +21,13 @@ import (
 const (
 	InlineObjectLimit = 4 << 20
 	ObjectChunkSize   = 1 << 20
+	IntegritySHA256   = "sha256"
+	IntegrityHMACV1   = "hmac-sha256-v1"
+)
+
+const (
+	privateChunkDigestDomain  = "tarsus-private-chunk-digest-v1\x00"
+	privateObjectDigestDomain = "tarsus-private-object-digest-v1\x00"
 )
 
 type ChunkRef struct {
@@ -42,6 +50,7 @@ type ObjectManifest struct {
 	Version         uint64        `json:"version" cbor:"version"`
 	ObjectBytes     uint64        `json:"object_bytes" cbor:"object_bytes"`
 	PlaintextDigest []byte        `json:"plaintext_digest" cbor:"plaintext_digest"`
+	Integrity       string        `json:"integrity" cbor:"integrity"`
 	Encryption      string        `json:"encryption" cbor:"encryption"`
 	KeyEpoch        uint64        `json:"key_epoch" cbor:"key_epoch"`
 	ChunkSize       uint64        `json:"chunk_size" cbor:"chunk_size"`
@@ -72,6 +81,19 @@ func (m *ObjectManifest) Validate() error {
 	}
 	if m.Encryption != "private" && m.Encryption != "public" {
 		return errors.New("invalid manifest encryption mode")
+	}
+	integrity := m.Integrity
+	if integrity == "" {
+		// Read compatibility for manifests emitted before keyed private
+		// integrity tags were introduced. Keep the encoded field empty so its
+		// historical signature payload is unchanged.
+		integrity = IntegritySHA256
+	}
+	if integrity != IntegritySHA256 && integrity != IntegrityHMACV1 {
+		return errors.New("invalid manifest integrity mode")
+	}
+	if m.Encryption == "public" && integrity != IntegritySHA256 {
+		return errors.New("public manifests must use SHA-256 integrity")
 	}
 	if len(m.Chunks) == 0 {
 		return errors.New("manifest has no chunks")
@@ -201,8 +223,12 @@ func BuildObject(ctx context.Context, reader io.Reader, sink BlockSink, options 
 		input = bytes.NewReader([]byte{})
 	}
 
-	manifest := &ObjectManifest{Version: FormatVersion, Encryption: options.Encryption, KeyEpoch: options.KeyEpoch, ChunkSize: uint64(chunkSize), Chunks: []ChunkRef{}}
-	wholeHash := sha256.New()
+	integrity := IntegritySHA256
+	if options.Encryption == "private" {
+		integrity = IntegrityHMACV1
+	}
+	manifest := &ObjectManifest{Version: FormatVersion, Encryption: options.Encryption, Integrity: integrity, KeyEpoch: options.KeyEpoch, ChunkSize: uint64(chunkSize), Chunks: []ChunkRef{}}
+	wholeHash := integrityHash(integrity, dataKey, privateObjectDigestDomain)
 	reuse := reusableChunks(options.Previous, options.KeyEpoch, options.Encryption)
 	result := &BuiltObject{Manifest: manifest, DataKey: dataKey}
 	buffer := make([]byte, chunkSize)
@@ -219,7 +245,7 @@ func BuildObject(ctx context.Context, reader io.Reader, sink BlockSink, options 
 			plain = []byte{}
 		}
 		_, _ = wholeHash.Write(plain)
-		plainHash := sha256.Sum256(plain)
+		plainHash := integrityDigest(integrity, dataKey, privateChunkDigestDomain, plain)
 		if previous, ok := reuse[string(plainHash[:])]; ok {
 			previous.Index = index
 			manifest.Chunks = append(manifest.Chunks, previous)
@@ -282,6 +308,23 @@ func reusableChunks(previous *ObjectManifest, epoch uint64, encryption string) m
 	for _, chunk := range previous.Chunks {
 		out[string(chunk.PlaintextHash)] = chunk
 	}
+	return out
+}
+
+func integrityHash(mode string, key []byte, domain string) hash.Hash {
+	if mode == IntegrityHMACV1 {
+		h := hmac.New(sha256.New, key)
+		_, _ = h.Write([]byte(domain))
+		return h
+	}
+	return sha256.New()
+}
+
+func integrityDigest(mode string, key []byte, domain string, value []byte) [32]byte {
+	h := integrityHash(mode, key, domain)
+	_, _ = h.Write(value)
+	var out [32]byte
+	copy(out[:], h.Sum(nil))
 	return out
 }
 
@@ -418,7 +461,7 @@ func ReconstructObject(ctx context.Context, manifest *ObjectManifest, source Blo
 	if manifest.Encryption == "private" && len(dataKey) != 32 {
 		return errors.New("private object requires a 32-byte data key")
 	}
-	wholeHash := sha256.New()
+	wholeHash := integrityHash(manifest.Integrity, dataKey, privateObjectDigestDomain)
 	var total uint64
 	for _, ref := range manifest.Chunks {
 		var key ContentKey
@@ -443,7 +486,7 @@ func ReconstructObject(ctx context.Context, manifest *ObjectManifest, source Blo
 				return fmt.Errorf("chunk %d authentication failed", ref.Index)
 			}
 		}
-		if sha256.Sum256(plain) != bytesToArray(ref.PlaintextHash) || uint64(len(plain)) != ref.PlaintextBytes {
+		if integrityDigest(manifest.Integrity, dataKey, privateChunkDigestDomain, plain) != bytesToArray(ref.PlaintextHash) || uint64(len(plain)) != ref.PlaintextBytes {
 			return fmt.Errorf("chunk %d plaintext verification failed", ref.Index)
 		}
 		if _, err := writer.Write(plain); err != nil {

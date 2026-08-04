@@ -238,6 +238,8 @@ func NewDHT(ctx context.Context, h host.Host, cfg DHTConfig) (*kaddht.IpfsDHT, e
 		// legacy token namespace, these validators check canonical encoding,
 		// derived identifiers, signatures, capabilities, expiries, and forks.
 		opts = append(opts, kaddht.NamespacedValidator("names", &names.NameValidator{}))
+		opts = append(opts, kaddht.NamespacedValidator("namespace-roots", &names.NamespaceRootValidator{}))
+		opts = append(opts, kaddht.NamespacedValidator("certified-names", &names.CertifiedNameValidator{}))
 		opts = append(opts, kaddht.NamespacedValidator("providers", &names.ProviderClaimValidator{}))
 		opts = append(opts, kaddht.NamespacedValidator("leases", &names.LeaseValidator{}))
 	}

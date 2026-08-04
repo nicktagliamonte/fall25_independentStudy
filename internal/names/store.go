@@ -29,6 +29,10 @@ const (
 	leasePrefix          = "/mutable/leases/"
 	leaseFencePrefix     = "/mutable/lease-fences/"
 	namespaceOwnerPrefix = "/mutable/namespace-owners/"
+	certifiedPrefix      = "/mutable/certified/"
+	certifiedHistory     = "/mutable/certified-history/"
+	namespaceRootPrefix  = "/mutable/namespace-roots/"
+	leaseRegistryPrefix  = "/mutable/lease-registries/"
 )
 
 type PublicationGate func(context.Context, *NameRecord) error
@@ -61,6 +65,22 @@ type CASAuthority interface {
 	CompareAndSwap(context.Context, string, []byte, []byte) error
 }
 
+type leaseRegistryEntry struct {
+	Lease   []byte `json:"lease_cbor" cbor:"lease_cbor"`
+	Path    string `json:"path" cbor:"path"`
+	Subtree bool   `json:"subtree" cbor:"subtree"`
+	Expires int64  `json:"expires_ns" cbor:"expires_ns"`
+	Fencing uint64 `json:"fencing" cbor:"fencing"`
+	Holder  []byte `json:"holder" cbor:"holder"`
+}
+
+type leaseRegistry struct {
+	Version   uint64               `json:"version" cbor:"version"`
+	Namespace []byte               `json:"namespace" cbor:"namespace"`
+	Revision  uint64               `json:"revision" cbor:"revision"`
+	Entries   []leaseRegistryEntry `json:"entries" cbor:"entries"`
+}
+
 func NewService(datastore ds.Batching, network routing.ValueStore, gate PublicationGate) *Service {
 	return &Service{datastore: datastore, network: network, now: time.Now, gate: gate}
 }
@@ -77,6 +97,13 @@ func (s *Service) lockFor(id NameID) *sync.Mutex {
 func currentKey(id NameID) ds.Key { return ds.NewKey(currentPrefix + id.String()) }
 func historyKey(id NameID, generation uint64) ds.Key {
 	return ds.NewKey(fmt.Sprintf("%s%s/%020d", historyPrefix, id.String(), generation))
+}
+func certifiedKey(id NameID) ds.Key { return ds.NewKey(certifiedPrefix + id.String()) }
+func certifiedHistoryKey(id NameID, generation uint64) ds.Key {
+	return ds.NewKey(fmt.Sprintf("%s%s/%020d", certifiedHistory, id.String(), generation))
+}
+func namespaceRootKey(namespace []byte) ds.Key {
+	return ds.NewKey(namespaceRootPrefix + fmt.Sprintf("%x", namespace))
 }
 
 func (s *Service) Create(ctx context.Context, raw []byte) (*NameRecord, error) {
@@ -174,6 +201,149 @@ func (s *Service) Delete(ctx context.Context, id NameID, expected uint64, raw []
 		return nil, errors.New("delete requires a signed tombstone")
 	}
 	return s.Update(ctx, id, expected, raw)
+}
+
+// CommitCertified is the Byzantine-fault-tolerant mutation path. The mutable
+// head advances only after a commit certificate from 2f+1 members of the
+// owner-authenticated 3f+1 committee validates. The existing exact-owner CAS
+// remains the atomic serialization point, so a certificate cannot bypass the
+// generation rule or strict data-publication gate.
+func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNameRecord, *NameRecord, error) {
+	var certified CertifiedNameRecord
+	if err := UnmarshalCanonical(raw, &certified); err != nil {
+		return nil, nil, err
+	}
+	record, err := certified.Validate(s.now())
+	if err != nil {
+		return nil, nil, err
+	}
+	id := bytesToNameID(record.NameID)
+	mu := s.lockFor(id)
+	mu.Lock()
+	defer mu.Unlock()
+
+	currentRaw, currentErr := s.authoritativeCurrent(ctx, id)
+	var current *NameRecord
+	if currentErr == nil {
+		current, err = DecodeNameRecord(currentRaw)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else if !errors.Is(currentErr, ds.ErrNotFound) && !errors.Is(currentErr, ErrNotFound) {
+		return nil, nil, currentErr
+	}
+	if err := record.Validate(s.now(), current); err != nil {
+		return nil, nil, err
+	}
+	if err := s.ensureNamespaceOwner(ctx, record); err != nil {
+		return nil, nil, err
+	}
+	if existingRoot, rootErr := s.datastore.Get(ctx, namespaceRootKey(record.Namespace)); rootErr == nil {
+		var previous NamespaceRoot
+		if err := UnmarshalCanonical(existingRoot, &previous); err != nil {
+			return nil, nil, err
+		}
+		if previous.CommitteeEpoch > certified.Root.CommitteeEpoch ||
+			(previous.CommitteeEpoch == certified.Root.CommitteeEpoch && !bytes.Equal(existingRoot, mustCanonical(&certified.Root))) {
+			return nil, nil, errors.New("namespace-root epoch conflict")
+		}
+	} else if !errors.Is(rootErr, ds.ErrNotFound) {
+		return nil, nil, rootErr
+	}
+	if err := s.checkPublication(ctx, record); err != nil {
+		return nil, nil, err
+	}
+	if s.authority != nil {
+		expected := currentRaw
+		if current == nil {
+			expected = nil
+		}
+		if err := s.authority.CompareAndSwap(ctx, authorityName(id), expected, certified.Record); err != nil {
+			return nil, nil, err
+		}
+	}
+	rootRaw, err := MarshalCanonical(&certified.Root)
+	if err != nil {
+		return nil, nil, err
+	}
+	batch, err := s.datastore.Batch(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	for key, value := range map[ds.Key][]byte{
+		currentKey(id):                             certified.Record,
+		historyKey(id, record.Generation):          certified.Record,
+		certifiedKey(id):                           raw,
+		certifiedHistoryKey(id, record.Generation): raw,
+		namespaceRootKey(certified.Root.Namespace): rootRaw,
+	} {
+		if err := batch.Put(ctx, key, value); err != nil {
+			return nil, nil, err
+		}
+	}
+	if err := batch.Commit(ctx); err != nil {
+		return nil, nil, err
+	}
+	s.updateSearchIndex(ctx, current, record)
+	if s.onCommit != nil {
+		s.onCommit(record)
+	}
+	s.publish(ctx, id, certified.Record)
+	if s.network != nil {
+		_ = s.network.PutValue(ctx, DHTNamespaceRootKey(bytesToNamespaceID(certified.Root.Namespace)), rootRaw)
+		_ = s.network.PutValue(ctx, DHTCertifiedNameKey(id), raw)
+	}
+	return &certified, record, nil
+}
+
+// GetCertified resolves only quorum-certified heads. It never upgrades an
+// unsigned or merely owner-signed DHT value into Byzantine agreement.
+func (s *Service) GetCertified(ctx context.Context, id NameID) (*CertifiedNameRecord, *NameRecord, []byte, error) {
+	var bestRaw []byte
+	if s.datastore != nil {
+		bestRaw, _ = s.datastore.Get(ctx, certifiedKey(id))
+	}
+	bestCertified, bestRecord := decodeCertified(bestRaw, s.now(), id)
+	if s.network != nil {
+		if remoteRaw, err := s.network.GetValue(ctx, DHTCertifiedNameKey(id)); err == nil {
+			remoteCertified, remoteRecord := decodeCertified(remoteRaw, s.now(), id)
+			if remoteRecord != nil && (bestRecord == nil || remoteRecord.Generation > bestRecord.Generation) {
+				bestRaw, bestCertified, bestRecord = remoteRaw, remoteCertified, remoteRecord
+			} else if remoteRecord != nil && bestRecord != nil && remoteRecord.Generation == bestRecord.Generation && !bytes.Equal(remoteRaw, bestRaw) {
+				return nil, nil, nil, errors.New("equal-generation certified-name fork")
+			}
+		}
+	}
+	if bestRecord == nil {
+		return nil, nil, nil, ErrNotFound
+	}
+	return bestCertified, bestRecord, bestRaw, nil
+}
+
+func decodeCertified(raw []byte, now time.Time, id NameID) (*CertifiedNameRecord, *NameRecord) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var certified CertifiedNameRecord
+	if err := UnmarshalCanonical(raw, &certified); err != nil {
+		return nil, nil
+	}
+	record, err := certified.Validate(now)
+	if err != nil || !bytes.Equal(record.NameID, id[:]) {
+		return nil, nil
+	}
+	return &certified, record
+}
+
+func bytesToNamespaceID(value []byte) NamespaceID {
+	var id NamespaceID
+	copy(id[:], value)
+	return id
+}
+
+func mustCanonical(value any) []byte {
+	raw, _ := MarshalCanonical(value)
+	return raw
 }
 
 func (s *Service) Get(ctx context.Context, id NameID) (*NameRecord, []byte, error) {
@@ -564,17 +734,26 @@ func (s *Service) AcquireLease(ctx context.Context, raw []byte) (*LeaseRecord, e
 	if requested.Fencing != nextFence {
 		return nil, ErrConflict
 	}
+	namespace, lockPath, subtree, err := s.leaseNamespacePath(ctx, &requested)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.reserveLease(ctx, namespace, lockPath, subtree, &requested, raw); err != nil {
+		return nil, err
+	}
 	if s.authority != nil {
 		expected := currentRaw
 		if currentErr != nil {
 			expected = nil
 		}
 		if err := s.authority.CompareAndSwap(ctx, authorityLeaseName(requested.Scope), expected, raw); err != nil {
+			_ = s.removeLeaseReservation(ctx, namespace, &requested)
 			return nil, err
 		}
 	}
 	batch, err := s.datastore.Batch(ctx)
 	if err != nil {
+		_ = s.removeLeaseReservation(ctx, namespace, &requested)
 		return nil, err
 	}
 	if err := batch.Put(ctx, key, raw); err != nil {
@@ -586,6 +765,7 @@ func (s *Service) AcquireLease(ctx context.Context, raw []byte) (*LeaseRecord, e
 		return nil, err
 	}
 	if err := batch.Commit(ctx); err != nil {
+		_ = s.removeLeaseReservation(ctx, namespace, &requested)
 		return nil, err
 	}
 	if s.network != nil {
@@ -618,8 +798,16 @@ func (s *Service) RenewLease(ctx context.Context, raw []byte) (*LeaseRecord, err
 	if current.Expires <= s.now().UnixNano() || requested.Fencing != current.Fencing || !bytes.Equal(requested.Holder, current.Holder) || requested.Issued < current.Issued {
 		return nil, ErrConflict
 	}
+	namespace, _, _, err := s.leaseNamespacePath(ctx, &requested)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.replaceLeaseReservation(ctx, namespace, &requested, raw); err != nil {
+		return nil, err
+	}
 	if s.authority != nil {
 		if err := s.authority.CompareAndSwap(ctx, authorityLeaseName(requested.Scope), currentRaw, raw); err != nil {
+			_ = s.replaceLeaseReservation(ctx, namespace, &current, currentRaw)
 			return nil, err
 		}
 	}
@@ -651,10 +839,17 @@ func (s *Service) ReleaseLease(ctx context.Context, raw []byte) error {
 	if requested.Fencing != current.Fencing || !bytes.Equal(requested.Holder, current.Holder) {
 		return ErrConflict
 	}
+	namespace, _, _, err := s.leaseNamespacePath(ctx, &requested)
+	if err != nil {
+		return err
+	}
 	if s.authority != nil {
 		if err := s.authority.CompareAndSwap(ctx, authorityLeaseName(requested.Scope), currentRaw, nil); err != nil {
 			return err
 		}
+	}
+	if err := s.removeLeaseReservation(ctx, namespace, &requested); err != nil {
+		return err
 	}
 	return s.datastore.Delete(ctx, key)
 }
@@ -690,6 +885,9 @@ func (s *Service) authorizeLease(ctx context.Context, lease *LeaseRecord) error 
 		return nil
 	}
 	owner, err := s.datastore.Get(ctx, namespaceOwnerKey(lease.Scope.Namespace))
+	if err != nil && s.authority != nil {
+		owner, err = s.authority.Read(ctx, "__tarsus_namespace_v1__"+fmt.Sprintf("%x", lease.Scope.Namespace))
+	}
 	if err != nil {
 		return errors.New("unknown namespace owner")
 	}
@@ -701,4 +899,145 @@ func (s *Service) authorizeLease(ctx context.Context, lease *LeaseRecord) error 
 
 func leaseFenceKey(key ds.Key) ds.Key {
 	return ds.NewKey(leaseFencePrefix + strings.TrimPrefix(key.String(), leasePrefix))
+}
+
+func leaseRegistryDSKey(namespace []byte) ds.Key {
+	return ds.NewKey(leaseRegistryPrefix + fmt.Sprintf("%x", namespace))
+}
+
+func authorityLeaseRegistryName(namespace []byte) string {
+	return "__tarsus_lease_registry_v1__" + fmt.Sprintf("%x", namespace)
+}
+
+func (s *Service) leaseNamespacePath(ctx context.Context, lease *LeaseRecord) ([]byte, string, bool, error) {
+	if len(lease.Scope.NameID) == 32 {
+		record, _, err := s.Get(ctx, bytesToNameID(lease.Scope.NameID))
+		if err != nil {
+			return nil, "", false, err
+		}
+		return append([]byte(nil), record.Namespace...), record.Path, false, nil
+	}
+	return append([]byte(nil), lease.Scope.Namespace...), lease.Scope.PathPrefix, true, nil
+}
+
+func (s *Service) currentLeaseRegistry(ctx context.Context, namespace []byte) ([]byte, *leaseRegistry, error) {
+	var raw []byte
+	var err error
+	if s.authority != nil {
+		raw, err = s.authority.Read(ctx, authorityLeaseRegistryName(namespace))
+	} else {
+		raw, err = s.datastore.Get(ctx, leaseRegistryDSKey(namespace))
+	}
+	if errors.Is(err, ds.ErrNotFound) || errors.Is(err, ErrNotFound) {
+		return nil, &leaseRegistry{Version: FormatVersion, Namespace: append([]byte(nil), namespace...)}, nil
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	var registry leaseRegistry
+	if err := UnmarshalCanonical(raw, &registry); err != nil {
+		return nil, nil, err
+	}
+	if registry.Version != FormatVersion || !bytes.Equal(registry.Namespace, namespace) {
+		return nil, nil, errors.New("invalid lease registry")
+	}
+	return raw, &registry, nil
+}
+
+func overlappingLeasePaths(a string, aSubtree bool, b string, bSubtree bool) bool {
+	if !aSubtree && !bSubtree {
+		return a == b
+	}
+	if aSubtree && bSubtree {
+		return pathWithinPrefix(a, b) || pathWithinPrefix(b, a)
+	}
+	if aSubtree {
+		return pathWithinPrefix(b, a)
+	}
+	return pathWithinPrefix(a, b)
+}
+
+func (s *Service) writeLeaseRegistry(ctx context.Context, namespace, expected []byte, registry *leaseRegistry) error {
+	registry.Revision++
+	next, err := MarshalCanonical(registry)
+	if err != nil {
+		return err
+	}
+	if s.authority != nil {
+		if err := s.authority.CompareAndSwap(ctx, authorityLeaseRegistryName(namespace), expected, next); err != nil {
+			return err
+		}
+	}
+	return s.datastore.Put(ctx, leaseRegistryDSKey(namespace), next)
+}
+
+func (s *Service) reserveLease(ctx context.Context, namespace []byte, lockPath string, subtree bool, lease *LeaseRecord, raw []byte) error {
+	expected, registry, err := s.currentLeaseRegistry(ctx, namespace)
+	if err != nil {
+		return err
+	}
+	now := s.now().UnixNano()
+	active := registry.Entries[:0]
+	for _, entry := range registry.Entries {
+		if entry.Expires <= now {
+			continue
+		}
+		if overlappingLeasePaths(lockPath, subtree, entry.Path, entry.Subtree) {
+			return ErrLocked
+		}
+		active = append(active, entry)
+	}
+	registry.Entries = append(active, leaseRegistryEntry{Lease: append([]byte(nil), raw...), Path: lockPath, Subtree: subtree, Expires: lease.Expires, Fencing: lease.Fencing, Holder: append([]byte(nil), lease.Holder...)})
+	return s.writeLeaseRegistry(ctx, namespace, expected, registry)
+}
+
+func (s *Service) replaceLeaseReservation(ctx context.Context, namespace []byte, lease *LeaseRecord, raw []byte) error {
+	expected, registry, err := s.currentLeaseRegistry(ctx, namespace)
+	if err != nil {
+		return err
+	}
+	replaced := false
+	for i := range registry.Entries {
+		entry := &registry.Entries[i]
+		if entry.Fencing == lease.Fencing && bytes.Equal(entry.Holder, lease.Holder) {
+			var existing LeaseRecord
+			if UnmarshalCanonical(entry.Lease, &existing) == nil && leaseScopesEqual(existing.Scope, lease.Scope) {
+				entry.Lease = append([]byte(nil), raw...)
+				entry.Expires = lease.Expires
+				replaced = true
+				break
+			}
+		}
+	}
+	if !replaced {
+		return ErrConflict
+	}
+	return s.writeLeaseRegistry(ctx, namespace, expected, registry)
+}
+
+func (s *Service) removeLeaseReservation(ctx context.Context, namespace []byte, lease *LeaseRecord) error {
+	expected, registry, err := s.currentLeaseRegistry(ctx, namespace)
+	if err != nil {
+		return err
+	}
+	entries := registry.Entries[:0]
+	removed := false
+	for _, entry := range registry.Entries {
+		var existing LeaseRecord
+		if !removed && entry.Fencing == lease.Fencing && bytes.Equal(entry.Holder, lease.Holder) &&
+			UnmarshalCanonical(entry.Lease, &existing) == nil && leaseScopesEqual(existing.Scope, lease.Scope) {
+			removed = true
+			continue
+		}
+		entries = append(entries, entry)
+	}
+	if !removed {
+		return ErrNotFound
+	}
+	registry.Entries = entries
+	return s.writeLeaseRegistry(ctx, namespace, expected, registry)
+}
+
+func leaseScopesEqual(a, b LeaseScope) bool {
+	return bytes.Equal(a.NameID, b.NameID) && bytes.Equal(a.Namespace, b.Namespace) && a.PathPrefix == b.PathPrefix
 }

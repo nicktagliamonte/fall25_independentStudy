@@ -3,6 +3,7 @@ package control
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,6 +34,33 @@ type signedNameRequest struct {
 type signedLeaseRequest struct {
 	Lease     *names.LeaseRecord `json:"lease,omitempty"`
 	LeaseCBOR []byte             `json:"lease_cbor,omitempty"`
+}
+
+type quorumVoteRequest struct {
+	Root       names.NamespaceRoot      `json:"root"`
+	RecordCBOR []byte                   `json:"record_cbor"`
+	Phase      names.QuorumPhase        `json:"phase"`
+	View       uint64                   `json:"view"`
+	Justify    *names.QuorumCertificate `json:"justify,omitempty"`
+}
+
+type certifiedNameRequest struct {
+	Certified     *names.CertifiedNameRecord `json:"certified,omitempty"`
+	CertifiedCBOR []byte                     `json:"certified_cbor,omitempty"`
+}
+
+func (request certifiedNameRequest) canonical() ([]byte, error) {
+	if len(request.CertifiedCBOR) != 0 {
+		var certified names.CertifiedNameRecord
+		if err := names.UnmarshalCanonical(request.CertifiedCBOR, &certified); err != nil {
+			return nil, err
+		}
+		return request.CertifiedCBOR, nil
+	}
+	if request.Certified == nil {
+		return nil, errors.New("certified or certified_cbor is required")
+	}
+	return names.MarshalCanonical(request.Certified)
 }
 
 func (request signedNameRequest) canonicalRecord() ([]byte, error) {
@@ -81,6 +109,86 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 			service.SetAuthority(exactNameAuthorityAdapter{authority})
 		}
 	}
+
+	// A storage node's persistent libp2p Ed25519 identity is also its BFT
+	// validator identity. Votes are journaled in the node datastore before the
+	// response is returned, preventing equivocation across process restarts.
+	var quorumJournal *names.QuorumJournal
+	if h != nil {
+		if private := h.Peerstore().PrivKey(h.ID()); private != nil {
+			if raw, err := private.Raw(); err == nil && len(raw) == ed25519.PrivateKeySize {
+				quorumJournal = &names.QuorumJournal{Datastore: stack.Datastore, Private: ed25519.PrivateKey(raw), Head: service.Get}
+			}
+		}
+	}
+
+	mux.HandleFunc("/v1/bft/votes", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w, http.MethodPost)
+			return
+		}
+		if quorumJournal == nil {
+			writeNamedError(w, errors.New("node has no persistent Ed25519 quorum identity"))
+			return
+		}
+		var request quorumVoteRequest
+		if err := decodeBoundedJSON(r, &request); err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		vote, err := quorumJournal.Vote(r.Context(), &request.Root, request.RecordCBOR, request.Phase, request.View, request.Justify)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		writeNamedJSON(w, http.StatusOK, vote)
+	})
+
+	mux.HandleFunc("/v1/bft/names", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w, http.MethodPost)
+			return
+		}
+		var request certifiedNameRequest
+		if err := decodeBoundedJSON(r, &request); err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		raw, err := request.canonical()
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		certified, record, err := service.CommitCertified(r.Context(), raw)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		writeNamedJSON(w, http.StatusCreated, map[string]any{"record": record, "certified": certified, "certified_cbor": raw})
+	})
+
+	mux.HandleFunc("/v1/bft/names/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			methodNotAllowed(w, http.MethodGet)
+			return
+		}
+		idText := strings.TrimPrefix(r.URL.Path, "/v1/bft/names/")
+		if idText == "" || strings.Contains(idText, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		id, err := names.ParseNameID(idText)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		certified, record, raw, err := service.GetCertified(r.Context(), id)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		writeNamedJSON(w, http.StatusOK, map[string]any{"record": record, "certified": certified, "certified_cbor": raw})
+	})
 
 	mux.HandleFunc("/v1/names/search", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
