@@ -196,8 +196,23 @@ func BenchmarkLogicalNameScale(b *testing.B) {
 // after retaining different amounts of history. Exact resolution reads one
 // current key and validates one record; it does not scan historical versions.
 func BenchmarkExactResolutionVersionIndependence(b *testing.B) {
-	const namesCount = 1_000
-	for _, versions := range []int{1, 4, 16} {
+	namesCount := 1_000
+	versionsList := []int{1, 4, 16}
+	if value := os.Getenv("TARSUS_RESOLVE_NAMES"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 {
+			b.Fatalf("TARSUS_RESOLVE_NAMES must be a positive integer: %q", value)
+		}
+		namesCount = parsed
+	}
+	if value := os.Getenv("TARSUS_RESOLVE_VERSIONS"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 {
+			b.Fatalf("TARSUS_RESOLVE_VERSIONS must be a positive integer: %q", value)
+		}
+		versionsList = []int{parsed}
+	}
+	for _, versions := range versionsList {
 		b.Run(fmt.Sprintf("names_%d/versions_%d", namesCount, versions), func(b *testing.B) {
 			b.StopTimer()
 			owner, private := testKeys(b)
