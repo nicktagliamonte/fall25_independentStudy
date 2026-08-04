@@ -321,6 +321,84 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 	return &certified, record, nil
 }
 
+// WriteBackCertified durably installs a commit certificate on a quorum
+// follower. Agreement is already established by the 2f+1 commit signatures;
+// re-entering the crash-only exact-owner protocol here would add an owner
+// election to every acknowledgment and can prevent BFT write completion.
+// The follower still rejects a stale certificate, an equal-generation fork,
+// or a different immutable v1 committee.
+func (s *Service) WriteBackCertified(ctx context.Context, raw []byte) (*CertifiedNameRecord, *NameRecord, error) {
+	var certified CertifiedNameRecord
+	if err := UnmarshalCanonical(raw, &certified); err != nil {
+		return nil, nil, err
+	}
+	record, err := certified.Validate(s.now())
+	if err != nil {
+		return nil, nil, err
+	}
+	id := bytesToNameID(record.NameID)
+	mu := s.lockFor(id)
+	mu.Lock()
+	defer mu.Unlock()
+
+	var previous *NameRecord
+	if currentRaw, currentErr := s.datastore.Get(ctx, currentKey(id)); currentErr == nil {
+		previous, err = DecodeNameRecord(currentRaw)
+		if err != nil {
+			return nil, nil, err
+		}
+		if previous.Generation > record.Generation {
+			return nil, nil, errors.New("certified write-back is stale")
+		}
+		if previous.Generation == record.Generation && !bytes.Equal(currentRaw, certified.Record) {
+			return nil, nil, errors.New("equal-generation certified-name fork")
+		}
+	} else if !errors.Is(currentErr, ds.ErrNotFound) {
+		return nil, nil, currentErr
+	}
+	rootRaw, err := MarshalCanonical(&certified.Root)
+	if err != nil {
+		return nil, nil, err
+	}
+	if existingRoot, rootErr := s.datastore.Get(ctx, namespaceRootKey(record.Namespace)); rootErr == nil {
+		if !bytes.Equal(existingRoot, rootRaw) {
+			return nil, nil, errors.New("namespace-root conflict; v1 committee membership is immutable")
+		}
+	} else if !errors.Is(rootErr, ds.ErrNotFound) {
+		return nil, nil, rootErr
+	}
+	if owner, ownerErr := s.datastore.Get(ctx, namespaceOwnerKey(record.Namespace)); ownerErr == nil {
+		if !bytes.Equal(owner, record.Owner) {
+			return nil, nil, errors.New("namespace is owned by a different key")
+		}
+	} else if !errors.Is(ownerErr, ds.ErrNotFound) {
+		return nil, nil, ownerErr
+	}
+	batch, err := s.datastore.Batch(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	for key, value := range map[ds.Key][]byte{
+		currentKey(id):                             certified.Record,
+		historyKey(id, record.Generation):          certified.Record,
+		certifiedKey(id):                           raw,
+		certifiedHistoryKey(id, record.Generation): raw,
+		namespaceRootKey(certified.Root.Namespace): rootRaw,
+		namespaceOwnerKey(record.Namespace):        append([]byte(nil), record.Owner...),
+	} {
+		if err := batch.Put(ctx, key, value); err != nil {
+			return nil, nil, err
+		}
+	}
+	if err := batch.Commit(ctx); err != nil {
+		return nil, nil, err
+	}
+	if previous == nil || previous.Generation < record.Generation {
+		s.updateSearchIndex(ctx, previous, record)
+	}
+	return &certified, record, nil
+}
+
 // GetCertified resolves only quorum-certified heads. It never upgrades an
 // unsigned or merely owner-signed DHT value into Byzantine agreement.
 func (s *Service) GetCertified(ctx context.Context, id NameID) (*CertifiedNameRecord, *NameRecord, []byte, error) {

@@ -167,6 +167,29 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 		writeNamedJSON(w, http.StatusCreated, map[string]any{"record": record, "certified": certified, "certified_cbor": raw})
 	})
 
+	mux.HandleFunc("/v1/bft/names/writeback", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			methodNotAllowed(w, http.MethodPost)
+			return
+		}
+		var request certifiedNameRequest
+		if err := decodeBoundedJSON(r, &request); err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		raw, err := request.canonical()
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		certified, record, err := service.WriteBackCertified(r.Context(), raw)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		writeNamedJSON(w, http.StatusOK, map[string]any{"record": record, "certified": certified, "certified_cbor": raw})
+	})
+
 	mux.HandleFunc("/v1/bft/names/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			methodNotAllowed(w, http.MethodGet)
