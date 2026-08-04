@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 	"sync"
@@ -118,6 +119,9 @@ func (s *Service) Create(ctx context.Context, raw []byte) (*NameRecord, error) {
 	if err := s.ensureNamespaceOwner(ctx, record); err != nil {
 		return nil, err
 	}
+	if err := s.validateDirectoryChildren(ctx, record); err != nil {
+		return nil, err
+	}
 	id := bytesToNameID(record.NameID)
 	if s.certificationRequired(ctx, id) {
 		return nil, ErrCertificationRequired
@@ -178,6 +182,9 @@ func (s *Service) Update(ctx context.Context, id NameID, expected uint64, raw []
 		return nil, ErrConflict
 	}
 	if err := next.Validate(s.now(), current); err != nil {
+		return nil, err
+	}
+	if err := s.validateDirectoryChildren(ctx, next); err != nil {
 		return nil, err
 	}
 	if err := s.checkPublication(ctx, next); err != nil {
@@ -251,6 +258,9 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 		}
 	}
 	if err := s.ensureNamespaceOwner(ctx, record); err != nil {
+		return nil, nil, err
+	}
+	if err := s.validateDirectoryChildren(ctx, record); err != nil {
 		return nil, nil, err
 	}
 	rootRaw, err := MarshalCanonical(&certified.Root)
@@ -587,6 +597,43 @@ func (s *Service) checkPublication(ctx context.Context, record *NameRecord) erro
 	return nil
 }
 
+// ValidateProposal applies state external to the signed record that an honest
+// quorum member must verify before voting: directory-link resolution and the
+// configured immutable-data publication predicate.
+func (s *Service) ValidateProposal(ctx context.Context, record *NameRecord) error {
+	if err := s.validateDirectoryChildren(ctx, record); err != nil {
+		return err
+	}
+	return s.checkPublication(ctx, record)
+}
+
+// validateDirectoryChildren makes directory membership a checked hierarchy
+// over stable child NameIDs. A child-content update changes the child's head,
+// not the parent, while membership changes remain generation-CAS operations on
+// the directory record itself.
+func (s *Service) validateDirectoryChildren(ctx context.Context, record *NameRecord) error {
+	if record == nil || record.Tombstone || record.Kind != "directory" {
+		return nil
+	}
+	for _, rawID := range record.DirectoryChildren {
+		childID := bytesToNameID(rawID)
+		child, _, err := s.Get(ctx, childID)
+		if err != nil {
+			return fmt.Errorf("directory child %x does not resolve: %w", rawID, err)
+		}
+		if child.Tombstone {
+			return fmt.Errorf("directory child %x is tombstoned", rawID)
+		}
+		if !bytes.Equal(child.Namespace, record.Namespace) || !bytes.Equal(child.Owner, record.Owner) {
+			return fmt.Errorf("directory child %x has a different namespace or owner", rawID)
+		}
+		if path.Dir(child.Path) != record.Path {
+			return fmt.Errorf("directory child %s is not directly below %s", child.Path, record.Path)
+		}
+	}
+	return nil
+}
+
 func (s *Service) persist(ctx context.Context, id NameID, generation uint64, raw []byte) error {
 	batch, err := s.datastore.Batch(ctx)
 	if err != nil {
@@ -812,6 +859,9 @@ func (s *Service) Rename(ctx context.Context, oldID, newID NameID, oldExpected u
 		return errors.New("rename records do not match requested names")
 	}
 	if err := newRecord.Validate(s.now(), nil); err != nil {
+		return err
+	}
+	if err := s.validateDirectoryChildren(ctx, newRecord); err != nil {
 		return err
 	}
 	if err := tombstone.Validate(s.now(), oldRecord); err != nil {

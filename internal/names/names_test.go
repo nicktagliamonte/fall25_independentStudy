@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -614,6 +615,74 @@ func TestEncryptedChunkReuseAndVerification(t *testing.T) {
 	rebuilt.Reset()
 	if err := ReconstructObject(context.Background(), second.Manifest, source, key, &rebuilt); err == nil {
 		t.Fatal("tampered chunk reconstructed")
+	}
+}
+
+func TestNamedDirectoryLinksStableChildNames(t *testing.T) {
+	owner, private := testKeys(t)
+	namespace, _ := NewNamespaceID()
+	service := testService()
+	child := testRecord(t, namespace, "/projects/a.dat", owner, private, 0, nil)
+	child.Policy.StrictPublish = false
+	_ = child.Sign(private)
+	childRaw, _ := child.Marshal()
+	if _, err := service.Create(context.Background(), childRaw); err != nil {
+		t.Fatal(err)
+	}
+	directoryID := DeriveNameID(namespace, "/projects")
+	policy := DefaultPolicy()
+	policy.StrictPublish = false
+	policy.Encryption = "public"
+	directory := &NameRecord{
+		Version: FormatVersion, Namespace: namespace[:], NameID: directoryID[:],
+		Path: "/projects", Kind: "directory", DirectoryChildren: [][]byte{append([]byte(nil), child.NameID...)},
+		Owner: owner, Policy: policy, Timestamp: time.Now().UnixNano(), Nonce: bytes.Repeat([]byte{31}, 16),
+	}
+	if err := directory.Sign(private); err != nil {
+		t.Fatal(err)
+	}
+	directoryRaw, _ := directory.Marshal()
+	if _, err := service.Create(context.Background(), directoryRaw); err != nil {
+		t.Fatal(err)
+	}
+
+	updatedChild := testRecord(t, namespace, child.Path, owner, private, 1, child)
+	updatedChild.Policy.StrictPublish = false
+	_ = updatedChild.Sign(private)
+	updatedChildRaw, _ := updatedChild.Marshal()
+	if _, err := service.Update(context.Background(), bytesToNameID(child.NameID), 0, updatedChildRaw); err != nil {
+		t.Fatal(err)
+	}
+	resolvedDirectory, _, err := service.Get(context.Background(), directoryID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolvedDirectory.Generation != 0 || len(resolvedDirectory.DirectoryChildren) != 1 {
+		t.Fatalf("file update rewrote directory: %+v", resolvedDirectory)
+	}
+
+	outside := testRecord(t, namespace, "/elsewhere.dat", owner, private, 0, nil)
+	outside.Policy.StrictPublish = false
+	_ = outside.Sign(private)
+	outsideRaw, _ := outside.Marshal()
+	if _, err := service.Create(context.Background(), outsideRaw); err != nil {
+		t.Fatal(err)
+	}
+	invalid := *directory
+	invalid.Generation = 1
+	previousHash, _ := directory.Hash()
+	invalid.PreviousHash = previousHash[:]
+	invalid.DirectoryChildren = [][]byte{append([]byte(nil), child.NameID...), append([]byte(nil), outside.NameID...)}
+	sort.Slice(invalid.DirectoryChildren, func(i, j int) bool {
+		return bytes.Compare(invalid.DirectoryChildren[i], invalid.DirectoryChildren[j]) < 0
+	})
+	invalid.Timestamp++
+	invalid.Nonce = bytes.Repeat([]byte{32}, 16)
+	invalid.Signature = nil
+	_ = invalid.Sign(private)
+	invalidRaw, _ := invalid.Marshal()
+	if _, err := service.Update(context.Background(), directoryID, 0, invalidRaw); err == nil {
+		t.Fatal("directory accepted a child outside its direct path")
 	}
 }
 

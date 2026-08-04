@@ -112,4 +112,36 @@ func TestNamedObjectHTTPCreateResolveUpdateAndSearch(t *testing.T) {
 	if len(search.Records) != 1 || search.Complete {
 		t.Fatalf("search=%+v", search)
 	}
+	directoryID := names.DeriveNameID(namespace, "/api")
+	directoryPolicy := names.DefaultPolicy()
+	directoryPolicy.StrictPublish = false
+	directoryPolicy.Encryption = "public"
+	directory := &names.NameRecord{
+		Version: names.FormatVersion, Namespace: namespace[:], NameID: directoryID[:],
+		Path: "/api", Kind: "directory", DirectoryChildren: [][]byte{append([]byte(nil), nameID[:]...)},
+		Owner: public, Policy: directoryPolicy, Timestamp: time.Now().UnixNano(), Nonce: bytes.Repeat([]byte{9}, 16),
+	}
+	if err := directory.Sign(private); err != nil {
+		t.Fatal(err)
+	}
+	response = postRecord(http.MethodPost, "/v1/names", 0, directory)
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("directory create status=%d", response.StatusCode)
+	}
+	response.Body.Close()
+	response, err = http.Get(server.URL + "/v1/directories/" + directoryID.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var listing struct {
+		Directory names.NameRecord   `json:"directory"`
+		Children  []names.NameRecord `json:"children"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&listing); err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	if listing.Directory.Kind != "directory" || len(listing.Children) != 1 || listing.Children[0].Generation != 1 {
+		t.Fatalf("directory listing=%+v", listing)
+	}
 }

@@ -343,6 +343,32 @@ func TestConcurrentQuorumVoteCannotEquivocate(t *testing.T) {
 	}
 }
 
+func TestQuorumJournalRejectsProposalThatFailsReadiness(t *testing.T) {
+	now := time.Now()
+	owner, ownerPrivate := testKeys(t)
+	validator, validatorPrivate := testKeys(t)
+	namespace, _ := NewNamespaceID()
+	validators := [][]byte{validator}
+	for len(validators) < 4 {
+		public, _ := testKeys(t)
+		validators = append(validators, public)
+	}
+	root := &NamespaceRoot{Version: FormatVersion, Namespace: namespace[:], Validators: validators, FaultThreshold: 1, CommitteeEpoch: 1, Timestamp: now.UnixNano(), Nonce: bytes.Repeat([]byte{81}, 16)}
+	_ = root.Sign(ownerPrivate)
+	record := testRecord(t, namespace, "/not-ready", owner, ownerPrivate, 0, nil)
+	raw, _ := record.Marshal()
+	journal := &QuorumJournal{
+		Datastore: dssync.MutexWrap(ds.NewMapDatastore()), Private: validatorPrivate,
+		Now: func() time.Time { return now },
+		Proposal: func(context.Context, *NameRecord) error {
+			return errors.New("strict provider target not met")
+		},
+	}
+	if _, err := journal.Vote(context.Background(), root, raw, PhasePrepare, 1, nil); err == nil {
+		t.Fatal("validator voted before proposal readiness")
+	}
+}
+
 func curvePublic(private []byte) ([]byte, error) {
 	return curve25519.X25519(private, curve25519.Basepoint)
 }

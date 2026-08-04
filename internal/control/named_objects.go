@@ -10,8 +10,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -117,7 +119,7 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 	if h != nil {
 		if private := h.Peerstore().PrivKey(h.ID()); private != nil {
 			if raw, err := private.Raw(); err == nil && len(raw) == ed25519.PrivateKeySize {
-				quorumJournal = &names.QuorumJournal{Datastore: stack.Datastore, Private: ed25519.PrivateKey(raw), Head: service.GetAgreementHead}
+				quorumJournal = &names.QuorumJournal{Datastore: stack.Datastore, Private: ed25519.PrivateKey(raw), Head: service.GetAgreementHead, Proposal: service.ValidateProposal}
 			}
 		}
 	}
@@ -226,6 +228,75 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 			return
 		}
 		writeNamedJSON(w, http.StatusOK, result)
+	})
+
+	// A directory is a mutable NameRecord whose signed child set contains
+	// stable NameIDs. Listing resolves each child head, so file updates do not
+	// rewrite the parent and stale/tampered child metadata is never trusted.
+	mux.HandleFunc("/v1/directories/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			methodNotAllowed(w, http.MethodGet)
+			return
+		}
+		idText := strings.TrimPrefix(r.URL.Path, "/v1/directories/")
+		if idText == "" || strings.Contains(idText, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		id, err := names.ParseNameID(idText)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		directoryRecord, _, err := service.Get(r.Context(), id)
+		if err != nil {
+			writeNamedError(w, err)
+			return
+		}
+		if directoryRecord.Tombstone || directoryRecord.Kind != "directory" {
+			writeNamedError(w, errors.New("name is not a live directory"))
+			return
+		}
+		children := make([]*names.NameRecord, len(directoryRecord.DirectoryChildren))
+		jobs := make(chan int)
+		var firstError error
+		var errorMu sync.Mutex
+		workers := 16
+		if len(children) < workers {
+			workers = len(children)
+		}
+		var wait sync.WaitGroup
+		for worker := 0; worker < workers; worker++ {
+			wait.Add(1)
+			go func() {
+				defer wait.Done()
+				for index := range jobs {
+					var childID names.NameID
+					copy(childID[:], directoryRecord.DirectoryChildren[index])
+					child, _, childErr := service.Get(r.Context(), childID)
+					if childErr != nil {
+						errorMu.Lock()
+						if firstError == nil {
+							firstError = fmt.Errorf("directory child %s: %w", childID.String(), childErr)
+						}
+						errorMu.Unlock()
+						continue
+					}
+					children[index] = child
+				}
+			}()
+		}
+		for index := range directoryRecord.DirectoryChildren {
+			jobs <- index
+		}
+		close(jobs)
+		wait.Wait()
+		if firstError != nil {
+			writeNamedError(w, firstError)
+			return
+		}
+		sort.Slice(children, func(i, j int) bool { return children[i].Path < children[j].Path })
+		writeNamedJSON(w, http.StatusOK, map[string]any{"directory": directoryRecord, "children": children})
 	})
 
 	mux.HandleFunc("/v1/names/preflight", func(w http.ResponseWriter, r *http.Request) {
@@ -384,6 +455,9 @@ func namedPolicyCommitHook(stack *mystore.Stack, repair *mystore.RepairProtocol)
 			_ = stack.Datastore.Put(context.Background(), ds.NewKey("/mutable/gc/"+fmt.Sprintf("%x", record.NameID)), marker)
 			return
 		}
+		if record.Kind == "directory" {
+			return
+		}
 		if repair == nil {
 			return
 		}
@@ -466,7 +540,7 @@ func (a logicalNameIndexAdapter) Query(ctx context.Context, prefix, suffix strin
 
 func strictPublicationGate(stack *mystore.Stack, h host.Host, repair *mystore.RepairProtocol) names.PublicationGate {
 	return func(ctx context.Context, record *names.NameRecord) error {
-		if record.Tombstone {
+		if record.Tombstone || record.Kind == "directory" {
 			return nil
 		}
 		var manifestKey mystore.Key

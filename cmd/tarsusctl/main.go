@@ -17,6 +17,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	pathpkg "path"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,27 +45,40 @@ func main() {
 }
 
 func run(args []string) error {
-	if len(args) < 2 || args[0] != "object" {
+	if len(args) < 2 {
 		return usageError()
 	}
-	switch args[1] {
-	case "put":
-		return runPut(args[2:], false)
-	case "update":
-		return runPut(args[2:], true)
-	case "get":
-		return runGet(args[2:])
-	case "delete":
-		return runDelete(args[2:])
-	case "search":
-		return runSearch(args[2:])
-	default:
-		return usageError()
+	switch args[0] {
+	case "object":
+		switch args[1] {
+		case "put":
+			return runPut(args[2:], false)
+		case "update":
+			return runPut(args[2:], true)
+		case "get":
+			return runGet(args[2:])
+		case "delete":
+			return runDelete(args[2:])
+		case "search":
+			return runSearch(args[2:])
+		}
+	case "directory":
+		switch args[1] {
+		case "mkdir":
+			return runDirectoryMkdir(args[2:])
+		case "ls":
+			return runDirectoryList(args[2:])
+		case "link":
+			return runDirectoryMutation(args[2:], true)
+		case "unlink":
+			return runDirectoryMutation(args[2:], false)
+		}
 	}
+	return usageError()
 }
 
 func usageError() error {
-	return errors.New("usage: tarsusctl object put|update|get|delete|search [flags]")
+	return errors.New("usage: tarsusctl object put|update|get|delete|search [flags] | directory mkdir|ls|link|unlink [flags]")
 }
 
 func commonClient(set *flag.FlagSet) (*string, *time.Duration) {
@@ -380,6 +395,190 @@ func runSearch(args []string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(response)
+}
+
+func runDirectoryMkdir(args []string) error {
+	set := flag.NewFlagSet("directory mkdir", flag.ContinueOnError)
+	api, timeout := commonClient(set)
+	namespaceText := set.String("namespace", "", "64-hex namespace ID (generated when omitted)")
+	pathValue := set.String("path", "", "absolute directory path")
+	signingKeyText := set.String("signing-key", "", "Ed25519 owner private key in hex")
+	searchable := set.Bool("searchable", true, "include the directory in secondary name search")
+	if err := set.Parse(args); err != nil {
+		return err
+	}
+	if *pathValue == "" || *signingKeyText == "" {
+		return errors.New("--path and --signing-key are required")
+	}
+	privateKey, err := parseEd25519Private(*signingKeyText)
+	if err != nil {
+		return err
+	}
+	normalized, err := names.NormalizePath(*pathValue)
+	if err != nil {
+		return err
+	}
+	var namespace names.NamespaceID
+	if *namespaceText == "" {
+		namespace, err = names.NewNamespaceID()
+	} else {
+		namespace, err = names.ParseNamespaceID(*namespaceText)
+	}
+	if err != nil {
+		return err
+	}
+	policy := names.DefaultPolicy()
+	policy.Encryption = "public"
+	policy.KeyEpoch = 0
+	policy.Searchable = *searchable
+	id := names.DeriveNameID(namespace, normalized)
+	record := &names.NameRecord{
+		Version: names.FormatVersion, Namespace: namespace[:], NameID: id[:],
+		Path: normalized, Kind: "directory", Owner: privateKey.Public().(ed25519.PublicKey),
+		Policy: policy, Timestamp: time.Now().UnixNano(), Nonce: randomNonce(),
+	}
+	if err := record.Sign(privateKey); err != nil {
+		return err
+	}
+	raw, err := record.Marshal()
+	if err != nil {
+		return err
+	}
+	c := &client{base: strings.TrimRight(*api, "/"), http: &http.Client{Timeout: *timeout}}
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	var response any
+	if err := c.json(ctx, http.MethodPost, "/v1/names", map[string]any{"expected_generation": 0, "record_cbor": raw}, &response); err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{"namespace": namespace.String(), "name_id": id.String(), "path": normalized, "response": response})
+}
+
+func runDirectoryList(args []string) error {
+	set := flag.NewFlagSet("directory ls", flag.ContinueOnError)
+	api, timeout := commonClient(set)
+	nameText := set.String("name-id", "", "directory NameID")
+	if err := set.Parse(args); err != nil {
+		return err
+	}
+	id, err := names.ParseNameID(*nameText)
+	if err != nil {
+		return err
+	}
+	c := &client{base: strings.TrimRight(*api, "/"), http: &http.Client{Timeout: *timeout}}
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	var response any
+	if err := c.json(ctx, http.MethodGet, "/v1/directories/"+id.String(), nil, &response); err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(response)
+}
+
+func runDirectoryMutation(args []string, link bool) error {
+	operation := "unlink"
+	if link {
+		operation = "link"
+	}
+	set := flag.NewFlagSet("directory "+operation, flag.ContinueOnError)
+	api, timeout := commonClient(set)
+	directoryText := set.String("name-id", "", "directory NameID")
+	childText := set.String("child-name-id", "", "direct child NameID")
+	signingKeyText := set.String("signing-key", "", "Ed25519 directory-owner private key in hex")
+	if err := set.Parse(args); err != nil {
+		return err
+	}
+	directoryID, err := names.ParseNameID(*directoryText)
+	if err != nil {
+		return err
+	}
+	childID, err := names.ParseNameID(*childText)
+	if err != nil {
+		return err
+	}
+	privateKey, err := parseEd25519Private(*signingKeyText)
+	if err != nil {
+		return err
+	}
+	c := &client{base: strings.TrimRight(*api, "/"), http: &http.Client{Timeout: *timeout}}
+	ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+	defer cancel()
+	current, _, err := c.getRecord(ctx, directoryID)
+	if err != nil {
+		return err
+	}
+	if current.Tombstone || current.Kind != "directory" {
+		return errors.New("--name-id is not a live directory")
+	}
+	if !bytes.Equal(current.Owner, privateKey.Public().(ed25519.PublicKey)) {
+		return errors.New("signing key is not the directory namespace owner")
+	}
+	if link {
+		child, _, childErr := c.getRecord(ctx, childID)
+		if childErr != nil {
+			return childErr
+		}
+		if child.Tombstone || !bytes.Equal(child.Namespace, current.Namespace) || pathpkg.Dir(child.Path) != current.Path {
+			return errors.New("child must be a live direct path child in the same namespace")
+		}
+	}
+	next := *current
+	next.DirectoryChildren = cloneByteSlices(current.DirectoryChildren)
+	found := -1
+	for index, existing := range next.DirectoryChildren {
+		if bytes.Equal(existing, childID[:]) {
+			found = index
+			break
+		}
+	}
+	if link {
+		if found >= 0 {
+			return errors.New("child is already linked")
+		}
+		next.DirectoryChildren = append(next.DirectoryChildren, append([]byte(nil), childID[:]...))
+		sort.Slice(next.DirectoryChildren, func(i, j int) bool { return bytes.Compare(next.DirectoryChildren[i], next.DirectoryChildren[j]) < 0 })
+	} else {
+		if found < 0 {
+			return errors.New("child is not linked")
+		}
+		next.DirectoryChildren = append(next.DirectoryChildren[:found], next.DirectoryChildren[found+1:]...)
+	}
+	previousHash, err := current.Hash()
+	if err != nil {
+		return err
+	}
+	next.Generation = current.Generation + 1
+	next.PreviousHash = previousHash[:]
+	next.Timestamp = time.Now().UnixNano()
+	next.Nonce = randomNonce()
+	next.Signature = nil
+	next.Capability = nil
+	if err := next.Sign(privateKey); err != nil {
+		return err
+	}
+	raw, err := next.Marshal()
+	if err != nil {
+		return err
+	}
+	var response any
+	if err := c.json(ctx, http.MethodPut, "/v1/names/"+directoryID.String(), map[string]any{"expected_generation": current.Generation, "record_cbor": raw}, &response); err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(response)
+}
+
+func randomNonce() []byte {
+	nonce := make([]byte, 16)
+	_, _ = rand.Read(nonce)
+	return nonce
+}
+
+func cloneByteSlices(values [][]byte) [][]byte {
+	cloned := make([][]byte, len(values))
+	for index := range values {
+		cloned[index] = append([]byte(nil), values[index]...)
+	}
+	return cloned
 }
 
 func (c *client) putBlock(ctx context.Context, data []byte) (names.ContentKey, error) {

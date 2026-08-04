@@ -173,3 +173,50 @@ func BenchmarkLogicalNameScale(b *testing.B) {
 		}
 	}
 }
+
+// BenchmarkExactResolutionVersionIndependence measures the current-head path
+// after retaining different amounts of history. Exact resolution reads one
+// current key and validates one record; it does not scan historical versions.
+func BenchmarkExactResolutionVersionIndependence(b *testing.B) {
+	const namesCount = 1_000
+	for _, versions := range []int{1, 4, 16} {
+		b.Run(fmt.Sprintf("names_%d/versions_%d", namesCount, versions), func(b *testing.B) {
+			b.StopTimer()
+			owner, private := testKeys(b)
+			namespace, _ := NewNamespaceID()
+			service := testService()
+			var target NameID
+			for nameNumber := 0; nameNumber < namesCount; nameNumber++ {
+				path := fmt.Sprintf("/resolve/%09d.dat", nameNumber)
+				current := testRecord(b, namespace, path, owner, private, 0, nil)
+				current.Policy.StrictPublish = false
+				_ = current.Sign(private)
+				raw, _ := current.Marshal()
+				if _, err := service.Create(context.Background(), raw); err != nil {
+					b.Fatal(err)
+				}
+				for generation := 1; generation < versions; generation++ {
+					next := testRecord(b, namespace, path, owner, private, uint64(generation), current)
+					next.Policy.StrictPublish = false
+					_ = next.Sign(private)
+					raw, _ = next.Marshal()
+					if _, err := service.Update(context.Background(), bytesToNameID(next.NameID), uint64(generation-1), raw); err != nil {
+						b.Fatal(err)
+					}
+					current = next
+				}
+				if nameNumber == namesCount-1 {
+					target = bytesToNameID(current.NameID)
+				}
+			}
+			b.ReportMetric(float64(namesCount*versions), "retained_records")
+			b.ReportAllocs()
+			b.StartTimer()
+			for iteration := 0; iteration < b.N; iteration++ {
+				if _, _, err := service.Get(context.Background(), target); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}

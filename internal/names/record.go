@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const maxDirectoryChildren = 4096
+
 type Permissions uint8
 
 const (
@@ -192,15 +194,26 @@ func validateRecordEnvelope(r *NameRecord, now time.Time) error {
 		if len(r.ManifestKey) != 0 || len(r.DirectoryChildren) != 0 {
 			return errors.New("tombstone may not reference content")
 		}
-	} else if len(r.ManifestKey) != 32 {
-		return errors.New("live record requires a 32-byte manifest key")
+	} else if r.Kind == "file" && len(r.ManifestKey) != 32 {
+		return errors.New("live file requires a 32-byte manifest key")
+	} else if r.Kind == "directory" && len(r.ManifestKey) != 0 {
+		return errors.New("directory membership is stored as child NameIDs, not a content manifest")
 	}
 	if r.Kind != "directory" && len(r.DirectoryChildren) != 0 {
 		return errors.New("only directories may list child NameIDs")
 	}
-	for _, child := range r.DirectoryChildren {
+	if len(r.DirectoryChildren) > maxDirectoryChildren {
+		return fmt.Errorf("directory exceeds %d direct children", maxDirectoryChildren)
+	}
+	for index, child := range r.DirectoryChildren {
 		if len(child) != 32 {
 			return errors.New("directory child must be a NameID")
+		}
+		if bytes.Equal(child, r.NameID) {
+			return errors.New("directory may not contain itself")
+		}
+		if index > 0 && bytes.Compare(r.DirectoryChildren[index-1], child) >= 0 {
+			return errors.New("directory child NameIDs must be unique and sorted")
 		}
 	}
 	if err := r.Policy.Validate(); err != nil {

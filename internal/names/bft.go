@@ -373,7 +373,11 @@ type QuorumJournal struct {
 	// Head returns the validator's verified current head. Configuring it makes
 	// every vote enforce the generation/previous-hash transition locally.
 	Head func(context.Context, NameID) (*NameRecord, []byte, error)
-	mu   sync.Mutex
+	// Proposal applies service-level readiness checks that are not self-contained
+	// in the record, such as provider-policy satisfaction and directory-child
+	// resolution. Honest validators run it before persisting any vote.
+	Proposal func(context.Context, *NameRecord) error
+	mu       sync.Mutex
 }
 
 func (j *QuorumJournal) now() time.Time {
@@ -416,6 +420,11 @@ func (j *QuorumJournal) Vote(ctx context.Context, root *NamespaceRoot, raw []byt
 	}
 	if !bytes.Equal(record.Namespace, root.Namespace) || !bytes.Equal(record.Owner, root.Owner) {
 		return nil, errors.New("proposal is outside namespace root")
+	}
+	if j.Proposal != nil {
+		if err := j.Proposal(ctx, record); err != nil {
+			return nil, fmt.Errorf("proposal readiness: %w", err)
+		}
 	}
 	id := bytesToNameID(record.NameID)
 	if j.Head != nil {
