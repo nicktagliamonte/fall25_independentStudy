@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	ds "github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
 	"golang.org/x/crypto/curve25519"
 )
 
@@ -81,6 +83,46 @@ func BenchmarkSevenMemberQuorumCertificateValidate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := qc.Validate(root, now); err != nil {
 			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSevenMemberThreePhaseCommit(b *testing.B) {
+	now := time.Now()
+	owner, ownerPrivate := testKeys(b)
+	namespace, _ := NewNamespaceID()
+	validators := make([][]byte, 7)
+	privateKeys := make([]ed25519.PrivateKey, 7)
+	for i := range validators {
+		validators[i], privateKeys[i] = testKeys(b)
+	}
+	root := &NamespaceRoot{Version: FormatVersion, Namespace: namespace[:], Validators: validators, FaultThreshold: 2, CommitteeEpoch: 1, Timestamp: now.UnixNano(), Nonce: bytes.Repeat([]byte{11}, 16)}
+	if err := root.Sign(ownerPrivate); err != nil {
+		b.Fatal(err)
+	}
+	journals := make([]*QuorumJournal, 5)
+	for i := range journals {
+		journals[i] = &QuorumJournal{Datastore: dssync.MutexWrap(ds.NewMapDatastore()), Private: privateKeys[i], Now: func() time.Time { return now }}
+	}
+	b.ResetTimer()
+	for iteration := 0; iteration < b.N; iteration++ {
+		record := testRecord(b, namespace, fmt.Sprintf("/bench/commit/%09d", iteration), owner, ownerPrivate, 0, nil)
+		raw, _ := record.Marshal()
+		var justify *QuorumCertificate
+		for _, phase := range []QuorumPhase{PhasePrepare, PhasePrecommit, PhaseCommit} {
+			votes := make([]QuorumVote, 5)
+			for validator := range journals {
+				vote, err := journals[validator].Vote(context.Background(), root, raw, phase, 1, justify)
+				if err != nil {
+					b.Fatal(err)
+				}
+				votes[validator] = *vote
+			}
+			qc, err := AssembleQuorumCertificate(root, votes, now)
+			if err != nil {
+				b.Fatal(err)
+			}
+			justify = qc
 		}
 	}
 }
