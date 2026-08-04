@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	ds "github.com/ipfs/go-datastore"
@@ -372,6 +373,7 @@ type QuorumJournal struct {
 	// Head returns the validator's verified current head. Configuring it makes
 	// every vote enforce the generation/previous-hash transition locally.
 	Head func(context.Context, NameID) (*NameRecord, []byte, error)
+	mu   sync.Mutex
 }
 
 func (j *QuorumJournal) now() time.Time {
@@ -390,7 +392,12 @@ func quorumLockKey(id NameID, generation uint64, validator []byte) ds.Key {
 }
 
 func (j *QuorumJournal) Vote(ctx context.Context, root *NamespaceRoot, raw []byte, phase QuorumPhase, view uint64, justify *QuorumCertificate) (*QuorumVote, error) {
-	if j == nil || j.Datastore == nil || len(j.Private) != ed25519.PrivateKeySize {
+	if j == nil {
+		return nil, errors.New("quorum journal is not configured")
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.Datastore == nil || len(j.Private) != ed25519.PrivateKeySize {
 		return nil, errors.New("quorum journal is not configured")
 	}
 	if err := root.Validate(j.now()); err != nil {

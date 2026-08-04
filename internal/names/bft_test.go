@@ -6,6 +6,8 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -186,6 +188,8 @@ func TestCertifiedCommitIsTheResolvedBFTHead(t *testing.T) {
 	certifiedRaw, _ := MarshalCanonical(certified)
 	network := &memoryNameValueStore{values: map[string][]byte{}}
 	service := NewService(dssync.MutexWrap(ds.NewMapDatastore()), network, nil)
+	authority := &memoryCASAuthority{values: map[string][]byte{}}
+	service.SetAuthority(authority)
 	committed, head, err := service.CommitCertified(context.Background(), certifiedRaw)
 	if err != nil {
 		t.Fatal(err)
@@ -230,6 +234,37 @@ func TestCertifiedCommitIsTheResolvedBFTHead(t *testing.T) {
 	if _, _, err := other.CommitCertified(context.Background(), shortRaw); err == nil {
 		t.Fatal("service committed a four-of-seven certificate")
 	}
+	next := testRecord(t, namespace, "/bft/committed", owner, ownerPrivate, 1, record)
+	next.Policy.StrictPublish = false
+	_ = next.Sign(ownerPrivate)
+	nextRaw, _ := next.Marshal()
+	secondService := NewService(dssync.MutexWrap(ds.NewMapDatastore()), nil, nil)
+	secondService.SetAuthority(authority)
+	if _, err := secondService.Update(context.Background(), id, 0, nextRaw); !errors.Is(err, ErrCertificationRequired) {
+		t.Fatalf("legacy update after certified commit = %v, want ErrCertificationRequired", err)
+	}
+	otherValidators := make([][]byte, 7)
+	otherPrivate := make([]ed25519.PrivateKey, 7)
+	for i := range otherValidators {
+		otherValidators[i], otherPrivate[i] = testKeys(t)
+	}
+	otherRoot := &NamespaceRoot{Version: FormatVersion, Namespace: namespace[:], Validators: otherValidators, FaultThreshold: 2, CommitteeEpoch: 1, Timestamp: now.UnixNano(), Nonce: bytes.Repeat([]byte{61}, 16)}
+	_ = otherRoot.Sign(ownerPrivate)
+	otherRecord := testRecord(t, namespace, "/bft/other-committee", owner, ownerPrivate, 0, nil)
+	otherRecord.Policy.StrictPublish = false
+	_ = otherRecord.Sign(ownerPrivate)
+	otherRecordRaw, _ := otherRecord.Marshal()
+	otherHash := sha256.Sum256(otherRecordRaw)
+	otherVotes := make([]QuorumVote, 5)
+	for i := range otherVotes {
+		otherVotes[i] = QuorumVote{Version: FormatVersion, Namespace: namespace[:], NameID: otherRecord.NameID, RecordHash: otherHash[:], CommitteeEpoch: 1, View: 1, Phase: PhaseCommit, Timestamp: now.UnixNano(), Nonce: bytes.Repeat([]byte{byte(70 + i)}, 16)}
+		_ = otherVotes[i].Sign(otherPrivate[i])
+	}
+	otherQC, _ := AssembleQuorumCertificate(otherRoot, otherVotes, now)
+	otherCertifiedRaw, _ := MarshalCanonical(&CertifiedNameRecord{Version: FormatVersion, Root: *otherRoot, Record: otherRecordRaw, Commit: *otherQC})
+	if _, _, err := secondService.CommitCertified(context.Background(), otherCertifiedRaw); err == nil {
+		t.Fatal("shared authority accepted a second committee for one namespace")
+	}
 }
 
 func TestQuorumJournalRejectsProposalThatSkipsCommittedHead(t *testing.T) {
@@ -253,6 +288,52 @@ func TestQuorumJournalRejectsProposalThatSkipsCommittedHead(t *testing.T) {
 	}}
 	if _, err := journal.Vote(context.Background(), root, skippedRaw, PhasePrepare, 1, nil); err == nil {
 		t.Fatal("validator voted for a proposal that skipped a generation")
+	}
+}
+
+func TestConcurrentQuorumVoteCannotEquivocate(t *testing.T) {
+	now := time.Now()
+	owner, ownerPrivate := testKeys(t)
+	validator, validatorPrivate := testKeys(t)
+	namespace, _ := NewNamespaceID()
+	validators := [][]byte{validator}
+	for len(validators) < 4 {
+		public, _ := testKeys(t)
+		validators = append(validators, public)
+	}
+	root := &NamespaceRoot{Version: FormatVersion, Namespace: namespace[:], Validators: validators, FaultThreshold: 1, CommitteeEpoch: 1, Timestamp: now.UnixNano(), Nonce: bytes.Repeat([]byte{51}, 16)}
+	_ = root.Sign(ownerPrivate)
+	first := testRecord(t, namespace, "/concurrent-vote", owner, ownerPrivate, 0, nil)
+	second := *first
+	alternate := sha256.Sum256([]byte("other content"))
+	second.ManifestKey = alternate[:]
+	_ = second.Sign(ownerPrivate)
+	firstRaw, _ := first.Marshal()
+	secondRaw, _ := second.Marshal()
+	journal := &QuorumJournal{Datastore: dssync.MutexWrap(ds.NewMapDatastore()), Private: validatorPrivate, Now: func() time.Time { return now }}
+	results := make(chan error, 2)
+	var wait sync.WaitGroup
+	for _, raw := range [][]byte{firstRaw, secondRaw} {
+		raw := raw
+		wait.Add(1)
+		go func() {
+			defer wait.Done()
+			_, err := journal.Vote(context.Background(), root, raw, PhasePrepare, 1, nil)
+			results <- err
+		}()
+	}
+	wait.Wait()
+	close(results)
+	successes, rejected := 0, 0
+	for err := range results {
+		if err == nil {
+			successes++
+		} else {
+			rejected++
+		}
+	}
+	if successes != 1 || rejected != 1 {
+		t.Fatalf("concurrent votes: successes=%d rejected=%d", successes, rejected)
 	}
 }
 

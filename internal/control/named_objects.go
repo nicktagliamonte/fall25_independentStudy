@@ -117,7 +117,7 @@ func registerNamedObjectHandlers(mux *http.ServeMux, stack *mystore.Stack, h hos
 	if h != nil {
 		if private := h.Peerstore().PrivKey(h.ID()); private != nil {
 			if raw, err := private.Raw(); err == nil && len(raw) == ed25519.PrivateKeySize {
-				quorumJournal = &names.QuorumJournal{Datastore: stack.Datastore, Private: ed25519.PrivateKey(raw), Head: service.Get}
+				quorumJournal = &names.QuorumJournal{Datastore: stack.Datastore, Private: ed25519.PrivateKey(raw), Head: service.GetAgreementHead}
 			}
 		}
 	}

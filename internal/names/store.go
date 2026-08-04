@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("mutable name not found")
-	ErrConflict = errors.New("mutable name generation conflict")
-	ErrLocked   = errors.New("mutable name lease is held")
+	ErrNotFound              = errors.New("mutable name not found")
+	ErrConflict              = errors.New("mutable name generation conflict")
+	ErrLocked                = errors.New("mutable name lease is held")
+	ErrCertificationRequired = errors.New("mutable name requires a quorum certificate")
 )
 
 const (
@@ -118,6 +119,9 @@ func (s *Service) Create(ctx context.Context, raw []byte) (*NameRecord, error) {
 		return nil, err
 	}
 	id := bytesToNameID(record.NameID)
+	if s.certificationRequired(ctx, id) {
+		return nil, ErrCertificationRequired
+	}
 	mu := s.lockFor(id)
 	mu.Lock()
 	defer mu.Unlock()
@@ -146,6 +150,9 @@ func (s *Service) Create(ctx context.Context, raw []byte) (*NameRecord, error) {
 }
 
 func (s *Service) Update(ctx context.Context, id NameID, expected uint64, raw []byte) (*NameRecord, error) {
+	if s.certificationRequired(ctx, id) {
+		return nil, ErrCertificationRequired
+	}
 	next, err := DecodeNameRecord(raw)
 	if err != nil {
 		return nil, err
@@ -238,14 +245,29 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 	if err := s.ensureNamespaceOwner(ctx, record); err != nil {
 		return nil, nil, err
 	}
+	rootRaw, err := MarshalCanonical(&certified.Root)
+	if err != nil {
+		return nil, nil, err
+	}
 	if existingRoot, rootErr := s.datastore.Get(ctx, namespaceRootKey(record.Namespace)); rootErr == nil {
-		if !bytes.Equal(existingRoot, mustCanonical(&certified.Root)) {
+		if !bytes.Equal(existingRoot, rootRaw) {
 			return nil, nil, errors.New("namespace-root conflict; v1 committee membership is immutable")
 		}
 	} else if !errors.Is(rootErr, ds.ErrNotFound) {
 		return nil, nil, rootErr
 	}
+	if s.authority != nil {
+		if err := s.authority.CompareAndSwap(ctx, authorityNamespaceRootName(record.Namespace), nil, rootRaw); err != nil {
+			existingRoot, readErr := s.authority.Read(ctx, authorityNamespaceRootName(record.Namespace))
+			if readErr != nil || !bytes.Equal(existingRoot, rootRaw) {
+				return nil, nil, errors.New("namespace-root authority conflict")
+			}
+		}
+	}
 	if err := s.checkPublication(ctx, record); err != nil {
+		return nil, nil, err
+	}
+	if err := s.requireCertifiedMode(ctx, id); err != nil {
 		return nil, nil, err
 	}
 	if s.authority != nil {
@@ -256,10 +278,6 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 		if err := s.authority.CompareAndSwap(ctx, authorityName(id), expected, certified.Record); err != nil {
 			return nil, nil, err
 		}
-	}
-	rootRaw, err := MarshalCanonical(&certified.Root)
-	if err != nil {
-		return nil, nil, err
 	}
 	batch, err := s.datastore.Batch(ctx)
 	if err != nil {
@@ -390,7 +408,51 @@ func (s *Service) Get(ctx context.Context, id NameID) (*NameRecord, []byte, erro
 	return best, bestRaw, nil
 }
 
+// GetAgreementHead is used by validators before voting. Unlike the raw
+// compatibility resolver, it refuses to downgrade a name after certified
+// mode has been established at the shared authority.
+func (s *Service) GetAgreementHead(ctx context.Context, id NameID) (*NameRecord, []byte, error) {
+	if s.certificationRequired(ctx, id) {
+		certified, record, _, err := s.GetCertified(ctx, id)
+		if err != nil {
+			return nil, nil, err
+		}
+		return record, append([]byte(nil), certified.Record...), nil
+	}
+	return s.Get(ctx, id)
+}
+
 func authorityName(id NameID) string { return "__tarsus_name_v1__" + id.String() }
+
+func authorityCertifiedModeName(id NameID) string {
+	return "__tarsus_certified_mode_v1__" + id.String()
+}
+
+func authorityNamespaceRootName(namespace []byte) string {
+	return "__tarsus_namespace_root_v1__" + fmt.Sprintf("%x", namespace)
+}
+
+func (s *Service) certificationRequired(ctx context.Context, id NameID) bool {
+	if s.authority != nil {
+		if raw, err := s.authority.Read(ctx, authorityCertifiedModeName(id)); err == nil && bytes.Equal(raw, []byte{1}) {
+			return true
+		}
+	}
+	_, err := s.datastore.Get(ctx, certifiedKey(id))
+	return err == nil
+}
+
+func (s *Service) requireCertifiedMode(ctx context.Context, id NameID) error {
+	if s.authority != nil {
+		if err := s.authority.CompareAndSwap(ctx, authorityCertifiedModeName(id), nil, []byte{1}); err != nil {
+			current, readErr := s.authority.Read(ctx, authorityCertifiedModeName(id))
+			if readErr != nil || !bytes.Equal(current, []byte{1}) {
+				return errors.New("cannot establish certified-name mode")
+			}
+		}
+	}
+	return nil
+}
 
 func namespaceOwnerKey(namespace []byte) ds.Key {
 	return ds.NewKey(namespaceOwnerPrefix + fmt.Sprintf("%x", namespace))
@@ -621,6 +683,9 @@ func (s *Service) searchDistributedIndex(ctx context.Context, prefix, suffix str
 }
 
 func (s *Service) Rename(ctx context.Context, oldID, newID NameID, oldExpected uint64, newRaw, tombstoneRaw []byte) error {
+	if s.certificationRequired(ctx, oldID) || s.certificationRequired(ctx, newID) {
+		return ErrCertificationRequired
+	}
 	ids := []NameID{oldID, newID}
 	sort.Slice(ids, func(i, j int) bool { return bytes.Compare(ids[i][:], ids[j][:]) < 0 })
 	first := s.lockFor(ids[0])
