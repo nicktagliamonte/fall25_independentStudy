@@ -288,10 +288,10 @@ func registerNamespaceHandlers(mux *http.ServeMux, stack *mystore.Stack, h host.
 }
 
 // putNamespaceBlock stores an encoded directory block through the normal
-// block-storage pipeline: PutBlock into the local store, an async routing
-// table update, and (if repairProtocol and h are non-nil) asynchronous
-// replication to ReplicationFactorR-1 other peers. Including the local copy,
-// this mirrors the /put handler's total replication target.
+// block-storage pipeline: PutBlock into the local store, local routing
+// metadata, and (if repairProtocol and h are non-nil) asynchronous replication
+// to ReplicationFactorR-1 other peers with aggregate provider publication.
+// Including the local copy, this mirrors the /put handler's total target.
 //
 // Parameters:
 //   - ctx (context.Context): context for the synchronous PutBlock call.
@@ -309,23 +309,17 @@ func putNamespaceBlock(ctx context.Context, stack *mystore.Stack, h host.Host, r
 	if err != nil {
 		return mystore.Key{}, cid.Cid{}, err
 	}
-	var tokenReady <-chan error
 	if h != nil {
-		tokenReady = stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+		if repairProtocol != nil {
+			stack.RecordLocalPut(key, h.ID(), nil, c)
+		} else {
+			_ = stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+		}
 	}
 	if repairProtocol != nil && h != nil && len(data) > 0 {
 		go func() {
 			ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 			defer cancel()
-			if err := waitForLocalTokenPublication(
-				ctxRepair,
-				stack,
-				key,
-				c,
-				tokenReady,
-			); err != nil {
-				return
-			}
 			_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, data, ReplicationFactorR-1)
 		}()
 	}

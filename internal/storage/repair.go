@@ -799,6 +799,12 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 	if rp.host == nil || rp.stack == nil || n <= 0 || len(blockData) == 0 {
 		return 0
 	}
+	// The source attests to its local durable block independently of the legacy
+	// provider token. Transfer must not wait for a one-provider token round trip;
+	// the completed batch publishes source and receivers together below.
+	if err := PublishSignedProviderClaim(ctx, rp.stack, rp.host, key); err != nil {
+		return 0
+	}
 	var peers []peer.ID
 	for attempt := 0; attempt < 20; attempt++ {
 		peers = rp.peersForReplication(0)
@@ -882,13 +888,29 @@ func (rp *RepairProtocol) publishReplicaBatch(ctx context.Context, key Key, tran
 		return nil
 	}
 
+	localAddrs := rp.host.Addrs()
+	localAddr := pickRoutableAddr(localAddrs)
+	if localAddr == nil && len(localAddrs) > 0 {
+		localAddr = localAddrs[0]
+	}
+	if localAddr == nil {
+		return nil
+	}
+	source := Location{ProviderID: rp.host.ID(), Address: localAddr}
+	allLocations := make([]Location, 0, len(locations)+1)
+	allLocations = append(allLocations, source)
+	allLocations = append(allLocations, locations...)
+
 	mutationMu := &rp.tokenMutationMu[int(key[0])%len(rp.tokenMutationMu)]
 	mutationMu.Lock()
 	defer mutationMu.Unlock()
-	if err := SyncTokenOnReplications(ctx, tokenStore, key, locations); err == nil {
+	if err := SyncTokenOnReplications(ctx, tokenStore, key, allLocations); err == nil {
 		return candidates
 	}
 
+	if err := SyncTokenOnReplications(ctx, tokenStore, key, []Location{source}); err != nil {
+		return nil
+	}
 	published := make([]PeerCandidate, 0, len(candidates))
 	for i, location := range locations {
 		if err := SyncTokenOnReplication(

@@ -35,6 +35,11 @@ The coordinator merges all successful locations from a transfer batch into
 one conflict-resolved provider token update; it falls back to per-provider
 updates only if that aggregate write fails. Provider claims remain separate
 signed records even though their compatibility discovery token is batched.
+When a repair coordinator is available, a local put records only local routing
+metadata before transfer. It does not wait for a one-provider compatibility
+token: the coordinator signs the source claim, transfers bytes, and publishes
+the source plus acknowledged receivers together. This prevents the raw API's
+legacy token round trip from serializing strict named-object publication.
 
 Replica count is an availability policy, not a Byzantine quorum. Repair
 requires a reachable source and suitable advertised peers. Same-host container

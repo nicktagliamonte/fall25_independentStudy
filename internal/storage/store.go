@@ -1215,6 +1215,26 @@ func (s *Stack) UpdateRoutingTableOnPutAsync(
 	return ready
 }
 
+// RecordLocalPut records local routing and key-to-provider metadata without
+// publishing a provider token. The repair coordinator uses this staging path
+// so transfer can begin immediately and publish the source plus acknowledged
+// replicas in one aggregate token update.
+func (s *Stack) RecordLocalPut(k Key, providerID peer.ID, repVector *ReplicationVector, c cid.Cid) {
+	if s == nil || s.RoutingTable == nil || k.IsZero() {
+		return
+	}
+	rv := DefaultReplicationVector()
+	if repVector != nil {
+		rv = *repVector
+	}
+	s.RoutingTable.Set(k, providerID, rv, c)
+	go func() {
+		if err := StoreKeyToProviderIDMapping(context.Background(), s.Datastore, k, providerID); err != nil {
+			log.Printf("store provider mapping for key %s: %v", k.String(), err)
+		}
+	}()
+}
+
 // SyncLocalTokenLocation publishes this stack's host as a provider for k and
 // returns only after the token update has completed. Callers use it to order
 // source publication before replica-location updates.

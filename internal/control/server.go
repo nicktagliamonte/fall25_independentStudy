@@ -432,43 +432,6 @@ func wantsRawGetResponse(r *http.Request) bool {
 	return strings.Contains(accept, "application/octet-stream")
 }
 
-func waitForLocalTokenPublication(
-	ctx context.Context,
-	stack *mystore.Stack,
-	key mystore.Key,
-	c cid.Cid,
-	ready <-chan error,
-) error {
-	var err error
-	if ready != nil {
-		select {
-		case err = <-ready:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	} else {
-		err = stack.SyncLocalTokenLocation(ctx, key, c)
-	}
-	delay := 100 * time.Millisecond
-	for err != nil {
-		timer := time.NewTimer(delay)
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return ctx.Err()
-		case <-timer.C:
-		}
-		err = stack.SyncLocalTokenLocation(ctx, key, c)
-		if delay < 5*time.Second {
-			delay *= 2
-			if delay > 5*time.Second {
-				delay = 5 * time.Second
-			}
-		}
-	}
-	return nil
-}
-
 // DeleteRequest is the JSON request body for POST /delete.
 type DeleteRequest struct {
 	// CID is the IPFS-compatible content ID of the block to delete
@@ -1269,8 +1232,9 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 
 	// Put endpoint
 	// Synchronous (included in upload latency): JSON decode or raw body read, PutBlock (local blockstore),
-	// in-memory routing table Set. Asynchronous (not included): Key→provider datastore mapping,
-	// SyncTokenOnPut (DHT), ReplicateToNPeers.
+	// in-memory routing table Set. Asynchronous (not included): Key→provider datastore mapping
+	// and ReplicateToNPeers. With a repair coordinator, source and receiver token locations are
+	// published together after transfer rather than requiring a source-only DHT round trip.
 	//
 	// maxPutBodyBytes bounds the accepted raw-bytes /put body size (64 MiB);
 	// larger bodies are rejected with 413.
@@ -1285,7 +1249,7 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 	// and h are available, replication to peers is scheduled on a background
 	// goroutine with a 4-minute budget (independent of the request's/test's
 	// deadline, since large clusters need time to pick connected peers and
-	// complete sequential transfers). The HTTP response is written before
+	// publish signed claims). The HTTP response is written before
 	// replication starts, matching Swarm's "return after first copy" timing
 	// semantics. If SNG40_LOG_PUT_PHASES=1, logs the PutBlock vs
 	// routing-table+mapping phase durations.
@@ -1333,9 +1297,12 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 			_, _ = w.Write([]byte(err.Error()))
 			return
 		}
-		var tokenReady <-chan error
 		if h != nil {
-			tokenReady = stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+			if repairProtocol != nil {
+				stack.RecordLocalPut(key, h.ID(), nil, c)
+			} else {
+				_ = stack.UpdateRoutingTableOnPutAsync(key, h.ID(), nil, c)
+			}
 		}
 		t2 := time.Now()
 		if os.Getenv("SNG40_LOG_PUT_PHASES") == "1" {
@@ -1351,21 +1318,11 @@ func Start(ctx context.Context, h host.Host, stack *mystore.Stack, peers *mynet.
 
 		// Replicate asynchronously (matches Swarm: return after first copy; replication is background).
 		// Budget is per-run (not test timeout): large clusters need time to pick connected peers and
-		// complete sequential transfers; a short deadline caused replica_count=1 at higher N.
+		// publish signed claims; a short deadline caused replica_count=1 at higher N.
 		if repairProtocol != nil && h != nil && len(blockData) > 0 {
 			go func() {
 				ctxRepair, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 				defer cancel()
-				if err := waitForLocalTokenPublication(
-					ctxRepair,
-					stack,
-					key,
-					c,
-					tokenReady,
-				); err != nil {
-					log.Printf("publish source token for %s before replication: %v", key.String(), err)
-					return
-				}
 				_ = repairProtocol.ReplicateToNPeers(ctxRepair, key, c, blockData, 6)
 			}()
 		}
