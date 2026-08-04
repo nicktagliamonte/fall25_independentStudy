@@ -393,7 +393,35 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 	tokenCtx, cancelToken := context.WithTimeout(ctx, 10*time.Second)
 	token, err := mystore.GetToken(tokenCtx, stack.DHT, key)
 	cancelToken()
-	if err != nil {
+	locations := token.Locations
+	seen := make(map[peer.ID]bool, len(locations))
+	for _, location := range locations {
+		seen[location.ProviderID] = true
+	}
+	// A successful coordinator publication is also retained in the local
+	// routing/claim caches. Unioning it with the DHT result prevents two
+	// consecutive reads from observing different propagation prefixes; every
+	// cached candidate still needs a valid receiver signature below.
+	if stack.RoutingTable != nil && stack.Host != nil {
+		for _, provider := range stack.RoutingTable.GetProviders(key) {
+			if seen[provider.ProviderID] {
+				continue
+			}
+			addrs := stack.Host.Peerstore().Addrs(provider.ProviderID)
+			if provider.ProviderID == stack.Host.ID() {
+				addrs = stack.Host.Addrs()
+			}
+			if len(addrs) == 0 {
+				continue
+			}
+			locations = append(locations, mystore.Location{
+				ProviderID: provider.ProviderID,
+				Address:    addrs[0],
+			})
+			seen[provider.ProviderID] = true
+		}
+	}
+	if err != nil && len(locations) == 0 {
 		return counts, err
 	}
 	validator := &names.ProviderClaimValidator{}
@@ -401,8 +429,8 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 		category mystore.DistanceCategory
 		valid    bool
 	}
-	results := make(chan verifiedProvider, len(token.Locations))
-	for _, location := range token.Locations {
+	results := make(chan verifiedProvider, len(locations))
+	for _, location := range locations {
 		location := location
 		go func() {
 			public, err := location.ProviderID.ExtractPublicKey()
@@ -420,8 +448,11 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 			raw, err := stack.DHT.GetValue(claimCtx, claimKey)
 			cancelClaim()
 			if err != nil || validator.Validate(claimKey, raw) != nil {
-				results <- verifiedProvider{}
-				return
+				cached, ok := stack.CachedProviderClaim(claimKey)
+				if !ok || validator.Validate(claimKey, cached) != nil {
+					results <- verifiedProvider{}
+					return
+				}
 			}
 			category := mystore.DistanceUnknown
 			if location.ProviderID == local {
@@ -437,7 +468,7 @@ func signedProviderCounts(ctx context.Context, stack *mystore.Stack, key mystore
 			results <- verifiedProvider{category: category, valid: category != mystore.DistanceUnknown}
 		}()
 	}
-	for range token.Locations {
+	for range locations {
 		result := <-results
 		if !result.valid {
 			continue

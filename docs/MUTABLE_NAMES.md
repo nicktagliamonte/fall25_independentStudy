@@ -61,6 +61,11 @@ expiry, timestamp, nonce, and signature. A policy controller, rather than the
 block store, schedules placement, repair, indexing, retention, and collection.
 The client preflight and commit gate evaluate the same predicate; a legacy
 provider-location token reaching the target count is insufficient by itself.
+After a coordinator successfully publishes and validates a signed claim, it
+retains a local read-through copy. Strict verification unions this cache with
+the DHT view and revalidates every signature, avoiding false count regressions
+while a later DHT read observes only a propagation prefix. The cache grants no
+authority and does not substitute unsigned routing metadata for a claim.
 
 ## Data format
 

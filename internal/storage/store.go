@@ -148,6 +148,37 @@ type Stack struct {
 	MessageSink MessageMetricsSink
 	// HopSink, when set, receives DHT lookup hop counts for metrics.
 	HopSink NetworkHopsSink
+	// providerClaims retains canonical, signature-verified claims published by
+	// this coordinator. It is a read-through availability cache; every use is
+	// revalidated and DHT publication must succeed before insertion.
+	providerClaimsMu sync.RWMutex
+	providerClaims   map[string][]byte
+}
+
+// CacheProviderClaim stores an owned copy of a successfully published,
+// signature-verified provider claim under its full DHT key.
+func (s *Stack) CacheProviderClaim(key string, raw []byte) {
+	if s == nil || key == "" || len(raw) == 0 {
+		return
+	}
+	s.providerClaimsMu.Lock()
+	if s.providerClaims == nil {
+		s.providerClaims = make(map[string][]byte)
+	}
+	s.providerClaims[key] = append([]byte(nil), raw...)
+	s.providerClaimsMu.Unlock()
+}
+
+// CachedProviderClaim returns an owned copy of a coordinator-published claim.
+func (s *Stack) CachedProviderClaim(key string) ([]byte, bool) {
+	if s == nil || key == "" {
+		return nil, false
+	}
+	s.providerClaimsMu.RLock()
+	raw, ok := s.providerClaims[key]
+	copyRaw := append([]byte(nil), raw...)
+	s.providerClaimsMu.RUnlock()
+	return copyRaw, ok
 }
 
 // tokenValueStore returns the configured token store without constructing an

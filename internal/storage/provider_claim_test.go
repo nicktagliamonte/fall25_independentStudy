@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/nicktagliamonte/fall25_independentStudy/internal/names"
 	myhost "github.com/nicktagliamonte/fall25_independentStudy/internal/net"
 )
 
@@ -25,8 +28,18 @@ func TestReceivedProviderClaimBindsTransferPeerAndContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := PublishReceivedProviderClaim(ctx, &Stack{}, provider.ID(), key, raw); err != nil {
+	stack := &Stack{}
+	if err := PublishReceivedProviderClaim(ctx, stack, provider.ID(), key, raw); err != nil {
 		t.Fatalf("valid acknowledged claim: %v", err)
+	}
+	var claim names.ProviderClaim
+	if err := names.UnmarshalCanonical(raw, &claim); err != nil {
+		t.Fatal(err)
+	}
+	claimKey := fmt.Sprintf("/providers/%x/%x", key[:], claim.Provider)
+	cached, ok := stack.CachedProviderClaim(claimKey)
+	if !ok || !bytes.Equal(cached, raw) {
+		t.Fatal("published claim was not retained in the coordinator cache")
 	}
 	if err := PublishReceivedProviderClaim(ctx, &Stack{}, other.ID(), key, raw); err == nil {
 		t.Fatal("claim signed by a different transfer peer was accepted")

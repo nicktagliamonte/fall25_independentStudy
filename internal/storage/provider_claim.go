@@ -30,7 +30,12 @@ func PublishSignedProviderClaim(ctx context.Context, stack *Stack, h host.Host, 
 	if err := names.UnmarshalCanonical(raw, &claim); err != nil {
 		return err
 	}
-	return stack.DHT.PutValue(ctx, fmt.Sprintf("/providers/%x/%x", key[:], claim.Provider), raw)
+	claimKey := fmt.Sprintf("/providers/%x/%x", key[:], claim.Provider)
+	if err := stack.DHT.PutValue(ctx, claimKey, raw); err != nil {
+		return err
+	}
+	stack.CacheProviderClaim(claimKey, raw)
+	return nil
 }
 
 // BuildSignedProviderClaim creates the durable-storage attestation returned by
@@ -103,7 +108,12 @@ func PublishReceivedProviderClaim(ctx context.Context, stack *Stack, expectedPro
 		return fmt.Errorf("validate provider claim: %w", err)
 	}
 	if stack.DHT == nil {
+		stack.CacheProviderClaim(claimKey, raw)
 		return nil
 	}
-	return stack.DHT.PutValue(ctx, claimKey, raw)
+	if err := stack.DHT.PutValue(ctx, claimKey, raw); err != nil {
+		return err
+	}
+	stack.CacheProviderClaim(claimKey, raw)
+	return nil
 }
