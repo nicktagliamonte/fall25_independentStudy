@@ -239,13 +239,8 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 		return nil, nil, err
 	}
 	if existingRoot, rootErr := s.datastore.Get(ctx, namespaceRootKey(record.Namespace)); rootErr == nil {
-		var previous NamespaceRoot
-		if err := UnmarshalCanonical(existingRoot, &previous); err != nil {
-			return nil, nil, err
-		}
-		if previous.CommitteeEpoch > certified.Root.CommitteeEpoch ||
-			(previous.CommitteeEpoch == certified.Root.CommitteeEpoch && !bytes.Equal(existingRoot, mustCanonical(&certified.Root))) {
-			return nil, nil, errors.New("namespace-root epoch conflict")
+		if !bytes.Equal(existingRoot, mustCanonical(&certified.Root)) {
+			return nil, nil, errors.New("namespace-root conflict; v1 committee membership is immutable")
 		}
 	} else if !errors.Is(rootErr, ds.ErrNotFound) {
 		return nil, nil, rootErr
@@ -309,8 +304,13 @@ func (s *Service) GetCertified(ctx context.Context, id NameID) (*CertifiedNameRe
 			remoteCertified, remoteRecord := decodeCertified(remoteRaw, s.now(), id)
 			if remoteRecord != nil && (bestRecord == nil || remoteRecord.Generation > bestRecord.Generation) {
 				bestRaw, bestCertified, bestRecord = remoteRaw, remoteCertified, remoteRecord
-			} else if remoteRecord != nil && bestRecord != nil && remoteRecord.Generation == bestRecord.Generation && !bytes.Equal(remoteRaw, bestRaw) {
-				return nil, nil, nil, errors.New("equal-generation certified-name fork")
+			} else if remoteRecord != nil && bestRecord != nil && remoteRecord.Generation == bestRecord.Generation {
+				if !bytes.Equal(remoteCertified.Record, bestCertified.Record) {
+					return nil, nil, nil, errors.New("equal-generation certified-name fork")
+				}
+				if len(remoteCertified.Commit.Votes) > len(bestCertified.Commit.Votes) {
+					bestRaw, bestCertified, bestRecord = remoteRaw, remoteCertified, remoteRecord
+				}
 			}
 		}
 	}

@@ -58,7 +58,7 @@ func (r *NamespaceRoot) Sign(owner ed25519.PrivateKey) error {
 func (r *NamespaceRoot) Validate(now time.Time) error {
 	if r == nil || r.Version != FormatVersion || len(r.Namespace) != 32 ||
 		len(r.Owner) != ed25519.PublicKeySize || r.FaultThreshold == 0 ||
-		r.CommitteeEpoch == 0 || len(r.Nonce) < 16 {
+		r.CommitteeEpoch != 1 || len(r.Nonce) < 16 {
 		return errors.New("invalid namespace-root schema")
 	}
 	want := 3*int(r.FaultThreshold) + 1
@@ -132,18 +132,15 @@ func (v *NamespaceRootValidator) Validate(key string, value []byte) error {
 
 func (v *NamespaceRootValidator) Select(key string, values [][]byte) (int, error) {
 	selected := -1
-	var epoch uint64
 	var selectedRaw []byte
 	for i, raw := range values {
 		if err := v.Validate(key, raw); err != nil {
 			continue
 		}
-		var root NamespaceRoot
-		_ = UnmarshalCanonical(raw, &root)
-		if selected < 0 || root.CommitteeEpoch > epoch {
-			selected, epoch, selectedRaw = i, root.CommitteeEpoch, raw
-		} else if root.CommitteeEpoch == epoch && !bytes.Equal(raw, selectedRaw) {
-			return -1, errors.New("equal-epoch namespace-root fork")
+		if selected < 0 {
+			selected, selectedRaw = i, raw
+		} else if !bytes.Equal(raw, selectedRaw) {
+			return -1, errors.New("namespace-root fork; v1 committee membership is immutable")
 		}
 	}
 	if selected < 0 {
@@ -342,7 +339,8 @@ func (v *CertifiedNameValidator) Validate(key string, value []byte) error {
 func (v *CertifiedNameValidator) Select(key string, values [][]byte) (int, error) {
 	selected := -1
 	var generation uint64
-	var selectedRaw []byte
+	var selectedRecord []byte
+	var selectedVotes int
 	for i, raw := range values {
 		if err := v.Validate(key, raw); err != nil {
 			continue
@@ -351,9 +349,11 @@ func (v *CertifiedNameValidator) Select(key string, values [][]byte) (int, error
 		_ = UnmarshalCanonical(raw, &certified)
 		record, _ := DecodeNameRecord(certified.Record)
 		if selected < 0 || record.Generation > generation {
-			selected, generation, selectedRaw = i, record.Generation, raw
-		} else if record.Generation == generation && !bytes.Equal(raw, selectedRaw) {
+			selected, generation, selectedRecord, selectedVotes = i, record.Generation, certified.Record, len(certified.Commit.Votes)
+		} else if record.Generation == generation && !bytes.Equal(certified.Record, selectedRecord) {
 			return -1, errors.New("equal-generation certified-name fork")
+		} else if record.Generation == generation && len(certified.Commit.Votes) > selectedVotes {
+			selected, selectedVotes = i, len(certified.Commit.Votes)
 		}
 	}
 	if selected < 0 {

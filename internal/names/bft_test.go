@@ -204,6 +204,24 @@ func TestCertifiedCommitIsTheResolvedBFTHead(t *testing.T) {
 	if _, ok := network.values[DHTCertifiedNameKey(id)]; !ok {
 		t.Fatal("certified head was not published under its dedicated DHT key")
 	}
+	equivalent := *certified
+	equivalent.Commit = *qc
+	equivalent.Commit.Votes = append([]QuorumVote(nil), qc.Votes...)
+	for left, right := 0, len(equivalent.Commit.Votes)-1; left < right; left, right = left+1, right-1 {
+		equivalent.Commit.Votes[left], equivalent.Commit.Votes[right] = equivalent.Commit.Votes[right], equivalent.Commit.Votes[left]
+	}
+	equivalentRaw, _ := MarshalCanonical(&equivalent)
+	if bytes.Equal(equivalentRaw, certifiedRaw) {
+		t.Fatal("test did not produce an alternative certificate encoding")
+	}
+	validator := &CertifiedNameValidator{Now: func() time.Time { return now }}
+	if _, err := validator.Select(DHTCertifiedNameKey(id), [][]byte{certifiedRaw, equivalentRaw}); err != nil {
+		t.Fatalf("equivalent quorum subsets were classified as a record fork: %v", err)
+	}
+	network.values[DHTCertifiedNameKey(id)] = equivalentRaw
+	if _, _, _, err := service.GetCertified(context.Background(), id); err != nil {
+		t.Fatalf("equivalent remote certificate was classified as a fork: %v", err)
+	}
 	short := *certified
 	short.Commit = *qc
 	short.Commit.Votes = append([]QuorumVote(nil), qc.Votes[:4]...)
