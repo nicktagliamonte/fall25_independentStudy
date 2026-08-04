@@ -827,24 +827,82 @@ func (rp *RepairProtocol) ReplicateToNPeers(ctx context.Context, key Key, c cid.
 			candidate := candidate
 			go func() {
 				peerCtx, cancelPeer := context.WithTimeout(ctx, 60*time.Second)
-				err := rp.replicateToPeer(peerCtx, c, candidate.PeerID, blockData)
+				err := rp.replicateToPeerWithToken(peerCtx, c, candidate.PeerID, blockData, false)
 				cancelPeer()
 				results <- replicationResult{candidate: candidate, err: err}
 			}()
 		}
 		next += batchSize
+		transferred := make([]PeerCandidate, 0, batchSize)
 		for completed := 0; completed < batchSize; completed++ {
 			result := <-results
 			if result.err != nil {
 				continue
 			}
+			transferred = append(transferred, result.candidate)
+		}
+		for _, candidate := range rp.publishReplicaBatch(ctx, key, transferred) {
 			replicated++
 			if rp.stack.RoutingTable != nil {
-				rp.stack.RoutingTable.AddProvider(key, result.candidate.PeerID, result.candidate.DistanceCategory)
+				rp.stack.RoutingTable.AddProvider(key, candidate.PeerID, candidate.DistanceCategory)
 			}
 		}
 	}
 	return replicated
+}
+
+// publishReplicaBatch merges all acknowledged locations in one token update.
+// Claims have already been signed by receivers and published by the
+// coordinator before this method runs. If the aggregate update fails, the
+// one-at-a-time path is retained as a correctness fallback and only successful
+// locations are returned to the caller.
+func (rp *RepairProtocol) publishReplicaBatch(ctx context.Context, key Key, transferred []PeerCandidate) []PeerCandidate {
+	if len(transferred) == 0 {
+		return nil
+	}
+	tokenStore := rp.getTokenStore()
+	if tokenStore == nil {
+		return transferred
+	}
+	locations := make([]Location, 0, len(transferred))
+	candidates := make([]PeerCandidate, 0, len(transferred))
+	for _, candidate := range transferred {
+		addrs := rp.host.Peerstore().Addrs(candidate.PeerID)
+		address := pickRoutableAddr(addrs)
+		if address == nil && len(addrs) > 0 {
+			address = addrs[0]
+		}
+		if address == nil {
+			continue
+		}
+		locations = append(locations, Location{ProviderID: candidate.PeerID, Address: address})
+		candidates = append(candidates, candidate)
+	}
+	if len(locations) == 0 {
+		return nil
+	}
+
+	mutationMu := &rp.tokenMutationMu[int(key[0])%len(rp.tokenMutationMu)]
+	mutationMu.Lock()
+	defer mutationMu.Unlock()
+	if err := SyncTokenOnReplications(ctx, tokenStore, key, locations); err == nil {
+		return candidates
+	}
+
+	published := make([]PeerCandidate, 0, len(candidates))
+	for i, location := range locations {
+		if err := SyncTokenOnReplication(
+			ctx,
+			tokenStore,
+			rp.stack.RoutingTable,
+			key,
+			location.ProviderID,
+			location.Address,
+		); err == nil {
+			published = append(published, candidates[i])
+		}
+	}
+	return published
 }
 
 // rankReplicationCandidates actively measures every known candidate in
@@ -992,7 +1050,7 @@ func (rp *RepairProtocol) ReplicateToPeer(
 	targetPeer peer.ID,
 	blockData []byte,
 ) error {
-	return rp.replicateToPeer(ctx, c, targetPeer, blockData)
+	return rp.replicateToPeerWithToken(ctx, c, targetPeer, blockData, true)
 }
 
 // replicateToPeer is the core replication operation: it ensures blockData is stored in the
@@ -1015,6 +1073,16 @@ func (rp *RepairProtocol) replicateToPeer(
 	c cid.Cid,
 	targetPeer peer.ID,
 	blockData []byte,
+) error {
+	return rp.replicateToPeerWithToken(ctx, c, targetPeer, blockData, true)
+}
+
+func (rp *RepairProtocol) replicateToPeerWithToken(
+	ctx context.Context,
+	c cid.Cid,
+	targetPeer peer.ID,
+	blockData []byte,
+	syncToken bool,
 ) error {
 	if rp.stack == nil || rp.stack.BlockSvc == nil {
 		return errors.New("block service unavailable")
@@ -1081,7 +1149,7 @@ func (rp *RepairProtocol) replicateToPeer(
 	// For immediate replication, we use a direct approach:
 	// Open a stream to the peer and send the block directly
 	// This is more reliable for repair operations
-	return rp.replicateViaDirectStream(ctx, c, targetPeer, blockData)
+	return rp.replicateViaDirectStream(ctx, c, targetPeer, blockData, syncToken)
 }
 
 // replicateViaDirectStream replicates content to targetPeer via a direct libp2p stream on
@@ -1107,6 +1175,7 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 	c cid.Cid,
 	targetPeer peer.ID,
 	blockData []byte,
+	syncToken bool,
 ) error {
 	// Open stream to target peer
 	stream, err := rp.host.NewStream(ctx, targetPeer, RepairProtocolID)
@@ -1159,7 +1228,7 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 	// stores and acknowledges the bytes; only then do we publish its location.
 	// Having both endpoints update the same token raced two stale DHT
 	// read-modify-write sequences and could erase the source location.
-	if tokenStore := rp.getTokenStore(); rp.stack != nil && tokenStore != nil {
+	if tokenStore := rp.getTokenStore(); syncToken && rp.stack != nil && tokenStore != nil {
 		addrs := rp.host.Peerstore().Addrs(targetPeer)
 		var targetAddr multiaddr.Multiaddr
 		if len(addrs) > 0 {

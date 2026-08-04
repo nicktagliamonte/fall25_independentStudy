@@ -31,6 +31,10 @@ Ed25519-signed provider claim. The coordinator verifies that the claim binds
 the transferred content key and receiver identity before publishing it; this
 keeps a receiver with a sparse DHT view off the strict-publication critical
 path without allowing the coordinator to forge storage attestations.
+The coordinator merges all successful locations from a transfer batch into
+one conflict-resolved provider token update; it falls back to per-provider
+updates only if that aggregate write fails. Provider claims remain separate
+signed records even though their compatibility discovery token is batched.
 
 Replica count is an availability policy, not a Byzantine quorum. Repair
 requires a reachable source and suitable advertised peers. Same-host container

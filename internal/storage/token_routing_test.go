@@ -122,6 +122,38 @@ func TestPutToken_GetToken_Roundtrip(t *testing.T) {
 	}
 }
 
+func TestSyncTokenOnReplicationsMergesBatchWithoutDuplicates(t *testing.T) {
+	ctx := context.Background()
+	dht := newMockTokenDHT()
+	key := KeyFromData([]byte("replica batch"))
+	source := tokenTestPeerID(t)
+	one := tokenTestPeerID(t)
+	two := tokenTestPeerID(t)
+	addr := tokenTestMultiaddr(t, "/ip4/127.0.0.1/tcp/4001")
+	if err := PutToken(ctx, dht, key, Token{
+		Key:       key,
+		Locations: []Location{{ProviderID: source, Address: addr}},
+		Timestamp: time.Now().UnixNano(),
+		Version:   1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := SyncTokenOnReplications(ctx, dht, key, []Location{
+		{ProviderID: one, Address: addr},
+		{ProviderID: two, Address: addr},
+		{ProviderID: one, Address: addr},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	token, err := GetToken(ctx, dht, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(token.Locations) != 3 {
+		t.Fatalf("locations = %d, want source plus two unique replicas", len(token.Locations))
+	}
+}
+
 func TestPutToken_RejectsNilDHT(t *testing.T) {
 	ctx := context.Background()
 	k := KeyFromData([]byte("x"))

@@ -286,55 +286,60 @@ func PruneTokenLocations(ctx context.Context, dht routing.ValueStore, key Key, p
 //   - error: non-nil if dht is nil, key is zero, newReplicaAddr is nil, or both the
 //     conflict-resolved update and the fallback token creation fail.
 func SyncTokenOnReplication(ctx context.Context, dht routing.ValueStore, routingTable *RoutingTable, key Key, newReplicaPeerID peer.ID, newReplicaAddr multiaddr.Multiaddr) error {
+	return SyncTokenOnReplications(ctx, dht, key, []Location{{
+		ProviderID: newReplicaPeerID,
+		Address:    newReplicaAddr,
+	}})
+}
+
+// SyncTokenOnReplications merges a completed batch of replica locations in a
+// single conflict-resolved DHT update. This is the normal publication path for
+// strict replication; SyncTokenOnReplication remains the one-peer adapter used
+// by repair and compatibility callers.
+func SyncTokenOnReplications(ctx context.Context, dht routing.ValueStore, key Key, replicas []Location) error {
 	if dht == nil {
 		return fmt.Errorf("DHT required for token sync")
 	}
 	if key.IsZero() {
 		return fmt.Errorf("key cannot be zero")
 	}
-	if newReplicaAddr == nil {
-		return fmt.Errorf("address required for new replica")
+	if len(replicas) == 0 {
+		return nil
+	}
+	unique := make([]Location, 0, len(replicas))
+	seen := make(map[peer.ID]bool, len(replicas))
+	for _, replica := range replicas {
+		if replica.ProviderID == "" || replica.Address == nil {
+			return fmt.Errorf("provider and address required for every replica")
+		}
+		if seen[replica.ProviderID] {
+			continue
+		}
+		seen[replica.ProviderID] = true
+		unique = append(unique, replica)
 	}
 
-	// Use conflict resolution to update token
-	// This handles concurrent updates from multiple peers
 	err := UpdateTokenWithConflictResolution(ctx, dht, key, func(currentToken Token) Token {
-		// Check if new replica is already present
+		existing := make(map[peer.ID]bool, len(currentToken.Locations)+len(unique))
 		for _, loc := range currentToken.Locations {
-			if loc.ProviderID == newReplicaPeerID {
-				// Already present, return unchanged
-				return currentToken
-			}
+			existing[loc.ProviderID] = true
 		}
-
-		// Add new replica location if address is provided
-		if newReplicaAddr == nil {
-			return currentToken
-		}
-
 		updatedToken := currentToken
-		updatedToken.Locations = append(updatedToken.Locations, Location{
-			ProviderID: newReplicaPeerID,
-			Address:    newReplicaAddr,
-			RTT:        0,
-		})
+		for _, replica := range unique {
+			if existing[replica.ProviderID] {
+				continue
+			}
+			replica.RTT = 0
+			updatedToken.Locations = append(updatedToken.Locations, replica)
+			existing[replica.ProviderID] = true
+		}
 		return updatedToken
 	}, 3)
 
 	if err != nil {
-		// If token doesn't exist, create it with new replica location
-		if newReplicaAddr == nil {
-			return fmt.Errorf("no address provided for new replica")
-		}
 		newToken := Token{
-			Key: key,
-			Locations: []Location{
-				{
-					ProviderID: newReplicaPeerID,
-					Address:    newReplicaAddr,
-					RTT:        0,
-				},
-			},
+			Key:       key,
+			Locations: unique,
 			Timestamp: time.Now().UnixNano(),
 			Version:   1,
 		}
