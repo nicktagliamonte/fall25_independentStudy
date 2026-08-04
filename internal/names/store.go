@@ -231,6 +231,7 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 
 	currentRaw, currentErr := s.authoritativeCurrent(ctx, id)
 	var current *NameRecord
+	sameCommittedHead := false
 	if currentErr == nil {
 		current, err = DecodeNameRecord(currentRaw)
 		if err != nil {
@@ -239,8 +240,15 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 	} else if !errors.Is(currentErr, ds.ErrNotFound) && !errors.Is(currentErr, ErrNotFound) {
 		return nil, nil, currentErr
 	}
-	if err := record.Validate(s.now(), current); err != nil {
-		return nil, nil, err
+	if current != nil && current.Generation == record.Generation {
+		if !bytes.Equal(currentRaw, certified.Record) {
+			return nil, nil, errors.New("equal-generation certified-name fork")
+		}
+		sameCommittedHead = true
+	} else {
+		if err := record.Validate(s.now(), current); err != nil {
+			return nil, nil, err
+		}
 	}
 	if err := s.ensureNamespaceOwner(ctx, record); err != nil {
 		return nil, nil, err
@@ -256,7 +264,7 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 	} else if !errors.Is(rootErr, ds.ErrNotFound) {
 		return nil, nil, rootErr
 	}
-	if s.authority != nil {
+	if s.authority != nil && !sameCommittedHead {
 		if err := s.authority.CompareAndSwap(ctx, authorityNamespaceRootName(record.Namespace), nil, rootRaw); err != nil {
 			existingRoot, readErr := s.authority.Read(ctx, authorityNamespaceRootName(record.Namespace))
 			if readErr != nil || !bytes.Equal(existingRoot, rootRaw) {
@@ -297,7 +305,9 @@ func (s *Service) CommitCertified(ctx context.Context, raw []byte) (*CertifiedNa
 	if err := batch.Commit(ctx); err != nil {
 		return nil, nil, err
 	}
-	s.updateSearchIndex(ctx, current, record)
+	if !sameCommittedHead {
+		s.updateSearchIndex(ctx, current, record)
+	}
 	if s.onCommit != nil {
 		s.onCommit(record)
 	}

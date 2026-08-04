@@ -240,6 +240,9 @@ func TestCertifiedCommitIsTheResolvedBFTHead(t *testing.T) {
 	nextRaw, _ := next.Marshal()
 	secondService := NewService(dssync.MutexWrap(ds.NewMapDatastore()), nil, nil)
 	secondService.SetAuthority(authority)
+	if _, replicated, err := secondService.CommitCertified(context.Background(), equivalentRaw); err != nil || replicated.Generation != 0 {
+		t.Fatalf("idempotent certified write-back failed: record=%v err=%v", replicated, err)
+	}
 	if _, err := secondService.Update(context.Background(), id, 0, nextRaw); !errors.Is(err, ErrCertificationRequired) {
 		t.Fatalf("legacy update after certified commit = %v, want ErrCertificationRequired", err)
 	}
