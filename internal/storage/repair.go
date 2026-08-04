@@ -6,6 +6,7 @@ package storage
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,7 +32,7 @@ import (
 )
 
 // RepairProtocolID is the libp2p protocol ID for repair replication.
-const RepairProtocolID = "/sng40/repair/1.0.0"
+const RepairProtocolID = "/sng40/repair/1.1.0"
 
 // RepairProtocol handles automatic repair of missing replicas based on replication vector
 // mismatches: it discovers storage-available candidates, selects among them, and replicates
@@ -1130,16 +1132,27 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 		return fmt.Errorf("write block data: %w", err)
 	}
 
-	// Read acknowledgment (simple "OK\n" or error message)
-	ack := make([]byte, 256)
-	n, err := stream.Read(ack)
+	// The receiver acknowledges durable storage with a signed provider claim.
+	// The coordinator publishes that claim through its established DHT view,
+	// avoiding a sparse receiver's routing table on the critical path.
+	ack, err := bufio.NewReader(io.LimitReader(stream, 16<<10)).ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("read ack: %w", err)
 	}
-
-	ackStr := string(ack[:n])
-	if ackStr != "OK\n" {
-		return fmt.Errorf("replication failed: %s", ackStr)
+	fields := strings.Fields(ack)
+	if len(fields) != 2 || fields[0] != "OK" {
+		return fmt.Errorf("replication failed: %s", strings.TrimSpace(ack))
+	}
+	claimRaw, err := base64.RawStdEncoding.DecodeString(fields[1])
+	if err != nil {
+		return fmt.Errorf("decode provider claim acknowledgment: %w", err)
+	}
+	key := KeyFromData(blockData)
+	if key.IsZero() {
+		return errors.New("replicated block has zero content key")
+	}
+	if err := PublishReceivedProviderClaim(ctx, rp.stack, targetPeer, key, claimRaw); err != nil {
+		return fmt.Errorf("publish acknowledged provider claim: %w", err)
 	}
 
 	// The coordinator is the sole token writer for this transfer. The receiver
@@ -1147,37 +1160,34 @@ func (rp *RepairProtocol) replicateViaDirectStream(
 	// Having both endpoints update the same token raced two stale DHT
 	// read-modify-write sequences and could erase the source location.
 	if tokenStore := rp.getTokenStore(); rp.stack != nil && tokenStore != nil {
-		key := KeyFromData(blockData)
-		if !key.IsZero() {
-			addrs := rp.host.Peerstore().Addrs(targetPeer)
-			var targetAddr multiaddr.Multiaddr
-			if len(addrs) > 0 {
-				targetAddr = pickRoutableAddr(addrs)
-				if targetAddr == nil {
-					targetAddr = addrs[0]
-				}
-			}
+		addrs := rp.host.Peerstore().Addrs(targetPeer)
+		var targetAddr multiaddr.Multiaddr
+		if len(addrs) > 0 {
+			targetAddr = pickRoutableAddr(addrs)
 			if targetAddr == nil {
-				if sc := stream.Conn(); sc != nil {
-					targetAddr = sc.RemoteMultiaddr()
-				}
+				targetAddr = addrs[0]
 			}
-			if targetAddr != nil {
-				mutationMu := &rp.tokenMutationMu[int(key[0])%len(rp.tokenMutationMu)]
-				mutationMu.Lock()
-				if err := SyncTokenOnReplication(
-					ctx,
-					tokenStore,
-					rp.stack.RoutingTable,
-					key,
-					targetPeer,
-					targetAddr,
-				); err != nil {
-					mutationMu.Unlock()
-					return fmt.Errorf("publish replica token location: %w", err)
-				}
+		}
+		if targetAddr == nil {
+			if sc := stream.Conn(); sc != nil {
+				targetAddr = sc.RemoteMultiaddr()
+			}
+		}
+		if targetAddr != nil {
+			mutationMu := &rp.tokenMutationMu[int(key[0])%len(rp.tokenMutationMu)]
+			mutationMu.Lock()
+			if err := SyncTokenOnReplication(
+				ctx,
+				tokenStore,
+				rp.stack.RoutingTable,
+				key,
+				targetPeer,
+				targetAddr,
+			); err != nil {
 				mutationMu.Unlock()
+				return fmt.Errorf("publish replica token location: %w", err)
 			}
+			mutationMu.Unlock()
 		}
 	}
 
@@ -1297,14 +1307,15 @@ func (rp *RepairProtocol) HandleRepairStream(stream network.Stream) error {
 			rp.stack.RoutingTable.AddProvider(key, rp.host.ID(), DistanceNear)
 		}
 	}
-	if rp.host != nil && rp.stack.DHT != nil {
-		if err := PublishSignedProviderClaim(ctx, rp.stack, rp.host, key); err != nil {
-			_, _ = stream.Write([]byte("ERROR: provider claim\n"))
-			return fmt.Errorf("publish provider claim: %w", err)
-		}
+	claimRaw, err := BuildSignedProviderClaim(rp.host, key)
+	if err != nil {
+		_, _ = stream.Write([]byte("ERROR: provider claim\n"))
+		return fmt.Errorf("sign provider claim: %w", err)
 	}
 
-	// Send success acknowledgment
-	_, err = stream.Write([]byte("OK\n"))
+	// Send success acknowledgment carrying the receiver's signed durable-store
+	// attestation. The coordinator validates and publishes it before counting
+	// this transfer toward strict placement.
+	_, err = stream.Write([]byte("OK " + base64.RawStdEncoding.EncodeToString(claimRaw) + "\n"))
 	return err
 }

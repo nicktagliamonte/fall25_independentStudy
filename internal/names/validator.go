@@ -85,7 +85,10 @@ func (c *ProviderClaim) Sign(key ed25519.PrivateKey) error {
 	if len(key) != ed25519.PrivateKeySize {
 		return errors.New("invalid provider private key")
 	}
-	c.Provider = append(c.Provider[:0], key.Public().(ed25519.PublicKey)...)
+	// Always allocate record-owned storage. Some key providers expose slices
+	// backed by a live host identity; reusing c.Provider's capacity could write
+	// into that shared memory while libp2p reads it.
+	c.Provider = append([]byte(nil), key.Public().(ed25519.PublicKey)...)
 	payload, err := signingBytes(ProviderClaimDomain, c.unsigned())
 	if err != nil {
 		return err

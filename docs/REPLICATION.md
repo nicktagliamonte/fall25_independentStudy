@@ -26,7 +26,11 @@ manifest-and-chunk placement policy. Replica byte streams run in bounded
 parallel batches; the initiating coordinator publishes each completed
 transfer, and per-content-key token merging prevents concurrent
 acknowledgements from erasing sibling locations. Unrelated keys can merge in
-parallel.
+parallel. Each repair-protocol 1.1 acknowledgement carries the receiver's
+Ed25519-signed provider claim. The coordinator verifies that the claim binds
+the transferred content key and receiver identity before publishing it; this
+keeps a receiver with a sparse DHT view off the strict-publication critical
+path without allowing the coordinator to forge storage attestations.
 
 Replica count is an availability policy, not a Byzantine quorum. Repair
 requires a reachable source and suitable advertised peers. Same-host container
