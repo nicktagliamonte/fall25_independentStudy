@@ -18,6 +18,7 @@ services:
       --store /app/data/bootstrap
       --min-outbound ${TARSUS_MIN_OUTBOUND:-12}
       --max-connections ${TARSUS_MAX_CONNECTIONS:-32}
+      --cluster-nodes ${TARSUS_CLUSTER_NODES:-10}
       --no-default-bootstrap
       --index-shards ${TARSUS_INDEX_SHARDS:-16}
       --disable-bloom-pruning=${TARSUS_DISABLE_BLOOM_PRUNING:-false}

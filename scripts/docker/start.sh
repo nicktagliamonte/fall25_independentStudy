@@ -17,6 +17,10 @@ if [[ ! "$N" =~ ^[0-9]+$ ]] || [[ "$N" -lt 2 ]]; then
   exit 1
 fi
 
+# The bootstrap service is rendered from the static Compose template while
+# peers are generated below. Give both sides the same ownership-view size.
+export TARSUS_CLUSTER_NODES="$N"
+
 echo "Starting $N Docker nodes..."
 
 # Stop any existing containers first
@@ -308,6 +312,14 @@ done
 echo "Tree construction complete ($((N - 1)) protected edges)"
 
 echo "Waiting for DHT convergence..."
+DHT_READY_MIN="${TARSUS_DHT_READY_MIN:-8}"
+if [[ ! "$DHT_READY_MIN" =~ ^[0-9]+$ ]] || [[ "$DHT_READY_MIN" -lt 1 ]]; then
+  echo "ERROR: TARSUS_DHT_READY_MIN must be a positive integer" >&2
+  exit 1
+fi
+if [[ "$DHT_READY_MIN" -gt $((N - 1)) ]]; then
+  DHT_READY_MIN=$((N - 1))
+fi
 SAMPLES=(1 2 3 $((N / 2)) "$N")
 declare -A SAMPLE_SEEN
 UNIQUE_SAMPLES=()
@@ -329,19 +341,19 @@ for attempt in $(seq 1 60); do
     status=$(docker-compose exec -T "$service" \
       curl --max-time 3 --fail --silent "http://${CONTROL_ADDRS[$sample]}/dht/status" 2>/dev/null || true)
     size=$(jq -r '.routing_table_size // 0' <<<"$status" 2>/dev/null || echo 0)
-    if [[ "$size" =~ ^[0-9]+$ ]] && [[ "$size" -ge 8 ]]; then
+    if [[ "$size" =~ ^[0-9]+$ ]] && [[ "$size" -ge "$DHT_READY_MIN" ]]; then
       ready=$((ready + 1))
     fi
   done
   if [[ "$ready" -eq "${#UNIQUE_SAMPLES[@]}" ]]; then
     DHT_READY=true
-    echo "DHT ready on ${#UNIQUE_SAMPLES[@]} representative nodes (attempt $attempt)"
+    echo "DHT ready at >=$DHT_READY_MIN routing candidates on ${#UNIQUE_SAMPLES[@]} representative nodes (attempt $attempt)"
     break
   fi
   sleep 2
 done
 if [[ "$DHT_READY" != true ]]; then
-  echo "ERROR: DHT did not converge to eight routing candidates on representative nodes" >&2
+  echo "ERROR: DHT did not converge to $DHT_READY_MIN routing candidates on representative nodes" >&2
   exit 1
 fi
 
