@@ -5,7 +5,7 @@ set -euo pipefail
 # Usage: ./scripts/utils/resource_monitor.sh --output <file> [--interval <sec>] [container1 container2 ...]
 #   --output <file>   Output CSV path (required)
 #   --interval <sec>  Sample interval in seconds (default: 5)
-#   Containers: names or patterns; if none given, uses all running (fall25-*, swarm-*)
+#   Containers: names or patterns; if none given, uses all running Tarsus/Bee containers
 # Run in background; kill to stop. Output: timestamp,container,cpu_pct,mem_usage_mb
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,7 +44,7 @@ fi
 AUTO_DETECT=0
 if [[ ${#CONTAINERS[@]} -eq 0 ]]; then
   AUTO_DETECT=1
-  CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^(fall25-|swarm-)' || true))
+  CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^(fall25-|swarm-|bee-)' || true))
 fi
 
 if [[ ${#CONTAINERS[@]} -eq 0 ]]; then
@@ -58,7 +58,7 @@ echo "timestamp,container,cpu_pct,mem_usage_mb" > "$OUTPUT_FILE"
 while true; do
   ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   if [[ "$AUTO_DETECT" -eq 1 ]]; then
-    CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^(fall25-|swarm-)' || true))
+    CONTAINERS=($(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '^(fall25-|swarm-|bee-)' || true))
   fi
   if [[ ${#CONTAINERS[@]} -gt 0 ]]; then
     # One docker-stats call samples every container concurrently. The previous

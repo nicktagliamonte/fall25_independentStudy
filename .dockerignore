@@ -1,0 +1,9 @@
+.git
+.github
+paper
+**/node_modules
+**/runtime
+**/results
+*.pdf
+*.aux
+*.log
